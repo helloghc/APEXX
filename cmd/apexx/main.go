@@ -56,7 +56,7 @@ func must(log *slog.Logger, err error, msg string) {
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "uso: apexx migrate | tenant | seed | import | serve")
+		fmt.Fprintln(os.Stderr, "uso: apexx migrate | tenant | seed | import | qa-setup | rotate-master-key | serve")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -74,6 +74,8 @@ func main() {
 		cmdServe(ctx, log)
 	case "import":
 		cmdImport(ctx, log, os.Args[2:])
+	case "qa-setup":
+		cmdQASetup(ctx, log, os.Args[2:])
 	case "rotate-master-key":
 		cmdRotate(ctx, log)
 	default:
