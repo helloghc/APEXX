@@ -177,6 +177,19 @@ func (s *Server) putPrices(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s *Server) getPrices(w http.ResponseWriter, r *http.Request) {
+	t, ok := s.tenantView(w, r)
+	if !ok {
+		return
+	}
+	tiers := t.Pricing.Tiers(r.PathValue("channel"), r.PathValue("sku"))
+	if len(tiers) == 0 {
+		apierr.NotFound(w, "Sin precios para ese SKU en ese canal")
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"channel": r.PathValue("channel"), "sku": r.PathValue("sku"), "tiers": tiers})
+}
+
 func (s *Server) getChannel(w http.ResponseWriter, r *http.Request) {
 	t, ok := s.tenantView(w, r)
 	if !ok {
@@ -311,12 +324,28 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) listOrders(w http.ResponseWriter, r *http.Request) {
-	list, err := s.Orders.List(r.Context(), principal(r).Tenant, 100)
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 200 {
+		limit = 50
+	}
+	before, _ := strconv.ParseInt(r.URL.Query().Get("before"), 10, 64)
+	status := r.URL.Query().Get("status")
+	switch status {
+	case "", orders.StatusPendingPayment, orders.StatusPaid, orders.StatusFulfilled, orders.StatusCancelled, orders.StatusRefunded:
+	default:
+		apierr.BadRequest(w, "", apierr.FieldError{Field: "status", Code: "invalid", Message: "status no válido"})
+		return
+	}
+	list, err := s.Orders.List(r.Context(), principal(r).Tenant, limit, before, status)
 	if err != nil {
 		internalError(w, s.Log, err)
 		return
 	}
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": list})
+	next := int64(0)
+	if len(list) == limit {
+		next = list[len(list)-1].Number
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": list, "nextBefore": next})
 }
 
 func (s *Server) getOrder(w http.ResponseWriter, r *http.Request) {

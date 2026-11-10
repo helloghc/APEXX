@@ -187,9 +187,9 @@ func nonNilMap(m map[string]string) map[string]string {
 func (d *DB) LoadProduct(ctx context.Context, tenant, id string) (catalog.Product, error) {
 	var p catalog.Product
 	var attrs []byte
-	err := d.System.QueryRow(ctx, `SELECT id, handle, title, description, brand, categories, attributes, status, updated_at
+	err := d.System.QueryRow(ctx, `SELECT id, handle, title, description, brand, categories, attributes, status, updated_at, version
 		FROM products WHERE tenant_id=$1 AND id=$2`, tenant, id).
-		Scan(&p.ID, &p.Handle, &p.Title, &p.Description, &p.Brand, &p.Categories, &attrs, &p.Status, &p.UpdatedAt)
+		Scan(&p.ID, &p.Handle, &p.Title, &p.Description, &p.Brand, &p.Categories, &attrs, &p.Status, &p.UpdatedAt, &p.Version)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return p, ErrNotFound
 	}
@@ -649,4 +649,25 @@ func (d *DB) RotateTenantKeys(ctx context.Context, rewrap func(tenant string, wr
 		return nil
 	})
 	return n, err
+}
+
+// APIKeyInfo describes a key without its secret.
+type APIKeyInfo struct {
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	Role      string     `json:"role"`
+	CreatedAt time.Time  `json:"createdAt"`
+	RevokedAt *time.Time `json:"revokedAt,omitempty"`
+}
+
+// ListAPIKeys lists the keys of a tenant.
+func (d *DB) ListAPIKeys(ctx context.Context, tenant string) ([]APIKeyInfo, error) {
+	rows, err := d.System.Query(ctx, `SELECT id, name, role, created_at, revoked_at FROM api_keys WHERE tenant_id=$1 ORDER BY created_at DESC`, tenant)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (APIKeyInfo, error) {
+		var k APIKeyInfo
+		return k, r.Scan(&k.ID, &k.Name, &k.Role, &k.CreatedAt, &k.RevokedAt)
+	})
 }

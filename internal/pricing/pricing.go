@@ -44,6 +44,13 @@ func (s *Service) Set(channel, sku string, tiers ...Tier) {
 	s.mu.Unlock()
 }
 
+// Tiers returns a copy of the tiers of sku in channel.
+func (s *Service) Tiers(channel, sku string) []Tier {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return append([]Tier(nil), s.prices[channel][sku]...)
+}
+
 // Resolve picks the tier with the highest MinQty <= qty.
 func (s *Service) Resolve(channel, sku string, qty int64) (Quote, bool) {
 	s.mu.RLock()

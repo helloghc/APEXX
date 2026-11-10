@@ -1,43 +1,74 @@
-# Editor del builder de Apexx
+# Apexx Admin
 
-Aplicación React para editar las páginas de una tienda: reordenar secciones arrastrando, editar sus ajustes con formularios generados desde el esquema de cada sección, ver la página real en vivo y publicar o deshacer en un clic.
+Panel de la plataforma para comerciantes y sus equipos: login, inicio con estado de la tienda,
+diseño de la tienda (builder visual), catálogo (productos, precios por volumen, existencias),
+pedidos (detalle, envío, cancelación con reembolso), equipo (puestos ilimitados con permisos
+por módulo), pagos (Stripe Connect o llaves propias) y conectores (webhooks, entregas,
+reenvío y eventos).
+
+El binario de Go lo sirve en **`/admin/`** (`internal/webui`, embebido con `go:embed`).
 
 ## Stack
 
-Vite 6 · React 19 · TypeScript estricto · TanStack Query · dnd-kit · Zod. CSS modules con tokens de diseño (`src/tokens.css`), tema claro y oscuro.
+- React 19 + TypeScript estricto + Vite 6
+- **shadcn/ui** (escritos a mano en `src/components/ui`, estructura de shadcn: `cva` + `tailwind-merge` + `clsx`,
+  helper `cn` en `src/lib/utils.ts`) sobre primitivas de **Radix**, iconos **lucide-react**, avisos **sonner**
+- **Tailwind CSS v4** (`@tailwindcss/vite`); las variables de shadcn se mapean a los tokens de `src/tokens.css`
+  en `src/index.css` (modo claro y oscuro con `prefers-color-scheme`)
+- TanStack Query, dnd-kit (arrastrar y soltar del builder, también con teclado), Zod (errores de la API)
+- Versiones exactas en `package.json`; `package-lock.json` versionado
 
-## Comandos
+El registro de shadcn (`ui.shadcn.com`) no es accesible desde el entorno de construcción, por eso los
+componentes se escribieron a mano siguiendo su código fuente. Componentes: Button, Input, Textarea,
+Label, Select, Table, Dialog, AlertDialog, Sheet, Tabs, Badge, Card, DropdownMenu, Checkbox, Separator,
+Sonner (Toaster), Sidebar y FormField (`form.tsx`, al estilo de `FormItem/FormLabel/FormMessage` sin react-hook-form).
+
+## Sesión y permisos
+
+- `POST /v1/auth/login {store,email,password}` deja una cookie `HttpOnly` (`apexx_session`); todas las
+  llamadas usan `credentials: "same-origin"`. Un 401 en cualquier pantalla vuelve al login.
+- "Entrar con una API key" es una opción avanzada (integraciones y pruebas); la llave vive solo en `sessionStorage`.
+- `GET /v1/me` trae los permisos por módulo (`none < read < edit < admin`). El menú y las acciones se ocultan
+  o desactivan según esos permisos (`src/perms.ts`); un 403 muestra un mensaje claro en español.
+
+## Rutas (hash)
+
+`#inicio`, `#builder[/sitio[/página]]`, `#catalogo[/id|nuevo]`, `#pedidos[/id]`, `#equipo`, `#pagos`, `#conectores`.
+Cada sección se carga bajo demanda (`React.lazy`).
+
+## Desarrollo
 
 ```bash
 npm ci
-npm run dev        # http://localhost:5173, proxy de /v1 a APEXX_API (por defecto http://127.0.0.1:8080)
-npm test           # pruebas unitarias (Vitest)
-npm run build      # compila a web/dist y copia a internal/webui/dist para embeberlo en el binario Go
-npm run e2e        # Playwright: levanta el servidor Go en :8098 y el editor en :4174
+npm run dev        # Vite en :5173; /v1 se envía al Go server en APEXX_API (por defecto :8080)
+npm run typecheck
+npm test           # Vitest: dinero, permisos, router, formularios, parches y esquemas
+npm run build      # tsc + vite build + copia a internal/webui/dist (lo que embebe Go)
 ```
 
-Si el backend exige clave de API, exporta `APEXX_API_KEY` antes de `npm run e2e`; sin ella la prueba se omite con un aviso.
+En desarrollo con Vite, la cookie de sesión se emite para el host del Go server; usa el proxy de Vite
+(mismo origen) o la opción de API key.
 
-## Cómo funciona
+## E2E (Playwright, servidor real)
 
-- Cada cambio es un parche JSON (RFC 6902) enviado con `ifVersion`. La interfaz lo aplica al instante y, si el servidor lo rechaza, vuelve al último estado guardado.
-- Los parches se envían en cola, nunca en paralelo, así que las versiones no compiten.
-- Deshacer y rehacer usan el parche inverso de cada cambio (`src/patch.ts`); las pruebas verifican que aplicar un cambio y su inverso deja la plantilla idéntica.
-- Un conflicto (409) muestra un aviso para recargar. Los errores usan `application/problem+json`.
-- La vista previa es un iframe sin scripts (`sandbox="allow-same-origin"`) y conserva la posición de scroll entre actualizaciones.
-- La barra superior muestra el estado de la página (HTML comprimido y JS frente al presupuesto, avisos y bloqueos). Publicar se desactiva mientras haya bloqueos y lista las razones.
-- La clave de API se guarda solo en `sessionStorage` de la pestaña.
-
-## Accesibilidad
-
-Reordenar con teclado (enfoca el asa, Espacio, flechas, Espacio), anuncios para lectores de pantalla, etiquetas en todos los campos, errores asociados con `aria-describedby`, foco visible y respeto a `prefers-reduced-motion`.
-
-## Integración en Go
-
-`internal/webui` embebe `internal/webui/dist`:
-
-```go
-mux.Handle("/admin/", http.StripPrefix("/admin", webui.Handler()))
+```bash
+npm run build && npm run e2e
 ```
 
-Abre `/admin/?site=demo&page=index`.
+`e2e/start-server.sh` compila `./cmd/apexx` (con el admin recién construido), aplica migraciones, crea una
+tienda nueva con dueño, carga 50 productos y sirve en `127.0.0.1:8094` con pagos en sandbox. Lee la
+configuración de base de datos de `APEXX_E2E_ENV` (archivo con `export VAR=...`: `ADMIN_DATABASE_URL`,
+`APP_DB_PASSWORD`, `SYSTEM_DB_PASSWORD`, `DATABASE_URL`, `SYSTEM_DATABASE_URL`, `APEXX_MASTER_KEY`).
+
+Flujo: contraseña incorrecta → login del dueño → cambiar un precio (y verificarlo en la simulación de carrito)
+→ invitar a un miembro "Editor de catálogo" → ese miembro no ve Pedidos y la API le responde 403 → un comprador
+paga con la llave de storefront → el dueño cancela y reembolsa → builder: primera publicación sin
+"Deshacer publicación", mover una sección con teclado, publicar y deshacer.
+
+## Tamaño (gzip)
+
+| | Antes (solo editor) | Ahora |
+| --- | ---: | ---: |
+| Carga inicial (login, shell, inicio) | 127 KB JS | 128 KB JS + 6 KB CSS |
+| Builder (bajo demanda) | — | +26 KB |
+| Catálogo / Pedidos / Equipo / Pagos / Conectores | — | +2 a 5 KB cada uno (+17 KB Select compartido) |

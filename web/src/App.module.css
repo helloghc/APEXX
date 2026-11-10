@@ -6,7 +6,3 @@
 .loading { height: 100%; display: grid; place-items: center; color: var(--muted); padding: 16px; }
 .loadError { display: grid; gap: 10px; text-align: center; color: var(--fg); }
 .row { display: flex; gap: 8px; justify-content: center; }
-.toastHost { position: fixed; right: 16px; bottom: 16px; z-index: 20; }
-.toast { display: flex; align-items: center; gap: 12px; background: var(--fg); color: var(--bg); border-radius: 10px; padding: 10px 12px 10px 16px; box-shadow: 0 8px 24px rgb(0 0 0 / .25); }
-.toast button { color: var(--fg); }
-.toastBad { background: var(--bad); color: #fff; }

@@ -1,29 +1,21 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// The E2E run starts the real Go server and serves the built editor with `vite preview`,
-// which proxies /v1 to it. Ports are fixed so the test can also read the published page directly.
-const API = "http://127.0.0.1:8098";
-
+// The E2E run starts a real Go server (with the built admin embedded under /admin/)
+// against PostgreSQL, creating a fresh store for every run. Run `npm run build` first
+// so the embedded UI is current. See e2e/start-server.sh.
 export default defineConfig({
   testDir: "e2e",
-  timeout: 60_000,
+  timeout: 120_000,
   retries: 0,
+  workers: 1,
   reporter: [["list"]],
-  use: { baseURL: "http://127.0.0.1:4174", trace: "off", ...devices["Desktop Chrome"] },
-  webServer: [
-    {
-      command: "go run ./cmd/apexx -addr 127.0.0.1:8098 -seed 200",
-      cwd: "..",
-      url: `${API}/healthz`,
-      timeout: 120_000,
-      reuseExistingServer: false,
-    },
-    {
-      command: "npx vite preview --port 4174 --strictPort --host 127.0.0.1",
-      url: "http://127.0.0.1:4174",
-      env: { APEXX_API: API },
-      timeout: 60_000,
-      reuseExistingServer: false,
-    },
-  ],
+  use: { baseURL: "http://127.0.0.1:8094/admin/", trace: "off", ...devices["Desktop Chrome"] },
+  webServer: {
+    command: "bash e2e/start-server.sh",
+    url: "http://127.0.0.1:8094/readyz",
+    timeout: 180_000,
+    reuseExistingServer: false,
+    stdout: "ignore",
+    stderr: "pipe",
+  },
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError } from "./api";
+import { api, ApiError, errorMessage } from "./api";
 import { applyPatch } from "./jsonpatch";
 import type { Edit } from "./patch";
 import type { Report, Template } from "./types";
@@ -133,12 +133,5 @@ export function useEditor(site: string, handle: string) {
 }
 
 export function message(e: unknown): string {
-  if (e instanceof ApiError) {
-    const p = e.problem;
-    if (p.status === 401 || p.status === 403) return "No tienes acceso. Revisa tu clave de API en Acceso.";
-    const fields = p.errors?.map((f) => f.message).join("; ");
-    return [p.detail || p.title || p.code, fields].filter(Boolean).join(" · ");
-  }
-  if (e instanceof TypeError) return "No hay conexión con el servidor. Revisa tu red e intenta de nuevo.";
-  return e instanceof Error ? e.message : String(e);
+  return errorMessage(e);
 }

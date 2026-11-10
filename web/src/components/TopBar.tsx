@@ -1,5 +1,8 @@
 import type { Report } from "../types";
 import type { Device } from "./Preview";
+import { ExternalLink, History, Redo2, Undo2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import ui from "../ui.module.css";
 import s from "./TopBar.module.css";
 
@@ -17,7 +20,8 @@ interface Props {
   onRedo: () => void;
   onPublish: () => void;
   onHistory: () => void;
-  onAccess: () => void;
+  /** Optional link to the live page. */
+  liveUrl?: string;
 }
 
 const kb = (n: number) => `${(n / 1000).toLocaleString("es-MX", { maximumFractionDigits: 1 })} KB`;
@@ -46,9 +50,9 @@ export function TopBar(p: Props) {
       </div>
 
       <div className={s.health} role="group" aria-label="Estado de la página" data-testid="health">
-        <span className={`${ui.pill} ${ui[status]}`}>
+        <Badge variant={status}>
           {status === "ok" ? "Lista para publicar" : status === "warn" ? `${warnings} aviso(s)` : `${reasons.length} bloqueo(s)`}
-        </span>
+        </Badge>
         {r && (
           <>
             <span className={`${ui.pill} ${tone(htmlRatio)}`} title="HTML comprimido frente al límite de la plantilla">
@@ -81,26 +85,30 @@ export function TopBar(p: Props) {
             </button>
           ))}
         </div>
-        <button className={ui.btn} onClick={p.onUndo} disabled={!p.canUndo} aria-keyshortcuts="Control+Z" title="Deshacer (Ctrl+Z)">
-          ↶ Deshacer
-        </button>
-        <button className={ui.btn} onClick={p.onRedo} disabled={!p.canRedo} aria-keyshortcuts="Control+Shift+Z" title="Rehacer (Ctrl+Shift+Z)">
-          ↷ Rehacer
-        </button>
-        <button className={ui.btn} onClick={p.onHistory}>
-          Historial
-        </button>
-        <button className={`${ui.btn} ${ui.ghost}`} onClick={p.onAccess}>
-          Acceso
-        </button>
-        <button
-          className={`${ui.btn} ${ui.primary}`}
+        <Button variant="outline" size="sm" onClick={p.onUndo} disabled={!p.canUndo} aria-keyshortcuts="Control+Z" title="Deshacer (Ctrl+Z)">
+          <Undo2 /> Deshacer
+        </Button>
+        <Button variant="outline" size="sm" onClick={p.onRedo} disabled={!p.canRedo} aria-keyshortcuts="Control+Shift+Z" title="Rehacer (Ctrl+Shift+Z)">
+          <Redo2 /> Rehacer
+        </Button>
+        <Button variant="outline" size="sm" onClick={p.onHistory}>
+          <History /> Historial
+        </Button>
+        {p.liveUrl && (
+          <Button variant="ghost" size="sm" asChild>
+            <a href={p.liveUrl} target="_blank" rel="noreferrer">
+              <ExternalLink /> Ver tienda
+            </a>
+          </Button>
+        )}
+        <Button
+          size="sm"
           onClick={p.onPublish}
           disabled={reasons.length > 0 || p.publishing || p.saving}
           aria-describedby={reasons.length ? "publish-reasons" : undefined}
         >
           {p.publishing ? "Publicando…" : "Publicar"}
-        </button>
+        </Button>
       </div>
       {reasons.length > 0 && (
         <ul id="publish-reasons" className={s.reasons}>

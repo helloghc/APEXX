@@ -274,6 +274,17 @@ func (s *Server) putPaymentAccount(w http.ResponseWriter, r *http.Request) {
 		}
 		a.AccountID = body.AccountID
 	case "own_keys":
+		prev, perr := s.DB.GetPaymentAccount(r.Context(), p.Tenant)
+		if body.SecretKey == "" && perr == nil && prev.Mode == "own_keys" && len(prev.SecretEnc) > 0 {
+			a.SecretEnc, a.FeeBps = prev.SecretEnc, 0 // keep the stored key; only other fields change
+			if body.WebhookSecret == "" {
+				a.WebhookEnc = prev.WebhookEnc
+			}
+			if body.PublishableKey == "" {
+				a.PublishableKey = prev.PublishableKey
+			}
+			break
+		}
 		if !strings.HasPrefix(body.SecretKey, "sk_") && !strings.HasPrefix(body.SecretKey, "rk_") {
 			apierr.BadRequest(w, "", apierr.FieldError{Field: "secretKey", Code: "invalid", Message: "Usa una llave secreta sk_… o restringida rk_… de tu cuenta Stripe"})
 			return
@@ -288,6 +299,11 @@ func (s *Server) putPaymentAccount(w http.ResponseWriter, r *http.Request) {
 	default:
 		apierr.BadRequest(w, "", apierr.FieldError{Field: "mode", Code: "invalid", Message: "mode debe ser connect u own_keys"})
 		return
+	}
+	if body.Mode == "connect" && body.WebhookSecret == "" {
+		if prev, err := s.DB.GetPaymentAccount(r.Context(), p.Tenant); err == nil {
+			a.WebhookEnc = prev.WebhookEnc
+		}
 	}
 	if body.WebhookSecret != "" {
 		enc, err := s.Keys.Encrypt(p.Tenant, []byte(body.WebhookSecret), "stripe-webhook")

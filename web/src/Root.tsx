@@ -1,8 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
-import { Editor } from "@/App";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form";
@@ -21,12 +20,15 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Notice, Page } from "@/pages/common";
-import { Catalog } from "@/pages/Catalog";
-import { Connectors } from "@/pages/Connectors";
 import { Home } from "@/pages/Home";
-import { Orders } from "@/pages/Orders";
-import { Payments } from "@/pages/Payments";
-import { Team } from "@/pages/Team";
+
+// Each section loads on demand so the login screen and home stay light.
+const Editor = lazy(() => import("@/App").then((m) => ({ default: m.Editor })));
+const Catalog = lazy(() => import("@/pages/Catalog").then((m) => ({ default: m.Catalog })));
+const Orders = lazy(() => import("@/pages/Orders").then((m) => ({ default: m.Orders })));
+const Team = lazy(() => import("@/pages/Team").then((m) => ({ default: m.Team })));
+const Payments = lazy(() => import("@/pages/Payments").then((m) => ({ default: m.Payments })));
+const Connectors = lazy(() => import("@/pages/Connectors").then((m) => ({ default: m.Connectors })));
 import { visibleNav } from "@/perms";
 import { href, navigate, useRoute } from "@/router";
 
@@ -66,8 +68,9 @@ export function Root() {
         <Login
           error={meQ.error && !unauth ? meQ.error : null}
           onDone={() => {
-            qc.clear();
-            void qc.invalidateQueries({ queryKey: ["me"] });
+            // Drop everything cached for the previous user, then ask who is logged in now.
+            qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
+            void qc.refetchQueries({ queryKey: ["me"] });
           }}
         />
       ) : (
@@ -193,8 +196,8 @@ function Shell({ me }: { me: Me }) {
       /* the session may already be gone */
     }
     credentials.save("");
+    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
     qc.setQueryData(["me"], null);
-    qc.clear();
     navigate("inicio");
   }
 
@@ -287,7 +290,9 @@ function Shell({ me }: { me: Me }) {
           <span className="font-semibold">Apexx</span>
           <span className="truncate text-xs text-muted-foreground">{me.tenant}</span>
         </header>
-        <div className={full ? "min-h-0 flex-1 overflow-hidden" : "min-h-0 flex-1 overflow-auto"}>{body}</div>
+        <div className={full ? "min-h-0 flex-1 overflow-hidden" : "min-h-0 flex-1 overflow-auto"}>
+          <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Cargando…</p>}>{body}</Suspense>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

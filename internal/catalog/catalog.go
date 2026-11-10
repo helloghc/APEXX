@@ -38,6 +38,7 @@ type Product struct {
 	Attributes  map[string]string `json:"attributes,omitempty"`
 	Status      string            `json:"status"` // active | draft | archived
 	Variants    []Variant         `json:"variants"`
+	Version     int64             `json:"version"`
 	UpdatedAt   time.Time         `json:"updatedAt"`
 }
 

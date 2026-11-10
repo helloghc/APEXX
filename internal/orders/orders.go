@@ -585,11 +585,13 @@ func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Ord
 	return o, nil
 }
 
-// List returns recent orders without personal data.
-func (s *Service) List(ctx context.Context, tenant string, limit int) ([]Order, error) {
+// List returns orders without personal data, newest first. before (order
+// number, 0 = newest) pages backwards; status filters when not empty.
+func (s *Service) List(ctx context.Context, tenant string, limit int, before int64, status string) ([]Order, error) {
 	var out []Order
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id, number, channel, status, currency, grand_total, created_at FROM orders WHERE tenant_id=$1 ORDER BY number DESC LIMIT $2`, tenant, limit)
+		rows, err := tx.Query(ctx, `SELECT id, number, channel, status, currency, grand_total, created_at FROM orders
+			WHERE tenant_id=$1 AND ($3 = 0 OR number < $3) AND ($4 = '' OR status = $4) ORDER BY number DESC LIMIT $2`, tenant, limit, before, status)
 		if err != nil {
 			return err
 		}

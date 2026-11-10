@@ -385,3 +385,36 @@ func (s *Service) PurgeSessions(ctx context.Context) error {
 	_, err := s.DB.System.Exec(ctx, `DELETE FROM sessions WHERE expires_at < now()`)
 	return err
 }
+
+// SetPassword replaces a member's password and ends all of their sessions.
+// When current is not empty it must match (self-service change).
+func (s *Service) SetPassword(ctx context.Context, tenant, actor, memberID, current, next string) error {
+	if err := ValidatePassword(next); err != nil {
+		return err
+	}
+	if current != "" {
+		var hash string
+		if err := s.DB.System.QueryRow(ctx, `SELECT password_hash FROM members WHERE tenant_id=$1 AND id=$2`, tenant, memberID).Scan(&hash); err != nil || !CheckPassword(hash, current) {
+			return ErrBadCredentials
+		}
+	}
+	hash, err := HashPassword(next)
+	if err != nil {
+		return err
+	}
+	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		ct, err := tx.Exec(ctx, `UPDATE members SET password_hash=$3 WHERE tenant_id=$1 AND id=$2`, tenant, memberID, hash)
+		if err != nil {
+			return err
+		}
+		if ct.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		return store.Audit(ctx, tx, tenant, actor, "member.password", memberID, nil)
+	})
+	if err != nil {
+		return err
+	}
+	_, err = s.DB.System.Exec(ctx, `DELETE FROM sessions WHERE tenant_id=$1 AND member_id=$2`, tenant, memberID)
+	return err
+}

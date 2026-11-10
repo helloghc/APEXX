@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { credentials } from "../api";
 import type { Release, SectionDefinition } from "../types";
 import ui from "../ui.module.css";
 import s from "./Dialogs.module.css";
@@ -86,8 +85,10 @@ export function History({
   onClose,
   onRollback,
   busy,
+  names,
 }: {
   open: boolean;
+  names?: Map<string, string>;
   items: Release[];
   onClose: () => void;
   onRollback: () => void;
@@ -106,7 +107,7 @@ export function History({
                 <code>{r.revisionId}</code>
               </div>
               <span className={ui.help}>
-                {new Date(r.publishedAt).toLocaleString("es-MX")} · {r.publishedBy} · {(r.durationMicros / 1000).toFixed(2)} ms
+                {new Date(r.publishedAt).toLocaleString("es-MX")} · {actorName(r.publishedBy, names)} · {(r.durationMicros / 1000).toFixed(2)} ms
               </span>
             </li>
           ))}
@@ -119,32 +120,10 @@ export function History({
   );
 }
 
-export function Access({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
-  const [key, setKey] = useState(credentials.key);
-  const [actor, setActor] = useState(credentials.actor);
-  return (
-    <Dialog open={open} onClose={onClose} title="Acceso">
-      <form
-        className={s.form}
-        onSubmit={(e) => {
-          e.preventDefault();
-          credentials.save(key.trim(), actor.trim());
-          onSaved();
-          onClose();
-        }}
-      >
-        <div className={ui.field}>
-          <label className={ui.label} htmlFor="acc-key">Clave de API</label>
-          <input id="acc-key" className={ui.input} type="password" autoComplete="off" value={key} onChange={(e) => setKey(e.target.value)} />
-          <span className={ui.help}>Se guarda solo en esta pestaña y se borra al cerrarla.</span>
-        </div>
-        <div className={ui.field}>
-          <label className={ui.label} htmlFor="acc-actor">Tu nombre</label>
-          <input id="acc-actor" className={ui.input} value={actor} onChange={(e) => setActor(e.target.value)} />
-          <span className={ui.help}>Aparece en el historial de publicaciones.</span>
-        </div>
-        <button className={`${ui.btn} ${ui.primary}`} type="submit">Guardar</button>
-      </form>
-    </Dialog>
-  );
+/** actorName turns "member:mem_x" into the member's name when known. */
+export function actorName(actor: string, names?: Map<string, string>): string {
+  const [kind, id] = actor.split(":", 2);
+  if (kind === "member" && id) return names?.get(id) ?? "Miembro del equipo";
+  if (kind === "api_key") return "Integración (API key)";
+  return actor;
 }

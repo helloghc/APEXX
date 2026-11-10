@@ -1,7 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { api } from "./api";
-import { Access, History, SectionPicker } from "./components/Dialogs";
+import { api, type Me } from "./api";
+import { History, SectionPicker } from "./components/Dialogs";
+import { toast } from "./components/ui/sonner";
+import { can } from "./perms";
 import { Preview, type Device } from "./components/Preview";
 import { SectionList } from "./components/SectionList";
 import { SettingsForm } from "./components/SettingsForm";
@@ -24,31 +26,28 @@ import { message, useEditor } from "./useEditor";
 import s from "./App.module.css";
 import ui from "./ui.module.css";
 
-const params = new URLSearchParams(window.location.search);
-const SITE = params.get("site") ?? "demo";
-const HANDLE = params.get("page") ?? "index";
-
-interface Toast {
-  text: string;
-  undo?: boolean;
-  tone: "ok" | "bad";
-}
-
-export function App() {
+/** Editor is the visual builder for one page of one site, shown inside the admin shell. */
+export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handle: string; me: Me }) {
   const qc = useQueryClient();
   const ed = useEditor(SITE, HANDLE);
   const { template, report } = ed.state;
   const defsQ = useQuery({ queryKey: ["sections"], queryFn: api.sections });
   const releasesQ = useQuery({ queryKey: ["releases", SITE], queryFn: () => api.releases(SITE) });
   const defs = useMemo(() => new Map((defsQ.data ?? []).map((d) => [d.type, d])), [defsQ.data]);
+  const membersQ = useQuery({ queryKey: ["members"], queryFn: api.members, enabled: can(me, "team", "read") });
+  const names = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const x of membersQ.data?.items ?? []) m.set(x.id, x.name || x.email);
+    if (me.kind === "member") m.set(me.id, me.name || me.email || "Tú");
+    return m;
+  }, [membersQ.data, me]);
+  const canPublish = can(me, "builder", "admin");
 
   const [selected, setSelected] = useState<string | null>(null);
   const [device, setDevice] = useState<Device>("desktop");
   const [picker, setPicker] = useState(false);
   const [history, setHistory] = useState(false);
-  const [access, setAccess] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [toast, setToast] = useState<Toast | null>(null);
 
   const sections = template ? mainSections(template) : [];
   const selIndex = sections.findIndex((x) => x.id === selected);
@@ -72,20 +71,19 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [ed]);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), toast.undo ? 12000 : 6000);
-    return () => clearTimeout(t);
-  }, [toast]);
-
   async function publish() {
     setPublishing(true);
+    // "Deshacer publicación" only makes sense when there is a previous release to go back to.
+    const hadPrevious = (releasesQ.data?.length ?? 0) > 0;
     try {
       const r = await api.publish(SITE, "Publicado desde el editor");
-      setToast({ text: `Publicado en ${(r.release.durationMicros / 1000).toFixed(2)} ms`, undo: true, tone: "ok" });
+      toast.success(`Publicado en ${(r.release.durationMicros / 1000).toFixed(2)} ms`, {
+        duration: 12000,
+        action: hadPrevious ? { label: "Deshacer publicación", onClick: () => void rollback() } : undefined,
+      });
       void qc.invalidateQueries({ queryKey: ["releases", SITE] });
     } catch (e) {
-      setToast({ text: `No se publicó: ${message(e)}`, tone: "bad" });
+      toast.error(`No se publicó: ${message(e)}`);
     } finally {
       setPublishing(false);
     }
@@ -95,10 +93,10 @@ export function App() {
     setPublishing(true);
     try {
       const r = await api.rollback(SITE);
-      setToast({ text: `Se restauró la publicación ${r.release.revisionId}`, tone: "ok" });
+      toast.success(`Se restauró la publicación ${r.release.revisionId}`);
       void qc.invalidateQueries({ queryKey: ["releases", SITE] });
     } catch (e) {
-      setToast({ text: `No se pudo deshacer: ${message(e)}`, tone: "bad" });
+      toast.error(`No se pudo deshacer: ${message(e)}`);
     } finally {
       setPublishing(false);
     }
@@ -112,13 +110,11 @@ export function App() {
             <p>No se pudo abrir la página: {ed.state.error}</p>
             <div className={s.row}>
               <button className={ui.btn} onClick={() => void ed.reload()}>Reintentar</button>
-              <button className={ui.btn} onClick={() => setAccess(true)}>Acceso</button>
             </div>
           </div>
         ) : (
           <p>Cargando editor…</p>
         )}
-        <Access open={access} onClose={() => setAccess(false)} onSaved={() => void ed.reload()} />
       </main>
     );
   }
@@ -137,9 +133,9 @@ export function App() {
         onDevice={setDevice}
         onUndo={() => void ed.undo()}
         onRedo={() => void ed.redo()}
-        onPublish={() => void publish()}
+        onPublish={() => (canPublish ? void publish() : toast.error("Tu acceso al diseño no permite publicar. Pide nivel Admin en Diseño de la tienda."))}
         onHistory={() => setHistory(true)}
-        onAccess={() => setAccess(true)}
+        liveUrl={`/s/${encodeURIComponent(me.tenant)}/${encodeURIComponent(SITE)}/${encodeURIComponent(HANDLE)}`}
       />
       {ed.state.conflict && (
         <div className={`${ui.banner} ${ui.warn}`} role="alert">
@@ -205,32 +201,11 @@ export function App() {
       <History
         open={history}
         items={(releasesQ.data ?? []) as Release[]}
-        busy={publishing}
+        names={names}
+        busy={publishing || !canPublish}
         onClose={() => setHistory(false)}
         onRollback={() => void rollback()}
       />
-      <Access
-        open={access}
-        onClose={() => setAccess(false)}
-        onSaved={() => {
-          void ed.reload();
-          void qc.invalidateQueries();
-        }}
-      />
-
-      <div className={s.toastHost} aria-live="polite">
-        {toast && (
-          <div className={`${s.toast} ${toast.tone === "bad" ? s.toastBad : ""}`} role="status" data-testid="toast">
-            <span>{toast.text}</span>
-            {toast.undo && (
-              <button className={ui.btn} onClick={() => void rollback()} disabled={publishing}>
-                Deshacer publicación
-              </button>
-            )}
-            <button className={ui.iconBtn} onClick={() => setToast(null)} aria-label="Cerrar aviso">✕</button>
-          </div>
-        )}
-      </div>
       <p className="sr-only" aria-live="polite">{ed.state.announcement}</p>
     </div>
   );

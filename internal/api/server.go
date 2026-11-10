@@ -90,6 +90,10 @@ func (s *Server) Routes() http.Handler {
 	handle("POST /v1/team/members", s.authed("team", auth.Admin, s.createMember))
 	handle("PATCH /v1/team/members/{id}", s.authed("team", auth.Admin, s.updateMember))
 	handle("POST /v1/team/api-keys", s.authed("team", auth.Admin, s.createAPIKey))
+	handle("GET /v1/team/api-keys", s.authed("team", auth.Read, s.listAPIKeys))
+	handle("DELETE /v1/team/api-keys/{id}", s.authed("team", auth.Admin, s.revokeAPIKey))
+	handle("POST /v1/team/members/{id}/password", s.authed("team", auth.Admin, s.resetPassword))
+	handle("POST /v1/me/password", s.authed("", "", s.changePassword))
 
 	// Catalog, inventory, pricing, channels, promotions.
 	handle("GET /v1/products", s.authed("catalog", auth.Read, s.listProducts))
@@ -98,6 +102,7 @@ func (s *Server) Routes() http.Handler {
 	handle("GET /v1/inventory/{sku}", s.authed("inventory", auth.Read, s.getInventory))
 	handle("PUT /v1/inventory/{sku}/{location}", s.authed("inventory", auth.Edit, s.putInventory))
 	handle("PUT /v1/prices/{channel}/{sku}", s.authed("pricing", auth.Edit, s.putPrices))
+	handle("GET /v1/prices/{channel}/{sku}", s.authed("pricing", auth.Read, s.getPrices))
 	handle("GET /v1/channels/{id}", s.authed("settings", auth.Read, s.getChannel))
 	handle("PUT /v1/channels/{id}", s.authed("settings", auth.Admin, s.putChannel))
 	handle("PUT /v1/promotions/{id}", s.authed("promotions", auth.Edit, s.putPromotion))
@@ -438,6 +443,80 @@ func (s *Server) createAPIKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, r, http.StatusCreated, map[string]any{"key": key, "role": body.Role, "notice": "Guarda la llave ahora; no se volverá a mostrar"})
+}
+
+func (s *Server) listAPIKeys(w http.ResponseWriter, r *http.Request) {
+	ks, err := s.DB.ListAPIKeys(r.Context(), principal(r).Tenant)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": ks})
+}
+
+func (s *Server) revokeAPIKey(w http.ResponseWriter, r *http.Request) {
+	p := principal(r)
+	if p.Kind == "api_key" && p.ID == r.PathValue("id") {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: apierr.CodeConflict, Detail: "Una llave no puede revocarse a sí misma"})
+		return
+	}
+	err := s.DB.RevokeAPIKey(r.Context(), p.Tenant, r.PathValue("id"))
+	if errors.Is(err, store.ErrNotFound) {
+		apierr.NotFound(w, "Llave no encontrada o ya revocada")
+		return
+	}
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Password string `json:"password"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	p := principal(r)
+	err := s.Auth.SetPassword(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), "", body.Password)
+	s.passwordResult(w, err)
+}
+
+func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Current string `json:"current"`
+		New     string `json:"new"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	p := principal(r)
+	if p.Kind != "member" {
+		apierr.BadRequest(w, "Solo los miembros del equipo tienen contraseña")
+		return
+	}
+	if body.Current == "" {
+		apierr.BadRequest(w, "", apierr.FieldError{Field: "current", Code: "required", Message: "Escribe tu contraseña actual"})
+		return
+	}
+	s.passwordResult(w, s.Auth.SetPassword(r.Context(), p.Tenant, p.Actor(), p.ID, body.Current, body.New))
+}
+
+func (s *Server) passwordResult(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, auth.ErrBadCredentials):
+		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_credentials", Detail: "La contraseña actual no es correcta"})
+	case errors.Is(err, auth.ErrNotFound):
+		apierr.NotFound(w, "Miembro no encontrado")
+	case err != nil && strings.Contains(err.Error(), "contraseña"):
+		apierr.BadRequest(w, "", apierr.FieldError{Field: "password", Code: "weak", Message: err.Error()})
+	case err != nil:
+		internalError(w, s.Log, err)
+	default:
+		w.WriteHeader(http.StatusNoContent) // every session of that member was closed
+	}
 }
 
 func (s *Server) freshness(w http.ResponseWriter, r *http.Request) {
