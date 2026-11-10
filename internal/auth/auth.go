@@ -63,10 +63,10 @@ func (p Permissions) Validate() error {
 			ok = ok || x == m
 		}
 		if !ok {
-			return fmt.Errorf("unknown module %q", m)
+			return fmt.Errorf("módulo desconocido %q; usa: %s", m, strings.Join(Modules, ", "))
 		}
 		if !ValidLevel(l) {
-			return fmt.Errorf("unknown level %q for %s", l, m)
+			return fmt.Errorf("nivel %q no válido para %s; usa none, read, edit o admin", l, m)
 		}
 	}
 	return nil

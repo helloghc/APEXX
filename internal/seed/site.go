@@ -11,7 +11,7 @@ func HomeTemplate() builder.Template {
 			"main": {
 				{ID: "sec_hero", Type: "hero", TypeVersion: "1.2.0", Settings: map[string]any{
 					"heading": "Nueva temporada", "subheading": "Hasta 30% en calzado deportivo",
-					"image": "/media/hero.avif", "alt": "Corredora con tenis blancos en una pista",
+					"image": heroImage, "alt": "Corredora con tenis blancos en una pista",
 					"ctaLabel": "Ver colección", "ctaUrl": "/c/running"}},
 				{ID: "sec_benefits", Type: "benefits", TypeVersion: "1.0.0", Settings: map[string]any{"heading": "Por qué comprar aquí"},
 					Blocks: []builder.Block{
@@ -24,3 +24,6 @@ func HomeTemplate() builder.Template {
 		},
 	}
 }
+
+// heroImage is an inline SVG so a new store never shows a broken image.
+const heroImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%231d3fae'/><stop offset='1' stop-color='%23e8a33d'/></linearGradient></defs><rect width='1600' height='900' fill='url(%23g)'/></svg>"

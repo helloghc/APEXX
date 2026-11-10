@@ -77,7 +77,7 @@ func (p PercentOverThreshold) Evaluate(now time.Time, channel string, _ []Line, 
 		return r
 	}
 	if subtotal.Amount < p.Min.Amount {
-		r.Reason = fmt.Sprintf("Faltan %d (unidades menores) para alcanzar el mínimo", p.Min.Amount-subtotal.Amount)
+		r.Reason = fmt.Sprintf("Agrega $%s más para obtener esta promoción", pesos(p.Min.Amount-subtotal.Amount))
 		return r
 	}
 	r.Applied = true
@@ -107,7 +107,7 @@ func (b BuyXPayY) Evaluate(now time.Time, channel string, lines []Line, subtotal
 		}
 		groups := l.Qty / b.X
 		if groups == 0 {
-			r.Reason = fmt.Sprintf("Agrega %d unidad(es) más de %s para activar %dx%d", b.X-l.Qty%b.X, b.SKU, b.X, b.Y)
+			r.Reason = fmt.Sprintf("Agrega %d más de este producto para llevar %d y pagar %d", b.X-l.Qty%b.X, b.X, b.Y)
 			return r
 		}
 		unit := l.LineTotal.Amount / l.Qty
@@ -116,7 +116,7 @@ func (b BuyXPayY) Evaluate(now time.Time, channel string, lines []Line, subtotal
 		r.Reason = fmt.Sprintf("%dx%d aplicado %d vez/veces", b.X, b.Y, groups)
 		return r
 	}
-	r.Reason = "El carrito no contiene " + b.SKU
+	r.Reason = "Agrega el producto de la promoción a tu carrito"
 	return r
 }
 
@@ -140,4 +140,14 @@ func (e *Engine) Evaluate(now time.Time, channel string, lines []Line, subtotal 
 		total.Amount = subtotal.Amount
 	}
 	return out, total
+}
+
+// pesos formats minor units as 1,234.50.
+func pesos(minor int64) string {
+	whole, cents := minor/100, minor%100
+	s := fmt.Sprint(whole)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return fmt.Sprintf("%s.%02d", s, cents)
 }

@@ -232,6 +232,8 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		DB: db, Proj: proj, Auth: &auth.Service{DB: db}, Orders: ord, Keys: keys, Library: lib, Log: log,
 		Admin: webui.Handler(), Payments: pa, Webhooks: wh, Bulkhead: resilience.NewBulkhead(256),
 		SecureCookies: env("APEXX_SECURE_COOKIES", "true") == "true",
+		TrustProxy:    env("APEXX_TRUST_PROXY", "false") == "true",
+		MetricsToken:  os.Getenv("APEXX_METRICS_TOKEN"),
 	}
 	hs := &http.Server{
 		Addr: env("APEXX_ADDR", ":8080"), Handler: srv.Routes(),

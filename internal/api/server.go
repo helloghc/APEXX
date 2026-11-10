@@ -42,6 +42,8 @@ type Server struct {
 	Payments      *PaymentAccounts
 	Webhooks      *webhooks.Service
 	SecureCookies bool
+	TrustProxy    bool   // honour X-Forwarded-For (only behind our own proxy)
+	MetricsToken  string // bearer token for /metrics; empty = loopback/private callers only
 
 	sitesMu sync.Mutex
 	sites   map[string]*builder.Site // tenant/site -> site
@@ -68,7 +70,7 @@ func (s *Server) Routes() http.Handler {
 	// Health: liveness says the process runs; readiness says it can serve.
 	handle("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
 	handle("GET /readyz", s.ready)
-	handle("GET /metrics", s.serveMetrics)
+	handle("GET /metrics", s.metricsGuard(s.serveMetrics))
 
 	// Auth and team (unlimited seats, permissions per module).
 	handle("POST /v1/auth/login", s.login)
@@ -132,6 +134,27 @@ func (s *Server) Routes() http.Handler {
 		apierr.NotFound(w, "No existe la ruta "+r.Method+" "+r.URL.Path)
 	})
 	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(mux)))
+}
+
+// metricsGuard exposes /metrics only to the monitoring agent: a bearer token
+// when configured, otherwise callers on loopback or private networks.
+func (s *Server) metricsGuard(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.MetricsToken != "" {
+			if r.Header.Get("Authorization") != "Bearer "+s.MetricsToken {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+		} else {
+			host, _, _ := net.SplitHostPort(r.RemoteAddr)
+			ip := net.ParseIP(host)
+			if ip == nil || !(ip.IsLoopback() || ip.IsPrivate()) || r.Header.Get("X-Forwarded-For") != "" {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+		}
+		h(w, r)
+	}
 }
 
 func securityHeaders(next http.Handler) http.Handler {
@@ -228,16 +251,23 @@ func internalError(w http.ResponseWriter, log *slog.Logger, err error) {
 
 // ---------- auth handlers ----------
 
-func clientIP(r *http.Request) string {
-	if f := r.Header.Get("X-Forwarded-For"); f != "" {
-		return strings.TrimSpace(strings.Split(f, ",")[0])
+// clientIP returns the caller address. X-Forwarded-For is honoured only when
+// the server sits behind our own reverse proxy (Caddy / load balancer), and
+// then only its last entry, which the proxy appended; earlier entries are
+// client-controlled and could be spoofed to dodge rate limits.
+func (s *Server) clientIP(r *http.Request) string {
+	if s.TrustProxy {
+		if f := r.Header.Get("X-Forwarded-For"); f != "" {
+			parts := strings.Split(f, ",")
+			return strings.TrimSpace(parts[len(parts)-1])
+		}
 	}
 	h, _, _ := net.SplitHostPort(r.RemoteAddr)
 	return h
 }
 
-// allowLogin limits attempts to 10 per minute per IP+email.
-func (s *Server) allowLogin(key string) bool {
+// loginBlocked reports whether key had 10 failed attempts in the last minute.
+func (s *Server) loginBlocked(key string) bool {
 	s.loginMu.Lock()
 	defer s.loginMu.Unlock()
 	now := time.Now()
@@ -247,12 +277,15 @@ func (s *Server) allowLogin(key string) bool {
 			hits = append(hits, t)
 		}
 	}
-	if len(hits) >= 10 {
-		s.loginHits[key] = hits
-		return false
-	}
-	s.loginHits[key] = append(hits, now)
-	return true
+	s.loginHits[key] = hits
+	return len(hits) >= 10
+}
+
+// loginFailed records a failed attempt; successful logins never count.
+func (s *Server) loginFailed(key string) {
+	s.loginMu.Lock()
+	s.loginHits[key] = append(s.loginHits[key], time.Now())
+	s.loginMu.Unlock()
 }
 
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
@@ -264,13 +297,15 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &body) {
 		return
 	}
-	if !s.allowLogin(clientIP(r) + "|" + strings.ToLower(body.Email)) {
+	limitKey := s.clientIP(r) + "|" + strings.ToLower(strings.TrimSpace(body.Email))
+	if s.loginBlocked(limitKey) {
 		w.Header().Set("Retry-After", "60")
 		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "too_many_attempts", Detail: "Demasiados intentos; espera un minuto"})
 		return
 	}
-	token, m, err := s.Auth.Login(r.Context(), body.Store, body.Email, body.Password, clientIP(r), r.UserAgent())
+	token, m, err := s.Auth.Login(r.Context(), body.Store, body.Email, body.Password, s.clientIP(r), r.UserAgent())
 	if errors.Is(err, auth.ErrBadCredentials) {
+		s.loginFailed(limitKey)
 		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_credentials", Detail: "Correo o contraseña incorrectos"})
 		return
 	}

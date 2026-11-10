@@ -86,6 +86,8 @@ func TypeOf(topic string, payload []byte) string {
 			return "apexx.order.refunded"
 		case "order.cancelled":
 			return "apexx.order.cancelled"
+		case "invoice.issued":
+			return "apexx.invoice.issued"
 		}
 		return "apexx.order.updated"
 	case "site.released":

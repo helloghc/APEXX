@@ -47,9 +47,9 @@ var (
 	ErrInvalidState     = errors.New("orders: invalid state for this operation")
 	ErrIdempotencyReuse = errors.New("orders: idempotency key reused with a different request")
 	ErrInProgress       = errors.New("orders: a request with this idempotency key is in progress")
-	ErrCartChanged      = errors.New("orders: cart could not be fully allocated")
+	ErrCartChanged      = errors.New("Algunos productos cambiaron de precio o disponibilidad; revisa tu carrito")
 	ErrDeclined         = errors.New("orders: payment declined")
-	ErrNoPaymentAccount = errors.New("orders: the store has not connected a Stripe account")
+	ErrNoPaymentAccount = errors.New("La tienda todavía no conectó su cuenta de Stripe")
 )
 
 // Customer is personal data; it is stored encrypted with the tenant key.
@@ -686,11 +686,15 @@ func (s *Service) IssueInvoices(ctx context.Context) (int, error) {
 					next_attempt=now() + (interval '30 seconds' * power(2, attempts)), updated_at=now() WHERE tenant_id=$1 AND order_id=$2`, x.t, x.id, ierr.Error())
 				return e
 			}
-			_, e := tx.Exec(ctx, `UPDATE invoices SET status='issued', attempts=attempts+1, provider_ref=$3, url=$4, last_error='', updated_at=now() WHERE tenant_id=$1 AND order_id=$2`, x.t, x.id, inv.Ref, inv.URL)
-			if e == nil {
-				n++
+			if _, e := tx.Exec(ctx, `UPDATE invoices SET status='issued', attempts=attempts+1, provider_ref=$3, url=$4, last_error='', updated_at=now() WHERE tenant_id=$1 AND order_id=$2`, x.t, x.id, inv.Ref, inv.URL); e != nil {
+				return e
 			}
-			return e
+			var status string
+			if e := tx.QueryRow(ctx, `SELECT status FROM orders WHERE tenant_id=$1 AND id=$2`, x.t, x.id).Scan(&status); e != nil {
+				return e
+			}
+			n++
+			return s.event(ctx, tx, x.t, x.id, "invoicer", "invoice.issued", &status, status, map[string]any{"ref": inv.Ref, "url": inv.URL})
 		})
 	}
 	return n, nil
