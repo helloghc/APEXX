@@ -1,0 +1,45 @@
+/* Mercadito — súper. Redondo, fresco, denso, con "Agregar" en cada producto. */
+.t-mercadito .display{font-weight:600;letter-spacing:-.01em}
+.t-mercadito h1.display{font-size:clamp(2.2rem,1.2rem + 3.6vw,4rem);font-weight:700}
+.t-mercadito .eyebrow{display:inline-block;background:var(--c-accent);color:var(--c-accentText);font-family:var(--f-display);letter-spacing:.02em;text-transform:none;font-size:.85rem;font-weight:600;padding:4px 12px;border-radius:999px}
+.t-mercadito .btn{font-family:var(--f-display);font-weight:600;font-size:1rem}
+.t-mercadito .sx-announce{background:var(--c-accent);color:var(--c-accentText);font-weight:700}
+.t-mercadito .sx-header{background:var(--c-primary);color:var(--c-primaryText);border:0}
+.t-mercadito .hdr-logo{font-weight:700;font-size:1.8rem;letter-spacing:-.02em}
+.t-mercadito .hdr-logo::before{content:"";display:inline-block;width:14px;height:14px;border-radius:50% 50% 50% 0;background:var(--c-accent);margin-right:6px;transform:rotate(-45deg)}
+.t-mercadito .hdr-search{background:#fff;color:var(--c-text);border:0;border-radius:999px}
+@media (min-width:900px){.t-mercadito .hdr-search input{width:340px}}
+.t-mercadito .hdr-count{background:var(--c-accent);color:var(--c-accentText)}
+.t-mercadito .hdr-menu-m nav{color:var(--c-text)}
+.t-mercadito .hero-split{background:var(--c-surface);border-radius:28px;overflow:hidden;margin:16px var(--gutter) 0}
+.t-mercadito main>section:first-child{padding-inline:0}
+.t-mercadito .ph{border-radius:var(--radius)}
+.t-mercadito .ph-1{background:#FFE3B3}
+.t-mercadito .ph-2{background:#D7F0CF}
+.t-mercadito .ph-3{background:#FFD3C9}
+.t-mercadito .ph-4{background:#E4F1FB}
+.t-mercadito .ph-5{background:#FFF1A8}
+.t-mercadito .ph-6{background:#E9DDF7}
+.t-mercadito .ph::before{width:58%;height:58%;left:21%;top:24%;right:auto;bottom:auto;background:rgb(255 255 255 / .55);border-radius:46% 54% 42% 58% / 52% 44% 56% 48%}
+.t-mercadito .ph::after{width:16%;height:22%;left:46%;top:12%;border-radius:0 100% 0 100%;background:#3BA55C;mix-blend-mode:normal;transform:rotate(-20deg)}
+.t-mercadito .ph span{font-family:var(--f-display);font-weight:700;color:rgb(27 39 28 / .55);font-size:clamp(2.4rem,5vw,4rem)}
+.t-mercadito .ph-hero{border-radius:0;min-height:300px;background:linear-gradient(135deg,#D7F0CF,#FFE3B3)}
+.t-mercadito .pgrid{gap:12px}
+.t-mercadito .pcard{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius);padding:10px}
+.t-mercadito .pcard-media{border-radius:calc(var(--radius) - 4px)}
+.t-mercadito .pcard-title{font-weight:700;font-size:.92rem}
+.t-mercadito .pcard-price{font-size:1.1rem;font-weight:800}
+.t-mercadito .pcard-badge.is-sale{border-radius:999px}
+.t-mercadito .pcard-add{display:block;margin-top:10px;width:100%;min-height:40px;border-radius:999px;border:0;background:var(--c-primary);color:var(--c-primaryText);font-family:var(--f-display);font-weight:600;cursor:pointer}
+.t-mercadito .pcard-add.added{background:var(--c-accent);color:var(--c-accentText)}
+.t-mercadito .tiles-pill .tile a{background:var(--c-bg);font-weight:700}
+.t-mercadito .sx-benefits ul{border:0;background:var(--c-surface);border-radius:24px;padding:24px}
+.t-mercadito .bf-icon{background:#fff}
+.t-mercadito .bf-icon::after{border-color:var(--c-primary);border-right-color:transparent}
+.t-mercadito .sx-imgtext{background:#FFF7E8;border-radius:28px;padding:clamp(16px,4vw,40px)}
+.t-mercadito .sx-quotes figure{border-radius:24px;background:var(--c-surface);border:0}
+.t-mercadito .sx-quotes blockquote{font-size:1.15rem;font-weight:500}
+.t-mercadito .sx-news{background:var(--c-primary);color:var(--c-primaryText);border:0}
+.t-mercadito .sx-news .lede{color:rgb(255 255 255 / .85)}
+.t-mercadito .sx-news .btn{background:var(--c-accent);color:var(--c-accentText);border-color:var(--c-accent)}
+.t-mercadito .shop h1{font-weight:700}

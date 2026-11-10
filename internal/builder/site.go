@@ -25,14 +25,45 @@ var (
 
 // Card is a product as a section sees it.
 type Card struct {
-	Title string
-	URL   string
-	Price string
+	Title     string
+	URL       string
+	Price     string
+	CompareAt string
+	Brand     string
+	Initial   string
+	Tone      int    // 1..6, picks a placeholder art variation
+	SKU       string // first sellable variant, for quick add
+	SoldOut   bool
 }
 
 // Data gives sections access to commerce data at render time.
 type Data interface {
 	Products(limit int) []Card
+}
+
+// ProductQuery filters products for grids and carousels.
+type ProductQuery struct {
+	Limit    int
+	Brand    string
+	Category string
+	Sort     string // newest | price-asc | price-desc
+}
+
+// Querier is optionally implemented by Data for filtered product lists.
+type Querier interface {
+	Query(q ProductQuery) []Card
+}
+
+// ToneOf returns a stable 1..6 placeholder variation for a title.
+func ToneOf(s string) int {
+	h := 0
+	for _, r := range s {
+		h = h*31 + int(r)
+	}
+	if h < 0 {
+		h = -h
+	}
+	return h%6 + 1
 }
 
 // Library holds the section definitions available to a site.
@@ -45,7 +76,7 @@ type Library struct {
 func NewLibrary(defs ...SectionDefinition) (*Library, error) {
 	l := &Library{defs: map[string]SectionDefinition{}, tmpls: map[string]*template.Template{}}
 	for _, d := range defs {
-		t, err := template.New(d.Type).Parse(d.Template)
+		t, err := template.New(d.Type).Funcs(sectionFuncs).Parse(partials + d.Template)
 		if err != nil {
 			return nil, fmt.Errorf("section %s: %w", d.Type, err)
 		}
@@ -71,7 +102,7 @@ func (l *Library) Definitions() []SectionDefinition {
 }
 
 // RendererVersion changes whenever the generated HTML changes.
-const RendererVersion = "2"
+const RendererVersion = "3"
 
 // Persister stores builder state durably. A failed save aborts the change.
 type Persister interface {
@@ -216,11 +247,18 @@ func (s *Site) Publish(by, message string) (Release, map[string]Report, error) {
 	}
 	blocked := false
 	for h, t := range s.draft {
-		html, rep := s.render(t)
+		r := s.renderFull(t)
 		rev.Templates[h] = t
-		rev.Reports[h] = rep
-		rev.Pages[h] = html
-		blocked = blocked || rep.Blocking()
+		rev.Reports[h] = r.Report
+		rev.Pages[h] = r.Doc
+		blocked = blocked || r.Report.Blocking()
+		if h == "index" {
+			// Shared chrome for the shopper pages (catalog, product, cart...).
+			rev.Pages[chromeHead] = []byte(r.Theme.Head())
+			rev.Pages[chromeBody] = []byte(r.Theme.BodyClass())
+			rev.Pages[chromeHeader] = r.Header
+			rev.Pages[chromeFooter] = r.Footer
+		}
 	}
 	if blocked {
 		return Release{}, rev.Reports, ErrBlocked
@@ -289,10 +327,107 @@ func (s *Site) Live(handle string) ([]byte, string, error) {
 		return nil, "", ErrNotFound
 	}
 	html, ok := rev.Pages[handle]
-	if !ok {
+	if !ok || strings.HasPrefix(handle, "__") {
 		return nil, "", ErrNotFound
 	}
 	return html, rev.ID, nil
+}
+
+// Keys of the shared chrome stored with each revision.
+const (
+	chromeHead   = "__head"
+	chromeBody   = "__bodyclass"
+	chromeHeader = "__header"
+	chromeFooter = "__footer"
+)
+
+// Chrome is the theme head, body classes, header and footer of the live site,
+// so pages outside the builder look like the rest of the store.
+type Chrome struct {
+	Head      template.HTML
+	BodyClass string
+	Header    template.HTML
+	Footer    template.HTML
+}
+
+// LiveChrome returns the chrome of the published site, or of the draft home
+// when nothing is published yet.
+func (s *Site) LiveChrome() Chrome {
+	s.mu.Lock()
+	rev := s.live
+	draft, hasDraft := s.draft["index"]
+	s.mu.Unlock()
+	if rev != nil && len(rev.Pages[chromeHead]) > 0 {
+		return Chrome{Head: template.HTML(rev.Pages[chromeHead]), BodyClass: string(rev.Pages[chromeBody]),
+			Header: template.HTML(rev.Pages[chromeHeader]), Footer: template.HTML(rev.Pages[chromeFooter])}
+	}
+	if !hasDraft {
+		draft = Template{Handle: "index", Kind: "home"}
+	}
+	r := s.renderFull(draft)
+	return Chrome{Head: r.Theme.Head(), BodyClass: r.Theme.BodyClass(), Header: template.HTML(r.Header), Footer: template.HTML(r.Footer)}
+}
+
+// ApplyStarter replaces the draft of handle with a starter template. The
+// previous draft is first saved as a revision (not published) so it can be
+// restored with RestoreRevision.
+func (s *Site) ApplyStarter(handle string, t Template, by string) (string, int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	prevID := ""
+	if len(s.draft) > 0 {
+		snap := &Revision{CreatedAt: s.now().UTC(), CreatedBy: by, Message: "Borrador antes de cambiar de tema",
+			Templates: map[string]Template{}, Reports: map[string]Report{}, Pages: map[string][]byte{}}
+		for h, d := range s.draft {
+			snap.Templates[h] = d
+		}
+		b, _ := json.Marshal(snap.Templates)
+		sum := sha256.Sum256(append([]byte("draft|"+RendererVersion+"|"), b...))
+		snap.Checksum = hex.EncodeToString(sum[:])
+		snap.ID = "rev_" + snap.Checksum[:12]
+		if _, exists := s.revisions[snap.ID]; !exists && s.persist != nil {
+			if err := s.persist.SaveRevision(snap); err != nil {
+				return "", 0, fmt.Errorf("builder: save revision: %w", err)
+			}
+		}
+		s.revisions[snap.ID] = snap
+		prevID = snap.ID
+	}
+	t.Handle = handle
+	if s.persist != nil {
+		if err := s.persist.SaveDraft(handle, t, s.draftVer+1); err != nil {
+			if errors.Is(err, ErrStaleDraft) {
+				return "", 0, ErrStaleDraft
+			}
+			return "", 0, fmt.Errorf("builder: save draft: %w", err)
+		}
+	}
+	s.draft[handle] = t
+	s.draftVer++
+	return prevID, s.draftVer, nil
+}
+
+// RestoreRevision copies the templates of a revision back into the draft.
+func (s *Site) RestoreRevision(id string) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	rev, ok := s.revisions[id]
+	if !ok {
+		return 0, ErrNotFound
+	}
+	for h, t := range rev.Templates {
+		if s.persist != nil {
+			if err := s.persist.SaveDraft(h, t, s.draftVer+1); err != nil {
+				if errors.Is(err, ErrStaleDraft) {
+					return 0, ErrStaleDraft
+				}
+				return 0, fmt.Errorf("builder: save draft: %w", err)
+			}
+		}
+		s.draft[h] = t
+		s.draftVer++
+	}
+	return s.draftVer, nil
 }
 
 // Releases returns the publish history, newest first.
@@ -306,8 +441,22 @@ func (s *Site) Releases() []Release {
 	return out
 }
 
+// Rendered is the output of rendering one template.
+type Rendered struct {
+	Doc    []byte
+	Report Report
+	Header []byte // header region HTML, reused by the shopper pages
+	Footer []byte
+	Theme  ResolvedTheme
+}
+
 // render validates and renders a template to a full HTML document.
 func (s *Site) render(t Template) ([]byte, Report) {
+	r := s.renderFull(t)
+	return r.Doc, r.Report
+}
+
+func (s *Site) renderFull(t Template) Rendered {
 	rep := Report{Handle: t.Handle, Limit: PageBudgets[t.Kind], Issues: []Issue{}}
 	if rep.Limit == (Budget{}) {
 		rep.Limit = PageBudgets["page"]
@@ -321,39 +470,48 @@ func (s *Site) render(t Template) ([]byte, Report) {
 	if strings.TrimSpace(t.SEO.Description) == "" {
 		issue("/seo/description", "seo_description_missing", "Falta la descripción para buscadores", false)
 	}
+	ValidateTheme(t.Theme, &rep.Issues)
+	rt := Resolve(t.Theme)
 
-	var body bytes.Buffer
 	h1Used := false
 	ids := map[string]bool{}
-	for _, region := range []string{"header", "main", "footer"} {
-		for i, sec := range t.Regions[region] {
-			path := fmt.Sprintf("/regions/%s/%d", region, i)
+	renderSection := func(region string, i int, sec SectionInstance, out *bytes.Buffer, account bool) {
+		path := fmt.Sprintf("/regions/%s/%d", region, i)
+		if account {
 			if ids[sec.ID] {
 				issue(path+"/id", "duplicate_id", "Identificador de sección repetido", true)
 			}
 			ids[sec.ID] = true
-			if sec.GlobalRef != "" {
-				continue // global sections render from their own document
+		}
+		if sec.GlobalRef != "" {
+			return // global sections render from their own document
+		}
+		def, ok := s.lib.defs[sec.Type]
+		if !ok {
+			issue(path+"/type", "unknown_section", "Tipo de sección desconocido: "+sec.Type, true)
+			return
+		}
+		if region == "main" && !enabled(def, t.Kind) {
+			issue(path+"/type", "section_not_allowed", def.Name+" no se puede usar en este tipo de página", true)
+		}
+		settings := map[string]any{}
+		for k, v := range sec.Settings {
+			settings[k] = v
+		}
+		for k, p := range def.SettingsSchema.Properties {
+			if _, ok := settings[k]; !ok && p.Default != nil {
+				settings[k] = p.Default
 			}
-			def, ok := s.lib.defs[sec.Type]
-			if !ok {
-				issue(path+"/type", "unknown_section", "Tipo de sección desconocido: "+sec.Type, true)
-				continue
-			}
-			if !enabled(def, t.Kind) {
-				issue(path+"/type", "section_not_allowed", def.Name+" no se puede usar en este tipo de página", true)
-			}
-			settings := map[string]any{}
-			for k, v := range sec.Settings {
-				settings[k] = v
-			}
-			for k, p := range def.SettingsSchema.Properties {
-				if _, ok := settings[k]; !ok && p.Default != nil {
-					settings[k] = p.Default
+		}
+		before := len(rep.Issues)
+		if account {
+			def.SettingsSchema.Validate(path+"/settings", sec.Settings, &rep.Issues)
+			// An uploaded image always needs a description for screen readers.
+			if img, _ := sec.Settings["image"].(string); img != "" {
+				if alt, _ := sec.Settings["alt"].(string); len(strings.TrimSpace(alt)) < 5 {
+					issue(path+"/settings/alt", "required", "Describe la imagen (mínimo 5 caracteres) para quien usa lector de pantalla", true)
 				}
 			}
-			before := len(rep.Issues)
-			def.SettingsSchema.Validate(path+"/settings", sec.Settings, &rep.Issues)
 			if n := len(sec.Blocks); n < def.Blocks.Min || n > def.Blocks.Max {
 				issue(path+"/blocks", "block_count", fmt.Sprintf("%s admite entre %d y %d bloques", def.Name, def.Blocks.Min, def.Blocks.Max), true)
 			}
@@ -363,30 +521,54 @@ func (s *Site) render(t Template) ([]byte, Report) {
 				}
 			}
 			rep.Budget = rep.Budget.add(def.Budget)
-			if len(rep.Issues) > before {
-				continue
+		}
+		if len(rep.Issues) > before {
+			return
+		}
+		if !visibleNow(sec.Visibility, s.now()) {
+			return
+		}
+		isH1 := false
+		if !h1Used && region == "main" && headed(def) {
+			isH1, h1Used = true, true
+		}
+		ctx := map[string]any{"ID": sec.ID, "S": settings, "Blocks": sec.Blocks, "H1": isH1}
+		if s.data != nil && (def.Type == "product-grid" || def.Type == "product-carousel") {
+			limit := 8
+			if f, ok := settings["limit"].(float64); ok {
+				limit = int(f)
 			}
-			if !visibleNow(sec.Visibility, s.now()) {
-				continue
-			}
-			isH1 := false
-			if !h1Used && region == "main" && headed(def) {
-				isH1, h1Used = true, true
-			}
-			ctx := map[string]any{"ID": sec.ID, "S": settings, "Blocks": sec.Blocks, "H1": isH1}
-			if s.data != nil {
-				limit := 8
-				if f, ok := settings["limit"].(float64); ok {
-					limit = int(f)
-				}
+			brand, _ := settings["brand"].(string)
+			cat, _ := settings["category"].(string)
+			if q, ok := s.data.(Querier); ok {
+				ctx["Products"] = q.Query(ProductQuery{Limit: limit, Brand: brand, Category: cat})
+			} else {
 				ctx["Products"] = s.data.Products(limit)
 			}
-			fmt.Fprintf(&body, `<section id="%s" data-type="%s">`, template.HTMLEscapeString(sec.ID), def.Type)
-			if err := s.lib.tmpls[def.Type].Execute(&body, ctx); err != nil {
-				issue(path, "render_failed", err.Error(), true)
-			}
-			body.WriteString("</section>\n")
 		}
+		fmt.Fprintf(out, `<section id="%s" data-type="%s">`, template.HTMLEscapeString(sec.ID), def.Type)
+		if err := s.lib.tmpls[def.Type].Execute(out, ctx); err != nil {
+			issue(path, "render_failed", err.Error(), true)
+		}
+		out.WriteString("</section>\n")
+	}
+
+	var header, main, footer bytes.Buffer
+	for i, sec := range t.Regions["header"] {
+		renderSection("header", i, sec, &header, true)
+	}
+	for i, sec := range t.Regions["main"] {
+		renderSection("main", i, sec, &main, true)
+	}
+	for i, sec := range t.Regions["footer"] {
+		renderSection("footer", i, sec, &footer, true)
+	}
+	// Every page gets a header and footer, even when the template has none.
+	if header.Len() == 0 {
+		renderSection("header", 0, SectionInstance{ID: "apx-header", Type: "header", Settings: map[string]any{"logoText": "Tienda", "menu": "Productos | c"}}, &header, false)
+	}
+	if footer.Len() == 0 {
+		renderSection("footer", 0, SectionInstance{ID: "apx-footer", Type: "footer", Settings: map[string]any{"storeName": "Tienda", "legal": "© Tienda"}}, &footer, false)
 	}
 	if !h1Used {
 		issue("/regions/main", "h1_missing", "La página no tiene un título principal (h1)", false)
@@ -396,9 +578,13 @@ func (s *Site) render(t Template) ([]byte, Report) {
 	doc.WriteString("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
 	fmt.Fprintf(&doc, "<title>%s</title><meta name=\"description\" content=\"%s\">",
 		template.HTMLEscapeString(t.SEO.Title), template.HTMLEscapeString(t.SEO.Description))
-	doc.WriteString("<style>body{margin:0;font:16px/1.5 system-ui,sans-serif}section{padding:24px 16px}.apx-nav{display:flex;gap:16px;padding:12px 16px;border-bottom:1px solid #e3e4ea;font-weight:600}.apx-nav a{color:#1d3fae;text-decoration:none}.apx-nav a:first-child{margin-right:auto}.hero img{max-width:100%;height:auto}</style></head><body>")
-	doc.WriteString(`<nav class="apx-nav" aria-label="Principal"><a href="index">Inicio</a><a href="c">Productos</a><a href="cart">Carrito</a></nav>`)
-	doc.Write(body.Bytes())
+	doc.WriteString(string(rt.Head()))
+	fmt.Fprintf(&doc, `<script src="/s/assets/shop.js?v=%s" defer></script></head><body class="%s"><a class="skip" href="#main">Saltar al contenido</a>`, AssetVersion, rt.BodyClass())
+	doc.Write(header.Bytes())
+	doc.WriteString(`<main id="main">`)
+	doc.Write(main.Bytes())
+	doc.WriteString(`</main>`)
+	doc.Write(footer.Bytes())
 	doc.WriteString("</body></html>")
 
 	var gz bytes.Buffer
@@ -415,7 +601,7 @@ func (s *Site) render(t Template) ([]byte, Report) {
 	if rep.Budget.AboveFoldImages > rep.Limit.AboveFoldImages {
 		issue("/", "budget_images", "Demasiadas imágenes grandes en la parte superior de la página", false)
 	}
-	return doc.Bytes(), rep
+	return Rendered{Doc: doc.Bytes(), Report: rep, Header: header.Bytes(), Footer: footer.Bytes(), Theme: rt}
 }
 
 // headed reports whether a section renders its heading as the page title.

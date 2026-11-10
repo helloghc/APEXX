@@ -21,29 +21,71 @@ type tenantData struct {
 }
 
 func (d tenantData) Products(limit int) []builder.Card {
+	return d.Query(builder.ProductQuery{Limit: limit})
+}
+
+// Query implements builder.Querier: active products, optionally filtered by
+// brand or category, as cards with price, sale price and stock state.
+func (d tenantData) Query(q builder.ProductQuery) []builder.Card {
 	t, ok := d.proj.Tenant(d.tenant)
-	if !ok {
+	if !ok || q.Limit <= 0 {
 		return nil
 	}
-	ps, _ := t.Catalog.List("", limit)
-	out := make([]builder.Card, 0, len(ps))
-	for _, p := range ps {
-		c := builder.Card{Title: p.Title, URL: "p/" + p.Handle} // relative to /s/{tenant}/{site}/
-		if len(p.Variants) > 0 {
-			if q, ok := t.Pricing.Resolve("mx", p.Variants[0].SKU, 1); ok {
-				c.Price = formatPrice(q.Unit)
+	out := make([]builder.Card, 0, q.Limit)
+	after := ""
+	for len(out) < q.Limit {
+		ps, next := t.Catalog.Search("", after, 100)
+		for _, p := range ps {
+			if q.Brand != "" && !strings.EqualFold(p.Brand, q.Brand) {
+				continue
+			}
+			if q.Category != "" && !containsFold(p.Categories, q.Category) {
+				continue
+			}
+			c := cardOf(t, "mx", p)
+			out = append(out, builder.Card{Title: p.Title, URL: "p/" + p.Handle, Price: c.Price, CompareAt: c.CompareAt,
+				Brand: p.Brand, Initial: c.Initial, Tone: c.Tone, SKU: c.SKU, SoldOut: c.SoldOut})
+			if len(out) == q.Limit {
+				break
 			}
 		}
-		out = append(out, c)
+		if next == "" {
+			break
+		}
+		after = next
 	}
 	return out
+}
+
+func containsFold(xs []string, x string) bool {
+	for _, v := range xs {
+		if strings.EqualFold(v, x) {
+			return true
+		}
+	}
+	return false
 }
 
 // DefaultHome is the template a new site starts from.
 var DefaultHome func() builder.Template
 
+// errNoSite is returned by openSite for sites that were never created.
+var errNoSite = errors.New("api: site does not exist")
+
 // site returns (loading or creating) a builder site of tenant.
 func (s *Server) site(tenant, id string) (*builder.Site, error) {
+	return s.loadSite(tenant, id, true)
+}
+
+// openSite loads an existing site; public routes never create sites.
+func (s *Server) openSite(tenant, id string) (*builder.Site, error) {
+	if id == "" || len(id) > 64 || strings.ContainsAny(id, "/ .") {
+		return nil, errNoSite
+	}
+	return s.loadSite(tenant, id, false)
+}
+
+func (s *Server) loadSite(tenant, id string, create bool) (*builder.Site, error) {
 	key := tenant + "/" + id
 	s.sitesMu.Lock()
 	defer s.sitesMu.Unlock()
@@ -54,6 +96,9 @@ func (s *Server) site(tenant, id string) (*builder.Site, error) {
 	drafts, ver, revs, rels, found, err := per.LoadSite()
 	if err != nil {
 		return nil, err
+	}
+	if !found && !create {
+		return nil, errNoSite
 	}
 	st := builder.NewSite(id, s.Library, tenantData{proj: s.Proj, tenant: tenant})
 	if !found {
@@ -86,6 +131,81 @@ func (s *Server) withSite(w http.ResponseWriter, r *http.Request) (*builder.Site
 		return nil, false
 	}
 	return st, true
+}
+
+// themes lists the storefront themes and the bundled fonts.
+func (s *Server) themes(w http.ResponseWriter, r *http.Request) {
+	starters := map[string]builder.Template{}
+	for _, t := range builder.ThemeList() {
+		starters[t.ID] = builder.Starter(t.ID)
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": builder.ThemeList(), "fonts": builder.FontList(),
+		"tokens": builder.ColorTokens, "contrastPairs": builder.ContrastPairs, "starters": starters})
+}
+
+// applyTheme replaces the home draft with the theme's starter template. The
+// previous draft is kept as a revision so the change can be undone.
+func (s *Server) applyTheme(w http.ResponseWriter, r *http.Request) {
+	st, ok := s.withSite(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		ThemeID string `json:"themeId"`
+		Keep    bool   `json:"keepContent"` // only switch the look, keep sections
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if _, ok := builder.Themes[body.ThemeID]; !ok {
+		apierr.BadRequest(w, "", apierr.FieldError{Field: "themeId", Code: "unknown", Message: "Tema desconocido"})
+		return
+	}
+	tpl := builder.Starter(body.ThemeID)
+	if body.Keep {
+		if cur, _, err := st.Draft("index"); err == nil {
+			cur.Theme = &builder.ThemeSettings{ID: body.ThemeID}
+			tpl = cur
+		}
+	}
+	prev, ver, err := st.ApplyStarter("index", tpl, principal(r).Actor())
+	if errors.Is(err, builder.ErrStaleDraft) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: apierr.CodeConflict, Detail: "Otra persona cambió el borrador; recarga y vuelve a intentar"})
+		return
+	}
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	t, _, _ := st.Draft("index")
+	_, rep, _ := st.Preview("index")
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"template": t, "version": ver, "report": rep, "previousRevisionId": prev})
+}
+
+// restoreRevision copies a revision back into the draft (undo a theme change).
+func (s *Server) restoreRevision(w http.ResponseWriter, r *http.Request) {
+	st, ok := s.withSite(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		RevisionID string `json:"revisionId"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	ver, err := st.RestoreRevision(body.RevisionID)
+	switch {
+	case errors.Is(err, builder.ErrNotFound):
+		apierr.NotFound(w, "Revisión no encontrada")
+	case errors.Is(err, builder.ErrStaleDraft):
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: apierr.CodeConflict, Detail: "Otra persona cambió el borrador; recarga y vuelve a intentar"})
+	case err != nil:
+		internalError(w, s.Log, err)
+	default:
+		t, _, _ := st.Draft("index")
+		httpx.JSON(w, r, http.StatusOK, map[string]any{"template": t, "version": ver})
+	}
 }
 
 func (s *Server) sections(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +331,11 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer release()
-	st, err := s.site(tenant, r.PathValue("site"))
+	st, err := s.openSite(tenant, r.PathValue("site"))
+	if errors.Is(err, errNoSite) {
+		apierr.NotFound(w, "Sitio no encontrado")
+		return
+	}
 	if err != nil {
 		internalError(w, s.Log, err)
 		return
@@ -226,7 +350,7 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 	h.Set("ETag", etag)
 	h.Set("Cache-Control", "public, max-age=0, s-maxage=31536000, stale-while-revalidate=60")
 	h.Set("Surrogate-Key", "site-"+tenant+" "+rev)
-	h.Set("Content-Security-Policy", "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline'; script-src 'self' https://js.stripe.com; frame-src https://js.stripe.com; base-uri 'none'; form-action 'self'")
+	h.Set("Content-Security-Policy", shopCSP)
 	if r.Header.Get("If-None-Match") == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return

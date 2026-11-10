@@ -1,7 +1,9 @@
 {{define "content"}}
+<div>
 <h1>Tu carrito</h1>
 <div data-cart-view><p class="muted">Cargando tu carrito…</p></div>
 <form class="zip" data-zip><label for="zip">Código postal para calcular el envío</label>
-<input id="zip" name="zip" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="53129"><button class="btn ghost" type="submit">Calcular</button></form>
-<p><a class="btn" href="{{.Base}}/checkout" data-to-checkout>Continuar al pago</a></p>
+<input id="zip" name="zip" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="53129"><button class="btn btn-ghost" type="submit">Calcular</button></form>
+<p class="cart-actions"><a class="btn" href="{{.Base}}/checkout" data-to-checkout>Continuar al pago</a></p>
+</div>
 {{end}}
