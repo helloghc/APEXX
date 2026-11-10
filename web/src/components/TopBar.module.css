@@ -1,0 +1,11 @@
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.page { color: var(--muted); }
+.saving { font-size: 12px; color: var(--muted); }
+.health { display: flex; gap: 6px; flex-wrap: wrap; }
+.actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.devices { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.device { border: 0; background: var(--surface); padding: 6px 10px; cursor: pointer; }
+.device + .device { border-left: 1px solid var(--line); }
+.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.reasons { flex-basis: 100%; margin: 0; padding: 6px 12px 6px 28px; background: var(--bad-soft); color: var(--bad); border-radius: var(--radius); font-size: 13px; }

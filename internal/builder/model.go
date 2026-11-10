@@ -99,7 +99,7 @@ type Revision struct {
 	Checksum  string              `json:"checksum"`
 	Templates map[string]Template `json:"templates"`
 	Reports   map[string]Report   `json:"reports"`
-	html      map[string][]byte   // rendered pages, keyed by handle
+	Pages     map[string][]byte   `json:"-"` // rendered pages, keyed by handle
 }
 
 // Release records one publish or rollback.

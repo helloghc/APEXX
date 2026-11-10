@@ -1,0 +1,393 @@
+// Package api is the HTTP surface of Apexx: authenticated, tenant-isolated,
+// with permissions per module and level, resilient to per-tenant overload.
+package api
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/helloghc/apexx/internal/apierr"
+	"github.com/helloghc/apexx/internal/auth"
+	"github.com/helloghc/apexx/internal/builder"
+	"github.com/helloghc/apexx/internal/crypto"
+	"github.com/helloghc/apexx/internal/httpx"
+	"github.com/helloghc/apexx/internal/orders"
+	"github.com/helloghc/apexx/internal/projection"
+	"github.com/helloghc/apexx/internal/resilience"
+	"github.com/helloghc/apexx/internal/store"
+)
+
+// Server holds every dependency of the HTTP layer.
+type Server struct {
+	DB            *store.DB
+	Proj          *projection.Projector
+	Auth          *auth.Service
+	Orders        *orders.Service
+	Keys          *crypto.Keyring
+	Library       *builder.Library
+	Log           *slog.Logger
+	Admin         http.Handler // embedded builder editor (optional)
+	Bulkhead      *resilience.Bulkhead
+	Payments      *PaymentAccounts
+	SecureCookies bool
+
+	sitesMu sync.Mutex
+	sites   map[string]*builder.Site // tenant/site -> site
+
+	loginMu   sync.Mutex
+	loginHits map[string][]time.Time
+
+	metrics *metrics
+}
+
+// Routes builds the HTTP handler.
+func (s *Server) Routes() http.Handler {
+	s.sites = map[string]*builder.Site{}
+	s.loginHits = map[string][]time.Time{}
+	s.metrics = newMetrics()
+	if s.Bulkhead == nil {
+		s.Bulkhead = resilience.NewBulkhead(256)
+	}
+	mux := http.NewServeMux()
+	handle := func(pattern string, h http.HandlerFunc) {
+		mux.Handle(pattern, s.metrics.wrap(pattern, h))
+	}
+
+	// Health: liveness says the process runs; readiness says it can serve.
+	handle("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
+	handle("GET /readyz", s.ready)
+	handle("GET /metrics", s.serveMetrics)
+
+	// Auth and team (unlimited seats, permissions per module).
+	handle("POST /v1/auth/login", s.login)
+	handle("POST /v1/auth/logout", s.authed("", "", s.logout))
+	handle("GET /v1/me", s.authed("", "", s.me))
+	handle("GET /v1/team/members", s.authed("team", auth.Read, s.listMembers))
+	handle("POST /v1/team/members", s.authed("team", auth.Admin, s.createMember))
+	handle("PATCH /v1/team/members/{id}", s.authed("team", auth.Admin, s.updateMember))
+	handle("POST /v1/team/api-keys", s.authed("team", auth.Admin, s.createAPIKey))
+
+	// Catalog, inventory, pricing, channels, promotions.
+	handle("GET /v1/products", s.authed("catalog", auth.Read, s.listProducts))
+	handle("GET /v1/products/{id}", s.authed("catalog", auth.Read, s.getProduct))
+	handle("PUT /v1/products/{id}", s.authed("catalog", auth.Edit, s.putProduct))
+	handle("GET /v1/inventory/{sku}", s.authed("inventory", auth.Read, s.getInventory))
+	handle("PUT /v1/inventory/{sku}/{location}", s.authed("inventory", auth.Edit, s.putInventory))
+	handle("PUT /v1/prices/{channel}/{sku}", s.authed("pricing", auth.Edit, s.putPrices))
+	handle("GET /v1/channels/{id}", s.authed("settings", auth.Read, s.getChannel))
+	handle("PUT /v1/channels/{id}", s.authed("settings", auth.Admin, s.putChannel))
+	handle("PUT /v1/promotions/{id}", s.authed("promotions", auth.Edit, s.putPromotion))
+	handle("POST /v1/carts/simulate", s.authed("catalog", auth.Read, s.simulate))
+
+	// Orders and payments.
+	handle("POST /v1/checkout", s.authed("", "", s.checkout))
+	handle("GET /v1/orders", s.authed("orders", auth.Read, s.listOrders))
+	handle("GET /v1/orders/{id}", s.authed("orders", auth.Read, s.getOrder))
+	handle("POST /v1/orders/{id}/fulfill", s.authed("orders", auth.Edit, s.fulfillOrder))
+	handle("POST /v1/orders/{id}/cancel", s.authed("orders", auth.Edit, s.cancelOrder))
+	handle("GET /v1/payments/account", s.authed("payments", auth.Read, s.getPaymentAccount))
+	handle("PUT /v1/payments/account", s.authed("payments", auth.Admin, s.putPaymentAccount))
+	handle("POST /v1/webhooks/stripe/{tenant}", s.stripeWebhook)
+
+	// Builder.
+	handle("GET /v1/builder/sections", s.authed("builder", auth.Read, s.sections))
+	handle("GET /v1/sites/{site}/templates/{handle}/draft", s.authed("builder", auth.Read, s.getDraft))
+	handle("PATCH /v1/sites/{site}/templates/{handle}/draft", s.authed("builder", auth.Edit, s.patchDraft))
+	handle("GET /v1/sites/{site}/templates/{handle}/preview", s.authed("builder", auth.Read, s.preview))
+	handle("POST /v1/sites/{site}/publish", s.authed("builder", auth.Admin, s.publish))
+	handle("POST /v1/sites/{site}/rollback", s.authed("builder", auth.Admin, s.rollback))
+	handle("GET /v1/sites/{site}/releases", s.authed("builder", auth.Read, s.releases))
+
+	// Operations.
+	handle("GET /v1/system/freshness", s.authed("settings", auth.Read, s.freshness))
+	handle("GET /v1/audit/verify", s.authed("settings", auth.Admin, s.verifyAudit))
+
+	// Public storefront pages (static HTML per published revision).
+	handle("GET /s/{tenant}/{site}/{handle}", s.storefront)
+
+	if s.Admin != nil {
+		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))
+	}
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		apierr.NotFound(w, "No existe la ruta "+r.Method+" "+r.URL.Path)
+	})
+	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(mux)))
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		if !strings.HasPrefix(r.URL.Path, "/admin") {
+			h.Set("X-Frame-Options", "SAMEORIGIN")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	if err := s.DB.App.Ping(ctx); err != nil {
+		http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if s.Proj.Stats().LoadedAt == "0001-01-01T00:00:00Z" {
+		http.Error(w, "projections loading", http.StatusServiceUnavailable)
+		return
+	}
+	_, _ = w.Write([]byte("ready"))
+}
+
+// authed authenticates the request, checks permission (module/level; empty
+// means any authenticated principal), applies the per-tenant bulkhead and a
+// request deadline.
+func (s *Server) authed(module, level string, h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := ""
+		if a := r.Header.Get("Authorization"); strings.HasPrefix(a, "Bearer ") {
+			token = strings.TrimPrefix(a, "Bearer ")
+		} else if c, err := r.Cookie("apexx_session"); err == nil {
+			token = c.Value
+		}
+		p, err := s.Auth.Authenticate(r.Context(), token)
+		if err != nil {
+			apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "unauthenticated", Detail: "Inicia sesión o envía una API key válida"})
+			return
+		}
+		if module != "" && !p.Permissions.Allows(module, level) {
+			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden",
+				Detail: fmt.Sprintf("Tu acceso a %s no permite esta acción (necesitas %s)", module, level)})
+			return
+		}
+		release, ok := s.Bulkhead.Acquire(p.Tenant)
+		if !ok {
+			w.Header().Set("Retry-After", "1")
+			apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "tenant_busy", Detail: "La tienda tiene demasiadas solicitudes simultáneas; reintenta en un segundo"})
+			return
+		}
+		defer release()
+		ctx, cancel := context.WithTimeout(auth.With(r.Context(), p), 15*time.Second)
+		defer cancel()
+		h(w, r.WithContext(ctx))
+	}
+}
+
+func principal(r *http.Request) auth.Principal {
+	p, _ := auth.From(r.Context())
+	return p
+}
+
+// tenantView returns the read models of the caller's tenant.
+func (s *Server) tenantView(w http.ResponseWriter, r *http.Request) (*projection.Tenant, bool) {
+	t, ok := s.Proj.Tenant(principal(r).Tenant)
+	if !ok {
+		apierr.Write(w, apierr.Problem{Status: http.StatusServiceUnavailable, Code: "tenant_loading", Detail: "La tienda se está cargando; reintenta en unos segundos"})
+		return nil, false
+	}
+	return t, true
+}
+
+func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
+	if err := httpx.Decode(r, dst); err != nil {
+		apierr.BadRequest(w, "JSON inválido: "+err.Error())
+		return false
+	}
+	return true
+}
+
+func internalError(w http.ResponseWriter, log *slog.Logger, err error) {
+	id := make([]byte, 6)
+	_, _ = rand.Read(id)
+	ref := hex.EncodeToString(id)
+	log.Error("request failed", "ref", ref, "err", err)
+	apierr.Write(w, apierr.Problem{Status: http.StatusInternalServerError, Code: apierr.CodeInternal, Detail: "Error interno (referencia " + ref + ")"})
+}
+
+// ---------- auth handlers ----------
+
+func clientIP(r *http.Request) string {
+	if f := r.Header.Get("X-Forwarded-For"); f != "" {
+		return strings.TrimSpace(strings.Split(f, ",")[0])
+	}
+	h, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return h
+}
+
+// allowLogin limits attempts to 10 per minute per IP+email.
+func (s *Server) allowLogin(key string) bool {
+	s.loginMu.Lock()
+	defer s.loginMu.Unlock()
+	now := time.Now()
+	hits := s.loginHits[key][:0]
+	for _, t := range s.loginHits[key] {
+		if now.Sub(t) < time.Minute {
+			hits = append(hits, t)
+		}
+	}
+	if len(hits) >= 10 {
+		s.loginHits[key] = hits
+		return false
+	}
+	s.loginHits[key] = append(hits, now)
+	return true
+}
+
+func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Store    string `json:"store"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if !s.allowLogin(clientIP(r) + "|" + strings.ToLower(body.Email)) {
+		w.Header().Set("Retry-After", "60")
+		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "too_many_attempts", Detail: "Demasiados intentos; espera un minuto"})
+		return
+	}
+	token, m, err := s.Auth.Login(r.Context(), body.Store, body.Email, body.Password, clientIP(r), r.UserAgent())
+	if errors.Is(err, auth.ErrBadCredentials) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_credentials", Detail: "Correo o contraseña incorrectos"})
+		return
+	}
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{Name: "apexx_session", Value: token, Path: "/", HttpOnly: true, Secure: s.SecureCookies,
+		SameSite: http.SameSiteStrictMode, MaxAge: int((12 * time.Hour).Seconds())})
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"token": token, "member": m})
+}
+
+func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	if c, err := r.Cookie("apexx_session"); err == nil {
+		_ = s.Auth.Logout(r.Context(), c.Value)
+	}
+	if a := r.Header.Get("Authorization"); strings.HasPrefix(a, "Bearer aps_") {
+		_ = s.Auth.Logout(r.Context(), strings.TrimPrefix(a, "Bearer "))
+	}
+	http.SetCookie(w, &http.Cookie{Name: "apexx_session", Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: s.SecureCookies})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) me(w http.ResponseWriter, r *http.Request) {
+	httpx.JSON(w, r, http.StatusOK, principal(r))
+}
+
+func (s *Server) listMembers(w http.ResponseWriter, r *http.Request) {
+	ms, err := s.Auth.Members(r.Context(), principal(r).Tenant)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": ms, "seats": "unlimited", "modules": auth.Modules})
+}
+
+func (s *Server) createMember(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email       string           `json:"email"`
+		Name        string           `json:"name"`
+		Password    string           `json:"password"`
+		Permissions auth.Permissions `json:"permissions"`
+		Owner       bool             `json:"owner"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	p := principal(r)
+	if body.Owner && !p.Owner {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Solo un dueño puede crear otro dueño"})
+		return
+	}
+	m, err := s.Auth.CreateMember(r.Context(), p.Tenant, p.Actor(), body.Email, body.Name, body.Password, body.Permissions, body.Owner)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate key") {
+			apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: apierr.CodeConflict, Detail: "Ya existe un miembro con ese correo"})
+			return
+		}
+		apierr.BadRequest(w, err.Error())
+		return
+	}
+	httpx.JSON(w, r, http.StatusCreated, m)
+}
+
+func (s *Server) updateMember(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Permissions auth.Permissions `json:"permissions"`
+		Status      string           `json:"status"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	p := principal(r)
+	m, err := s.Auth.UpdateMember(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), body.Permissions, body.Status)
+	switch {
+	case errors.Is(err, auth.ErrNotFound):
+		apierr.NotFound(w, "Miembro no encontrado")
+	case errors.Is(err, auth.ErrLastOwner):
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "last_owner", Detail: "La tienda debe conservar al menos un dueño activo"})
+	case err != nil:
+		apierr.BadRequest(w, err.Error())
+	default:
+		httpx.JSON(w, r, http.StatusOK, m)
+	}
+}
+
+func (s *Server) createAPIKey(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name string `json:"name"`
+		Role string `json:"role"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	switch body.Role {
+	case "admin", "editor", "publisher", "storefront", "viewer":
+	default:
+		apierr.BadRequest(w, "", apierr.FieldError{Field: "role", Code: "invalid", Message: "role: admin, editor, publisher, storefront o viewer"})
+		return
+	}
+	key, err := s.DB.CreateAPIKey(r.Context(), principal(r).Tenant, body.Name, body.Role)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusCreated, map[string]any{"key": key, "role": body.Role, "notice": "Guarda la llave ahora; no se volverá a mostrar"})
+}
+
+func (s *Server) freshness(w http.ResponseWriter, r *http.Request) {
+	httpx.JSON(w, r, http.StatusOK, s.Proj.Stats())
+}
+
+func (s *Server) verifyAudit(w http.ResponseWriter, r *http.Request) {
+	broken, err := s.DB.VerifyAudit(r.Context(), principal(r).Tenant)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"intact": broken == 0, "firstBrokenSeq": broken})
+}
+
+func writeJSONRaw(w http.ResponseWriter, status int, b json.RawMessage, problem bool) {
+	if problem {
+		w.Header().Set("Content-Type", "application/problem+json")
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+	}
+	w.WriteHeader(status)
+	_, _ = w.Write(b)
+}

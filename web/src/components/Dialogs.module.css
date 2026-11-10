@@ -1,0 +1,12 @@
+.groups { display: grid; gap: 14px; overflow: auto; max-height: 60vh; }
+.cat { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pick { width: 100%; display: grid; gap: 2px; text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 10px 12px; cursor: pointer; }
+.pick:hover:not(:disabled) { border-color: var(--accent); }
+.pick:disabled { opacity: .55; cursor: not-allowed; }
+.pick span { color: var(--muted); font-size: 13px; }
+.cost { font-family: var(--mono); font-size: 11px !important; }
+.history { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 50vh; overflow: auto; }
+.history li { border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.history code { font-family: var(--mono); font-size: 12px; }
+.form { display: grid; gap: 14px; }

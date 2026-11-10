@@ -33,9 +33,11 @@ type Rule interface {
 
 // Window limits when and where a promotion runs.
 type Window struct {
-	ID, Name string
-	Channels []string // empty = all channels
-	From, To time.Time
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Channels []string  `json:"channels,omitempty"` // empty = all channels
+	From     time.Time `json:"from,omitzero"`
+	To       time.Time `json:"to,omitzero"`
 }
 
 func (w Window) check(now time.Time, channel string) (string, bool) {
@@ -59,8 +61,8 @@ func (w Window) check(now time.Time, channel string) (string, bool) {
 // PercentOverThreshold gives Bps basis points off the subtotal when it reaches Min.
 type PercentOverThreshold struct {
 	Window
-	Bps int64
-	Min money.Money
+	Bps int64       `json:"bps"`
+	Min money.Money `json:"min"`
 }
 
 // Evaluate implements Rule.
@@ -87,8 +89,9 @@ func (p PercentOverThreshold) Evaluate(now time.Time, channel string, _ []Line, 
 // BuyXPayY makes every X units of SKU cost Y units (e.g. 3x2).
 type BuyXPayY struct {
 	Window
-	SKU  string
-	X, Y int64
+	SKU string `json:"sku"`
+	X   int64  `json:"x"`
+	Y   int64  `json:"y"`
 }
 
 // Evaluate implements Rule.

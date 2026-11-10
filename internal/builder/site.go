@@ -70,6 +70,13 @@ func (l *Library) Definitions() []SectionDefinition {
 	return out
 }
 
+// Persister stores builder state durably. A failed save aborts the change.
+type Persister interface {
+	SaveDraft(handle string, t Template, version int64) error
+	SaveRevision(r *Revision) error
+	SaveRelease(rel Release) error
+}
+
 // Site is one tenant's storefront: an editable draft plus published revisions.
 type Site struct {
 	ID   string
@@ -83,6 +90,38 @@ type Site struct {
 	revisions map[string]*Revision
 	releases  []Release
 	live      *Revision // swapped atomically under mu; readers copy the pointer
+	persist   Persister
+}
+
+// SetPersister enables durable storage.
+func (s *Site) SetPersister(p Persister) { s.persist = p }
+
+// Restore loads persisted state (drafts, revisions and release history).
+func (s *Site) Restore(drafts map[string]Template, version int64, revs []*Revision, rels []Release) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for h, t := range drafts {
+		s.draft[h] = t
+	}
+	s.draftVer = version
+	for _, r := range revs {
+		s.revisions[r.ID] = r
+	}
+	s.releases = rels
+	if n := len(rels); n > 0 {
+		s.live = s.revisions[rels[n-1].RevisionID]
+	}
+}
+
+// Templates returns the current draft templates.
+func (s *Site) Templates() map[string]Template {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make(map[string]Template, len(s.draft))
+	for h, t := range s.draft {
+		out[h] = t
+	}
+	return out
 }
 
 // NewSite creates a site with an initial draft.
@@ -135,6 +174,11 @@ func (s *Site) Patch(handle string, ops []Op, ifVersion int64) (Template, Report
 	if nt.Handle != handle {
 		return Template{}, Report{}, 0, errors.New("the handle cannot be changed with a patch")
 	}
+	if s.persist != nil {
+		if err := s.persist.SaveDraft(handle, nt, s.draftVer+1); err != nil {
+			return Template{}, Report{}, 0, fmt.Errorf("builder: save draft: %w", err)
+		}
+	}
 	s.draft[handle] = nt
 	s.draftVer++
 	_, rep := s.render(nt)
@@ -162,14 +206,14 @@ func (s *Site) Publish(by, message string) (Release, map[string]Report, error) {
 	rev := &Revision{
 		CreatedAt: s.now().UTC(), CreatedBy: by, Message: message,
 		Templates: make(map[string]Template, len(s.draft)),
-		Reports:   map[string]Report{}, html: map[string][]byte{},
+		Reports:   map[string]Report{}, Pages: map[string][]byte{},
 	}
 	blocked := false
 	for h, t := range s.draft {
 		html, rep := s.render(t)
 		rev.Templates[h] = t
 		rev.Reports[h] = rep
-		rev.html[h] = html
+		rev.Pages[h] = html
 		blocked = blocked || rep.Blocking()
 	}
 	if blocked {
@@ -185,9 +229,22 @@ func (s *Site) Publish(by, message string) (Release, map[string]Report, error) {
 		}
 		rev.ParentID = s.live.ID
 	}
+	rel := Release{RevisionID: rev.ID, PublishedAt: s.now().UTC(), PublishedBy: by}
+	if s.persist != nil {
+		if _, exists := s.revisions[rev.ID]; !exists {
+			if err := s.persist.SaveRevision(rev); err != nil {
+				return Release{}, rev.Reports, fmt.Errorf("builder: save revision: %w", err)
+			}
+		}
+	}
+	rel.DurationMicros = time.Since(start).Microseconds()
+	if s.persist != nil {
+		if err := s.persist.SaveRelease(rel); err != nil {
+			return Release{}, rev.Reports, fmt.Errorf("builder: save release: %w", err)
+		}
+	}
 	s.revisions[rev.ID] = rev
 	s.live = rev
-	rel := Release{RevisionID: rev.ID, PublishedAt: s.now().UTC(), PublishedBy: by, DurationMicros: time.Since(start).Microseconds()}
 	s.releases = append(s.releases, rel)
 	return rel, rev.Reports, nil
 }
@@ -203,9 +260,14 @@ func (s *Site) Rollback(by string) (Release, error) {
 	}
 	cur := s.releases[len(s.releases)-1]
 	prev := s.releases[len(s.releases)-2]
-	s.live = s.revisions[prev.RevisionID]
 	rel := Release{RevisionID: prev.RevisionID, PublishedAt: s.now().UTC(), PublishedBy: by,
 		RolledBackFrom: cur.RevisionID, DurationMicros: time.Since(start).Microseconds()}
+	if s.persist != nil {
+		if err := s.persist.SaveRelease(rel); err != nil {
+			return Release{}, fmt.Errorf("builder: save release: %w", err)
+		}
+	}
+	s.live = s.revisions[prev.RevisionID]
 	s.releases = append(s.releases, rel)
 	return rel, nil
 }
@@ -218,7 +280,7 @@ func (s *Site) Live(handle string) ([]byte, string, error) {
 	if rev == nil {
 		return nil, "", ErrNotFound
 	}
-	html, ok := rev.html[handle]
+	html, ok := rev.Pages[handle]
 	if !ok {
 		return nil, "", ErrNotFound
 	}

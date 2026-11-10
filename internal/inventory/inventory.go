@@ -79,6 +79,22 @@ func (s *Service) Set(sku, location string, onHand int64) {
 	s.publish(snap)
 }
 
+// Load replaces every level of sku with the given values (used by the
+// projector to mirror the database, which owns reservations).
+func (s *Service) Load(sku string, levels []Level) {
+	s.mu.Lock()
+	m := map[string]*Level{}
+	for _, l := range levels {
+		cp := l
+		m[l.LocationID] = &cp
+	}
+	s.levels[sku] = m
+	s.updated[sku] = s.now()
+	snap := s.snapshotLocked(sku)
+	s.mu.Unlock()
+	s.publish(snap)
+}
+
 // Get returns the snapshot for sku. ok is false if the SKU has no stock records,
 // so callers can return 404 instead of a silent zero (VTEX returns 200 + 0).
 func (s *Service) Get(sku string) (Snapshot, bool) {

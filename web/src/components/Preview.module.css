@@ -1,0 +1,4 @@
+.wrap { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--surface-2); }
+.stage { flex: 1; min-height: 0; overflow: auto; display: flex; justify-content: center; padding: 16px; }
+.frame { height: 100%; min-height: 480px; max-width: 100%; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; transition: width .2s ease; }
+.error { margin: 8px 16px 0; color: var(--bad); font-size: 13px; }
