@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Apexx brand fonts (SIL OFL 1.1, latin subset, from @fontsource-variable). */
+@font-face { font-family: "Bricolage Grotesque"; src: url("./assets/fonts/bricolage-grotesque.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "Figtree"; src: url("./assets/fonts/figtree.woff2") format("woff2"); font-weight: 300 900; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("./assets/fonts/jetbrains-mono.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
+/* Storefront fonts for the theme previews; loaded only when a sample uses them. */
+@font-face { font-family: "Cormorant"; src: url("/s/fonts/cormorant.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Jost"; src: url("/s/fonts/jost.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Sora"; src: url("/s/fonts/sora.woff2") format("woff2"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "Fredoka"; src: url("/s/fonts/fredoka.woff2") format("woff2"); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("/s/fonts/nunito.woff2") format("woff2"); font-weight: 200 1000; font-display: swap; }
+@font-face { font-family: "Instrument Serif"; src: url("/s/fonts/instrument-serif.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/s/fonts/manrope.woff2") format("woff2"); font-weight: 200 800; font-display: swap; }
+
 /*
  * shadcn/ui theme variables mapped to the Apexx design tokens (src/tokens.css),
  * so the editor's CSS modules and the shadcn components share one palette in
@@ -71,6 +84,7 @@
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: var(--font);
   --font-mono: var(--mono);
+  --font-display: var(--font-head);
 }
 
 @layer base {
@@ -79,5 +93,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-head);
+    letter-spacing: -0.015em;
   }
 }

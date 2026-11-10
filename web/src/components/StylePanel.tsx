@@ -112,7 +112,12 @@ export function StylePanel(p: Props) {
                     <Swatches t={t} />
                     <div className="flex gap-2">
                       {t.id !== currentId && (
-                        <Button size="sm" variant="outline" onClick={() => setConfirm({ theme: t, keep: true })}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          style={{ background: t.colors.surface, color: t.colors.text, borderColor: t.colors.border }}
+                          onClick={() => setConfirm({ theme: t, keep: true })}
+                        >
                           Solo cambiar el estilo
                         </Button>
                       )}

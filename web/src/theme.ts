@@ -74,5 +74,5 @@ export function setThemeValue(t: Template, baseId: string, path: string, value: 
   if (JSON.stringify(ts) === before) return null;
   const ops = t.theme ? [{ op: "replace" as const, path: "/theme", value: ts }] : [{ op: "add" as const, path: "/theme", value: ts }];
   const inverse = t.theme ? [{ op: "replace" as const, path: "/theme", value: t.theme }] : [{ op: "remove" as const, path: "/theme" }];
-  return { label: "Cambiar estilo", ops: ops as Edit["ops"], inverse: inverse as Edit["inverse"] };
+  return { label: "Cambiar estilo", ops: ops as unknown as Edit["ops"], inverse: inverse as unknown as Edit["inverse"] };
 }

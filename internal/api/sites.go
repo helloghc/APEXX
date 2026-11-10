@@ -263,9 +263,12 @@ func (s *Server) preview(w http.ResponseWriter, r *http.Request) {
 		apierr.NotFound(w, "Plantilla no encontrada")
 		return
 	}
+	// The preview runs in a sandboxed iframe without scripts: drop the storefront
+	// script and allow the theme's stylesheets and fonts.
+	html = []byte(strings.Replace(string(html), `<script src="/s/assets/shop.js?v=`+builder.AssetVersion+`" defer></script>`, "", 1))
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src * data:; style-src 'unsafe-inline'")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; img-src * data:; style-src 'self' 'unsafe-inline'; font-src 'self'")
 	_, _ = w.Write(html)
 }
 
