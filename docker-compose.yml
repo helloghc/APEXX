@@ -1,0 +1,188 @@
+# Apexx — single-VM production stack.
+#   postgres  : PostgreSQL 16 with a persistent volume
+#   migrate   : one-shot schema migrations + DB roles (runs on every `up`, idempotent)
+#   apexx     : API, storefront, editor and workers (restart: always + healthcheck)
+#   caddy     : automatic HTTPS (Let's Encrypt) and security headers
+#   autoheal  : restarts any container whose healthcheck turns unhealthy
+#
+# Secrets live in .env (0600), written at boot from Google Secret Manager by
+# deploy/gcp/fetch-secrets.sh. Never commit .env. See docs/deploy.md.
+
+name: apexx
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  postgres:
+    image: mirror.gcr.io/library/postgres:16.6-bookworm
+    restart: always
+    environment:
+      POSTGRES_DB: apexx
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command:
+      - postgres
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-2GB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-6GB}
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - max_connections=200
+      - -c
+      - wal_compression=on
+      - -c
+      - checkpoint_timeout=15min
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - idle_in_transaction_session_timeout=60s
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    shm_size: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d apexx"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    labels:
+      autoheal: "true"
+    logging: *logging
+    networks: [backend]
+    deploy:
+      resources:
+        limits:
+          memory: ${PG_MEMORY_LIMIT:-8g}
+
+  migrate:
+    image: ${APEXX_IMAGE:-apexx:latest}
+    command: ["migrate"]
+    restart: "no"
+    environment:
+      ADMIN_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/apexx?sslmode=disable
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+      SYSTEM_DB_PASSWORD: ${SYSTEM_DB_PASSWORD:?set SYSTEM_DB_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    <<: *hardening
+    logging: *logging
+    networks: [backend]
+
+  apexx:
+    image: ${APEXX_IMAGE:-apexx:latest}
+    command: ["serve"]
+    restart: always
+    environment: &apexx-env
+      APEXX_ADDR: ":8080"
+      DATABASE_URL: postgres://apexx_app:${APP_DB_PASSWORD}@postgres:5432/apexx?sslmode=disable&pool_max_conns=60
+      SYSTEM_DATABASE_URL: postgres://apexx_system:${SYSTEM_DB_PASSWORD}@postgres:5432/apexx?sslmode=disable&pool_max_conns=20
+      APEXX_MASTER_KEY: ${APEXX_MASTER_KEY:?set APEXX_MASTER_KEY in .env}
+      APEXX_PAYMENTS: ${APEXX_PAYMENTS:-stripe}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      APEXX_PLATFORM_FEE_BPS: ${APEXX_PLATFORM_FEE_BPS:-0}
+      APEXX_SECURE_COOKIES: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/busybox", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    labels:
+      autoheal: "true"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    <<: *hardening
+    stop_grace_period: 25s
+    logging: *logging
+    networks: [backend, frontend]
+    deploy:
+      resources:
+        limits:
+          cpus: "${APEXX_CPUS:-3}"
+          memory: ${APEXX_MEMORY_LIMIT:-4g}
+
+  caddy:
+    image: mirror.gcr.io/library/caddy:2.8.4-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      APEXX_DOMAIN: ${APEXX_DOMAIN:?set APEXX_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      CADDY_TLS_MODE: ${CADDY_TLS_MODE:-acme}
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - apexx
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    labels:
+      autoheal: "true"
+    logging: *logging
+    networks: [frontend]
+
+  # Restarts containers labelled autoheal=true when their healthcheck fails
+  # (restart: always only covers crashes, not hangs).
+  autoheal:
+    image: mirror.gcr.io/willfarrell/autoheal:1.2.0
+    restart: always
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: "5"
+      AUTOHEAL_START_PERIOD: "30"
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: "20"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    logging: *logging
+    network_mode: none
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  backend:
+    internal: true
+  frontend:

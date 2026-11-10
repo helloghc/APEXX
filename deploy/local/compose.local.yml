@@ -1,0 +1,10 @@
+# Local verification override: internal TLS, non-privileged host ports, sandbox payments.
+#   docker compose -f docker-compose.yml -f deploy/local/compose.local.yml --env-file deploy/local/local.env up -d
+services:
+  apexx:
+    environment:
+      APEXX_PAYMENTS: sandbox
+  caddy:
+    ports: !override
+      - "8443:443"
+      - "8080:80"

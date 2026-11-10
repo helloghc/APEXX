@@ -1,0 +1,47 @@
+# Apexx edge proxy. CADDY_TLS_MODE=acme (Let's Encrypt, production) or internal (local CA, tests).
+{
+	admin 127.0.0.1:2019
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+(tls_acme) {
+	tls {$ACME_EMAIL}
+}
+
+(tls_internal) {
+	tls internal
+}
+
+{$APEXX_DOMAIN} {
+	import tls_{$CADDY_TLS_MODE}
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self \"https://js.stripe.com\")"
+		-Server
+	}
+
+	# Health endpoints stay internal.
+	@internal path /metrics
+	respond @internal 404
+
+	reverse_proxy apexx:8080 {
+		header_up X-Forwarded-For {remote_host}
+		health_uri /readyz
+		health_interval 5s
+		health_timeout 2s
+		lb_try_duration 10s
+		lb_try_interval 250ms
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

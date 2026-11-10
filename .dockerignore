@@ -1,2 +1,8 @@
 .git
 docs
+deploy
+web/node_modules
+web/test-results
+web/playwright-report
+.env
+*.env

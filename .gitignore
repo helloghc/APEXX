@@ -1,3 +1,5 @@
 /apexx
 *.env
 .env*
+.env
+!.env.example
