@@ -88,8 +88,8 @@ F1 Catálogo y medios · F2 Promociones y precios · F3 Clientes, postventa y co
 
 | Panel VTEX | Apexx | Estado | Mejora |
 | --- | --- | --- | --- |
-| Site Editor | Diseño de la tienda (builder) | Hecho → T temas | Mover un módulo: segundos, publicar y deshacer en milisegundos |
-| Páginas / plantillas | Plantillas y temas | T | 4 temas originales con estilos editables |
+| Site Editor | Diseño de la tienda (builder) | Hecho (con temas) | Mover un módulo: segundos, publicar y deshacer en milisegundos |
+| Páginas / plantillas | Plantillas y temas | Hecho: 4 temas, 14 secciones | 4 temas originales con estilos editables |
 | Redirecciones | Redirecciones 301 | F4 | |
 | Sitemap / robots | Sitemap con fechas reales | F4 | VTEX publica `lastmod` falsos |
 | Mensajes / traducciones | Idiomas y traducciones | F10 | |
@@ -130,6 +130,8 @@ F1 Catálogo y medios · F2 Promociones y precios · F3 Clientes, postventa y co
 | Auditoría | Registro de actividad | Hecho (API) → F5 pantalla | Cadena con hash verificable |
 
 ## Fases pendientes (lo que todavía no tiene frente asignado)
+
+0. **Detectado en temas:** el newsletter solo confirma en pantalla (falta conectarlo a clientes/correos de F3); encabezado y pie no se editan desde la lista de secciones del builder; carga de imágenes propias (llega con F1).
 
 1. **CFDI 4.0 con Facturapi** (conector de factura legal mexicana).
 2. **Conectores concretos de marketplaces externos** (Mercado Libre, Amazon, Liverpool) sobre el contrato de eventos.
