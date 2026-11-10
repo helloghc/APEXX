@@ -176,6 +176,9 @@ func (s *Site) Patch(handle string, ops []Op, ifVersion int64) (Template, Report
 	}
 	if s.persist != nil {
 		if err := s.persist.SaveDraft(handle, nt, s.draftVer+1); err != nil {
+			if errors.Is(err, ErrStaleDraft) {
+				return Template{}, Report{}, 0, ErrStaleDraft
+			}
 			return Template{}, Report{}, 0, fmt.Errorf("builder: save draft: %w", err)
 		}
 	}

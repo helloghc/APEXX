@@ -74,6 +74,8 @@ func main() {
 		cmdServe(ctx, log)
 	case "import":
 		cmdImport(ctx, log, os.Args[2:])
+	case "rotate-master-key":
+		cmdRotate(ctx, log)
 	default:
 		fmt.Fprintln(os.Stderr, "comando desconocido:", os.Args[1])
 		os.Exit(2)
@@ -252,4 +254,21 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	sctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	_ = hs.Shutdown(sctx)
+}
+
+// cmdRotate re-wraps every tenant key from APEXX_MASTER_KEY to
+// APEXX_NEW_MASTER_KEY in one transaction. Deploy the new key afterwards.
+func cmdRotate(ctx context.Context, log *slog.Logger) {
+	db, err := store.Open(ctx, os.Getenv("DATABASE_URL"), os.Getenv("SYSTEM_DATABASE_URL"))
+	must(log, err, "database")
+	defer db.Close()
+	oldKR, err := crypto.NewKeyring(os.Getenv("APEXX_MASTER_KEY"))
+	must(log, err, "old master key")
+	newKR, err := crypto.NewKeyring(os.Getenv("APEXX_NEW_MASTER_KEY"))
+	must(log, err, "new master key")
+	n, err := db.RotateTenantKeys(ctx, func(tenant string, wrapped []byte) ([]byte, error) {
+		return crypto.Rewrap(oldKR, newKR, tenant, wrapped)
+	})
+	must(log, err, "rotate")
+	log.Info("master key rotated; now set APEXX_MASTER_KEY to the new value and restart", "tenants", n)
 }

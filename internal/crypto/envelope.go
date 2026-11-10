@@ -107,3 +107,13 @@ func (k *Keyring) Decrypt(tenant string, ct []byte, aad string) ([]byte, error) 
 	}
 	return open(a, ct, []byte(tenant+"|"+aad))
 }
+
+// Rewrap re-encrypts a tenant data key from the old master key to the new one.
+// The data key itself does not change, so no personal data needs re-encryption.
+func Rewrap(oldKR, newKR *Keyring, tenant string, wrapped []byte) ([]byte, error) {
+	dk, err := open(oldKR.master, wrapped, []byte("tenant:"+tenant))
+	if err != nil {
+		return nil, fmt.Errorf("crypto: unwrap with old master key: %w", err)
+	}
+	return seal(newKR.master, dk, []byte("tenant:"+tenant))
+}

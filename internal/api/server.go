@@ -62,6 +62,16 @@ func (s *Server) Routes() http.Handler {
 	if s.Bulkhead == nil {
 		s.Bulkhead = resilience.NewBulkhead(256)
 	}
+	// Every node drops its cached copy of a site when any node changes it.
+	if s.Proj != nil {
+		evict := func(tenant, site string) {
+			s.sitesMu.Lock()
+			delete(s.sites, tenant+"/"+site)
+			s.sitesMu.Unlock()
+		}
+		s.Proj.On("site.released", evict)
+		s.Proj.On("site.draft", evict)
+	}
 	mux := http.NewServeMux()
 	handle := func(pattern string, h http.HandlerFunc) {
 		mux.Handle(pattern, s.metrics.wrap(pattern, h))

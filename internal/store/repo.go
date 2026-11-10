@@ -613,3 +613,40 @@ func (d *DB) GetPaymentAccount(ctx context.Context, tenant string) (PaymentAccou
 	}
 	return a, err
 }
+
+// RotateTenantKeys re-wraps every tenant key atomically.
+func (d *DB) RotateTenantKeys(ctx context.Context, rewrap func(tenant string, wrapped []byte) ([]byte, error)) (int, error) {
+	n := 0
+	err := pgx.BeginFunc(ctx, d.System, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT tenant_id, wrapped_key FROM tenant_keys ORDER BY tenant_id FOR UPDATE`)
+		if err != nil {
+			return err
+		}
+		type kv struct {
+			t string
+			w []byte
+		}
+		var list []kv
+		for rows.Next() {
+			var x kv
+			if err := rows.Scan(&x.t, &x.w); err != nil {
+				rows.Close()
+				return err
+			}
+			list = append(list, x)
+		}
+		rows.Close()
+		for _, x := range list {
+			nw, err := rewrap(x.t, x.w)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `UPDATE tenant_keys SET wrapped_key=$2 WHERE tenant_id=$1`, x.t, nw); err != nil {
+				return err
+			}
+			n++
+		}
+		return nil
+	})
+	return n, err
+}

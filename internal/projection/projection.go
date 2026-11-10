@@ -81,6 +81,20 @@ type Projector struct {
 	maxLag   atomic.Int64
 	loadedAt time.Time
 	wake     chan struct{}
+
+	hooksMu sync.RWMutex
+	hooks   map[string][]func(tenant, key string)
+}
+
+// On registers fn for events of topic that the projector itself does not
+// handle (for example site releases, so every node drops its cached site).
+func (p *Projector) On(topic string, fn func(tenant, key string)) {
+	p.hooksMu.Lock()
+	if p.hooks == nil {
+		p.hooks = map[string][]func(string, string){}
+	}
+	p.hooks[topic] = append(p.hooks[topic], fn)
+	p.hooksMu.Unlock()
 }
 
 // New creates a projector.
@@ -336,7 +350,13 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 	case store.TopicPromotion:
 		return p.applyPromotions(ctx, t)
 	}
-	return nil // other topics (orders, sites) are consumed elsewhere
+	p.hooksMu.RLock()
+	hs := p.hooks[e.Topic]
+	p.hooksMu.RUnlock()
+	for _, h := range hs {
+		h(e.Tenant, e.Key)
+	}
+	return nil
 }
 
 func (p *Projector) listenLoop(ctx context.Context) {

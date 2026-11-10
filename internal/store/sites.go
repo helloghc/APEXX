@@ -39,8 +39,16 @@ func (p SitePersister) SaveDraft(handle string, t builder.Template, version int6
 			ON CONFLICT (tenant_id, site_id, handle) DO UPDATE SET template=EXCLUDED.template, updated_at=now()`, p.Tenant, p.Site, handle, b); err != nil {
 			return err
 		}
-		_, err := tx.Exec(p.ctx(), `UPDATE sites SET draft_version=$3 WHERE tenant_id=$1 AND id=$2`, p.Tenant, p.Site, version)
-		return err
+		// Optimistic concurrency across nodes: the stored version must be the
+		// one this node based its edit on.
+		ct, err := tx.Exec(p.ctx(), `UPDATE sites SET draft_version=$3 WHERE tenant_id=$1 AND id=$2 AND draft_version=$3-1`, p.Tenant, p.Site, version)
+		if err != nil {
+			return err
+		}
+		if ct.RowsAffected() == 0 {
+			return builder.ErrStaleDraft
+		}
+		return Emit(p.ctx(), tx, p.Tenant, "site.draft", p.Site, map[string]any{"version": version})
 	})
 }
 

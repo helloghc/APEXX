@@ -381,3 +381,72 @@ func TestFreshnessAndAudit(t *testing.T) {
 		t.Fatal("audit log accepted an UPDATE")
 	}
 }
+
+func TestTwoNodesSeeSamePublishedSite(t *testing.T) {
+	e := setup(t)
+	nodeA := e.srv
+	projA := e.proj
+	nodeB := e.newSrv()
+	projB := e.proj
+	get := func(srv *httptest.Server) string {
+		resp, err := http.Get(srv.URL + "/s/store-a/main/index")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp.Header.Get("ETag") + string(b)
+	}
+	// Publish v1 on node A and make node B load the site.
+	e.srv = nodeA
+	if c, _ := e.do("POST", "/v1/sites/main/publish", e.adminA, nil); c != 200 {
+		t.Fatalf("publish v1: %d", c)
+	}
+	_ = projB.Drain(context.Background())
+	first := get(nodeB)
+	// Change and publish v2 on node A; node B must serve v2 once it applies the event.
+	if c, _ := e.do("PATCH", "/v1/sites/main/templates/index/draft", e.adminA, map[string]any{"ops": []map[string]any{{"op": "replace", "path": "/regions/main/0/settings/heading", "value": "Versión dos"}}}); c != 200 {
+		t.Fatalf("patch: %d", c)
+	}
+	if c, _ := e.do("POST", "/v1/sites/main/publish", e.adminA, nil); c != 200 {
+		t.Fatalf("publish v2: %d", c)
+	}
+	_ = projA.Drain(context.Background())
+	_ = projB.Drain(context.Background())
+	second := get(nodeB)
+	if second == first || !strings.Contains(second, "Versión dos") {
+		t.Fatal("node B kept serving the old revision")
+	}
+	// A stale edit from node B is rejected instead of overwriting node A's work.
+	e.srv = nodeB
+	if c, _ := e.do("PATCH", "/v1/sites/main/templates/index/draft", e.adminA, map[string]any{"ops": []map[string]any{{"op": "replace", "path": "/name", "value": "B"}}, "ifVersion": 1}); c != 409 {
+		t.Fatalf("stale edit across nodes: %d, want 409", c)
+	}
+}
+
+func TestMasterKeyRotation(t *testing.T) {
+	e := setup(t)
+	body := map[string]any{"channel": "mx", "postalCode": "53129", "items": []map[string]any{{"sku": "S3", "qty": 1}},
+		"customer": map[string]any{"email": "rot@example.com", "name": "Rot"}, "paymentMethod": "pm_card_visa"}
+	_, o := e.do("POST", "/v1/checkout", e.sfA, body, "Idempotency-Key", "rotation-1")
+	mk := make([]byte, 32)
+	_, _ = rand.Read(mk)
+	newKR, _ := crypto.NewKeyring(hex.EncodeToString(mk))
+	n, err := e.db.RotateTenantKeys(context.Background(), func(tn string, w []byte) ([]byte, error) { return crypto.Rewrap(e.keys, newKR, tn, w) })
+	if err != nil || n != 2 {
+		t.Fatalf("rotate n=%d err=%v", n, err)
+	}
+	w, _ := e.db.WrappedKey(context.Background(), "store-a")
+	if err := newKR.Load("store-a", w); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.keys.Load("store-a", w); err == nil {
+		t.Fatal("old master key still unwraps the rotated key")
+	}
+	var enc []byte
+	_ = e.db.System.QueryRow(context.Background(), `SELECT customer FROM orders WHERE id=$1`, o["id"]).Scan(&enc)
+	plain, err := newKR.Decrypt("store-a", enc, o["id"].(string))
+	if err != nil || !strings.Contains(string(plain), "rot@example.com") {
+		t.Fatalf("customer data unreadable after rotation: %v", err)
+	}
+}
