@@ -28,7 +28,7 @@ func (d tenantData) Products(limit int) []builder.Card {
 	ps, _ := t.Catalog.List("", limit)
 	out := make([]builder.Card, 0, len(ps))
 	for _, p := range ps {
-		c := builder.Card{Title: p.Title, URL: "/p/" + p.Handle}
+		c := builder.Card{Title: p.Title, URL: "p/" + p.Handle} // relative to /s/{tenant}/{site}/
 		if len(p.Variants) > 0 {
 			if q, ok := t.Pricing.Resolve("mx", p.Variants[0].SKU, 1); ok {
 				c.Price = formatPrice(q.Unit)

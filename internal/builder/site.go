@@ -70,6 +70,9 @@ func (l *Library) Definitions() []SectionDefinition {
 	return out
 }
 
+// RendererVersion changes whenever the generated HTML changes.
+const RendererVersion = "2"
+
 // Persister stores builder state durably. A failed save aborts the change.
 type Persister interface {
 	SaveDraft(handle string, t Template, version int64) error
@@ -223,7 +226,9 @@ func (s *Site) Publish(by, message string) (Release, map[string]Report, error) {
 		return Release{}, rev.Reports, ErrBlocked
 	}
 	snap, _ := json.Marshal(rev.Templates)
-	sum := sha256.Sum256(snap)
+	// The renderer version is part of the identity of a revision: after a
+	// platform upgrade that changes the HTML, publishing again re-renders.
+	sum := sha256.Sum256(append([]byte(RendererVersion+"|"), snap...))
 	rev.Checksum = hex.EncodeToString(sum[:])
 	rev.ID = "rev_" + rev.Checksum[:12]
 	if s.live != nil {
@@ -391,7 +396,8 @@ func (s *Site) render(t Template) ([]byte, Report) {
 	doc.WriteString("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
 	fmt.Fprintf(&doc, "<title>%s</title><meta name=\"description\" content=\"%s\">",
 		template.HTMLEscapeString(t.SEO.Title), template.HTMLEscapeString(t.SEO.Description))
-	doc.WriteString("<style>body{margin:0;font:16px/1.5 system-ui,sans-serif}section{padding:24px 16px}</style></head><body>")
+	doc.WriteString("<style>body{margin:0;font:16px/1.5 system-ui,sans-serif}section{padding:24px 16px}.apx-nav{display:flex;gap:16px;padding:12px 16px;border-bottom:1px solid #e3e4ea;font-weight:600}.apx-nav a{color:#1d3fae;text-decoration:none}.apx-nav a:first-child{margin-right:auto}.hero img{max-width:100%;height:auto}</style></head><body>")
+	doc.WriteString(`<nav class="apx-nav" aria-label="Principal"><a href="index">Inicio</a><a href="c">Productos</a><a href="cart">Carrito</a></nav>`)
 	doc.Write(body.Bytes())
 	doc.WriteString("</body></html>")
 

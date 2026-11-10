@@ -24,13 +24,14 @@ var (
 //   - connect:  the platform key acting on the store's connected account.
 //   - Sandbox:  when set, every store uses the sandbox (development and tests).
 type PaymentAccounts struct {
-	DB                    *store.DB
-	Keys                  *crypto.Keyring
-	PlatformKey           string // STRIPE_SECRET_KEY of the platform (Connect)
-	PlatformWebhookSecret string
-	PlatformFeeBps        int64
-	Sandbox               payments.Provider
-	Breakers              *resilience.Breakers
+	DB                     *store.DB
+	Keys                   *crypto.Keyring
+	PlatformKey            string // STRIPE_SECRET_KEY of the platform (Connect)
+	PlatformWebhookSecret  string
+	PlatformPublishableKey string // pk_ of the platform, used by Stripe.js for Connect stores
+	PlatformFeeBps         int64
+	Sandbox                payments.Provider
+	Breakers               *resilience.Breakers
 
 	mu    sync.Mutex
 	cache map[string]orders.Account

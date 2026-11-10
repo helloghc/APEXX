@@ -450,3 +450,52 @@ func TestMasterKeyRotation(t *testing.T) {
 		t.Fatalf("customer data unreadable after rotation: %v", err)
 	}
 }
+
+func TestShopperStorefront(t *testing.T) {
+	e := setup(t)
+	if c, _ := e.do("POST", "/v1/sites/main/publish", e.adminA, nil); c != 200 {
+		t.Fatalf("publish %d", c)
+	}
+	for _, p := range []string{"/s/store-a/main/index", "/s/store-a/main/c", "/s/store-a/main/c?q=prodcto", "/s/store-a/main/p/p1", "/s/store-a/main/cart", "/s/store-a/main/checkout", "/s/store-a/main/gracias", "/s/assets/shop.js"} {
+		resp, err := http.Get(e.srv.URL + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Fatalf("%s: %d", p, resp.StatusCode)
+		}
+		if p == "/s/store-a/main/c?q=prodcto" && !strings.Contains(string(b), "Producto 1") {
+			t.Fatal("typo search did not find products")
+		}
+	}
+	if resp, _ := http.Get(e.srv.URL + "/s/store-a/main/p/no-existe"); resp.StatusCode != 404 {
+		t.Fatalf("missing product: %d", resp.StatusCode)
+	}
+	if resp, _ := http.Get(e.srv.URL + "/s/store-z/main/c"); resp.StatusCode != 404 {
+		t.Fatalf("unknown store: %d", resp.StatusCode)
+	}
+	// Public API: no key needed, same guarantees as the private checkout.
+	c, sim := e.do("POST", "/s/store-a/api/simulate", "", map[string]any{"channel": "mx", "postalCode": "53129", "items": []map[string]any{{"sku": "S1", "qty": 1}}})
+	if c != 200 || sim["shipping"] == nil {
+		t.Fatalf("public simulate %d %v", c, sim)
+	}
+	body := map[string]any{"channel": "mx", "postalCode": "53129", "items": []map[string]any{{"sku": "S1", "qty": 1}},
+		"customer": map[string]any{"email": "shop@example.com", "name": "Shop"}, "paymentMethod": "pm_card_visa"}
+	c1, o1 := e.do("POST", "/s/store-a/api/checkout", "", body, "Idempotency-Key", "shop-key-0001")
+	c2, o2 := e.do("POST", "/s/store-a/api/checkout", "", body, "Idempotency-Key", "shop-key-0001")
+	if c1 != 201 || c2 != 201 || o1["id"] != o2["id"] {
+		t.Fatalf("public checkout: %d %d %v %v", c1, c2, o1["id"], o2["id"])
+	}
+	if _, ok := o1["customer"]; ok {
+		t.Fatal("public checkout response leaked customer data")
+	}
+	if c, _ := e.do("POST", "/s/store-a/api/checkout", "", body); c != 400 {
+		t.Fatalf("checkout without Idempotency-Key: %d", c)
+	}
+	_, cfg := e.do("GET", "/s/store-a/api/config", "", nil)
+	if cfg["mode"] != "sandbox" {
+		t.Fatalf("config %v", cfg)
+	}
+}

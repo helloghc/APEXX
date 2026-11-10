@@ -179,7 +179,8 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	fee, _ := strconv.ParseInt(env("APEXX_PLATFORM_FEE_BPS", "0"), 10, 64)
 	pa := &api.PaymentAccounts{
 		DB: db, Keys: keys, PlatformKey: os.Getenv("STRIPE_SECRET_KEY"), PlatformWebhookSecret: os.Getenv("STRIPE_WEBHOOK_SECRET"),
-		PlatformFeeBps: fee, Breakers: &resilience.Breakers{Threshold: 5, Cooldown: 30 * time.Second},
+		PlatformPublishableKey: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
+		PlatformFeeBps:         fee, Breakers: &resilience.Breakers{Threshold: 5, Cooldown: 30 * time.Second},
 	}
 	if env("APEXX_PAYMENTS", "stripe") == "sandbox" {
 		pa.Sandbox = payments.NewSandbox()

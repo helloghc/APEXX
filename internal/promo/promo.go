@@ -113,7 +113,7 @@ func (b BuyXPayY) Evaluate(now time.Time, channel string, lines []Line, subtotal
 		unit := l.LineTotal.Amount / l.Qty
 		r.Applied = true
 		r.Discount = money.New(groups*(b.X-b.Y)*unit, subtotal.Currency)
-		r.Reason = fmt.Sprintf("%dx%d aplicado %d vez/veces", b.X, b.Y, groups)
+		r.Reason = fmt.Sprintf("Llevas %d y pagas %d", groups*b.X, groups*b.Y)
 		return r
 	}
 	r.Reason = "Agrega el producto de la promoción a tu carrito"

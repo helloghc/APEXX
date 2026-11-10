@@ -136,6 +136,22 @@ func (s *Server) Routes() http.Handler {
 
 	// Public storefront pages (static HTML per published revision).
 	handle("GET /s/{tenant}/{site}/{handle}", s.storefront)
+	// Shopper flow: catalog, product, cart, checkout, confirmation.
+	handle("GET /s/{tenant}/{site}/c", s.shopCatalog)
+	handle("GET /s/{tenant}/{site}/p/{handle}", s.shopProduct)
+	handle("GET /s/{tenant}/{site}/cart", s.shopStatic("cart", "Carrito"))
+	handle("GET /s/{tenant}/{site}/checkout", s.shopStatic("checkout", "Pago"))
+	handle("GET /s/{tenant}/{site}/gracias", s.shopStatic("thanks", "Gracias"))
+	handle("GET /favicon.ico", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/svg+xml")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		_, _ = w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1d3fae"/><path d="M9 23 16 8l7 15h-4l-3-7-3 7z" fill="#fff"/></svg>`))
+	})
+	handle("GET /s/assets/shop.css", shopAsset("shop.css", "text/css; charset=utf-8"))
+	handle("GET /s/assets/shop.js", shopAsset("shop.js", "text/javascript; charset=utf-8"))
+	handle("GET /s/{tenant}/api/config", s.shopConfig)
+	handle("POST /s/{tenant}/api/simulate", s.shopSimulate)
+	handle("POST /s/{tenant}/api/checkout", s.shopCheckout)
 
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))
