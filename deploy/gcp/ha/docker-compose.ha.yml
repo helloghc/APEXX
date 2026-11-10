@@ -1,0 +1,23 @@
+# HA override: no local postgres (Cloud SQL instead) and no Caddy (the Google
+# HTTPS load balancer terminates TLS). Each MIG instance runs apexx + autoheal.
+#   docker compose -f docker-compose.yml -f deploy/gcp/ha/docker-compose.ha.yml up -d apexx autoheal
+services:
+  postgres:
+    profiles: ["disabled"]
+  caddy:
+    profiles: ["disabled"]
+  migrate:
+    depends_on: !reset {}
+    environment:
+      ADMIN_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@${CLOUDSQL_HOST:?set CLOUDSQL_HOST}:5432/apexx?sslmode=require
+  apexx:
+    depends_on: !override
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://apexx_app:${APP_DB_PASSWORD}@${CLOUDSQL_HOST}:5432/apexx?sslmode=require&pool_max_conns=40
+      SYSTEM_DATABASE_URL: postgres://apexx_system:${SYSTEM_DB_PASSWORD}@${CLOUDSQL_HOST}:5432/apexx?sslmode=require&pool_max_conns=10
+    ports: !override
+      - "8080:8080"
+      - "127.0.0.1:9100:8080"
+    networks: !override [frontend]

@@ -1,0 +1,31 @@
+# Google Cloud Ops Agent: ships container logs and Apexx Prometheus metrics.
+logging:
+  receivers:
+    docker_containers:
+      type: files
+      include_paths: [/var/lib/docker/containers/*/*.log]
+      record_log_file_path: true
+  processors:
+    docker_json:
+      type: parse_json
+      field: message
+  service:
+    pipelines:
+      apexx:
+        receivers: [docker_containers]
+        processors: [docker_json]
+metrics:
+  receivers:
+    apexx_prometheus:
+      type: prometheus
+      config:
+        scrape_configs:
+          - job_name: apexx
+            scrape_interval: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets: ["127.0.0.1:9100"]
+  service:
+    pipelines:
+      apexx:
+        receivers: [apexx_prometheus]

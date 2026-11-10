@@ -120,6 +120,9 @@ services:
     tmpfs:
       - /tmp:size=64m
     <<: *hardening
+    # Loopback only: lets the Ops Agent scrape /metrics; not reachable from outside the VM.
+    ports:
+      - "127.0.0.1:9100:8080"
     stop_grace_period: 25s
     logging: *logging
     networks: [backend, frontend]
@@ -170,8 +173,8 @@ services:
     environment:
       AUTOHEAL_CONTAINER_LABEL: autoheal
       AUTOHEAL_INTERVAL: "5"
-      AUTOHEAL_START_PERIOD: "30"
-      AUTOHEAL_DEFAULT_STOP_TIMEOUT: "20"
+      AUTOHEAL_START_PERIOD: "0"
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: "5"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     logging: *logging
