@@ -643,7 +643,13 @@ func (s *Service) Reconcile(ctx context.Context, after time.Duration) (int, erro
 
 // IssueInvoices sends pending invoices to the provider with exponential backoff.
 func (s *Service) IssueInvoices(ctx context.Context) (int, error) {
-	rows, err := s.DB.System.Query(ctx, `SELECT tenant_id, order_id FROM invoices WHERE status IN ('pending','failed') AND attempts < 10 AND next_attempt <= now() LIMIT 50`)
+	// Claim with a lease so several nodes never issue the same invoice at once.
+	rows, err := s.DB.System.Query(ctx, `WITH due AS (
+			SELECT tenant_id, order_id, provider FROM invoices
+			WHERE status IN ('pending','failed') AND attempts < 10 AND next_attempt <= now() LIMIT 50 FOR UPDATE SKIP LOCKED)
+		UPDATE invoices i SET next_attempt = now() + interval '5 minutes'
+		FROM due WHERE i.tenant_id=due.tenant_id AND i.order_id=due.order_id AND i.provider=due.provider
+		RETURNING i.tenant_id, i.order_id`)
 	if err != nil {
 		return 0, err
 	}

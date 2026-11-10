@@ -4,6 +4,8 @@
 //	apexx tenant -id S -name N -owner-email E -owner-password P
 //	                              create a store with its owner, keys and default channel
 //	apexx seed -tenant S -n 2000  load demo catalog, prices, stock and promotions
+//	apexx import -tenant S -vtex-account A [-limit N] [-dry-run]
+//	                              import catalog, prices and stock from VTEX (read-only on VTEX)
 //	apexx serve                   run the API, storefront, editor and background workers
 package main
 
@@ -33,6 +35,7 @@ import (
 	"github.com/helloghc/apexx/internal/resilience"
 	"github.com/helloghc/apexx/internal/seed"
 	"github.com/helloghc/apexx/internal/store"
+	"github.com/helloghc/apexx/internal/webhooks"
 	"github.com/helloghc/apexx/internal/webui"
 )
 
@@ -53,7 +56,7 @@ func must(log *slog.Logger, err error, msg string) {
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "uso: apexx migrate | tenant | seed | serve")
+		fmt.Fprintln(os.Stderr, "uso: apexx migrate | tenant | seed | import | serve")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -69,6 +72,8 @@ func main() {
 		cmdSeed(ctx, log, os.Args[2:])
 	case "serve":
 		cmdServe(ctx, log)
+	case "import":
+		cmdImport(ctx, log, os.Args[2:])
 	default:
 		fmt.Fprintln(os.Stderr, "comando desconocido:", os.Args[1])
 		os.Exit(2)
@@ -208,9 +213,24 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		return nil
 	})
 
+	wh := &webhooks.Service{DB: db, Keys: keys, Proj: proj, AllowPrivate: env("APEXX_WEBHOOK_ALLOW_PRIVATE", "false") == "true"}
+	resilience.Every(ctx, log, "webhook-dispatcher", time.Second, func(ctx context.Context) error {
+		_, err := wh.Dispatch(ctx)
+		return err
+	})
+	resilience.Every(ctx, log, "webhook-sender", time.Second, func(ctx context.Context) error {
+		_, err := wh.Send(ctx)
+		return err
+	})
+	// Keep 30 days of outbox for the event feed and replays; never prune past
+	// what the projector has applied.
+	resilience.Every(ctx, log, "outbox-prune", time.Hour, func(ctx context.Context) error {
+		return db.PruneOutbox(ctx, proj.Stats().LastID, 30*24*time.Hour)
+	})
+
 	srv := &api.Server{
 		DB: db, Proj: proj, Auth: &auth.Service{DB: db}, Orders: ord, Keys: keys, Library: lib, Log: log,
-		Admin: webui.Handler(), Payments: pa, Bulkhead: resilience.NewBulkhead(256),
+		Admin: webui.Handler(), Payments: pa, Webhooks: wh, Bulkhead: resilience.NewBulkhead(256),
 		SecureCookies: env("APEXX_SECURE_COOKIES", "true") == "true",
 	}
 	hs := &http.Server{

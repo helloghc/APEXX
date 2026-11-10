@@ -25,6 +25,7 @@ import (
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/resilience"
 	"github.com/helloghc/apexx/internal/store"
+	"github.com/helloghc/apexx/internal/webhooks"
 )
 
 // Server holds every dependency of the HTTP layer.
@@ -39,6 +40,7 @@ type Server struct {
 	Admin         http.Handler // embedded builder editor (optional)
 	Bulkhead      *resilience.Bulkhead
 	Payments      *PaymentAccounts
+	Webhooks      *webhooks.Service
 	SecureCookies bool
 
 	sitesMu sync.Mutex
@@ -97,7 +99,7 @@ func (s *Server) Routes() http.Handler {
 	handle("POST /v1/orders/{id}/cancel", s.authed("orders", auth.Edit, s.cancelOrder))
 	handle("GET /v1/payments/account", s.authed("payments", auth.Read, s.getPaymentAccount))
 	handle("PUT /v1/payments/account", s.authed("payments", auth.Admin, s.putPaymentAccount))
-	handle("POST /v1/webhooks/stripe/{tenant}", s.stripeWebhook)
+	handle("POST /v1/stripe/webhook/{tenant}", s.stripeWebhook)
 
 	// Builder.
 	handle("GET /v1/builder/sections", s.authed("builder", auth.Read, s.sections))
@@ -107,6 +109,14 @@ func (s *Server) Routes() http.Handler {
 	handle("POST /v1/sites/{site}/publish", s.authed("builder", auth.Admin, s.publish))
 	handle("POST /v1/sites/{site}/rollback", s.authed("builder", auth.Admin, s.rollback))
 	handle("GET /v1/sites/{site}/releases", s.authed("builder", auth.Read, s.releases))
+
+	// Connectors: signed webhooks and pull feed.
+	handle("GET /v1/events", s.authed("settings", auth.Read, s.feed))
+	handle("GET /v1/webhooks", s.authed("settings", auth.Read, s.listWebhooks))
+	handle("POST /v1/webhooks", s.authed("settings", auth.Admin, s.createWebhook))
+	handle("DELETE /v1/webhooks/{id}", s.authed("settings", auth.Admin, s.disableWebhook))
+	handle("GET /v1/webhooks/{id}/deliveries", s.authed("settings", auth.Read, s.webhookDeliveries))
+	handle("POST /v1/webhooks/{id}/replay", s.authed("settings", auth.Admin, s.replayWebhook))
 
 	// Operations.
 	handle("GET /v1/system/freshness", s.authed("settings", auth.Read, s.freshness))

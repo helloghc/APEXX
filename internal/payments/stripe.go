@@ -218,15 +218,16 @@ func (s *Stripe) Invoice(ctx context.Context, r InvoiceRequest) (Invoice, error)
 			return Invoice{}, err
 		}
 	}
-	if err := s.call(ctx, http.MethodPost, "/v1/invoices/"+inv.ID+"/finalize", r.Account, r.IdempotencyKey+"-finalize", url.Values{}, &inv); err != nil {
+	invID := inv.ID
+	if err := s.call(ctx, http.MethodPost, "/v1/invoices/"+invID+"/finalize", r.Account, r.IdempotencyKey+"-finalize", url.Values{}, nil); err != nil {
 		return Invoice{}, err
 	}
 	pf := url.Values{}
 	pf.Set("paid_out_of_band", "true")
-	if err := s.call(ctx, http.MethodPost, "/v1/invoices/"+inv.ID+"/pay", r.Account, r.IdempotencyKey+"-pay", pf, &inv); err != nil {
+	if err := s.call(ctx, http.MethodPost, "/v1/invoices/"+invID+"/pay", r.Account, r.IdempotencyKey+"-pay", pf, &inv); err != nil {
 		return Invoice{}, err
 	}
-	return Invoice{Ref: inv.ID, URL: inv.URL}, nil
+	return Invoice{Ref: invID, URL: inv.URL}, nil
 }
 
 // VerifyWebhook checks a Stripe-Signature header (t=...,v1=...) against the
