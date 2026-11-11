@@ -26,26 +26,59 @@
   --shadow-2: 0 8px 24px -8px rgb(14 18 32 / 0.18);
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0e18;
-    --surface: #131726;
-    --surface-2: #1b2034;
-    --fg: #edeff6;
-    --muted: #9aa2bc;
-    --line: #2a3049;
-    --accent: #8c9bff;
-    --accent-fg: #0b0e18;
-    --accent-soft: #1d2552;
-    --ok: #6fd39a;
-    --ok-soft: #123323;
-    --warn: #f2b252;
-    --warn-soft: #3a2a10;
-    --bad: #ff8d84;
-    --bad-soft: #3d1715;
-    --focus: #8c9bff;
-    color-scheme: dark;
-  }
+/* Three themes replace light/dark. The palette colours paint backgrounds,
+   cards, borders and highlights; text and buttons use a deep tone of the same
+   family, because pastel text on white cannot be read (WCAG AA needs 4.5:1). */
+:root, :root[data-theme="rosa"] {
+  --bg: #ffeef8;
+  --surface: #ffffff;
+  --surface-2: #ffd2e9;
+  --fg: #2a0f1f;
+  --muted: #6e4560;
+  --line: #f5bcd9;
+  --accent: #a81f6b;
+  --accent-fg: #ffffff;
+  --accent-soft: #ffd2e9;
+  --highlight: #ffb8e0;
+  --tint: #ecffff;
+  --focus: #a81f6b;
+  --brand-cumbre: #a81f6b;
+  --shadow-1: 0 1px 2px rgb(120 30 80 / 0.07), 0 1px 1px rgb(120 30 80 / 0.04);
+  --shadow-2: 0 8px 24px -8px rgb(120 30 80 / 0.22);
+}
+:root[data-theme="lavanda"] {
+  --bg: #fae1ff;
+  --surface: #ffffff;
+  --surface-2: #e5d8ff;
+  --fg: #1c1438;
+  --muted: #564a7c;
+  --line: #d6c8f5;
+  --accent: #4a37b8;
+  --accent-fg: #ffffff;
+  --accent-soft: #e5d8ff;
+  --highlight: #c0cbff;
+  --tint: #c7e4ff;
+  --focus: #4a37b8;
+  --brand-cumbre: #4a37b8;
+  --shadow-1: 0 1px 2px rgb(60 40 140 / 0.07), 0 1px 1px rgb(60 40 140 / 0.04);
+  --shadow-2: 0 8px 24px -8px rgb(60 40 140 / 0.22);
+}
+:root[data-theme="niebla"] {
+  --bg: #e7eded;
+  --surface: #ffffff;
+  --surface-2: #dce6e7;
+  --fg: #16232a;
+  --muted: #4a5c64;
+  --line: #bac5c9;
+  --accent: #2c4a54;
+  --accent-fg: #ffffff;
+  --accent-soft: #d3dbdb;
+  --highlight: #d6dce0;
+  --tint: #dce6e7;
+  --focus: #2c4a54;
+  --brand-cumbre: #2c4a54;
+  --shadow-1: 0 1px 2px rgb(22 35 42 / 0.07), 0 1px 1px rgb(22 35 42 / 0.04);
+  --shadow-2: 0 8px 24px -8px rgb(22 35 42 / 0.2);
 }
 @layer base {
 * { box-sizing: border-box; }

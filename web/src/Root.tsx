@@ -46,9 +46,38 @@ const Reports = lazy(() => import("@/pages/reports/Reports").then((m) => ({ defa
 const Ops = lazy(() => import("@/pages/reports/Ops").then((m) => ({ default: m.Ops })));
 const Connectors = lazy(() => import("@/pages/Connectors").then((m) => ({ default: m.Connectors })));
 import { visibleNav } from "@/perms";
+import { ADMIN_THEMES, applyTheme, currentTheme } from "@/adminThemes";
 import { href, navigate, useRoute } from "@/router";
 
 const LAST_STORE = "apexx.lastStore";
+
+function ThemePicker() {
+  const [id, setId] = useState(currentTheme);
+  return (
+    <div role="radiogroup" aria-label="Tema del panel" className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground">Tema</span>
+      {ADMIN_THEMES.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="radio"
+          aria-checked={id === t.id}
+          title={t.label}
+          onClick={() => {
+            applyTheme(t.id);
+            setId(t.id);
+          }}
+          className={`flex h-6 overflow-hidden rounded-full border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${id === t.id ? "border-foreground" : "border-transparent"}`}
+        >
+          <span className="sr-only">{t.label}</span>
+          {t.palette.slice(0, 3).map((c) => (
+            <span key={c} aria-hidden="true" className="h-full w-3" style={{ background: c }} />
+          ))}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function lastStore(): string {
   const q = new URLSearchParams(window.location.search).get("store");
@@ -391,6 +420,7 @@ function Shell({ me }: { me: Me }) {
               {me.owner ? "Dueño" : me.kind === "api_key" ? "API key" : "Miembro"} · {me.email ?? me.tenant}
             </span>
           </div>
+          <ThemePicker />
           {me.kind === "member" && (
             <a href={href("cuenta")} className="text-sm text-primary hover:underline">
               Mi cuenta y seguridad

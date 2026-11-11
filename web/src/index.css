@@ -18,7 +18,7 @@
  * so the editor's CSS modules and the shadcn components share one palette in
  * light and dark mode.
  */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+@custom-variant dark (&:where([data-theme="none"] *));
 
 :root {
   --background: var(--bg);
