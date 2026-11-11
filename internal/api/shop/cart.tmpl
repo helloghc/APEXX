@@ -4,6 +4,9 @@
 <div data-cart-view><p class="muted">Cargando tu carrito…</p></div>
 <form class="zip" data-zip><label for="zip">Código postal para calcular el envío</label>
 <input id="zip" name="zip" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="53129"><button class="btn btn-ghost" type="submit">Calcular</button></form>
+<form class="zip" data-coupon><label for="coupon">¿Tienes un cupón?</label>
+<input id="coupon" name="coupon" autocomplete="off" autocapitalize="characters" maxlength="40" placeholder="Código"><button class="btn btn-ghost" type="submit">Aplicar</button>
+<p class="note" role="status" aria-live="polite" data-coupon-status></p></form>
 <p class="cart-actions"><a class="btn" href="{{.Base}}/checkout" data-to-checkout>Continuar al pago</a></p>
 </div>
 {{end}}

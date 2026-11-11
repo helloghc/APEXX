@@ -13,8 +13,6 @@ import (
 	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/pricing"
-	"github.com/helloghc/apexx/internal/projection"
-	"github.com/helloghc/apexx/internal/store"
 )
 
 func (s *Server) getInventory(w http.ResponseWriter, r *http.Request) {
@@ -119,24 +117,6 @@ func (s *Server) putChannel(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) putPromotion(w http.ResponseWriter, r *http.Request) {
-	var row store.PromotionRow
-	if !decode(w, r, &row) {
-		return
-	}
-	row.ID = r.PathValue("id")
-	if _, err := projection.BuildPromotions([]store.PromotionRow{row}); err != nil || (row.Kind != "percent_over_threshold" && row.Kind != "buy_x_pay_y") {
-		apierr.BadRequest(w, "kind debe ser percent_over_threshold o buy_x_pay_y con una regla válida")
-		return
-	}
-	p := principal(r)
-	if err := s.DB.SetPromotion(r.Context(), p.Tenant, p.Actor(), row); err != nil {
-		internalError(w, s.Log, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
 func (s *Server) simulate(w http.ResponseWriter, r *http.Request) {
 	t, ok := s.tenantView(w, r)
 	if !ok {
@@ -146,8 +126,12 @@ func (s *Server) simulate(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	if errs := validateItems(req.Channel, req.Items); len(errs) > 0 {
+	if errs := append(validateItems(req.Channel, req.Items), validateCartExtras(&req)...); len(errs) > 0 {
 		apierr.BadRequest(w, "La solicitud tiene errores", errs...)
+		return
+	}
+	if err := s.resolveCart(r, principal(r).Tenant, &req); err != nil {
+		internalError(w, s.Log, err)
 		return
 	}
 	res, err := t.Simulate(req)
@@ -203,6 +187,7 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(req.PaymentMethod, "pm_") {
 		errs = append(errs, apierr.FieldError{Field: "paymentMethod", Code: "invalid", Message: "Envía el id pm_… que genera Stripe.js; Apexx nunca recibe datos de tarjeta"})
 	}
+	errs = append(errs, validateCartExtras(&cart.Request{Coupons: req.Coupons})...)
 	if len(errs) > 0 {
 		apierr.BadRequest(w, "La compra tiene errores", errs...)
 		return

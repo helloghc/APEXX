@@ -29,16 +29,13 @@ func Channels() map[string]cart.Channel {
 
 // Promotions returns demo promotions.
 func Promotions() *promo.Engine {
-	return &promo.Engine{Rules: []promo.Rule{
-		promo.PercentOverThreshold{
-			Window: promo.Window{ID: "promo-10-3000", Name: "10% en compras desde $3,000", Channels: []string{"mx"}},
-			Bps:    1000, Min: money.New(300000, "MXN"),
-		},
-		promo.BuyXPayY{
-			Window: promo.Window{ID: "3x2-calcetas", Name: "3x2 en calcetas"},
-			SKU:    "SKU-000002-1", X: 3, Y: 2,
-		},
-	}}
+	ten := promo.Promotion{ID: "promo-10-3000", Name: "10% en compras desde $3,000", Type: promo.TypeOrderPercent, Bps: 1000,
+		Conditions: promo.Conditions{Channels: []string{"mx"}, MinSubtotal: 300000}}
+	socks := promo.Promotion{ID: "3x2-calcetas", Name: "3x2 en calcetas", Type: promo.TypeBuyXGetY, BuyQty: 2, GetQty: 1,
+		Target: promo.Target{SKUs: []string{"SKU-000002-1"}}}
+	ten.Normalize()
+	socks.Normalize()
+	return promo.NewEngine(ten, socks)
 }
 
 // Load creates n products with two variants each.

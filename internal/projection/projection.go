@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,6 +25,7 @@ import (
 	"github.com/helloghc/apexx/internal/inventory"
 	"github.com/helloghc/apexx/internal/pricing"
 	"github.com/helloghc/apexx/internal/promo"
+	"github.com/helloghc/apexx/internal/promostore"
 	"github.com/helloghc/apexx/internal/store"
 )
 
@@ -36,8 +38,12 @@ type Tenant struct {
 	Cart      *cart.Service
 	Taxo      *catalog.Taxonomy // categories, brands, collections, attributes, media
 
-	mu sync.RWMutex // guards Cart.Channels and Cart.Promos swaps
+	mu sync.RWMutex // guards Cart.Channels swaps
 }
+
+// Promos returns the promotion engine of the tenant. The engine is safe for
+// concurrent use and is updated promotion by promotion as events arrive.
+func (t *Tenant) Promos() *promo.Engine { return t.Cart.Promos }
 
 // Simulate runs a cart simulation with a consistent view of channels and promotions.
 func (t *Tenant) Simulate(req cart.Request) (cart.Result, error) {
@@ -52,6 +58,18 @@ func (t *Tenant) Channel(id string) (cart.Channel, bool) {
 	defer t.mu.RUnlock()
 	c, ok := t.Cart.Channels[id]
 	return c, ok
+}
+
+// ChannelIDs lists the configured sales channels.
+func (t *Tenant) ChannelIDs() []string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	out := make([]string, 0, len(t.Cart.Channels))
+	for id := range t.Cart.Channels {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // Stats describes projection freshness.
@@ -69,6 +87,7 @@ type Stats struct {
 // Projector keeps every tenant's read models in sync with the database.
 type Projector struct {
 	db      *store.DB
+	ps      *promostore.Store
 	listen  string // connection string for LISTEN (system role)
 	log     *slog.Logger
 	mu      sync.RWMutex
@@ -101,7 +120,7 @@ func (p *Projector) On(topic string, fn func(tenant, key string)) {
 
 // New creates a projector.
 func New(db *store.DB, listenURL string, log *slog.Logger) *Projector {
-	return &Projector{db: db, listen: listenURL, log: log, tenants: map[string]*Tenant{}, wake: make(chan struct{}, 1)}
+	return &Projector{db: db, ps: &promostore.Store{DB: db}, listen: listenURL, log: log, tenants: map[string]*Tenant{}, wake: make(chan struct{}, 1)}
 }
 
 // Tenant returns the read models of id.
@@ -155,7 +174,7 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 	if err := p.loadTaxonomy(ctx, t); err != nil {
 		return err
 	}
-	t.Cart = &cart.Service{Catalog: t.Catalog, Inventory: t.Inventory, Pricing: t.Pricing, Channels: map[string]cart.Channel{}, Promos: &promo.Engine{}}
+	t.Cart = &cart.Service{Catalog: t.Catalog, Inventory: t.Inventory, Pricing: t.Pricing, Channels: map[string]cart.Channel{}, Promos: promo.NewEngine()}
 	pids, err := p.db.ProductIDs(ctx, id)
 	if err != nil {
 		return err
@@ -186,7 +205,7 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 	if err := p.applyChannels(ctx, t); err != nil {
 		return err
 	}
-	if err := p.applyPromotions(ctx, t); err != nil {
+	if err := p.loadPromotions(ctx, t); err != nil {
 		return err
 	}
 	p.mu.Lock()
@@ -319,43 +338,64 @@ func (p *Projector) applyChannels(ctx context.Context, t *Tenant) error {
 	return nil
 }
 
-func (p *Projector) applyPromotions(ctx context.Context, t *Tenant) error {
-	rows, err := p.db.Promotions(ctx, t.ID)
+// loadPromotions fills the engine with every promotion, campaign and price
+// list of the tenant (initial load only; afterwards each event updates one).
+func (p *Projector) loadPromotions(ctx context.Context, t *Tenant) error {
+	ps, err := p.ps.LoadPromotions(ctx, t.ID)
 	if err != nil {
 		return err
 	}
-	eng, err := BuildPromotions(rows)
+	for _, l := range ps {
+		t.Cart.Promos.Upsert(l.Promotion, l.Uses)
+	}
+	if err := p.applyCampaign(ctx, t, ""); err != nil {
+		return err
+	}
+	return p.applyPriceList(ctx, t, "")
+}
+
+// applyPromotion reloads one promotion (definition and use counter).
+func (p *Projector) applyPromotion(ctx context.Context, t *Tenant, id string) error {
+	l, found, err := p.ps.LoadPromotion(ctx, t.ID, id)
 	if err != nil {
 		return err
 	}
-	t.mu.Lock()
-	t.Cart.Promos = eng
-	t.mu.Unlock()
+	if !found {
+		t.Cart.Promos.Remove(id)
+		return nil
+	}
+	t.Cart.Promos.Upsert(l.Promotion, l.Uses)
 	return nil
 }
 
-// BuildPromotions turns stored rows into an engine.
-func BuildPromotions(rows []store.PromotionRow) (*promo.Engine, error) {
-	eng := &promo.Engine{}
-	for _, r := range rows {
-		switch r.Kind {
-		case "percent_over_threshold":
-			var x promo.PercentOverThreshold
-			if err := json.Unmarshal(r.Rule, &x); err != nil {
-				return nil, fmt.Errorf("promotion %s: %w", r.ID, err)
-			}
-			x.ID = r.ID
-			eng.Rules = append(eng.Rules, x)
-		case "buy_x_pay_y":
-			var x promo.BuyXPayY
-			if err := json.Unmarshal(r.Rule, &x); err != nil {
-				return nil, fmt.Errorf("promotion %s: %w", r.ID, err)
-			}
-			x.ID = r.ID
-			eng.Rules = append(eng.Rules, x)
-		}
+// applyCampaign reloads one campaign (or all with id "").
+func (p *Projector) applyCampaign(ctx context.Context, t *Tenant, id string) error {
+	cs, err := p.ps.LoadCampaigns(ctx, t.ID, id)
+	if err != nil {
+		return err
 	}
-	return eng, nil
+	if id != "" && len(cs) == 0 {
+		t.Cart.Promos.RemoveCampaign(id)
+	}
+	for _, c := range cs {
+		t.Cart.Promos.SetCampaign(c)
+	}
+	return nil
+}
+
+// applyPriceList reloads one price list (or all with id "").
+func (p *Projector) applyPriceList(ctx context.Context, t *Tenant, id string) error {
+	ls, err := p.ps.LoadPriceLists(ctx, t.ID, id)
+	if err != nil {
+		return err
+	}
+	if id != "" && len(ls) == 0 {
+		t.Pricing.RemoveList(id)
+	}
+	for _, l := range ls {
+		t.Pricing.SetList(l)
+	}
+	return nil
 }
 
 // Run consumes the outbox until ctx is cancelled. It reconnects LISTEN on
@@ -429,7 +469,11 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 	case store.TopicChannel:
 		return p.applyChannels(ctx, t)
 	case store.TopicPromotion:
-		return p.applyPromotions(ctx, t)
+		return p.applyPromotion(ctx, t, e.Key)
+	case promostore.TopicCampaign:
+		return p.applyCampaign(ctx, t, e.Key)
+	case promostore.TopicPriceList:
+		return p.applyPriceList(ctx, t, e.Key)
 	case store.TopicCategory, store.TopicBrand, store.TopicCollection, store.TopicAttribute, store.TopicMedia:
 		return p.applyTaxonomy(ctx, t, e.Topic, e.Key)
 	}

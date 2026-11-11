@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -29,6 +30,7 @@ import (
 	"github.com/helloghc/apexx/internal/crypto"
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/projection"
+	"github.com/helloghc/apexx/internal/promostore"
 	"github.com/helloghc/apexx/internal/store"
 )
 
@@ -67,6 +69,10 @@ type CheckoutRequest struct {
 	Items         []cart.Item `json:"items"`
 	Customer      Customer    `json:"customer"`
 	PaymentMethod string      `json:"paymentMethod"` // pm_... from Stripe.js
+	Coupons       []string    `json:"coupons,omitempty"`
+	// ExpectedTotal is the grand total the shopper saw (minor units). When sent,
+	// the order is only placed if the total is still the same.
+	ExpectedTotal *int64 `json:"expectedTotal,omitempty"`
 }
 
 // Line is an order line.
@@ -107,6 +113,8 @@ type Order struct {
 	Payment     *Payment  `json:"payment,omitempty"`
 	Invoice     *Invoice  `json:"invoice,omitempty"`
 	CreatedAt   time.Time `json:"createdAt"`
+	// Promotions and coupons this order used, with their state (reserved, redeemed, released).
+	Promotions []promostore.Redemption `json:"promotions,omitempty"`
 }
 
 // Payment is the API view of a payment.
@@ -233,15 +241,49 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 	if err != nil {
 		return problem(409, "payment_account_missing", ErrNoPaymentAccount.Error(), nil), nil
 	}
-	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items})
+	// The customer is identified by a keyed digest of the email, so per-customer
+	// limits work without storing the address in clear.
+	custHash, err := s.Keys.BlindIndex(tenant, strings.ToLower(strings.TrimSpace(req.Customer.Email)))
+	if err != nil {
+		return Result{}, err
+	}
+	ps := &promostore.Store{DB: s.DB}
+	lookup, err := ps.Lookup(ctx, tenant, req.Coupons, custHash)
+	if err != nil {
+		return Result{}, err
+	}
+	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items,
+		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup})
 	if err != nil {
 		return problem(400, "invalid_request", err.Error(), nil), nil
+	}
+	// A coupon that does not apply stops the purchase with its exact reason:
+	// the shopper never pays a total different from the one they expected.
+	for _, c := range sim.Coupons {
+		if !c.Applied {
+			return problem(409, "coupon_invalid", c.Reason, map[string]any{"coupon": c, "simulation": sim}), nil
+		}
+	}
+	var redemptions []promostore.RedemptionReq
+	for _, r := range sim.Promotions {
+		if !r.Applied {
+			continue
+		}
+		amt := r.Discount.Amount
+		if r.ShippingDiscount != nil {
+			amt += r.ShippingDiscount.Amount
+		}
+		redemptions = append(redemptions, promostore.RedemptionReq{PromotionID: r.ID, Name: r.Name, Coupon: r.Coupon, CampaignID: r.CampaignID, Amount: amt})
 	}
 	// Every requested unit must be allocated; otherwise show the simulation back.
 	for i, it := range req.Items {
 		if i >= len(sim.Lines) || sim.Lines[i].SKU != it.SKU || sim.Lines[i].Qty != it.Qty {
 			return problem(409, "cart_changed", ErrCartChanged.Error(), map[string]any{"simulation": sim}), nil
 		}
+	}
+	if req.ExpectedTotal != nil && sim.Shipping != nil && *req.ExpectedTotal != sim.Totals.Grand.Amount {
+		return problem(409, "total_changed", "El total de tu compra cambió (una promoción o un precio se actualizó); revisa el resumen antes de pagar",
+			map[string]any{"simulation": sim}), nil
 	}
 	if sim.Shipping == nil {
 		return problem(400, "postal_code_required", "Se necesita un código postal válido para calcular el envío", nil), nil
@@ -275,10 +317,20 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 				return err
 			}
 		}
-		return s.event(ctx, tx, tenant, id, actor, "order.created", nil, StatusPendingPayment, map[string]any{"promotions": sim.Promotions})
+		// Promotion and coupon uses are taken in this same transaction: limits are
+		// re-checked under row locks, so two checkouts cannot share the last use.
+		if err := promostore.ReserveTx(ctx, tx, tenant, id, custHash, string(tot.Grand.Currency), redemptions); err != nil {
+			return err
+		}
+		return s.event(ctx, tx, tenant, id, actor, "order.created", nil, StatusPendingPayment, map[string]any{"promotions": sim.Promotions, "coupons": sim.Coupons})
 	})
 	if errors.Is(err, store.ErrInsufficient) {
 		return problem(409, "insufficient_stock", err.Error(), nil), nil
+	}
+	var lim *promostore.LimitError
+	if errors.As(err, &lim) {
+		return problem(409, "promotion_unavailable", lim.Reason+" Revisa el total antes de pagar.",
+			map[string]any{"promotionId": lim.PromotionID, "coupon": lim.Coupon, "reasonCode": lim.Code}), nil
 	}
 	if err != nil {
 		return Result{}, err
@@ -333,6 +385,9 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 			if err := store.ReleaseTx(ctx, tx, tenant, id); err != nil {
 				return err
 			}
+			if err := promostore.ReleaseTx(ctx, tx, tenant, id); err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `UPDATE orders SET status=$3, version=version+1, updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, id, StatusCancelled); err != nil {
 				return err
 			}
@@ -345,6 +400,9 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 			return err
 		}
 		if err := store.CommitTx(ctx, tx, tenant, id); err != nil {
+			return err
+		}
+		if err := promostore.ConfirmTx(ctx, tx, tenant, id); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `UPDATE orders SET status=$3, version=version+1, updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, id, StatusPaid); err != nil {
@@ -445,6 +503,9 @@ func (s *Service) Cancel(ctx context.Context, tenant, actor, id, reason string) 
 			if err := store.ReleaseTx(ctx, tx, tenant, id); err != nil {
 				return err
 			}
+			if err := promostore.ReleaseTx(ctx, tx, tenant, id); err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `UPDATE orders SET status=$3, version=version+1, updated_at=now() WHERE tenant_id=$1 AND id=$2 AND status=$4`, tenant, id, StatusCancelled, StatusPendingPayment); err != nil {
 				return err
 			}
@@ -496,6 +557,10 @@ func (s *Service) Cancel(ctx context.Context, tenant, actor, id, reason string) 
 			}
 		}
 		if _, err := tx.Exec(ctx, `UPDATE payments SET refunded=amount, status='refunded', updated_at=now() WHERE tenant_id=$1 AND order_id=$2 AND status='captured'`, tenant, id); err != nil {
+			return err
+		}
+		// The refund gives back the promotion and coupon uses of the order.
+		if err := promostore.ReleaseTx(ctx, tx, tenant, id); err != nil {
 			return err
 		}
 		if err := ledger(ctx, tx, tenant, "refund-"+id, id, cur, map[string]int64{
@@ -558,6 +623,18 @@ func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Ord
 		if err == nil {
 			o.Payment = &p
 		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		rrows, err := tx.Query(ctx, `SELECT promotion_id, promotion_name, coupon_code, amount, currency, status, created_at
+			FROM promotion_redemptions WHERE tenant_id=$1 AND order_id=$2 ORDER BY promotion_id`, tenant, id)
+		if err != nil {
+			return err
+		}
+		o.Promotions, err = pgx.CollectRows(rrows, func(r pgx.CollectableRow) (promostore.Redemption, error) {
+			x := promostore.Redemption{OrderID: id, OrderNumber: o.Number}
+			return x, r.Scan(&x.PromotionID, &x.PromotionName, &x.Coupon, &x.Amount, &x.Currency, &x.Status, &x.CreatedAt)
+		})
+		if err != nil {
 			return err
 		}
 		var inv Invoice

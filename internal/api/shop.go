@@ -220,6 +220,7 @@ func (l *shopLimiter) allow(key string) bool {
 
 var (
 	simLimiter      = &shopLimiter{n: 240}
+	couponLimiter   = &shopLimiter{n: 30}
 	checkoutLimiter = &shopLimiter{n: 20}
 )
 
@@ -254,8 +255,18 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
-	if errs := validateItems(req.Channel, req.Items); len(errs) > 0 {
+	if errs := append(validateItems(req.Channel, req.Items), validateCartExtras(&req)...); len(errs) > 0 {
 		apierr.BadRequest(w, "El carrito tiene errores", errs...)
+		return
+	}
+	// Trying codes is limited separately, so coupons cannot be guessed in bulk.
+	if len(req.Coupons) > 0 && !couponLimiter.allow(r.PathValue("tenant")+"|"+s.clientIP(r)) {
+		w.Header().Set("Retry-After", "60")
+		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "rate_limited", Detail: "Demasiados intentos con cupones; espera un minuto"})
+		return
+	}
+	if err := s.resolveCart(r, r.PathValue("tenant"), &req); err != nil {
+		internalError(w, s.Log, err)
 		return
 	}
 	res, err := t.Simulate(req)
@@ -292,6 +303,7 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(req.PaymentMethod, "pm_") {
 		errs = append(errs, apierr.FieldError{Field: "paymentMethod", Code: "invalid", Message: "Método de pago inválido"})
 	}
+	errs = append(errs, validateCartExtras(&cart.Request{Coupons: req.Coupons})...)
 	if len(errs) > 0 {
 		apierr.BadRequest(w, "La compra tiene errores", errs...)
 		return
