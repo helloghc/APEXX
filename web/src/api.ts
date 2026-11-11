@@ -66,7 +66,7 @@ export async function request<T>(
     } catch {
       /* non-JSON error body */
     }
-    if (res.status === 401 && !path.startsWith("/v1/auth/login")) {
+    if (res.status === 401 && !path.startsWith("/v1/auth/login") && !path.startsWith("/v1/auth/stores")) {
       window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     }
     throw new ApiError(parsed);
@@ -250,6 +250,8 @@ export const api = {
   login: (store: string, email: string, password: string, code?: string) =>
     request<{ token: string; member: Member }>("POST", "/v1/auth/login", { store, email, password, code: code || undefined }),
   logout: () => request<void>("POST", "/v1/auth/logout", undefined, { as: "none" }),
+  /** Stores this email and password can enter (one person, several stores). */
+  stores: (email: string, password: string) => request<{ stores: { id: string; name: string }[] }>("POST", "/v1/auth/stores", { email, password }).then((r) => r.stores),
   me: () => request<Me>("GET", "/v1/me"),
 
   // builder

@@ -14,7 +14,7 @@ import (
 func TestEveryRouteRequiresAccess(t *testing.T) {
 	e := setup(t)
 	public := map[string]bool{
-		"POST /v1/auth/login": true, "GET /v1/invitations/{token}": true, "POST /v1/invitations/{token}/accept": true,
+		"POST /v1/auth/login": true, "POST /v1/auth/stores": true, "GET /v1/invitations/{token}": true, "POST /v1/invitations/{token}/accept": true,
 		"POST /v1/stripe/webhook/{tenant}": true,
 	}
 	// What a publishable key may do: read the catalogue, simulate and buy.

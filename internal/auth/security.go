@@ -395,3 +395,41 @@ func (s *Service) AcceptInvitation(ctx context.Context, token, name, password st
 	})
 	return tenant, m, err
 }
+
+// StoreRef is a store a person can sign in to.
+type StoreRef struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// StoresFor lists the stores where email is an active member AND password is
+// that member's password. Checking the password per store is what makes this
+// safe: knowing an email (or owning another store where that email was added)
+// reveals nothing about the stores a person belongs to.
+func (s *Service) StoresFor(ctx context.Context, email, password string) ([]StoreRef, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	rows, err := s.DB.System.Query(ctx, `SELECT m.tenant_id, t.name, m.password_hash FROM members m JOIN tenants t ON t.id=m.tenant_id
+		WHERE m.email=$1 AND m.status='active' ORDER BY t.name LIMIT 20`, email)
+	if err != nil {
+		return nil, err
+	}
+	type cand struct{ id, name, hash string }
+	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (cand, error) {
+		var c cand
+		return c, r.Scan(&c.id, &c.name, &c.hash)
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := []StoreRef{}
+	for _, c := range list {
+		if CheckPassword(c.hash, password) {
+			out = append(out, StoreRef{ID: c.id, Name: c.name})
+		}
+	}
+	if len(list) == 0 {
+		// Same cost as a real check, so timing does not reveal whether the email exists.
+		CheckPassword("$argon2id$v=19$m=65536,t=2,p=2$c2FsdHNhbHRzYWx0c2FsdA$aGFzaGhhc2hoYXNoaGFzaGhhc2hoYXNoaGFzaGhhc2g", password)
+	}
+	return out, nil
+}

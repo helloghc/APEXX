@@ -178,3 +178,44 @@ func TestInvitationsTwoStepAndSessions(t *testing.T) {
 	}
 	e.must(204, "DELETE", "/v1/team/roles/atencion", e.adminA, nil)
 }
+
+// One person, several stores: the list only shows stores where the password
+// is really theirs, so nobody learns where an email belongs.
+func TestStoresForOnePerson(t *testing.T) {
+	e := setup(t)
+	mk := func(key, email, pass string) {
+		t.Helper()
+		e.must(201, "POST", "/v1/team/members", key, m{"email": email, "name": "Paula", "password": pass, "permissions": m{"catalog": "read"}})
+	}
+	mk(e.adminA, "paula@example.com", "Clave-de-paula-2026")
+	mk(e.adminB, "paula@example.com", "Clave-de-paula-2026")
+	// An attacker who owns store B adds the victim's email with a password of their own.
+	mk(e.adminA, "victima@example.com", "Clave-real-de-victima")
+	mk(e.adminB, "victima@example.com", "Clave-del-atacante-1")
+	stores := func(email, pass string) (int, []any) {
+		st, b := e.do("POST", "/v1/auth/stores", "", m{"email": email, "password": pass})
+		list, _ := b["stores"].([]any)
+		return st, list
+	}
+	if st, l := stores("PAULA@example.com", "Clave-de-paula-2026"); st != 200 || len(l) != 2 {
+		t.Fatalf("stores of a person in two stores = %d %v", st, l)
+	}
+	if st, l := stores("victima@example.com", "Clave-del-atacante-1"); st != 200 || len(l) != 1 || l[0].(map[string]any)["id"] != "store-b" {
+		t.Fatalf("the attacker's password revealed other stores: %d %v", st, l)
+	}
+	if st, _ := stores("paula@example.com", "equivocada-equivocada"); st != 401 {
+		t.Fatalf("wrong password = %d", st)
+	}
+	if st, _ := stores("nadie@example.com", "equivocada-equivocada"); st != 401 {
+		t.Fatalf("unknown email = %d", st)
+	}
+	// Each store keeps its own session: entering B does not open A.
+	_, lg := e.do("POST", "/v1/auth/login", "", m{"store": "store-b", "email": "victima@example.com", "password": "Clave-del-atacante-1"})
+	if st, _ := e.do("POST", "/v1/auth/login", "", m{"store": "store-a", "email": "victima@example.com", "password": "Clave-del-atacante-1"}); st != 401 {
+		t.Fatalf("the attacker's password opened the victim's store: %d", st)
+	}
+	me := e.must(200, "GET", "/v1/me", lg["token"].(string), nil)
+	if me["tenant"] != "store-b" {
+		t.Fatalf("session tenant = %v", me["tenant"])
+	}
+}

@@ -24,6 +24,8 @@ func (s *Server) routesAccount(handle func(string, http.HandlerFunc)) {
 	handle("DELETE /v1/me/sessions/{id}", s.authed("", "", s.revokeMySession))
 	handle("POST /v1/me/sessions/revoke-others", s.authed("", "", s.revokeOtherSessions))
 
+	handle("POST /v1/auth/stores", s.authStores)
+
 	handle("GET /v1/team/invitations", s.authed("team", auth.Read, s.listInvitations))
 	handle("POST /v1/team/invitations", s.authed("team", auth.Admin, s.createInvitation))
 	handle("DELETE /v1/team/invitations/{id}", s.authed("team", auth.Admin, s.revokeInvitation))
@@ -353,4 +355,35 @@ func (s *Server) deleteRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// authStores answers "which stores can I enter with this email and password?".
+// It is how one person manages several stores: the sign-in screen offers the
+// list, and the panel uses it to switch.
+func (s *Server) authStores(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	key := s.clientIP(r) + "|" + strings.ToLower(strings.TrimSpace(body.Email))
+	if s.loginBlocked(key) {
+		w.Header().Set("Retry-After", "60")
+		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "too_many_attempts", Detail: "Demasiados intentos; espera un minuto"})
+		return
+	}
+	list, err := s.Auth.StoresFor(r.Context(), body.Email, body.Password)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	if len(list) == 0 {
+		s.loginFailed(key)
+		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_credentials", Detail: "Correo o contraseña incorrectos"})
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"stores": list})
 }

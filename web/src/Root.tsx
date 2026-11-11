@@ -51,6 +51,67 @@ import { href, navigate, useRoute } from "@/router";
 
 const LAST_STORE = "apexx.lastStore";
 
+/** Another store of the same person: asks the password once and lists only the stores it opens. */
+function SwitchStore({ email, current }: { email: string; current: string }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [list, setList] = useState<{ id: string; name: string }[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function find(e: FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setBusy(true);
+    try {
+      const all = await api.stores(email, password);
+      const others = all.filter((x) => x.id !== current);
+      if (others.length === 0) setErr("Con este correo y contraseña solo tienes acceso a esta tienda.");
+      else setList(others);
+    } catch (e2) {
+      setErr(e2 instanceof ApiError && e2.status === 401 ? "La contraseña no es correcta." : errorMessage(e2));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function enter(id: string) {
+    setBusy(true);
+    try {
+      await api.logout().catch(() => undefined);
+      await api.login(id, email, password);
+      try {
+        window.localStorage.setItem(LAST_STORE, id);
+      } catch {
+        /* storage blocked */
+      }
+      window.location.hash = "";
+      window.location.reload();
+    } catch (e2) {
+      setErr(e2 instanceof ApiError && e2.problem.code === "totp_required" ? "Esa tienda pide tu código de verificación: cierra sesión y entra desde el inicio." : errorMessage(e2));
+      setBusy(false);
+    }
+  }
+  if (!open) return <button type="button" className="text-left text-sm text-primary hover:underline" onClick={() => setOpen(true)}>Cambiar de tienda</button>;
+  return (
+    <form className="grid gap-2 rounded-md border bg-card p-2" onSubmit={(e) => void find(e)}>
+      {list ? (
+        list.map((x) => (
+          <Button key={x.id} type="button" size="sm" variant="outline" disabled={busy} onClick={() => void enter(x.id)}>
+            {x.name} <span className="font-mono text-xs text-muted-foreground">{x.id}</span>
+          </Button>
+        ))
+      ) : (
+        <>
+          <label htmlFor="sw-pass" className="text-xs text-muted-foreground">Confirma tu contraseña para ver tus otras tiendas</label>
+          <Input id="sw-pass" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Button type="submit" size="sm" disabled={busy || !password}>Ver mis tiendas</Button>
+        </>
+      )}
+      {err && <p className="text-xs text-bad" role="alert">{err}</p>}
+      <button type="button" className="text-xs text-muted-foreground hover:underline" onClick={() => { setOpen(false); setList(null); setPassword(""); setErr(null); }}>Cancelar</button>
+    </form>
+  );
+}
+
 function ThemePicker() {
   const [id, setId] = useState(currentTheme);
   return (
@@ -168,20 +229,32 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
   const [err, setErr] = useState<string | null>(null);
   const [needCode, setNeedCode] = useState(false);
   const [code, setCode] = useState("");
+  const [choices, setChoices] = useState<{ id: string; name: string }[] | null>(null);
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function submit(e: FormEvent | null, pick?: string) {
+    e?.preventDefault();
     setErr(null);
-    if (!store.trim() || !email.trim() || !password) {
-      setErr("Completa la tienda, tu correo y tu contraseña.");
+    if (!email.trim() || !password) {
+      setErr("Escribe tu correo y tu contraseña.");
       return;
     }
     setBusy(true);
     try {
       credentials.save("");
-      await api.login(store.trim(), email.trim(), password, needCode ? code.trim() : undefined);
+      let target = (pick ?? store).trim();
+      if (!target) {
+        // No store typed: find the stores this person can enter.
+        const list = await api.stores(email.trim(), password);
+        if (list.length > 1) {
+          setChoices(list);
+          return;
+        }
+        target = list[0]?.id ?? "";
+        setStore(target);
+      }
+      await api.login(target, email.trim(), password, needCode ? code.trim() : undefined);
       try {
-        window.localStorage.setItem(LAST_STORE, store.trim());
+        window.localStorage.setItem(LAST_STORE, target);
       } catch {
         /* storage blocked */
       }
@@ -216,7 +289,17 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
         <CardContent>
           <form className="grid gap-4" onSubmit={(e) => void submit(e)} noValidate>
             {Boolean(error) && <Notice tone="bad">{errorMessage(error)}</Notice>}
-            <FormField id="login-store" label="Tienda" description="El identificador de tu tienda, por ejemplo mi-tienda.">
+            {choices && (
+              <div className="grid gap-2" role="group" aria-label="Elige la tienda">
+                <span className="text-sm font-medium">¿A qué tienda quieres entrar?</span>
+                {choices.map((c) => (
+                  <Button key={c.id} type="button" variant="outline" disabled={busy} onClick={() => { setStore(c.id); void submit(null, c.id); }}>
+                    {c.name} <span className="font-mono text-xs text-muted-foreground">{c.id}</span>
+                  </Button>
+                ))}
+              </div>
+            )}
+            <FormField id="login-store" label="Tienda (opcional)" description="Déjalo vacío y te mostramos tus tiendas. O escribe su identificador, por ejemplo mi-tienda.">
               <Input value={store} onChange={(e) => setStore(e.target.value)} autoComplete="organization" />
             </FormField>
             <FormField id="login-email" label="Correo">
@@ -421,6 +504,7 @@ function Shell({ me }: { me: Me }) {
             </span>
           </div>
           <ThemePicker />
+          {me.kind === "member" && <SwitchStore email={me.email ?? ""} current={me.tenant} />}
           {me.kind === "member" && (
             <a href={href("cuenta")} className="text-sm text-primary hover:underline">
               Mi cuenta y seguridad
