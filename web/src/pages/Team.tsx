@@ -58,7 +58,7 @@ export function Team({ me }: { me: Me }) {
                 <strong>{m.name || m.email}</strong>
                 <div className="text-xs text-muted-foreground">{m.email}</div>
               </TableCell>
-              <TableCell>{m.owner ? <Badge>Dueño</Badge> : <PermSummary perms={m.permissions} />}</TableCell>
+              <TableCell>{m.owner ? <Badge>Dueño</Badge> : m.sellerId ? <Badge variant="secondary">Vendedor: solo su portal</Badge> : <PermSummary perms={m.permissions} />}</TableCell>
               <TableCell>
                 <StatusPill status={m.status} />
                 {m.twoStep && <Badge variant="ok" className="ml-2">2 pasos</Badge>}

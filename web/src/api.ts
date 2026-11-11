@@ -186,6 +186,7 @@ export interface Member {
   createdAt: string;
   lastLoginAt: string | null;
   twoStep?: boolean;
+  sellerId?: string;
 }
 
 export interface PaymentAccount {

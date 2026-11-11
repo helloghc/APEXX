@@ -147,3 +147,29 @@ F1 Catálogo y medios · F2 Promociones y precios · F3 Clientes, postventa y co
 - Resiliencia (caída de proceso, de base de datos, de proveedor de pagos, multi-nodo).
 - Seguridad (aislamiento entre tiendas en cada tabla nueva, permisos por módulo, datos personales cifrados).
 - Rendimiento (Core Web Vitals de cada tema, latencias de API).
+
+## Estado tras las sub-fases A a L (2026-11-11)
+
+| Área de VTEX | En Apexx | Estado |
+| --- | --- | --- |
+| Catálogo, categorías, marcas, colecciones, especificaciones | Catálogo | Hecho |
+| Promociones, cupones, tablas de precio | Promociones | Hecho |
+| Pedidos (OMS), devoluciones, cambios | Pedidos | Hecho |
+| Master Data: clientes | Clientes | Hecho |
+| Master Data: entidades propias y formularios | Datos y formularios | Hecho |
+| Message Center | Correos | Hecho |
+| Logística: muelles, almacenes, transportadoras, tarifas | Configuración › Ubicaciones y Envíos | Hecho |
+| Impuestos | Configuración › Impuestos | Hecho (sin timbrado CFDI) |
+| Intelligent Search: sinónimos, merchandising, redirecciones | Búsqueda y opiniones | Hecho |
+| Reviews & Ratings, Wish List (apps) | Búsqueda y opiniones | Hecho |
+| Gift Card, crédito de cliente | Tarjetas y antifraude | Hecho |
+| Antifraude (conector) | Tarjetas y antifraude | Reglas propias; Stripe Radar del lado del pago |
+| Meses sin intereses (condiciones de pago) | Tarjetas y antifraude | Hecho (requiere Stripe real) |
+| Subscriptions | Suscripciones | Hecho (requiere Stripe real) |
+| Marketplace: sellers, comisiones | Marketplace y portal de vendedor | Hecho (pago a vendedores registrado a mano) |
+| B2B Suite: organizaciones, crédito | Empresas (B2B) | Hecho (sin flujos de aprobación ni precio por SKU) |
+| License Manager: usuarios, roles, 2FA | Equipo y Mi cuenta | Hecho |
+| Insights, reportes | Inicio, Reportes, Operación | Hecho |
+| Feeds para Google y Meta (apps) | Configuración › Anuncios y catálogos | Hecho |
+| CMS, Site Editor | Diseño de la tienda | Hecho (encabezado y pie aún no editables como secciones) |
+| Multi-idioma, multi-tienda con una cuenta | — | Pendiente |

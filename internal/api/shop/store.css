@@ -395,3 +395,11 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .pubform .field{display:grid;gap:6px}
 .pubform input:not([type=checkbox]),.pubform select,.pubform textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);color:var(--c-text);font:inherit}
 .pubform .btn{width:auto;justify-self:start}
+
+/* Encabezado en celular: el logotipo cede espacio para que carrito y favoritos siempre quepan */
+@media (max-width:899px){
+  .hdr-inner{gap:8px}
+  .hdr-logo{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(1.05rem,5.2vw,1.6rem)}
+  .hdr-tools{gap:0;flex:none}
+  .hdr-wish{width:36px}
+}

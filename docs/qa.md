@@ -135,3 +135,23 @@ Evidencia: captura o video, hora exacta (para buscar en los logs)
 - No hay cuentas de comprador (historial de pedidos del cliente); la confirmación llega en la página de gracias y la factura por correo vía Stripe.
 - La factura de Stripe no es CFDI; el CFDI llegará con el conector de Facturapi.
 - En modo sandbox no se envían correos.
+
+## 7. Casos de las sub-fases A a L
+
+Cada renglón es algo que una persona puede probar en la tienda de QA. El
+recorrido automático equivalente está en `qa/human-journey.js` y `qa/panel-crawl.js`.
+
+| Quién | Qué probar | Qué debe pasar |
+| --- | --- | --- |
+| Comprador | Buscar con un sinónimo o con un error de dedo | Encuentra los productos; las sugerencias aparecen al escribir |
+| Comprador | Guardar favoritos, opinar de un producto | El corazón queda marcado; la opinión avisa que se publicará al revisarse |
+| Comprador | Pagar con tarjeta de regalo que cubre parte | El resumen muestra lo cubierto y "A pagar"; solo se cobra el resto |
+| Comprador | Elegir "Suscríbete" en un producto que lo ofrece | Ve el descuento y la frecuencia; recibe un correo con el enlace para pausar o cancelar |
+| Comprador de empresa | Entrar a su cuenta y pagar a crédito | Ve el precio de empresa y el crédito disponible; no puede pasar del límite |
+| Dueño | Enviar parte de un pedido, reembolsar una pieza, cancelar | El cliente recibe correos; el inventario solo recupera lo no enviado |
+| Dueño | Reembolsar como saldo a favor | No sale dinero; el cliente recibe un código |
+| Dueño | Activar reglas antifraude y comprar con un correo bloqueado | La compra se rechaza con mensaje neutro; queda en Operación › Actividad |
+| Dueño | Invitar a alguien por correo y activar dos pasos | La persona crea su contraseña; al entrar se le pide el código de su app |
+| Miembro con un solo permiso | Abrir secciones que no le tocan | "Sin acceso" en pantalla y 403 en la API |
+| Vendedor | Entrar a su portal y registrar una guía | Solo ve sus productos y pedidos; nunca el correo del cliente |
+| Operador | Matar el proceso o la base en plena compra | `qa/invariants.sql` da 0 en todo; la tienda vuelve sola |
