@@ -1,0 +1,149 @@
+{{define "content"}}
+<div class="acct">
+{{if or (eq .View "login") (eq .View "code")}}
+<h1>{{.Title}}</h1>
+<div class="checkout">
+<div>
+{{with .Notice}}<p class="acct-ok" role="status">{{.}}</p>{{end}}
+{{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+{{if eq .View "code"}}
+<form method="post" action="{{.Base}}/cuenta">
+<input type="hidden" name="accion" value="verificar"><input type="hidden" name="email" value="{{.Email}}">
+<fieldset><legend>Código de acceso</legend>
+<p class="muted">Lo enviamos a <strong>{{.Email}}</strong>.</p>
+<div class="field"><label for="codigo">Código de 6 dígitos</label><input id="codigo" name="codigo" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus></div>
+<button class="btn" type="submit">Entrar</button>
+</fieldset>
+</form>
+<form method="post" action="{{.Base}}/cuenta" class="acct-inline">
+<input type="hidden" name="accion" value="codigo"><input type="hidden" name="email" value="{{.Email}}">
+<button class="linkbtn" type="submit">Enviar otro código</button> · <a href="{{.Base}}/cuenta">Usar otro correo</a>
+</form>
+{{else}}
+<form method="post" action="{{.Base}}/cuenta">
+<input type="hidden" name="accion" value="codigo">
+<fieldset><legend>Entra o crea tu cuenta</legend>
+<p class="muted">Escribe tu correo y te enviamos un código. No necesitas contraseña.</p>
+<div class="field"><label for="email">Correo</label><input id="email" name="email" type="email" autocomplete="email" value="{{.Email}}" required></div>
+<button class="btn" type="submit">Enviarme un código</button>
+</fieldset>
+</form>
+<details class="acct-alt"><summary>Entrar con contraseña</summary>
+<form method="post" action="{{.Base}}/cuenta">
+<input type="hidden" name="accion" value="entrar">
+<fieldset>
+<div class="field"><label for="email2">Correo</label><input id="email2" name="email" type="email" autocomplete="username" value="{{.Email}}" required></div>
+<div class="field"><label for="contrasena">Contraseña</label><input id="contrasena" name="contrasena" type="password" autocomplete="current-password" required></div>
+<button class="btn btn-ghost" type="submit">Entrar</button>
+</fieldset>
+</form>
+</details>
+{{end}}
+</div>
+<aside class="summary" aria-label="Tu cuenta"><h2>Con tu cuenta puedes</h2>
+<p>Ver tus pedidos y rastrear cada envío.</p><p>Descargar tus facturas.</p><p>Guardar tus direcciones para comprar más rápido.</p>
+<p class="muted">Si ya compraste como invitado, entra con el mismo correo y verás esos pedidos.</p></aside>
+</div>
+{{else}}
+<p class="crumbs"><a href="{{.Base}}/index">Inicio</a> / {{if eq .View "home"}}Mi cuenta{{else}}<a href="{{.Base}}/cuenta">Mi cuenta</a> / {{.Title}}{{end}}</p>
+<h1>{{.Title}}</h1>
+<nav class="acct-nav" aria-label="Mi cuenta">
+<a href="{{.Base}}/cuenta"{{if or (eq .View "home") (eq .View "order")}} aria-current="page"{{end}}>Pedidos</a>
+<a href="{{.Base}}/cuenta?ver=direcciones"{{if eq .View "addresses"}} aria-current="page"{{end}}>Direcciones</a>
+<a href="{{.Base}}/cuenta?ver=datos"{{if eq .View "profile"}} aria-current="page"{{end}}>Mis datos</a>
+<form method="post" action="{{.Base}}/cuenta"><input type="hidden" name="accion" value="salir"><button class="linkbtn" type="submit">Cerrar sesión</button></form>
+</nav>
+{{with .Notice}}<p class="acct-ok" role="status">{{.}}</p>{{end}}
+{{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+
+{{if eq .View "home"}}
+<p class="muted">{{if .Customer.Name}}Hola, {{.Customer.Name}}. {{end}}Sesión iniciada como {{.Customer.Email}}.</p>
+{{if .Orders}}
+<table><thead><tr><th>Pedido</th><th>Fecha</th><th>Estado</th><th class="num">Total</th></tr></thead><tbody>
+{{range .Orders}}<tr><td><a href="{{$.Base}}/cuenta?pedido={{.ID}}">#{{.Number}}</a><br><span class="muted">{{.Items}} {{if eq .Items 1}}pieza{{else}}piezas{{end}}</span></td><td>{{.Date}}</td><td>{{.Status}}</td><td class="num">{{.Total}}</td></tr>
+{{end}}</tbody></table>
+{{with .NextPage}}<p class="more"><a class="btn btn-ghost" href="{{$.Base}}/cuenta?cursor={{.}}">Ver pedidos anteriores</a></p>{{end}}
+{{else}}
+<p class="empty">Todavía no tienes pedidos con este correo.</p>
+<p><a class="btn" href="{{.Base}}/c">Ver productos</a></p>
+{{end}}
+
+{{else if eq .View "order"}}
+{{with .Order}}
+<p class="muted">{{.Date}} · <strong>{{.Status}}</strong></p>
+<div class="checkout">
+<div>
+<table><thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Total</th></tr></thead><tbody>
+{{range .Lines}}<tr><td>{{.Title}}</td><td class="num">{{.Qty}}</td><td class="num">{{.Total}}</td></tr>
+{{end}}</tbody></table>
+{{range .Shipments}}
+<section class="acct-box" aria-label="Envío {{.Number}}"><h2>Envío {{.Number}} · {{.Status}}</h2>
+<p class="muted">{{range $i, $it := .Items}}{{if $i}}, {{end}}{{$it.Qty}} × {{$it.Title}}{{end}}</p>
+{{if .Tracking}}<p>{{with .Carrier}}{{.}} · {{end}}Guía <strong>{{.Tracking}}</strong>{{with .Date}} · {{.}}{{end}}</p>{{end}}
+{{with .URL}}<p><a class="btn btn-ghost" href="{{.}}" rel="noopener noreferrer" target="_blank">Rastrear envío</a></p>{{end}}
+</section>
+{{end}}
+{{if .Notes}}<section class="acct-box" aria-label="Mensajes de la tienda"><h2>Mensajes de la tienda</h2>
+{{range .Notes}}<p>{{.Body}}<br><span class="muted">{{.Date}}</span></p>{{end}}</section>{{end}}
+{{if .Returns}}<section class="acct-box" aria-label="Devoluciones"><h2>Devoluciones</h2>
+{{range .Returns}}<p>{{.Number}} · {{.Status}}</p>{{end}}</section>{{end}}
+</div>
+<aside class="summary" aria-label="Resumen del pedido"><h2>Resumen</h2>
+<table class="totals"><tbody>
+<tr><td>Productos</td><td class="num">{{.Items}}</td></tr>
+{{with .Discounts}}<tr><td>Descuentos</td><td class="num">−{{.}}</td></tr>{{end}}
+<tr><td>Envío</td><td class="num">{{.Shipping}}</td></tr>
+<tr class="grand"><td>Total</td><td class="num">{{.Total}}</td></tr>
+{{with .Refunded}}<tr><td>Reembolsado</td><td class="num">{{.}}</td></tr>{{end}}
+{{with .Balance}}<tr><td>Saldo por pagar</td><td class="num">{{.}}</td></tr>{{end}}
+</tbody></table>
+{{with .Address}}<p class="muted">Se envía a: {{.}}</p>{{end}}
+{{if .InvoiceURL}}<p><a class="btn btn-ghost" href="{{.InvoiceURL}}" rel="noopener noreferrer" target="_blank">Descargar factura</a></p>{{else}}<p class="muted">La factura aparecerá aquí cuando esté lista.</p>{{end}}
+</aside>
+</div>
+{{end}}
+
+{{else if eq .View "addresses"}}
+{{range .Addresses}}
+<section class="acct-box"><h2>{{if .Name}}{{.Name}}{{else}}Dirección{{end}}{{if .Default}} · principal{{end}}</h2>
+<p>{{.Line1}}{{with .Line2}}, {{.}}{{end}}<br>{{with .City}}{{.}}, {{end}}{{with .State}}{{.}}, {{end}}C.P. {{.PostalCode}}{{with .Phone}}<br>{{.}}{{end}}</p>
+<form method="post" action="{{$.Base}}/cuenta"><input type="hidden" name="accion" value="borrar-direccion"><input type="hidden" name="id" value="{{.ID}}"><button class="linkbtn" type="submit">Eliminar</button></form>
+</section>
+{{else}}<p class="empty">No tienes direcciones guardadas.</p>{{end}}
+<div class="checkout"><form method="post" action="{{.Base}}/cuenta">
+<input type="hidden" name="accion" value="direccion">
+<fieldset><legend>Agregar dirección</legend>
+<div class="field"><label for="nombre">Quién recibe</label><input id="nombre" name="nombre" autocomplete="name" maxlength="120"></div>
+<div class="field"><label for="calle">Calle y número</label><input id="calle" name="calle" autocomplete="address-line1" maxlength="200" required></div>
+<div class="field"><label for="interior">Interior, colonia o referencias (opcional)</label><input id="interior" name="interior" autocomplete="address-line2" maxlength="200"></div>
+<div class="field"><label for="cp">Código postal</label><input id="cp" name="cp" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="postal-code" required></div>
+<div class="field"><label for="ciudad">Ciudad o alcaldía</label><input id="ciudad" name="ciudad" autocomplete="address-level2" maxlength="120" required></div>
+<div class="field"><label for="estado">Estado</label><input id="estado" name="estado" autocomplete="address-level1" maxlength="120" required></div>
+<div class="field"><label for="telefono">Teléfono (opcional)</label><input id="telefono" name="telefono" type="tel" autocomplete="tel" maxlength="30"></div>
+<p><label><input type="checkbox" name="principal" value="1"> Usar como dirección principal</label></p>
+<button class="btn" type="submit">Guardar dirección</button>
+</fieldset></form></div>
+
+{{else if eq .View "profile"}}
+<div class="checkout"><div>
+<form method="post" action="{{.Base}}/cuenta">
+<input type="hidden" name="accion" value="datos">
+<fieldset><legend>Tus datos</legend>
+<p class="muted">Correo: <strong>{{.Customer.Email}}</strong></p>
+<div class="field"><label for="nombre">Nombre completo</label><input id="nombre" name="nombre" autocomplete="name" maxlength="120" value="{{.Customer.Name}}"></div>
+<div class="field"><label for="telefono">Teléfono</label><input id="telefono" name="telefono" type="tel" autocomplete="tel" maxlength="30" value="{{.Customer.Phone}}"></div>
+<p><label><input type="checkbox" name="novedades" value="1"{{if .Customer.MarketingConsent}} checked{{end}}> Quiero recibir novedades y ofertas por correo</label></p>
+<button class="btn" type="submit">Guardar</button>
+</fieldset></form>
+<form method="post" action="{{.Base}}/cuenta">
+<input type="hidden" name="accion" value="contrasena">
+<fieldset><legend>Contraseña (opcional)</legend>
+<p class="muted">{{if .Customer.HasPassword}}Ya tienes contraseña. Escribe una nueva para cambiarla, o deja el campo vacío y guarda para quitarla.{{else}}Siempre puedes entrar con un código por correo. Si prefieres, crea una contraseña.{{end}}</p>
+<div class="field"><label for="contrasena">Nueva contraseña (mínimo 10 caracteres)</label><input id="contrasena" name="contrasena" type="password" autocomplete="new-password" minlength="10" maxlength="200"></div>
+<button class="btn btn-ghost" type="submit">Guardar contraseña</button>
+</fieldset></form>
+</div></div>
+{{end}}
+{{end}}
+</div>
+{{end}}

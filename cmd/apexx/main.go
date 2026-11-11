@@ -25,10 +25,13 @@ import (
 	"github.com/helloghc/apexx/internal/api"
 	"github.com/helloghc/apexx/internal/auth"
 	"github.com/helloghc/apexx/internal/builder"
+	"github.com/helloghc/apexx/internal/cart"
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/crypto"
+	"github.com/helloghc/apexx/internal/customers"
 	"github.com/helloghc/apexx/internal/media"
 	"github.com/helloghc/apexx/internal/money"
+	"github.com/helloghc/apexx/internal/notify"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/pricing"
@@ -189,7 +192,42 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		pa.Sandbox = payments.NewSandbox()
 		log.Warn("payments running in SANDBOX mode: no real charges")
 	}
-	ord := &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve}
+	publicURL := env("APEXX_PUBLIC_URL", "http://localhost:8080")
+	mail := &notify.Service{DB: db, Keys: keys, AllowPrivate: env("APEXX_SMTP_ALLOW_PRIVATE", "false") == "true"}
+	cust := &customers.Service{DB: db, Keys: keys, Notify: mail, PublicURL: publicURL,
+		Simulate: func(tenant, channel string, items []customers.CartItem) ([]customers.CartLine, int64, string, bool) {
+			t, ok := proj.Tenant(tenant)
+			if !ok {
+				return nil, 0, "", false
+			}
+			req := cart.Request{Channel: channel}
+			for _, it := range items {
+				req.Items = append(req.Items, cart.Item{SKU: it.SKU, Qty: it.Qty})
+			}
+			res, err := t.Simulate(req)
+			if err != nil {
+				return nil, 0, "", false
+			}
+			lines := make([]customers.CartLine, 0, len(res.Lines))
+			for _, l := range res.Lines {
+				lines = append(lines, customers.CartLine{SKU: l.SKU, Title: l.Title, Qty: l.Qty, Unit: l.Unit.Amount, Total: l.Total.Amount})
+			}
+			return lines, res.Totals.Items.Amount, string(res.Totals.Items.Currency), true
+		}}
+	ord := &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve, Notify: mail, PublicURL: publicURL}
+	resilience.Every(ctx, log, "mailer", 2*time.Second, func(ctx context.Context) error {
+		_, err := mail.Send(ctx)
+		return err
+	})
+	resilience.Every(ctx, log, "abandoned-carts", time.Minute, func(ctx context.Context) error {
+		_, err := cust.RemindDue(ctx)
+		return err
+	})
+	resilience.Every(ctx, log, "refund-reconciler", time.Minute, func(ctx context.Context) error {
+		_, err := ord.ReconcileRefunds(ctx, 2*time.Minute)
+		return err
+	})
+	resilience.Every(ctx, log, "shopper-purge", time.Hour, cust.Purge)
 
 	// Background workers, each supervised and restarted on failure.
 	resilience.Supervise(ctx, log, "projector", func(ctx context.Context) error { proj.Run(ctx); return nil })
@@ -249,7 +287,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 
 	srv := &api.Server{
 		DB: db, Proj: proj, Auth: &auth.Service{DB: db}, Orders: ord, Keys: keys, Library: lib, Log: log,
-		Admin: webui.Handler(), Payments: pa, Webhooks: wh, Bulkhead: resilience.NewBulkhead(256),
+		Admin: webui.Handler(), Payments: pa, Webhooks: wh, Customers: cust, Notify: mail, Bulkhead: resilience.NewBulkhead(256),
 		SecureCookies: env("APEXX_SECURE_COOKIES", "true") == "true",
 		TrustProxy:    env("APEXX_TRUST_PROXY", "false") == "true",
 		MetricsToken:  os.Getenv("APEXX_METRICS_TOKEN"),

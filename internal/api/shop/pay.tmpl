@@ -1,0 +1,27 @@
+{{define "content"}}
+<div class="acct">
+{{if .Missing}}
+<h1>Este enlace ya no está disponible</h1>
+<p class="muted">El enlace de pago venció o fue reemplazado. Escribe a la tienda para que te envíen uno nuevo.</p>
+<p><a class="btn btn-ghost" href="{{.Base}}/index">Ir a la tienda</a></p>
+{{else if .Paid}}
+<h1>Pago recibido</h1>
+<p>{{if eq .Kind "draft"}}Tu pedido quedó pagado.{{else}}El saldo de tu pedido #{{.Number}} quedó pagado.{{end}} Te enviamos la confirmación por correo.</p>
+<p><a class="btn btn-ghost" href="{{.Base}}/cuenta">Ver mis pedidos</a></p>
+{{else}}
+<h1>{{if eq .Kind "draft"}}Paga tu pedido{{else}}Paga el saldo de tu pedido #{{.Number}}{{end}}</h1>
+<div class="checkout">
+<form data-pay-link="{{.Token}}" novalidate>
+<fieldset><legend>Pago</legend><div data-payment><p class="muted">Cargando métodos de pago…</p></div></fieldset>
+<p class="error" role="alert" data-error></p>
+<button class="btn" type="submit" data-pay>Pagar {{.Total}}</button>
+<noscript><p class="error">Activa JavaScript para pagar de forma segura con Stripe.</p></noscript>
+</form>
+<aside class="summary" aria-label="Resumen"><h2>Resumen</h2>
+{{range .Lines}}<p>{{.Qty}} × {{.Title}} <span class="muted">{{.Total}}</span></p>{{end}}
+<table class="totals"><tbody><tr class="grand"><td>Total a pagar</td><td class="num">{{.Total}}</td></tr></tbody></table>
+</aside>
+</div>
+{{end}}
+</div>
+{{end}}

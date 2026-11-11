@@ -20,8 +20,10 @@ import (
 	"github.com/helloghc/apexx/internal/auth"
 	"github.com/helloghc/apexx/internal/builder"
 	"github.com/helloghc/apexx/internal/crypto"
+	"github.com/helloghc/apexx/internal/customers"
 	"github.com/helloghc/apexx/internal/httpx"
 	"github.com/helloghc/apexx/internal/media"
+	"github.com/helloghc/apexx/internal/notify"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/resilience"
@@ -42,6 +44,8 @@ type Server struct {
 	Bulkhead      *resilience.Bulkhead
 	Payments      *PaymentAccounts
 	Webhooks      *webhooks.Service
+	Customers     *customers.Service
+	Notify        *notify.Service
 	SecureCookies bool
 	TrustProxy    bool          // honour X-Forwarded-For (only behind our own proxy)
 	MetricsToken  string        // bearer token for /metrics; empty = loopback/private callers only
@@ -113,7 +117,6 @@ func (s *Server) Routes() http.Handler {
 
 	// Orders and payments.
 	handle("POST /v1/checkout", s.authed("", "", s.checkout))
-	handle("GET /v1/orders", s.authed("orders", auth.Read, s.listOrders))
 	handle("GET /v1/orders/{id}", s.authed("orders", auth.Read, s.getOrder))
 	handle("POST /v1/orders/{id}/fulfill", s.authed("orders", auth.Edit, s.fulfillOrder))
 	handle("POST /v1/orders/{id}/cancel", s.authed("orders", auth.Edit, s.cancelOrder))
@@ -163,6 +166,9 @@ func (s *Server) Routes() http.Handler {
 	handle("GET /s/{tenant}/api/config", s.shopConfig)
 	handle("POST /s/{tenant}/api/simulate", s.shopSimulate)
 	handle("POST /s/{tenant}/api/checkout", s.shopCheckout)
+
+	// Customers, after-sale and notifications (routes_customers.go).
+	s.routesCustomers(handle)
 
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))

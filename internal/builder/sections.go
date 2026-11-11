@@ -80,6 +80,7 @@ func DefaultSections() []SectionDefinition {
 				`<a class="hdr-logo" href="index">{{.S.logoText}}</a>` +
 				`<nav class="hdr-nav" aria-label="Principal"><ul>{{range links .S.menu}}<li><a href="{{.URL}}">{{.Label}}</a></li>{{end}}</ul></nav>` +
 				`<div class="hdr-tools">{{if .S.showSearch}}<form class="hdr-search" action="c" role="search"><label for="hq-{{.ID}}" class="sr">Buscar productos</label><input id="hq-{{.ID}}" name="q" type="search" placeholder="Buscar"><button type="submit" aria-label="Buscar"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></form>{{end}}` +
+				`<a class="hdr-cart" href="cuenta"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sr">Mi cuenta</span></a>` +
 				`<a class="hdr-cart" href="cart"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 7h14l-1.5 12h-11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="2"/></svg><span class="sr">Carrito</span><span class="hdr-count" data-cart-count aria-live="polite">0</span></a></div>` +
 				`</div></header>`,
 		},
