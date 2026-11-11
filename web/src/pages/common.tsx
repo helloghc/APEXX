@@ -91,6 +91,21 @@ const STATUS: Record<string, { label: string; tone: "ok" | "warn" | "bad" }> = {
   voided: { label: "Anulada", tone: "bad" },
   captured: { label: "Cobrado", tone: "ok" },
   authorized: { label: "Autorizado", tone: "warn" },
+  unfulfilled: { label: "Sin enviar", tone: "warn" },
+  partial: { label: "Envío parcial", tone: "warn" },
+  shipped: { label: "En camino", tone: "ok" },
+  balance_due: { label: "Saldo pendiente", tone: "warn" },
+  partially_refunded: { label: "Reembolso parcial", tone: "warn" },
+  requested: { label: "Solicitada", tone: "warn" },
+  received: { label: "Recibida", tone: "ok" },
+  completed: { label: "Completada", tone: "ok" },
+  succeeded: { label: "Hecho", tone: "ok" },
+  open: { label: "Abierto", tone: "warn" },
+  sent: { label: "Enviado", tone: "ok" },
+  queued: { label: "En cola", tone: "warn" },
+  recovered: { label: "Recuperado", tone: "ok" },
+  dismissed: { label: "Descartado", tone: "bad" },
+  reminded: { label: "Recordado", tone: "ok" },
 };
 
 export function StatusPill({ status }: { status: string }) {

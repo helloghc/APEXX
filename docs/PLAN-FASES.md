@@ -7,8 +7,8 @@ Avances parciales de agentes detenidos: `.claude/worktrees/agent-*` (local, no e
 | --- | --- | --- |
 | A | Catálogo completo: categorías, marcas, colecciones, variantes, atributos, medios, CSV, filtros en tienda | **Hecha**: backend, admin (productos, editor con variantes, categorías, colecciones, marcas, atributos, medios, importar/exportar), filtros y páginas de categoría/colección en tienda |
 | B | Promociones, cupones, campañas, listas de precios, simulador | **Hecha**: motor con 9 tipos y explicación, campañas, cupones (uno y en lote), listas de precios, cambio masivo con vista previa, historial, simulador, cupón en el carrito |
-| C | Clientes, cuentas de comprador, envíos con guía, reembolsos parciales, devoluciones, edición de pedidos | Pendiente (parcial en abc54900c45f7ea4e) |
-| D | Correos transaccionales, bitácora, carritos abandonados, newsletter | Pendiente |
+| C | Clientes, cuentas de comprador, envíos con guía, reembolsos parciales, devoluciones, edición de pedidos | **Hecha**: clientes (lista, ficha, segmentos por reglas, etiquetas, notas), cuentas de comprador con código por correo, envíos parciales con guía, reembolsos parciales idempotentes, devoluciones (RMA), pedidos borrador, vistas guardadas y exportación |
+| D | Correos transaccionales, bitácora, carritos abandonados, newsletter | **Hecha**: 9 plantillas editables con vista previa en vivo y correo de prueba, bitácora de enviados con reintento, remitente/marca/proveedor (prueba, SMTP, SendGrid), carritos abandonados con recordatorio, boletín |
 | E | Almacenes, zonas y tarifas de envío, transportistas, retiro, impuestos | Pendiente (parcial en a50473b7393f14fc8) |
 | F | Configuración de tienda, políticas, menús, redirecciones, sitemap, dominios | Pendiente |
 | G | Panel de inicio, embudo, reportes, registro de actividad | Pendiente (parcial en ad803f007f615fa88) |

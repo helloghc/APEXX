@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent } from "lucide-react";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -27,7 +27,9 @@ import { Home } from "@/pages/Home";
 const Editor = lazy(() => import("@/App").then((m) => ({ default: m.Editor })));
 const Catalog = lazy(() => import("@/pages/catalog/index").then((m) => ({ default: m.Catalog })));
 const Promotions = lazy(() => import("@/pages/promotions/index").then((m) => ({ default: m.Promotions })));
-const Orders = lazy(() => import("@/pages/Orders").then((m) => ({ default: m.Orders })));
+const Orders = lazy(() => import("@/pages/orders/index").then((m) => ({ default: m.Orders })));
+const Customers = lazy(() => import("@/pages/customers/index").then((m) => ({ default: m.Customers })));
+const Notifications = lazy(() => import("@/pages/notifications/index").then((m) => ({ default: m.Notifications })));
 const Team = lazy(() => import("@/pages/Team").then((m) => ({ default: m.Team })));
 const Payments = lazy(() => import("@/pages/Payments").then((m) => ({ default: m.Payments })));
 const Connectors = lazy(() => import("@/pages/Connectors").then((m) => ({ default: m.Connectors })));
@@ -181,6 +183,8 @@ const ICONS: Record<string, typeof HomeIcon> = {
   catalogo: Boxes,
   promociones: BadgePercent,
   pedidos: Receipt,
+  clientes: Contact,
+  correos: Mails,
   equipo: Users,
   pagos: CreditCard,
   conectores: Cable,
@@ -223,7 +227,13 @@ function Shell({ me }: { me: Me }) {
       body = <Promotions me={me} route={route} />;
       break;
     case "pedidos":
-      body = <Orders me={me} orderId={route[1]} />;
+      body = <Orders me={me} route={route} />;
+      break;
+    case "clientes":
+      body = <Customers me={me} route={route} />;
+      break;
+    case "correos":
+      body = <Notifications me={me} route={route} />;
       break;
     case "equipo":
       body = <Team me={me} />;
