@@ -8,7 +8,9 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -20,6 +22,7 @@ type Keyring struct {
 	master cipher.AEAD
 	mu     sync.RWMutex
 	cache  map[string]cipher.AEAD
+	mac    map[string][]byte // per-tenant key for keyed hashes, derived from the data key
 }
 
 // NewKeyring builds a keyring from a 64-hex-character master key.
@@ -32,7 +35,7 @@ func NewKeyring(masterHex string) (*Keyring, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Keyring{master: a, cache: map[string]cipher.AEAD{}}, nil
+	return &Keyring{master: a, cache: map[string]cipher.AEAD{}, mac: map[string][]byte{}}, nil
 }
 
 func newAEAD(k []byte) (cipher.AEAD, error) {
@@ -77,10 +80,31 @@ func (k *Keyring) Load(tenant string, wrapped []byte) error {
 	if err != nil {
 		return err
 	}
+	mk := hmac.New(sha256.New, dk)
+	mk.Write([]byte("apexx-keyed-hash-v1"))
 	k.mu.Lock()
 	k.cache[tenant] = a
+	k.mac[tenant] = mk.Sum(nil)
 	k.mu.Unlock()
 	return nil
+}
+
+// Hash returns a keyed hash (HMAC-SHA-256 with a key derived from the tenant
+// data key) of data. It lets analytics group by a personal value, such as an
+// e-mail, without storing it: the hash is stable per tenant, differs between
+// tenants and cannot be reversed or recomputed without the tenant key.
+func (k *Keyring) Hash(tenant, purpose, data string) ([]byte, error) {
+	k.mu.RLock()
+	key := k.mac[tenant]
+	k.mu.RUnlock()
+	if key == nil {
+		return nil, ErrNoKey
+	}
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(purpose))
+	h.Write([]byte{0})
+	h.Write([]byte(data))
+	return h.Sum(nil), nil
 }
 
 // ErrNoKey means the tenant key was not loaded.
