@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, CircleSlash, Clock, Copy, Loader2, Plus, Ticket, Trash2 } from "lucide-react";
-import { ApiError, errorMessage, type Me } from "@/api";
+import { ApiError, errorMessage, request, type Me } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -249,7 +249,7 @@ function Builder({ me, saved, redemptions }: { me: Me; saved?: PromotionView; re
                 }}
                 options={[
                   { value: "all", label: "Todo el catálogo" },
-                  { value: "some", label: "Productos específicos", help: "Por marca, categoría, producto o variante." },
+                  { value: "some", label: "Productos específicos", help: "Por marca, categoría, atributo, producto o variante." },
                 ]}
               />
               {scoped && (
@@ -780,6 +780,7 @@ function TargetFields({
           <ChipInput values={target.collections ?? []} onChange={(v) => set({ collections: v })} suggestions={collections} />
         </FormField>
       ) : null}
+      <AttributeTarget value={target.attributes ?? {}} onChange={(attributes) => set({ attributes: Object.keys(attributes).length ? attributes : undefined })} />
       <Field label="Productos y variantes" hint="Si eliges marcas o categorías además de productos, deben cumplirse ambas condiciones.">
         <PickedList items={[...products, ...skus]} onRemove={(id) => set({ productIds: (target.productIds ?? []).filter((x) => x !== id), skus: (target.skus ?? []).filter((x) => x !== id) })} />
         <div className="flex flex-wrap gap-2">
@@ -813,5 +814,35 @@ function TargetFields({
         }}
       />
     </div>
+  );
+}
+
+/** Products by attribute value ("Material: Algodón"), from the catalog's attributes. */
+function AttributeTarget({ value, onChange }: { value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+  const q = useQuery({ queryKey: ["attributes"], queryFn: () => request<{ items: { id: string; name: string; kind: string; options?: string[] }[] }>("GET", "/v1/catalog/attributes").then((r) => r.items) });
+  const attrs = q.data ?? [];
+  const entries = Object.entries(value);
+  if (attrs.length === 0 && entries.length === 0) return <p className="text-sm text-muted-foreground">Para elegir productos por atributo (por ejemplo Material: Algodón), crea atributos en Catálogo → Atributos.</p>;
+  const rename = (from: string, to: string) => { const n: Record<string, string> = {}; for (const [k, v] of entries) n[k === from ? to : k] = v; onChange(n); };
+  return (
+    <Field label="Por atributo" hint="Solo aplica a productos con ese valor en su ficha, por ejemplo Material: Algodón.">
+      <div className="grid gap-2">
+        {entries.map(([k, v]) => {
+          const def = attrs.find((a) => a.id === k || a.name.toLowerCase() === k);
+          return (
+            <div key={k} className="flex flex-wrap items-center gap-2">
+              <select aria-label="Atributo" className="h-9 rounded-md border bg-card px-2 text-sm" value={def?.id ?? k} onChange={(e) => rename(k, e.target.value)}>{attrs.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
+              {def?.options?.length ? (
+                <select aria-label={`Valor de ${def.name}`} className="h-9 rounded-md border bg-card px-2 text-sm" value={v} onChange={(e) => onChange({ ...value, [k]: e.target.value })}><option value="">Elige…</option>{def.options.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+              ) : (
+                <Input aria-label={`Valor de ${def?.name ?? k}`} className="w-48" value={v} onChange={(e) => onChange({ ...value, [k]: e.target.value })} placeholder="Algodón" />
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={() => { const n = { ...value }; delete n[k]; onChange(n); }}>Quitar</Button>
+            </div>
+          );
+        })}
+        {attrs.length > 0 && <div><Button type="button" variant="outline" size="sm" onClick={() => { const free = attrs.find((a) => !(a.id in value)); if (free) onChange({ ...value, [free.id]: "" }); }}><Plus /> Agregar atributo</Button></div>}
+      </div>
+    </Field>
   );
 }

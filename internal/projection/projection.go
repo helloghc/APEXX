@@ -200,7 +200,7 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 	if err := p.loadTaxonomy(ctx, t); err != nil {
 		return err
 	}
-	t.Cart = &cart.Service{Catalog: t.Catalog, Inventory: t.Inventory, Pricing: t.Pricing, Channels: map[string]cart.Channel{}, Promos: promo.NewEngine()}
+	t.Cart = &cart.Service{Catalog: t.Catalog, Inventory: t.Inventory, Pricing: t.Pricing, Channels: map[string]cart.Channel{}, Promos: promo.NewEngine(), Taxo: t.Taxo}
 	pids, err := p.db.ProductIDs(ctx, id)
 	if err != nil {
 		return err

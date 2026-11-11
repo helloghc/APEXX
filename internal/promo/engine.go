@@ -75,8 +75,10 @@ type Line struct {
 	Brand       string
 	Categories  []string
 	Collections []string
-	Qty         int64
-	LineTotal   money.Money
+	// Attributes of the product by lower-case name and by id ("material": "Algodón").
+	Attributes map[string]string
+	Qty        int64
+	LineTotal  money.Money
 }
 
 // Lookup carries state the caller resolved from the database: the coupons

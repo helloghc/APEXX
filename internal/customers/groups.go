@@ -1,10 +1,12 @@
 package customers
 
 import (
+	"strconv"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -121,7 +123,11 @@ func ruleSQL(r Rules, arg func(any) string) (string, error) {
 			}
 			parts = append(parts, cond)
 		default:
-			return "", FieldError{field, "Campo desconocido: " + c.Field}
+			cond, err := customFieldSQL(c, arg)
+			if err != nil {
+				return "", FieldError{field, err.Error()}
+			}
+			parts = append(parts, cond)
 		}
 	}
 	return strings.Join(parts, join), nil
@@ -368,4 +374,59 @@ func (s *Service) groupsOfTx(ctx context.Context, tx pgx.Tx, tenant, customerID 
 		}
 	}
 	return out, nil
+}
+
+var customKey = regexp.MustCompile(`^cf:[a-z][a-z0-9_]{0,39}$`)
+
+// customFieldSQL turns a condition on a custom field of the customer
+// ("cf:talla") into SQL. Only non-personal values can be used: personal ones
+// are encrypted and never reach a query.
+func customFieldSQL(c Condition, arg func(any) string) (string, error) {
+	if !customKey.MatchString(c.Field) {
+		return "", errors.New("Campo desconocido: " + c.Field)
+	}
+	key := arg(strings.TrimPrefix(c.Field, "cf:"))
+	val := "(SELECT v.data->>" + key + " FROM custom_values v WHERE v.tenant_id=c.tenant_id AND v.resource='customer' AND v.owner_id=c.id)"
+	switch c.Op {
+	case "set":
+		return "COALESCE(" + val + ",'') <> ''", nil
+	case "not_set":
+		return "COALESCE(" + val + ",'') = ''", nil
+	case "eq", "neq":
+		v, ok := c.Value.(string)
+		if f, isNum := c.Value.(float64); isNum {
+			v, ok = strconv.FormatFloat(f, 'f', -1, 64), true
+		}
+		if b, isBool := c.Value.(bool); isBool {
+			v, ok = strconv.FormatBool(b), true
+		}
+		if !ok || v == "" || len(v) > 200 {
+			return "", errors.New("Escribe el valor a comparar")
+		}
+		if c.Op == "neq" {
+			return "COALESCE(" + val + ",'') <> " + arg(v), nil
+		}
+		return val + " = " + arg(v), nil
+	case "gte", "lte":
+		var n float64
+		switch x := c.Value.(type) {
+		case float64:
+			n = x
+		case json.Number:
+			f, err := x.Float64()
+			if err != nil {
+				return "", errors.New("Usa un número")
+			}
+			n = f
+		default:
+			return "", errors.New("Usa un número")
+		}
+		op := ">="
+		if c.Op == "lte" {
+			op = "<="
+		}
+		// Values that are not numbers never match instead of failing the query.
+		return "(CASE WHEN " + val + " ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (" + val + ")::numeric END) " + op + " " + arg(n), nil
+	}
+	return "", errors.New("Con campos propios usa eq, neq, gte, lte, set o not_set")
 }

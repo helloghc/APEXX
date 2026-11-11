@@ -47,6 +47,11 @@ func (s *Server) routesSettings(handle func(string, http.HandlerFunc)) {
 
 	// Sales channels (GET/PUT by id live in commerce.go).
 	handle("GET /v1/channels", s.authed(mod, auth.Read, s.listChannels))
+	// Custom fields on customers, orders and companies.
+	handle("GET /v1/fields/{resource}", s.staff(mod, auth.Read, s.getFieldDefs))
+	handle("PUT /v1/fields/{resource}", s.authed(mod, auth.Admin, s.putFieldDefs))
+	handle("GET /v1/fields/{resource}/{id}", s.staff("", "", s.getFieldValues))
+	handle("PUT /v1/fields/{resource}/{id}", s.staff("", "", s.putFieldValues))
 	// Master catalog copied from another store.
 	handle("GET /v1/settings/catalog-source", s.staff(mod, auth.Read, s.getCatalogSource))
 	handle("PUT /v1/settings/catalog-source", s.authed(mod, auth.Admin, s.putCatalogSource))

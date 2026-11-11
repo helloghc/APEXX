@@ -1,3 +1,4 @@
+import { CustomFields } from "@/components/CustomFields";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowLeft, Ban, ExternalLink, PackageCheck, RotateCcw, StickyNote, Truck, Undo2 } from "lucide-react";
@@ -183,6 +184,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
             </Card>
           )}
 
+          <CustomFields resource="order" id={id} canEdit={canEdit} />
           <Card>
             <CardHeader><CardTitle className="text-base">Notas e historial</CardTitle></CardHeader>
             <CardContent className="grid gap-4">

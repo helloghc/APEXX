@@ -79,13 +79,16 @@ type Target struct {
 	Brands      []string `json:"brands,omitempty"`
 	Collections []string `json:"collections,omitempty"`
 	ExcludeSKUs []string `json:"excludeSkus,omitempty"`
+	// Attributes keeps lines whose product has every one of these attribute
+	// values ("material": "Algodón"), keyed by attribute name or id.
+	Attributes map[string]string `json:"attributes,omitempty"`
 }
 
 // All reports whether the target matches every line.
 func (t Target) All() bool { return t.size() == 0 }
 
 func (t Target) size() int {
-	return len(t.SKUs) + len(t.ProductIDs) + len(t.Categories) + len(t.Brands) + len(t.Collections) + len(t.ExcludeSKUs)
+	return len(t.SKUs) + len(t.ProductIDs) + len(t.Categories) + len(t.Brands) + len(t.Collections) + len(t.ExcludeSKUs) + len(t.Attributes)
 }
 
 // Fold lowercases and strips accents so "Pacífico" matches "pacifico".
@@ -135,6 +138,11 @@ func (t Target) Matches(l Line) bool {
 	}
 	if len(t.Collections) > 0 && !hasFold(t.Collections, l.Collections...) {
 		return false
+	}
+	for k, v := range t.Attributes {
+		if !strings.EqualFold(strings.TrimSpace(l.Attributes[strings.ToLower(k)]), v) {
+			return false
+		}
 	}
 	return true
 }
@@ -280,6 +288,19 @@ func (t *Target) normalize() {
 	t.SKUs, t.ProductIDs = cleanList(t.SKUs, false), cleanList(t.ProductIDs, false)
 	t.Categories, t.Brands = cleanList(t.Categories, false), cleanList(t.Brands, false)
 	t.Collections, t.ExcludeSKUs = cleanList(t.Collections, false), cleanList(t.ExcludeSKUs, false)
+	if len(t.Attributes) > 0 {
+		clean := map[string]string{}
+		for k, v := range t.Attributes {
+			k, v = strings.ToLower(strings.TrimSpace(k)), strings.TrimSpace(v)
+			if k != "" && v != "" && len(clean) < 10 {
+				clean[k] = v
+			}
+		}
+		t.Attributes = clean
+		if len(clean) == 0 {
+			t.Attributes = nil
+		}
+	}
 }
 
 // Normalize trims text, applies defaults and clears the benefit fields that

@@ -15,6 +15,7 @@ export type PromoType =
   | "bundle";
 
 export interface Target {
+  attributes?: Record<string, string>;
   skus?: string[];
   productIds?: string[];
   categories?: string[];

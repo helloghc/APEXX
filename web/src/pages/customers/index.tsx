@@ -1,7 +1,9 @@
+import type { FieldDef } from "@/components/CustomFields";
+import { CustomFields } from "@/components/CustomFields";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Mail, Pencil, Plus, Search, ShoppingCart, Trash2, UserRound, Users, X } from "lucide-react";
-import { errorMessage, fieldErrors, type Me } from "@/api";
+import { errorMessage, fieldErrors, request, type Me } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -205,6 +207,7 @@ function CustomerDetail({ me, id }: { me: Me; id: string }) {
               )}
             </CardContent>
           </Card>
+          <CustomFields resource="customer" id={id} canEdit={canEdit} />
           <Card>
             <CardHeader><CardTitle className="text-base">Notas internas</CardTitle></CardHeader>
             <CardContent className="grid gap-3">
@@ -324,6 +327,12 @@ function SegmentDialog({ g, onClose, onDone }: { g: Partial<Group>; onClose: () 
     return () => { live = false; };
   }, [key]);
   const setCond = (i: number, patch: Partial<Condition>) => setConds(conds.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  // The store's own customer fields that are not personal can be used too.
+  const cf = useQuery({ queryKey: ["fields", "customer"], queryFn: () => request<{ fields: FieldDef[] }>("GET", "/v1/fields/customer") });
+  const ALL: Record<string, { label: string; kind: "money" | "int" | "bool" | "text"; options?: string[] }> = { ...FIELDS };
+  for (const f of cf.data?.fields ?? []) {
+    if (!f.personal) ALL["cf:" + f.key] = { label: f.label + " (campo propio)", kind: f.type === "number" ? "int" : f.type === "boolean" ? "bool" : "text", options: f.type === "select" ? f.options : undefined };
+  }
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -351,18 +360,21 @@ function SegmentDialog({ g, onClose, onDone }: { g: Partial<Group>; onClose: () 
               <select aria-label="Cómo combinar" className="rounded border bg-background px-1 py-0.5" value={match} onChange={(e) => setMatch(e.target.value as "all" | "any")}><option value="all">todas</option><option value="any">cualquiera de</option></select> estas reglas:
             </p>
             {conds.map((c, i) => {
-              const kind = FIELDS[c.field]?.kind ?? "int";
+              const kind = ALL[c.field]?.kind ?? "int";
+              const options = ALL[c.field]?.options;
               return (
                 <div key={i} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_140px_140px_auto]">
                   <select aria-label="Campo" className="h-9 rounded-md border bg-background px-2 text-sm" value={c.field}
-                    onChange={(e) => { const k = FIELDS[e.target.value]!.kind; setCond(i, { field: e.target.value, op: k === "bool" || k === "text" ? "eq" : "gte", value: k === "bool" ? true : k === "text" ? "" : 0 }); }}>
-                    {Object.entries(FIELDS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    onChange={(e) => { const k = ALL[e.target.value]!.kind; setCond(i, { field: e.target.value, op: k === "bool" || k === "text" ? "eq" : "gte", value: k === "bool" ? true : k === "text" ? (ALL[e.target.value]!.options?.[0] ?? "") : 0 }); }}>
+                    {Object.entries(ALL).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
                   {kind === "bool" || kind === "text" ? <span className="self-center text-sm text-muted-foreground">es</span> : (
                     <select aria-label="Comparación" className="h-9 rounded-md border bg-background px-2 text-sm" value={c.op} onChange={(e) => setCond(i, { op: e.target.value })}>{OPS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
                   )}
                   {kind === "bool" ? (
                     <select aria-label="Valor" className="h-9 rounded-md border bg-background px-2 text-sm" value={String(c.value)} onChange={(e) => setCond(i, { value: e.target.value === "true" })}><option value="true">Sí</option><option value="false">No</option></select>
+                  ) : options ? (
+                    <select aria-label="Valor" className="h-9 rounded-md border bg-background px-2 text-sm" value={String(c.value)} onChange={(e) => setCond(i, { value: e.target.value })}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select>
                   ) : kind === "money" ? (
                     <Input aria-label="Monto" inputMode="decimal" defaultValue={centsToPesos(Number(c.value) || 0)} onBlur={(e) => setCond(i, { value: parsePesos(e.target.value) ?? 0 })} />
                   ) : (

@@ -1,3 +1,4 @@
+import { CustomFields } from "@/components/CustomFields";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Building2, Copy, Database, Download, Plus, Trash2 } from "lucide-react";
@@ -152,6 +153,7 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
           )}
         </CardContent>
       </Card>
+      <CustomFields resource="company" id={id} canEdit={isAdmin} />
       <Card><CardHeader><CardTitle className="text-base">Compradores ({buyers.length || c.buyers})</CardTitle><CardDescription>Personas que compran a nombre de la empresa.</CardDescription></CardHeader>
         <CardContent>{buyers.length === 0 ? <p className="text-sm text-muted-foreground">{c.buyers ? "Tu acceso no incluye ver los correos." : "Agrega al menos un comprador para que la empresa pueda usar su precio."}</p> : <ul className="grid gap-1 font-mono text-sm">{buyers.map((b) => <li key={b}>{b}{approvers.includes(b) && <Badge variant="secondary" className="ml-2 font-sans">Aprueba compras</Badge>}</li>)}</ul>}</CardContent></Card>
       {edit && <CompanyDialog company={c} buyers={buyers} approvers={approvers} onClose={() => setEdit(false)} onDone={refresh} />}

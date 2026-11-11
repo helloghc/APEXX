@@ -3,6 +3,7 @@ package promo
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -164,6 +165,18 @@ func targetPhrase(t Target, name Namer) string {
 	}
 	if len(t.Collections) > 0 {
 		parts = append(parts, "la colección "+joinAnd(t.Collections))
+	}
+	if len(t.Attributes) > 0 {
+		keys := make([]string, 0, len(t.Attributes))
+		for k := range t.Attributes {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		var attrs []string
+		for _, k := range keys {
+			attrs = append(attrs, k+" "+t.Attributes[k])
+		}
+		parts = append(parts, "productos con "+joinAnd(attrs))
 	}
 	s := strings.Join(parts, " de ")
 	if s == "" {

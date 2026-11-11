@@ -155,6 +155,7 @@ type Service struct {
 	Promos    *promo.Engine
 	Channels  map[string]Channel
 	Logistics *logistics.Config // zones, options, estimates and tax regions; nil = legacy channel rules
+	Taxo      *catalog.Taxonomy // attribute names, for promotions that target attribute values
 	Now       func() time.Time
 }
 
@@ -249,7 +250,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		}
 		weight += v.WeightGrams * qty
 		promoLines = append(promoLines, promo.Line{SKU: it.SKU, ProductID: p.ID, Title: line.Title, Brand: p.Brand, Categories: p.Categories,
-			Collections: collections(p), Qty: qty, LineTotal: line.Total})
+			Collections: collections(p), Attributes: s.attributesOf(&p), Qty: qty, LineTotal: line.Total})
 		lineOf = append(lineOf, len(res.Lines)-1)
 		profiles = append(profiles, class.ShippingProfile)
 		lineClass = append(lineClass, class.TaxClass)
@@ -445,4 +446,22 @@ func (s *Service) conversion(ch Channel) *pricing.Conversion {
 		return nil
 	}
 	return &pricing.Conversion{From: ch.PriceFrom, Currency: ch.Currency, RateMicros: ch.RateMicros}
+}
+
+// attributesOf returns the attribute values of a product by id and by
+// lower-case name, so a promotion can name the attribute either way.
+func (s *Service) attributesOf(p *catalog.Product) map[string]string {
+	if len(p.Attributes) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(p.Attributes)*2)
+	for id, v := range p.Attributes {
+		out[strings.ToLower(id)] = v
+		if s.Taxo != nil {
+			if d, ok := s.Taxo.Attribute(id); ok {
+				out[strings.ToLower(d.Name)] = v
+			}
+		}
+	}
+	return out
 }
