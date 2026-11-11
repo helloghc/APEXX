@@ -1,3 +1,4 @@
+import { PANEL_LANGUAGES, currentLanguage, setLanguage } from "./i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat, Store, Building2, Database } from "lucide-react";
@@ -52,6 +53,20 @@ import { href, navigate, useRoute } from "@/router";
 const LAST_STORE = "apexx.lastStore";
 
 /** Another store of the same person: asks the password once and lists only the stores it opens. */
+/** Lets each person read the panel in their language. */
+function LanguagePicker() {
+  return (
+    <label className="grid gap-1 text-xs text-muted-foreground" data-no-translate>
+      <span>Idioma · Language</span>
+      <select className="h-8 rounded-md border bg-card px-2 text-sm text-foreground" value={currentLanguage()} onChange={(e) => setLanguage(e.target.value)} aria-label="Idioma del panel / Panel language">
+        {PANEL_LANGUAGES.map((l) => (
+          <option key={l.code} value={l.code}>{l.name}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function SwitchStore({ email, current }: { email: string; current: string }) {
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
@@ -504,6 +519,7 @@ function Shell({ me }: { me: Me }) {
             </span>
           </div>
           <ThemePicker />
+          <LanguagePicker />
           {me.kind === "member" && <SwitchStore email={me.email ?? ""} current={me.tenant} />}
           {me.kind === "member" && (
             <a href={href("cuenta")} className="text-sm text-primary hover:underline">
