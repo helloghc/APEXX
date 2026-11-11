@@ -511,7 +511,7 @@ func (s *Service) List(ctx context.Context, tenant string, f ListFilter, pii boo
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM customers c`+where, args...).Scan(&total); err != nil {
 			return err
 		}
-		q := `SELECT ` + customerCols + `, (` + col + `)::text FROM customers c` + where
+		q := `SELECT ` + customerCols + `, (` + col + `)::text AS sort_key FROM customers c` + where
 		if f.Cursor != "" {
 			v, id, ok := strings.Cut(f.Cursor, "|")
 			if !ok {
