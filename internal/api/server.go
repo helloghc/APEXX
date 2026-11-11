@@ -62,6 +62,7 @@ type Server struct {
 	metrics *metrics
 
 	uploadSlots   chan struct{} // bounds concurrent image processing
+	engage        engageState // search terms and review cache
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
 }
 
@@ -174,6 +175,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesCustomers(handle)
 	s.routesSettings(handle)
 	s.routesReports(handle)
+	s.routesEngage(handle)
 
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))

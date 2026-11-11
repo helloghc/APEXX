@@ -7,6 +7,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/helloghc/apexx/internal/store"
 	"html"
 	"html/template"
 	"net/http"
@@ -277,7 +278,21 @@ func (s *Server) renderBrowse(w http.ResponseWriter, r *http.Request, t *project
 	if cat != nil {
 		q.CategoryID = cat.ID
 	}
+	searchQuery(t, &q)
+	// A term can lead straight to a page (campaign, policy) instead of results.
+	if st.q != "" && cat == nil && col == nil && !st.filtered() && st.page == 1 {
+		if u, ok := t.Search().RedirectFor(st.q); ok {
+			if strings.HasPrefix(u, "/") {
+				u = pd.Base + u
+			}
+			http.Redirect(w, r, u, http.StatusFound)
+			return
+		}
+	}
 	res := catalog.Browse(t.Catalog.Products(), t.Taxo, offerOf(t, pd.Channel), q)
+	if st.q != "" && st.page == 1 && !st.filtered() {
+		s.noteSearch(t.ID, st.q, res.Total)
+	}
 
 	bp := browsePage{pageData: pd, Total: res.Total, Page: st.page, Pages: (res.Total + shopPageSize - 1) / shopPageSize}
 	bp.Query = st.q
@@ -499,7 +514,10 @@ type specView struct{ Name, Value string }
 
 type productPage struct {
 	pageData
-	P struct {
+	Handle  string
+	Reviews store.ProductReviews
+	Average string // "4.6"
+	P       struct {
 		Title, Brand, BrandURL, Description, Initial string
 		Tone                                         int
 		Variants                                     []variantView
@@ -612,6 +630,12 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	if p.Description != "" {
 		ld["description"] = p.Description
+	}
+	pg.Handle = p.Handle
+	pg.Reviews = s.productReviews(r.Context(), t.ID, p.ID)
+	if pg.Reviews.Count > 0 {
+		pg.Average = strconv.FormatFloat(pg.Reviews.Average, 'f', 1, 64)
+		ld["aggregateRating"] = map[string]any{"@type": "AggregateRating", "ratingValue": pg.Average, "reviewCount": pg.Reviews.Count}
 	}
 	b, _ := json.Marshal(ld)
 	pg.JSONLD = template.JS(b) // #nosec G203 -- json.Marshal escapes <, > and &

@@ -25,10 +25,28 @@ import (
 //go:embed shop/*.tmpl shop/*.css shop/*.js shop/fonts/*.woff2
 var shopFS embed.FS
 
+// shopFuncs are the helpers the storefront templates can call.
+var shopFuncs = template.FuncMap{
+	// stars renders a rating (1 to 5, int or average) as five characters.
+	"stars": func(v any) string {
+		n := 0
+		switch x := v.(type) {
+		case int:
+			n = x
+		case float64:
+			n = int(x + 0.5)
+		}
+		n = max(0, min(5, n))
+		return strings.Repeat("★", n) + strings.Repeat("☆", 5-n)
+	},
+	"stars5": func() []int { return []int{5, 4, 3, 2, 1} },
+	"day":    func(t time.Time) string { return shortDate(t) },
+}
+
 var shopPages = func() map[string]*template.Template {
 	m := map[string]*template.Template{}
-	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy"} {
-		m[p] = template.Must(template.ParseFS(shopFS, "shop/layout.tmpl", "shop/"+p+".tmpl"))
+	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy", "favorites"} {
+		m[p] = template.Must(template.New(p).Funcs(shopFuncs).ParseFS(shopFS, "shop/layout.tmpl", "shop/"+p+".tmpl"))
 	}
 	return m
 }()

@@ -38,6 +38,13 @@ type BrowseQuery struct {
 	Sort       string
 	Offset     int
 	Limit      int
+	// Alt holds alternative phrasings of Q (synonyms): a product matches when
+	// it matches Q or any of them.
+	Alt []string
+	// Exclude hides these product ids from the results.
+	Exclude map[string]bool
+	// Pinned product ids come first, in this order, when no sort is chosen.
+	Pinned []string
 }
 
 // FacetValue is one choice of a facet with the number of products it would show.
@@ -169,6 +176,16 @@ type cand struct {
 // products the other filters leave.
 func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) BrowseResult {
 	qs := words(q.Q)
+	alts := make([][]string, 0, len(q.Alt))
+	for _, a := range q.Alt {
+		if w := words(a); len(w) > 0 {
+			alts = append(alts, w)
+		}
+	}
+	pinPos := map[string]int{}
+	for i, id := range q.Pinned {
+		pinPos[id] = len(q.Pinned) - i
+	}
 	var subtree map[string]bool
 	if q.CategoryID != "" {
 		subtree = t.Subtree(q.CategoryID)
@@ -218,8 +235,20 @@ func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) Br
 		if p.Status != "active" {
 			continue
 		}
-		if len(qs) > 0 && !matchesAll(qs, p.hay) {
+		if q.Exclude[p.ID] {
 			continue
+		}
+		if len(qs) > 0 && !matchesAll(qs, p.hay) {
+			ok := pinPos[p.ID] > 0 // a pinned product shows even when its text does not match
+			for _, a := range alts {
+				if matchesAll(a, p.hay) {
+					ok = true
+					break
+				}
+			}
+			if !ok {
+				continue
+			}
 		}
 		cats := t.ProductCategories(p)
 		if subtree != nil {
@@ -304,6 +333,7 @@ func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) Br
 				}
 			}
 		}
+		c.score += pinPos[p.ID] * 1000
 		if pos, ok := manualPos[p.ID]; ok {
 			c.order = pos
 		}

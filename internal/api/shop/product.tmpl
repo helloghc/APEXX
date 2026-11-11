@@ -16,10 +16,27 @@
 <button class="btn" type="submit" {{if .SoldOut}}disabled{{end}}>{{if .SoldOut}}Agotado{{else}}Agregar al carrito{{end}}</button></div>
 <p class="note" role="status" data-buy-status></p>
 </form>
+<button type="button" class="wish" data-wish="{{.Handle}}" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20s-7-4.4-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.4C19 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span data-wish-text>Guardar en favoritos</span></button>
 <ul class="perks"><li>Envío gratis desde $1,499</li><li>Cambios sin costo durante 30 días</li><li>Pago seguro con Stripe</li></ul>
 {{with .P.Description}}<div class="desc"><h2>Descripción</h2><p>{{.}}</p></div>{{end}}
 {{if .Specs}}<div class="desc"><h2>Especificaciones</h2><table class="specs"><tbody>{{range .Specs}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}
 </div></div>
+<section class="reviews" id="opiniones" aria-labelledby="rv-h">
+<h2 id="rv-h">Opiniones</h2>
+{{if .Reviews.Count}}<p class="rv-sum"><span class="stars" role="img" aria-label="{{.Average}} de 5 estrellas">{{stars .Reviews.Average}}</span> <strong>{{.Average}}</strong> <span class="muted">{{.Reviews.Count}} {{if eq .Reviews.Count 1}}opinión{{else}}opiniones{{end}}</span></p>
+<ul class="rv-list">{{range .Reviews.Items}}<li><p><span class="stars" role="img" aria-label="{{.Rating}} de 5 estrellas">{{stars .Rating}}</span>{{with .Title}} <strong>{{.}}</strong>{{end}}</p><p>{{.Body}}</p><p class="muted">{{.Author}}{{if .Verified}} · Compra verificada{{end}} · {{day .CreatedAt}}</p>{{with .Reply}}<p class="rv-reply"><strong>Respuesta de la tienda:</strong> {{.}}</p>{{end}}</li>{{end}}</ul>
+{{else}}<p class="muted">Todavía no hay opiniones de este producto. Sé la primera persona en opinar.</p>{{end}}
+<details class="rv-form"><summary class="btn ghost">Escribir una opinión</summary>
+<form data-review-form="{{.Handle}}">
+<fieldset class="rv-stars"><legend>Tu calificación</legend>{{range $n := stars5}}<input type="radio" name="rating" id="rv-s{{$n}}" value="{{$n}}"><label for="rv-s{{$n}}" title="{{$n}} estrellas"><span class="sr">{{$n}} estrellas</span><span aria-hidden="true">★</span></label>{{end}}</fieldset>
+<div class="field"><label for="rv-title">Título (opcional)</label><input id="rv-title" name="title" type="text" maxlength="100"></div>
+<div class="field"><label for="rv-body">Tu opinión</label><textarea id="rv-body" name="body" rows="4" minlength="10" maxlength="2000" required></textarea></div>
+<div class="field"><label for="rv-name">Tu nombre</label><input id="rv-name" name="name" type="text" maxlength="60" autocomplete="name" required></div>
+<div class="field"><label for="rv-email">Tu correo (no se publica)</label><input id="rv-email" name="email" type="email" autocomplete="email" required></div>
+<button class="btn" type="submit">Enviar opinión</button>
+<p class="note" role="status" data-review-status></p>
+</form></details>
+</section>
 {{if .Accessories}}<section class="pdp-related" aria-labelledby="rel-acc"><h2 id="rel-acc">Combínalo con</h2><ul class="pgrid cols-4">{{range .Accessories}}{{template "pcard" .}}{{end}}</ul></section>{{end}}
 {{if .Similar}}<section class="pdp-related" aria-labelledby="rel-sim"><h2 id="rel-sim">Productos similares</h2><ul class="pgrid cols-4">{{range .Similar}}{{template "pcard" .}}{{end}}</ul></section>{{end}}
 </div>

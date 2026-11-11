@@ -308,3 +308,105 @@
   addEventListener("pagehide", flush);
 })();
 /* ==== analytics beacon: end ==== */
+
+/* ==== search suggestions, favorites and reviews ==== */
+(() => {
+  const d = document, body = d.body, parts = location.pathname.split("/");
+  const tenant = body.dataset.tenant || parts[2], base = body.dataset.base || "/s/" + parts[2] + "/" + parts[3];
+  if (!tenant) return;
+  const api = "/s/" + tenant + "/api", site = base.split("/").pop(), WISH = "apexx_wish_" + tenant;
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const get = () => { try { return JSON.parse(localStorage.getItem(WISH) || "[]"); } catch { return []; } };
+  const set = (v) => { try { localStorage.setItem(WISH, JSON.stringify(v.slice(0, 100))); } catch {} };
+  const heart = "<svg viewBox='0 0 24 24' width='18' height='18' aria-hidden='true'><path d='M12 20s-7-4.4-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.4C19 15.6 12 20 12 20z' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linejoin='round'/></svg>";
+
+  // --- favorites: kept in this browser, and in the account when signed in ---
+  const paint = () => { const w = get(); d.querySelectorAll("[data-wish]").forEach((b) => { const on = w.includes(b.dataset.wish); b.setAttribute("aria-pressed", on); b.classList.toggle("is-on", on); const t = b.querySelector("[data-wish-text]"); if (t) t.textContent = on ? "Guardado en favoritos" : "Guardar en favoritos"; }); };
+  const cardHTML = (c) => "<li class='pcard'><a class='pcard-link' href='" + esc(c.url) + "'>" + (c.img || "<div class='pcard-media ph ph-" + c.tone + "' aria-hidden='true'><span>" + esc(c.initial) + "</span></div>") +
+    "<div class='pcard-body'>" + (c.brand ? "<p class='pcard-brand'>" + esc(c.brand) + "</p>" : "") + "<h3 class='pcard-title'>" + esc(c.title) + "</h3><p class='pcard-price'>" +
+    (c.compareAt ? "<span class='sale'>" + esc(c.price) + "</span> <s>" + esc(c.compareAt) + "</s>" : esc(c.price)) + "</p></div></a>" + (c.soldOut ? "<p class='pcard-badge'>Agotado</p>" : "") + "</li>";
+  function decorate(root) {
+    root.querySelectorAll(".pcard").forEach((li) => {
+      if (li.querySelector("[data-wish]")) return;
+      const a = li.querySelector("a[href*='/p/']"); if (!a) return;
+      const handle = a.getAttribute("href").split("/p/")[1].split(/[?#]/)[0], title = (li.querySelector(".pcard-title") || a).textContent.trim();
+      const b = d.createElement("button"); b.type = "button"; b.className = "wish wish-card"; b.dataset.wish = handle; b.setAttribute("aria-label", "Guardar " + title + " en favoritos"); b.innerHTML = heart; li.appendChild(b);
+    });
+    paint();
+  }
+  d.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-wish]"); if (!b) return;
+    e.preventDefault();
+    const h = b.dataset.wish, w = get(), on = !w.includes(h);
+    set(on ? [h, ...w] : w.filter((x) => x !== h)); paint();
+    fetch(api + "/wishlist/" + encodeURIComponent(h), { method: on ? "PUT" : "DELETE" }).catch(() => {}); // only sticks when signed in
+    const page = d.querySelector("[data-favorites]"); if (page && !on) renderFavorites();
+  });
+  const tools = d.querySelector(".hdr-tools");
+  if (tools && !tools.querySelector(".hdr-wish")) { const a = d.createElement("a"); a.className = "hdr-wish"; a.href = base + "/favoritos"; a.setAttribute("aria-label", "Favoritos"); a.innerHTML = heart; tools.insertBefore(a, tools.querySelector(".cartlink")); }
+  async function renderFavorites() {
+    const page = d.querySelector("[data-favorites]"); if (!page) return;
+    const w = get();
+    if (!w.length) { page.innerHTML = "<p class='muted'>Todavía no guardas productos. Toca el corazón de un producto para tenerlo aquí.</p><p><a class='btn' href='" + base + "/c'>Ver productos</a></p>"; return; }
+    const r = await fetch(api + "/cards", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ handles: w, site }) }).then((x) => x.json()).catch(() => ({ items: [] }));
+    page.innerHTML = "<ul class='pgrid cols-4'>" + (r.items || []).map(cardHTML).join("") + "</ul>"; decorate(page);
+  }
+  (async () => {
+    decorate(d);
+    if (d.querySelector("[data-favorites]")) {
+      // Signed in: this browser and the account end up with the same list.
+      const r = await fetch(api + "/wishlist").then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      if (r) { const local = get(), remote = r.handles || []; local.filter((h) => !remote.includes(h)).forEach((h) => fetch(api + "/wishlist/" + encodeURIComponent(h), { method: "PUT" }).catch(() => {})); set([...new Set([...local, ...remote])]); }
+      renderFavorites();
+    }
+  })();
+
+  // --- search suggestions while typing ---
+  d.querySelectorAll("form[role=search] input[name=q], input[type=search][name=q]").forEach((input, n) => {
+    if (input.dataset.suggest) return; input.dataset.suggest = "1";
+    const form = input.form, box = d.createElement("div"), id = "sg-" + n;
+    box.className = "suggest"; box.id = id; box.setAttribute("role", "listbox"); box.hidden = true;
+    form.style.position = "relative"; form.appendChild(box);
+    input.setAttribute("autocomplete", "off"); input.setAttribute("role", "combobox"); input.setAttribute("aria-controls", id); input.setAttribute("aria-expanded", "false"); input.setAttribute("aria-autocomplete", "list");
+    let timer = 0, seq = 0, active = -1;
+    const items = () => [...box.querySelectorAll("[role=option]")];
+    const close = () => { box.hidden = true; active = -1; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); };
+    const mark = () => items().forEach((el, i) => { el.classList.toggle("is-active", i === active); if (i === active) input.setAttribute("aria-activedescendant", el.id); });
+    async function run() {
+      const q = input.value.trim(), mine = ++seq;
+      if (q.length < 2) { close(); return; }
+      const r = await fetch(api + "/suggest?site=" + encodeURIComponent(site) + "&q=" + encodeURIComponent(q)).then((x) => x.json()).catch(() => null);
+      if (!r || mine !== seq || d.activeElement !== input) return;
+      const all = base + "/c?q=" + encodeURIComponent(q);
+      let k = 0; const opt = (href, html) => "<a role='option' id='" + id + "-" + k++ + "' href='" + esc(href) + "'>" + html + "</a>";
+      box.innerHTML = (r.categories || []).map((c) => opt(c.url, "<span class='sg-cat'>En " + esc(c.name) + "</span>")).join("") +
+        (r.products || []).map((p) => opt(p.url, "<span class='sg-img'>" + (p.img || "<span class='ph ph-" + p.tone + "'><span>" + esc(p.initial) + "</span></span>") + "</span><span class='sg-t'>" + esc(p.title) + "<small>" + esc(p.price) + "</small></span>")).join("") +
+        (r.total ? opt(all, "<span class='sg-all'>Ver los " + r.total + " resultados</span>") : "<p class='sg-none'>Sin resultados para “" + esc(q) + "”. Prueba con otra palabra.</p>");
+      box.hidden = false; active = -1; input.setAttribute("aria-expanded", "true");
+    }
+    input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(run, 140); });
+    input.addEventListener("keydown", (e) => {
+      const list = items();
+      if (e.key === "Escape") { close(); return; }
+      if (box.hidden || !list.length) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); active = (active + 1) % list.length; mark(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); active = (active - 1 + list.length) % list.length; mark(); }
+      else if (e.key === "Enter" && active >= 0) { e.preventDefault(); location.href = list[active].href; }
+    });
+    d.addEventListener("click", (e) => { if (!form.contains(e.target)) close(); });
+  });
+
+  // --- reviews ---
+  const rf = d.querySelector("[data-review-form]");
+  if (rf) rf.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = new FormData(rf), out = rf.querySelector("[data-review-status]"), btn = rf.querySelector("button[type=submit]");
+    if (!f.get("rating")) { out.textContent = "Elige cuántas estrellas le das."; return; }
+    btn.disabled = true; out.textContent = "Enviando…";
+    const r = await fetch(api + "/reviews/" + encodeURIComponent(rf.dataset.reviewForm), { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating: Number(f.get("rating")), title: f.get("title"), body: f.get("body"), name: f.get("name"), email: f.get("email") }) }).then(async (x) => ({ ok: x.ok, status: x.status, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    btn.disabled = false;
+    if (r.ok) { rf.reset(); out.textContent = "¡Gracias! Tu opinión se publicará cuando la tienda la revise."; }
+    else out.textContent = r.status === 429 ? "Demasiados intentos. Espera un minuto." : (r.body.detail || "No pudimos enviar tu opinión. Intenta de nuevo.");
+  });
+})();

@@ -327,6 +327,8 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		MetricsToken:  os.Getenv("APEXX_METRICS_TOKEN"),
 		Media:         mediaStore,
 	}
+	// Searches are counted in memory and saved in batches.
+	resilience.Every(ctx, log, "search-terms", 15*time.Second, srv.FlushSearchTerms)
 	hs := &http.Server{
 		Addr: env("APEXX_ADDR", ":8080"), Handler: srv.Routes(),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second,

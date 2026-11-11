@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3 } from "lucide-react";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -32,6 +32,7 @@ const Customers = lazy(() => import("@/pages/customers/index").then((m) => ({ de
 const Notifications = lazy(() => import("@/pages/notifications/index").then((m) => ({ default: m.Notifications })));
 const Team = lazy(() => import("@/pages/Team").then((m) => ({ default: m.Team })));
 const Payments = lazy(() => import("@/pages/Payments").then((m) => ({ default: m.Payments })));
+const Engage = lazy(() => import("@/pages/engage/index").then((m) => ({ default: m.Engage })));
 const Settings = lazy(() => import("@/pages/settings/Settings").then((m) => ({ default: m.Settings })));
 const Reports = lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.Reports })));
 const Ops = lazy(() => import("@/pages/reports/Ops").then((m) => ({ default: m.Ops })));
@@ -190,6 +191,7 @@ const ICONS: Record<string, typeof HomeIcon> = {
   correos: Mails,
   equipo: Users,
   pagos: CreditCard,
+  busqueda: SearchCheck,
   configuracion: Settings2,
   conectores: Cable,
   reportes: BarChart3,
@@ -246,6 +248,9 @@ function Shell({ me }: { me: Me }) {
       break;
     case "pagos":
       body = <Payments me={me} />;
+      break;
+    case "busqueda":
+      body = <Engage me={me} route={route} />;
       break;
     case "configuracion":
       body = <Settings me={me} sub={route[1]} rest={route.slice(2)} />;

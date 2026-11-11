@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"sync/atomic"
 
+	"github.com/helloghc/apexx/internal/engage"
 	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/sitecfg"
 	"github.com/helloghc/apexx/internal/store"
@@ -28,7 +29,16 @@ var emptySite = &SiteView{Policies: map[string]sitecfg.Policy{}, Menus: map[stri
 
 // siteState is embedded in Tenant.
 type siteState struct {
-	site atomic.Pointer[SiteView]
+	site   atomic.Pointer[SiteView]
+	search atomic.Pointer[engage.SearchConfig]
+}
+
+// Search returns the search configuration of the store (never nil).
+func (t *Tenant) Search() *engage.SearchConfig {
+	if v := t.search.Load(); v != nil {
+		return v
+	}
+	return &engage.SearchConfig{}
 }
 
 // Site returns the storefront configuration of the tenant.
@@ -64,6 +74,14 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 		if err := p.applySite(ctx, t, key); err != nil {
 			return err
 		}
+	}
+	if key == "" || key == store.KeySearch {
+		var cfg engage.SearchConfig
+		if _, err := p.db.GetDoc(ctx, t.ID, "search", "config", &cfg); err != nil {
+			return err
+		}
+		cfg.Normalize()
+		t.search.Store(&cfg)
 	}
 	if key == store.KeyDomains {
 		return p.loadHosts(ctx)

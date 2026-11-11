@@ -44,7 +44,7 @@ describe("permissions", () => {
     const routes = visibleNav({ tenant: "t", kind: "member", id: "m", name: "", owner: false, permissions: { catalog: "edit" } }).map(
       (n) => n.route,
     );
-    expect(routes).toEqual(["inicio", "catalogo"]);
+    expect(routes).toEqual(["inicio", "catalogo", "busqueda"]);
   });
   it("recognizes presets regardless of 'none' entries", () => {
     const p = PRESETS.find((x) => x.id === "catalog")!.perms;
