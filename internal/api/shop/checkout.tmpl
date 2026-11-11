@@ -1,20 +1,22 @@
 {{define "content"}}
+<div>
 <h1>Pago</h1>
 <div class="checkout">
 <form data-checkout novalidate>
 <fieldset><legend>Tus datos</legend>
-<label for="email">Correo</label><input id="email" name="email" type="email" autocomplete="email" required>
-<label for="name">Nombre completo</label><input id="name" name="name" autocomplete="name" required>
-<label for="phone">Teléfono (opcional)</label><input id="phone" name="phone" type="tel" autocomplete="tel">
+<div class="field"><label for="email">Correo</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+<div class="field"><label for="name">Nombre completo</label><input id="name" name="name" autocomplete="name" required></div>
+<div class="field"><label for="phone">Teléfono (opcional)</label><input id="phone" name="phone" type="tel" autocomplete="tel"></div>
 </fieldset>
 <fieldset><legend>Envío</legend>
-<label for="address">Dirección</label><input id="address" name="address" autocomplete="street-address" required>
-<label for="postal">Código postal</label><input id="postal" name="postal" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="postal-code" required>
+<div class="field"><label for="address">Dirección</label><input id="address" name="address" autocomplete="street-address" required></div>
+<div class="field"><label for="postal">Código postal</label><input id="postal" name="postal" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="postal-code" required></div>
 </fieldset>
 <fieldset><legend>Pago</legend><div data-payment><p class="muted">Cargando métodos de pago…</p></div></fieldset>
 <p class="error" role="alert" data-error></p>
 <button class="btn" type="submit" data-pay>Pagar</button>
 </form>
-<aside aria-label="Resumen del pedido"><h2>Resumen</h2><div data-summary><p class="muted">Calculando…</p></div></aside>
+<aside class="summary" aria-label="Resumen del pedido"><h2>Resumen</h2><div data-summary><p class="muted">Calculando…</p></div></aside>
+</div>
 </div>
 {{end}}

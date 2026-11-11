@@ -1,0 +1,57 @@
+/* Bálsamo — belleza. Serifa fina con cursiva, tonos empolvados, formas suaves. */
+.t-balsamo{font-weight:400}
+.t-balsamo .display{font-weight:400;letter-spacing:-.01em}
+.t-balsamo h1.display{font-size:clamp(3rem,1.6rem + 5.4vw,6.4rem);line-height:1}
+.t-balsamo .display em,.t-balsamo .tile-copy strong{font-style:italic}
+.t-balsamo .eyebrow{color:var(--c-primary);letter-spacing:.24em;font-size:.72rem;font-weight:600}
+.t-balsamo .btn{font-weight:500;letter-spacing:.04em;padding:0 32px}
+.t-balsamo .sx-announce{background:var(--c-accent);color:var(--c-accentText);font-size:.82rem;letter-spacing:.04em}
+.t-balsamo .hdr-logo{font-size:2.1rem;font-style:italic}
+.t-balsamo .hdr-nav a{font-size:.9rem;letter-spacing:.06em}
+.t-balsamo .hdr-search{border-radius:999px}
+.t-balsamo .hero-full .hero-copy{text-align:center;align-self:center}
+.t-balsamo .hero-full .hero-ctas{justify-content:center}
+.t-balsamo .hero-full .lede{margin-inline:auto}
+.t-balsamo .hero-full .hero-media::after{background:linear-gradient(180deg,rgb(45 39 41 / .05),rgb(45 39 41 / calc(var(--overlay,.2) + .15)))}
+.t-balsamo .ph{border-radius:var(--radius)}
+.t-balsamo .ph-1{background:linear-gradient(170deg,#F3DCD5,#E3B9AE)}
+.t-balsamo .ph-2{background:linear-gradient(170deg,#E7EDE2,#C9D3C2)}
+.t-balsamo .ph-3{background:linear-gradient(170deg,#F6E7DF,#E8CDBE)}
+.t-balsamo .ph-4{background:linear-gradient(170deg,#EDE3EE,#D5C1D6)}
+.t-balsamo .ph-5{background:linear-gradient(170deg,#F2E1D3,#DDB79E)}
+.t-balsamo .ph-6{background:linear-gradient(170deg,#E9ECE6,#CFD8CB)}
+.t-balsamo .ph::before{width:30%;height:52%;left:35%;top:30%;right:auto;bottom:auto;border-radius:40% 40% 18% 18%;background:rgb(255 255 255 / .55);box-shadow:0 30px 60px -20px rgb(116 73 90 / .35)}
+.t-balsamo .ph::after{width:18%;height:10%;left:41%;top:22%;border-radius:8px 8px 2px 2px;background:rgb(116 73 90 / .45);mix-blend-mode:normal}
+.t-balsamo .ph span{display:none}
+.t-balsamo .ph-hero{border-radius:0;background:radial-gradient(circle at 30% 30%,#F8E6DF,transparent 60%),radial-gradient(circle at 75% 70%,#DCE4D6,transparent 55%),#F1DED7}
+.t-balsamo .ph-hero::before{width:18%;height:46%;left:41%;top:34%}
+.t-balsamo .ph-hero::after{width:10%;height:9%;left:45%;top:26%}
+.t-balsamo .pcard{text-align:center}
+.t-balsamo .pcard-title{font-family:var(--f-display);font-size:1.3rem;font-weight:400}
+.t-balsamo .pcard-brand{letter-spacing:.2em}
+.t-balsamo .pcard-badge{border-radius:999px;left:50%;transform:translateX(-50%);background:rgb(255 255 255 / .9)}
+.t-balsamo .tile .ph{border-radius:999px 999px var(--radius) var(--radius)}
+.t-balsamo .tile-copy{text-align:center}
+.t-balsamo .tile-copy strong{font-size:1.7rem}
+.t-balsamo .sx-benefits ul{border:0}
+.t-balsamo .bf-icon{background:var(--c-accent)}
+.t-balsamo .sx-imgtext .ph{border-radius:999px 999px var(--radius) var(--radius)}
+.t-balsamo .sx-rich .display{font-size:clamp(2.2rem,1.4rem + 3vw,3.8rem)}
+.t-balsamo .sx-quotes figure{border:0;background:#fff;box-shadow:0 20px 50px -30px rgb(116 73 90 / .45)}
+.t-balsamo .sx-quotes blockquote{font-size:1.5rem;font-style:italic}
+.t-balsamo .sx-faq summary{font-weight:500}
+.t-balsamo .sx-news{background:linear-gradient(180deg,var(--c-bg),#F3E3DC);border:0}
+.t-balsamo .opt span{border-radius:999px}
+.t-balsamo .checkout fieldset,.t-balsamo .summary{border-color:transparent;box-shadow:0 20px 50px -34px rgb(116 73 90 / .5)}
+.t-balsamo .pcard-badge.is-sale{background:var(--c-sale);color:#fff}
+.t-balsamo .hero-full .hero-media::after{background:linear-gradient(90deg,rgb(251 245 242 / .55),transparent 70%)}
+.t-balsamo .hero-full .hero-copy{color:var(--c-text);text-align:left;align-self:center}
+.t-balsamo .hero-full .hero-ctas{justify-content:flex-start}
+.t-balsamo .hero-full .lede{margin-inline:0;color:var(--c-muted)}
+.t-balsamo .hero-full .eyebrow{color:var(--c-primary)}
+.t-balsamo .hero-full h1.display{max-width:11ch}
+.t-balsamo .hero-full .btn{background:var(--c-primary);color:var(--c-primaryText);border-color:var(--c-primary)}
+.t-balsamo .hero-full .btn-ghost{background:transparent;color:var(--c-text);border-color:var(--c-text)}
+.t-balsamo .ph-hero::before{width:15%;height:52%;left:66%;top:30%}
+.t-balsamo .ph-hero::after{width:8%;height:9%;left:69.5%;top:22%}
+@media (max-width:899px){.t-balsamo .ph-hero::before{left:64%;width:22%;height:26%;top:9%}.t-balsamo .ph-hero::after{left:69%;width:12%;height:6%;top:5%}.t-balsamo .hero-full .hero-copy{align-self:end}}

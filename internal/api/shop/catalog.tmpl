@@ -1,14 +1,9 @@
 {{define "content"}}
+<div>
+<p class="eyebrow">{{if .Query}}Búsqueda{{else}}Catálogo{{end}}</p>
 <h1>{{if .Query}}Resultados para “{{.Query}}”{{else}}Todos los productos{{end}}</h1>
 {{if not .Products}}<p class="empty">No encontramos productos{{if .Query}} para “{{.Query}}”. Revisa la ortografía o prueba con otra palabra{{end}}.</p>{{end}}
-<ul class="grid">
-{{range .Products}}<li class="card">
-<a href="{{$.Base}}/p/{{.Handle}}"><div class="ph" aria-hidden="true">{{.Initial}}</div>
-<h2>{{.Title}}</h2></a>
-{{with .Brand}}<p class="brand-name">{{.}}</p>{{end}}
-<p class="price">{{.Price}} {{with .CompareAt}}<s>{{.}}</s>{{end}}</p>
-{{if .SoldOut}}<p class="badge out">Agotado</p>{{end}}
-</li>{{end}}
-</ul>
-{{with .Next}}<p class="more"><a class="btn ghost" href="{{$.Base}}/c?q={{$.Query}}&amp;cursor={{.}}">Ver más productos</a></p>{{end}}
+<ul class="pgrid cols-4">{{range .Products}}{{template "pcard" .}}{{end}}</ul>
+{{with .Next}}<p class="more"><a class="btn btn-ghost" href="{{$.Base}}/c?q={{$.Query}}&amp;cursor={{.}}">Ver más productos</a></p>{{end}}
+</div>
 {{end}}

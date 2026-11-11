@@ -1,50 +1,58 @@
 :root {
-  --bg: #f4f5f8;
+  --bg: #f5f6f9;
   --surface: #ffffff;
-  --surface-2: #eef0f6;
-  --fg: #15192b;
-  --muted: #586079;
-  --line: #d9dde8;
-  --accent: #2447d3;
+  --surface-2: #eceef4;
+  --fg: #0e1220;
+  --muted: #565e74;
+  --line: #d9dde7;
+  --accent: #2e44e8;
   --accent-fg: #ffffff;
-  --accent-soft: #e5eafd;
-  --ok: #1b7a48;
+  --accent-soft: #e6e9fd;
+  --ok: #157f4a;
   --ok-soft: #dff2e7;
   --warn: #9a5b00;
   --warn-soft: #fcefd6;
-  --bad: #b3261e;
+  --bad: #c2281f;
   --bad-soft: #fbe2df;
-  --focus: #2447d3;
-  --radius: 8px;
-  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --focus: #2e44e8;
+  --radius: 10px;
+  --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --brand-cumbre: #2e44e8;
+  --brand-senal: #ff5b2e;
+  --brand-ink: #0e1220;
+  --shadow-1: 0 1px 2px rgb(14 18 32 / 0.06), 0 1px 1px rgb(14 18 32 / 0.04);
+  --shadow-2: 0 8px 24px -8px rgb(14 18 32 / 0.18);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f1220;
-    --surface: #171b2e;
-    --surface-2: #20253c;
-    --fg: #e8eaf4;
-    --muted: #9aa1bd;
-    --line: #2b3150;
-    --accent: #8ea4ff;
-    --accent-fg: #0f1220;
-    --accent-soft: #1f2856;
+    --bg: #0b0e18;
+    --surface: #131726;
+    --surface-2: #1b2034;
+    --fg: #edeff6;
+    --muted: #9aa2bc;
+    --line: #2a3049;
+    --accent: #8c9bff;
+    --accent-fg: #0b0e18;
+    --accent-soft: #1d2552;
     --ok: #6fd39a;
     --ok-soft: #123323;
     --warn: #f2b252;
     --warn-soft: #3a2a10;
     --bad: #ff8d84;
     --bad-soft: #3d1715;
-    --focus: #8ea4ff;
+    --focus: #8c9bff;
     color-scheme: dark;
   }
 }
+@layer base {
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 var(--font); }
 button, input, select, textarea { font: inherit; color: inherit; }
+}
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
