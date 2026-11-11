@@ -8,7 +8,9 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -20,6 +22,7 @@ type Keyring struct {
 	master cipher.AEAD
 	mu     sync.RWMutex
 	cache  map[string]cipher.AEAD
+	blind  map[string][]byte // per-tenant key for blind indexes, derived from the data key
 }
 
 // NewKeyring builds a keyring from a 64-hex-character master key.
@@ -32,7 +35,7 @@ func NewKeyring(masterHex string) (*Keyring, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Keyring{master: a, cache: map[string]cipher.AEAD{}}, nil
+	return &Keyring{master: a, cache: map[string]cipher.AEAD{}, blind: map[string][]byte{}}, nil
 }
 
 func newAEAD(k []byte) (cipher.AEAD, error) {
@@ -77,10 +80,32 @@ func (k *Keyring) Load(tenant string, wrapped []byte) error {
 	if err != nil {
 		return err
 	}
+	m := hmac.New(sha256.New, dk)
+	m.Write([]byte("apexx/blind-index/v1"))
 	k.mu.Lock()
 	k.cache[tenant] = a
+	k.blind[tenant] = m.Sum(nil)
 	k.mu.Unlock()
 	return nil
+}
+
+// Blind returns a keyed hash (HMAC-SHA256) of value under a key derived from
+// the tenant data key. It lets encrypted fields (email, phone) be looked up by
+// exact value without storing them in clear text; the same value in another
+// tenant gives a different hash, and without the tenant key it cannot be
+// brute-forced from the database alone.
+func (k *Keyring) Blind(tenant, scope, value string) ([]byte, error) {
+	k.mu.RLock()
+	key := k.blind[tenant]
+	k.mu.RUnlock()
+	if key == nil {
+		return nil, ErrNoKey
+	}
+	m := hmac.New(sha256.New, key)
+	m.Write([]byte(scope))
+	m.Write([]byte{0})
+	m.Write([]byte(value))
+	return m.Sum(nil), nil
 }
 
 // ErrNoKey means the tenant key was not loaded.
