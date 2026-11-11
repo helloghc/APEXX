@@ -22,6 +22,7 @@ export const MODULES: { id: string; label: string }[] = [
   { id: "team", label: "Equipo" },
   { id: "settings", label: "Configuración y conectores" },
   { id: "reports", label: "Reportes y analítica" },
+  { id: "marketplace", label: "Marketplace y vendedores" },
 ];
 
 const rank: Record<Level, number> = { none: 0, read: 1, edit: 2, admin: 3 };
@@ -71,6 +72,7 @@ export const NAV: { route: string; label: string; module?: string; level?: Level
   { route: "pedidos", label: "Pedidos", module: "orders" },
   { route: "suscripciones", label: "Suscripciones", module: "orders" },
   { route: "clientes", label: "Clientes", module: "customers" },
+  { route: "marketplace", label: "Marketplace", module: "marketplace" },
   { route: "correos", label: "Correos", module: "settings" },
   { route: "reportes", label: "Reportes", module: "reports" },
   { route: "equipo", label: "Equipo", module: "team" },

@@ -272,7 +272,8 @@ func inviteHash(token string) []byte {
 }
 
 // Invite creates an invitation valid for 7 days and returns its secret token.
-func (s *Service) Invite(ctx context.Context, tenant, actor, email, name string, perms Permissions) (Invitation, string, error) {
+// sellerID ties the new member to a marketplace seller (they only see the seller portal).
+func (s *Service) Invite(ctx context.Context, tenant, actor, email, name string, perms Permissions, sellerID string) (Invitation, string, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if !strings.Contains(email, "@") || len(email) > 200 {
 		return Invitation{}, "", errors.New("auth: invalid email")
@@ -295,9 +296,13 @@ func (s *Service) Invite(ctx context.Context, tenant, actor, email, name string,
 		if _, err := tx.Exec(ctx, `UPDATE invitations SET revoked_at=now() WHERE tenant_id=$1 AND email=$2 AND accepted_at IS NULL AND revoked_at IS NULL`, tenant, email); err != nil {
 			return err
 		}
-		if err := tx.QueryRow(ctx, `INSERT INTO invitations (tenant_id, id, email, name, permissions, token_hash, invited_by, expires_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7, now() + interval '7 days') RETURNING created_at, expires_at`,
-			tenant, inv.ID, email, inv.Name, pj, inviteHash(token), actor).Scan(&inv.CreatedAt, &inv.ExpiresAt); err != nil {
+		var sid *string
+		if sellerID != "" {
+			sid = &sellerID
+		}
+		if err := tx.QueryRow(ctx, `INSERT INTO invitations (tenant_id, id, email, name, permissions, token_hash, invited_by, expires_at, seller_id)
+			VALUES ($1,$2,$3,$4,$5,$6,$7, now() + interval '7 days', $8) RETURNING created_at, expires_at`,
+			tenant, inv.ID, email, inv.Name, pj, inviteHash(token), actor, sid).Scan(&inv.CreatedAt, &inv.ExpiresAt); err != nil {
 			return err
 		}
 		return store.Audit(ctx, tx, tenant, actor, "member.invited", inv.ID, map[string]any{"email": email})
@@ -372,14 +377,18 @@ func (s *Service) AcceptInvitation(ctx context.Context, token, name, password st
 	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		var pj []byte
 		var id string
+		var sid *string
 		// Claiming the row inside the transaction makes a double click harmless.
 		if err := tx.QueryRow(ctx, `UPDATE invitations SET accepted_at=now() WHERE tenant_id=$1 AND token_hash=$2 AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()
-			RETURNING id, permissions`, tenant, inviteHash(token)).Scan(&id, &pj); err != nil {
+			RETURNING id, permissions, seller_id`, tenant, inviteHash(token)).Scan(&id, &pj, &sid); err != nil {
 			return ErrInvitation
 		}
 		_ = json.Unmarshal(pj, &m.Permissions)
-		if err := tx.QueryRow(ctx, `INSERT INTO members (tenant_id, id, email, name, password_hash, permissions) VALUES ($1,$2,$3,$4,$5,$6) RETURNING created_at`,
-			tenant, m.ID, email, m.Name, hash, pj).Scan(&m.CreatedAt); err != nil {
+		if sid != nil {
+			m.SellerID = *sid
+		}
+		if err := tx.QueryRow(ctx, `INSERT INTO members (tenant_id, id, email, name, password_hash, permissions, seller_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING created_at`,
+			tenant, m.ID, email, m.Name, hash, pj, sid).Scan(&m.CreatedAt); err != nil {
 			return ErrExists
 		}
 		return store.Audit(ctx, tx, tenant, "member:"+m.ID, "member.joined", m.ID, map[string]any{"invitation": id})

@@ -214,6 +214,9 @@ func deriveTx(ctx context.Context, tx pgx.Tx, tenant, id string) error {
 	if err != nil {
 		return err
 	}
+	if err := sellerSyncTx(ctx, tx, tenant, id); err != nil {
+		return err
+	}
 	if cid != nil {
 		return customers.RecalcStatsTx(ctx, tx, tenant, *cid)
 	}

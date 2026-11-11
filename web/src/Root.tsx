@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat } from "lucide-react";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat, Store } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -37,6 +37,8 @@ const Wallet = lazy(() => import("@/pages/wallet/index").then((m) => ({ default:
 const Subscriptions = lazy(() => import("@/pages/subscriptions/index").then((m) => ({ default: m.Subscriptions })));
 const Account = lazy(() => import("@/pages/account/index").then((m) => ({ default: m.Account })));
 const AcceptInvite = lazy(() => import("@/pages/account/index").then((m) => ({ default: m.AcceptInvite })));
+const Marketplace = lazy(() => import("@/pages/marketplace/index").then((m) => ({ default: m.Marketplace })));
+const SellerPortal = lazy(() => import("@/pages/marketplace/index").then((m) => ({ default: m.SellerPortal })));
 const Settings = lazy(() => import("@/pages/settings/Settings").then((m) => ({ default: m.Settings })));
 const Reports = lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.Reports })));
 const Ops = lazy(() => import("@/pages/reports/Ops").then((m) => ({ default: m.Ops })));
@@ -240,6 +242,7 @@ const ICONS: Record<string, typeof HomeIcon> = {
   busqueda: SearchCheck,
   tarjetas: Gift,
   suscripciones: Repeat,
+  marketplace: Store,
   configuracion: Settings2,
   conectores: Cable,
   reportes: BarChart3,
@@ -249,7 +252,8 @@ const ICONS: Record<string, typeof HomeIcon> = {
 function Shell({ me }: { me: Me }) {
   const qc = useQueryClient();
   const route = useRoute();
-  const nav = visibleNav(me);
+  // A seller's person only has the seller portal (as "inicio") and their own account.
+  const nav = me.sellerId ? [{ route: "inicio", label: "Portal de vendedor" }] : visibleNav(me);
   const section = route[0] ?? "inicio";
   // "cuenta" is every member's own security page; it needs no module permission.
   const active = section === "cuenta" || nav.find((n) => n.route === section) ? section : null;
@@ -310,6 +314,9 @@ function Shell({ me }: { me: Me }) {
     case "cuenta":
       body = <Account me={me} />;
       break;
+    case "marketplace":
+      body = <Marketplace me={me} route={route} />;
+      break;
     case "configuracion":
       body = <Settings me={me} sub={route[1]} rest={route.slice(2)} />;
       break;
@@ -323,7 +330,7 @@ function Shell({ me }: { me: Me }) {
       body = <Ops me={me} view={route[1]} />;
       break;
     case "inicio":
-      body = <Home me={me} />;
+      body = me.sellerId ? <SellerPortal /> : <Home me={me} />;
       break;
     default:
       body = (

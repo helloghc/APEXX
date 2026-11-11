@@ -180,6 +180,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesSubscriptions(handle)
 	s.routesAccount(handle)
 	s.routesFeeds(handle)
+	s.routesMarketplace(handle)
 
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))

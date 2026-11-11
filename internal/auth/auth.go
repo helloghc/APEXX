@@ -23,7 +23,7 @@ import (
 )
 
 // Modules of the platform.
-var Modules = []string{"catalog", "pricing", "inventory", "promotions", "orders", "customers", "payments", "builder", "team", "settings", "reports"}
+var Modules = []string{"catalog", "pricing", "inventory", "promotions", "orders", "customers", "payments", "builder", "team", "settings", "reports", "marketplace"}
 
 // Levels in increasing order.
 const (
@@ -102,8 +102,9 @@ type Principal struct {
 	Email       string      `json:"email,omitempty"`
 	Owner       bool        `json:"owner"`
 	Permissions Permissions `json:"permissions"`
-	Storefront  bool        `json:"storefront"` // publishable key: may place orders
-	SessionID   string      `json:"-"`          // session of a signed-in member
+	Storefront  bool        `json:"storefront"`         // publishable key: may place orders
+	SessionID   string      `json:"-"`                  // session of a signed-in member
+	SellerID    string      `json:"sellerId,omitempty"` // marketplace seller this person works for: they only see the seller portal
 }
 
 // Actor is the audit-log name of the principal.
@@ -193,6 +194,7 @@ type Member struct {
 	CreatedAt   time.Time   `json:"createdAt"`
 	LastLoginAt *time.Time  `json:"lastLoginAt"`
 	TwoStep     bool        `json:"twoStep"` // two-step verification is on
+	SellerID    string      `json:"sellerId,omitempty"`
 }
 
 func newID(prefix string, n int) string {
@@ -239,7 +241,7 @@ func (s *Service) CreateMember(ctx context.Context, tenant, actor, email, name, 
 func (s *Service) Members(ctx context.Context, tenant string) ([]Member, error) {
 	var out []Member
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id, email, name, is_owner, status, permissions, created_at, last_login_at, totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 ORDER BY created_at`, tenant)
+		rows, err := tx.Query(ctx, `SELECT id, email, name, is_owner, status, permissions, created_at, last_login_at, totp_enabled_at IS NOT NULL, COALESCE(seller_id,'') FROM members WHERE tenant_id=$1 ORDER BY created_at`, tenant)
 		if err != nil {
 			return err
 		}
@@ -252,7 +254,7 @@ func (s *Service) Members(ctx context.Context, tenant string) ([]Member, error) 
 func scanMember(r pgx.CollectableRow) (Member, error) {
 	var m Member
 	var pj []byte
-	err := r.Scan(&m.ID, &m.Email, &m.Name, &m.Owner, &m.Status, &pj, &m.CreatedAt, &m.LastLoginAt, &m.TwoStep)
+	err := r.Scan(&m.ID, &m.Email, &m.Name, &m.Owner, &m.Status, &pj, &m.CreatedAt, &m.LastLoginAt, &m.TwoStep, &m.SellerID)
 	_ = json.Unmarshal(pj, &m.Permissions)
 	return m, err
 }
@@ -269,7 +271,7 @@ func (s *Service) UpdateMember(ctx context.Context, tenant, actor, id string, pe
 	}
 	var m Member
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id, email, name, is_owner, status, permissions, created_at, last_login_at, totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, id)
+		rows, err := tx.Query(ctx, `SELECT id, email, name, is_owner, status, permissions, created_at, last_login_at, totp_enabled_at IS NOT NULL, COALESCE(seller_id,'') FROM members WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, id)
 		if err != nil {
 			return err
 		}
@@ -368,10 +370,10 @@ func (s *Service) Authenticate(ctx context.Context, token string) (Principal, er
 		var p Principal
 		var pj []byte
 		var seen time.Time
-		err := s.DB.System.QueryRow(ctx, `SELECT m.tenant_id, m.id, m.name, m.email, m.is_owner, m.permissions, s.id, s.last_seen_at
+		err := s.DB.System.QueryRow(ctx, `SELECT m.tenant_id, m.id, m.name, m.email, m.is_owner, m.permissions, s.id, s.last_seen_at, COALESCE(m.seller_id,'')
 			FROM sessions s JOIN members m ON m.tenant_id=s.tenant_id AND m.id=s.member_id
 			WHERE s.token_hash=$1 AND s.expires_at > now() AND m.status='active'`, sum[:]).
-			Scan(&p.Tenant, &p.ID, &p.Name, &p.Email, &p.Owner, &pj, &p.SessionID, &seen)
+			Scan(&p.Tenant, &p.ID, &p.Name, &p.Email, &p.Owner, &pj, &p.SessionID, &seen, &p.SellerID)
 		if err != nil {
 			return Principal{}, ErrUnauthenticated
 		}
@@ -381,6 +383,10 @@ func (s *Service) Authenticate(ctx context.Context, token string) (Principal, er
 		_ = json.Unmarshal(pj, &p.Permissions)
 		if p.Owner {
 			p.Permissions = All(Admin)
+		}
+		if p.SellerID != "" {
+			// A seller's person never gets store permissions, whatever the row says.
+			p.Owner, p.Permissions = false, Permissions{}
 		}
 		p.Kind = "member"
 		return p, nil

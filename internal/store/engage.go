@@ -15,6 +15,9 @@ const KeySearch = "search"
 // KeySubscriptions is the TopicSettings key of the subscription configuration.
 const KeySubscriptions = "subscriptions"
 
+// KeySellers is the TopicSettings key of marketplace sellers and their products.
+const KeySellers = "sellers"
+
 // GetDoc loads a tenant document into v. It reports whether it exists.
 func (d *DB) GetDoc(ctx context.Context, tenant, kind, id string, v any) (bool, error) {
 	found := false
@@ -368,6 +371,28 @@ func (d *DB) TopWishes(ctx context.Context, tenant string, limit int) ([]WishCou
 			return w, r.Scan(&w.ProductID, &w.Customers)
 		})
 		return err
+	})
+	return out, err
+}
+
+// SellerNames maps each product that belongs to an active marketplace seller
+// to the seller's name (what the product page shows as "sold by").
+func (d *DB) SellerNames(ctx context.Context, tenant string) (map[string]string, error) {
+	out := map[string]string{}
+	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT sp.product_id, s.name FROM seller_products sp JOIN sellers s ON s.tenant_id=sp.tenant_id AND s.id=sp.seller_id WHERE sp.tenant_id=$1`, tenant)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var p, n string
+			if err := rows.Scan(&p, &n); err != nil {
+				return err
+			}
+			out[p] = n
+		}
+		return rows.Err()
 	})
 	return out, err
 }

@@ -520,6 +520,7 @@ type subChoice struct {
 type productPage struct {
 	pageData
 	Handle  string
+	SoldBy  string     // marketplace seller, when the product is not the store's own
 	Sub     *subChoice // set when the product can be bought on subscription
 	Reviews store.ProductReviews
 	Average string // "4.6"
@@ -638,6 +639,7 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		ld["description"] = p.Description
 	}
 	pg.Handle = p.Handle
+	pg.SoldBy = t.SoldBy(p.ID)
 	if cfg := t.Subscriptions(); cfg.Enabled && len(cfg.Plans) > 0 && cfg.Allows(p.ID, cfg.Plans[0]) && !pg.SoldOut {
 		pg.Sub = &subChoice{Plans: planList(cfg.Plans)}
 		if cfg.DiscountBps > 0 {

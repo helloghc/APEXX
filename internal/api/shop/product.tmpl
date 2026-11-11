@@ -6,6 +6,7 @@
 <div class="pdp-info">
 {{with .P.Brand}}<p class="eyebrow">{{if $.P.BrandURL}}<a href="{{$.P.BrandURL}}">{{.}}</a>{{else}}{{.}}{{end}}</p>{{end}}
 <h1>{{.P.Title}}</h1>
+{{with .SoldBy}}<p class="muted soldby">Vendido y enviado por <strong>{{.}}</strong></p>{{end}}
 <form class="buy" data-buy>
 <p class="price big" data-price-out>{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p>
 <fieldset><legend>Elige una opción</legend><div class="opts">

@@ -33,6 +33,15 @@ type siteState struct {
 	site   atomic.Pointer[SiteView]
 	search atomic.Pointer[engage.SearchConfig]
 	subs   atomic.Pointer[subs.Config]
+	sold   atomic.Pointer[map[string]string]
+}
+
+// SoldBy returns the marketplace seller of a product ("" = the store itself).
+func (t *Tenant) SoldBy(productID string) string {
+	if m := t.sold.Load(); m != nil {
+		return (*m)[productID]
+	}
+	return ""
 }
 
 // Subscriptions returns how the store offers recurring purchases (never nil).
@@ -92,6 +101,13 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 		}
 		cfg.Normalize()
 		t.search.Store(&cfg)
+	}
+	if key == "" || key == store.KeySellers {
+		m, err := p.db.SellerNames(ctx, t.ID)
+		if err != nil {
+			return err
+		}
+		t.sold.Store(&m)
 	}
 	if key == "" || key == store.KeySubscriptions {
 		var cfg subs.Config

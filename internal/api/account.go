@@ -208,7 +208,7 @@ func (s *Server) createInvitation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := principal(r)
-	inv, token, err := s.Auth.Invite(r.Context(), p.Tenant, p.Actor(), body.Email, body.Name, body.Permissions)
+	inv, token, err := s.Auth.Invite(r.Context(), p.Tenant, p.Actor(), body.Email, body.Name, body.Permissions, "")
 	if err != nil {
 		s.authFail(w, err)
 		return

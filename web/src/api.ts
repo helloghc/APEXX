@@ -91,6 +91,7 @@ export interface Me {
   owner: boolean;
   permissions: Permissions;
   twoStep?: boolean;
+  sellerId?: string;
 }
 
 export interface Money {
