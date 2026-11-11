@@ -65,8 +65,9 @@ type RefundInput struct {
 	Shipping int64        `json:"shipping"` // part of the shipping cost to give back
 	Amount   *int64       `json:"amount"`   // overrides the computed amount (<= refundable)
 	Reason   string       `json:"reason"`
-	Restock  bool         `json:"restock"` // return unshipped units to stock and take them out of the order
-	Notify   *bool        `json:"notify"`  // email the customer (default true)
+	Restock  bool         `json:"restock"`  // return unshipped units to stock and take them out of the order
+	Notify   *bool        `json:"notify"`   // email the customer (default true)
+	ToCredit bool         `json:"toCredit"` // refund as store credit (a code is emailed to the customer)
 }
 
 // Quote is the breakdown of a refund before it is made.
@@ -167,6 +168,7 @@ type refundSpec struct {
 	Notify   bool
 	ReturnID string
 	IdemKey  string
+	ToCredit bool // give the money back as store credit instead of to the payment method
 	// done runs in the completing transaction (order locked) after the money moved.
 	done func(ctx context.Context, tx pgx.Tx, o orderRow, r *Refund) error
 }
@@ -227,6 +229,20 @@ func reserveTx(ctx context.Context, tx pgx.Tx, tenant, orderID string, amount in
 	return parts, nil
 }
 
+// markCredit turns the parts of a refund into store credit: the money stays
+// with the store and the customer gets a credit of the same amount. Parts paid
+// with a gift card simply go back to that card.
+func markCredit(parts []refundPart, toCredit bool) {
+	if !toCredit {
+		return
+	}
+	for i := range parts {
+		if parts[i].Provider != "gift_card" {
+			parts[i].Provider = "store_credit"
+		}
+	}
+}
+
 func releaseTx(ctx context.Context, tx pgx.Tx, tenant string, parts []refundPart) error {
 	for _, p := range parts {
 		if _, err := tx.Exec(ctx, `UPDATE payments SET refunded=refunded-$3, updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, p.PaymentID, p.Amount); err != nil {
@@ -283,6 +299,7 @@ func (s *Service) refund(ctx context.Context, tenant, actor, orderID string, spe
 				if parts, err = reserveTx(ctx, tx, tenant, orderID, spec.Amount); err != nil {
 					return err
 				}
+				markCredit(parts, spec.ToCredit)
 				attempt++
 				raw, _ = json.Marshal(parts)
 				_, err = tx.Exec(ctx, `UPDATE refunds SET status='pending', parts=$3, attempts=$4, last_error='', amount=$5 WHERE tenant_id=$1 AND id=$2`, tenant, id, raw, attempt, spec.Amount)
@@ -300,6 +317,7 @@ func (s *Service) refund(ctx context.Context, tenant, actor, orderID string, spe
 		if parts, err = reserveTx(ctx, tx, tenant, orderID, spec.Amount); err != nil {
 			return err
 		}
+		markCredit(parts, spec.ToCredit)
 		id = newID("rfd_")
 		items, _ := json.Marshal(spec.Items)
 		raw, _ := json.Marshal(parts)
@@ -348,9 +366,19 @@ func truncate(s string, n int) string {
 
 func (s *Service) providerRefund(ctx context.Context, tenant, refundID string, attempt int, parts []refundPart) error {
 	var acct *Account
+	var credit int64
 	for _, p := range parts {
-		if p.Provider == "manual" {
+		switch p.Provider {
+		case "manual":
 			continue // money handed back outside the platform; only recorded
+		case "gift_card":
+			if err := s.walletRefund(ctx, tenant, refundID, p); err != nil {
+				return err
+			}
+			continue
+		case "store_credit":
+			credit += p.Amount
+			continue
 		}
 		if acct == nil {
 			a, err := s.Accounts(ctx, tenant)
@@ -363,6 +391,9 @@ func (s *Service) providerRefund(ctx context.Context, tenant, refundID string, a
 		if err := acct.Provider.Refund(ctx, acct.Account, p.Ref, p.Amount, key); err != nil {
 			return err
 		}
+	}
+	if credit > 0 {
+		return s.creditRefund(ctx, tenant, refundID, credit)
 	}
 	return nil
 }
@@ -566,7 +597,7 @@ func (s *Service) Refund(ctx context.Context, tenant, actor, orderID, idemKey st
 		idemKey = "api:" + idemKey
 	}
 	return s.refund(ctx, tenant, actor, orderID, refundSpec{Kind: "refund", Amount: amount, Shipping: q.Shipping, Items: q.Items,
-		Reason: strings.TrimSpace(in.Reason), Restock: in.Restock, Notify: in.Notify == nil || *in.Notify, IdemKey: idemKey})
+		Reason: strings.TrimSpace(in.Reason), Restock: in.Restock, Notify: in.Notify == nil || *in.Notify, IdemKey: idemKey, ToCredit: in.ToCredit})
 }
 
 // ReconcileRefunds finishes refunds left pending by a crash: the provider call
@@ -617,6 +648,9 @@ func (s *Service) Cancel(ctx context.Context, tenant, actor, id, reason string) 
 		status = o.Status
 		if status == StatusPendingPayment {
 			if err := store.ReleaseTx(ctx, tx, tenant, id); err != nil {
+				return err
+			}
+			if err := releaseWalletTx(ctx, tx, tenant, actor, id); err != nil {
 				return err
 			}
 			if err := promostore.ReleaseTx(ctx, tx, tenant, id); err != nil {

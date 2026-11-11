@@ -374,3 +374,10 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .rv-stars label{font-size:1.9rem;line-height:1;cursor:pointer;color:var(--c-border);padding:2px}
 .rv-stars input:checked~label,.rv-stars label:hover,.rv-stars label:hover~label{color:var(--c-accent)}
 .rv-stars input:focus-visible+label{outline:2px solid var(--c-accent);outline-offset:2px}
+
+/* Tarjetas de regalo y meses sin intereses en el pago */
+.giftrow{display:flex;gap:10px;align-items:stretch}.giftrow input{flex:1;min-width:0;text-transform:uppercase}
+.giftrow .btn{width:auto;white-space:nowrap}
+.giftlist{list-style:none;padding:0;margin:6px 0 0;display:grid;gap:6px;font-size:.94rem}
+[data-installments] select{width:100%;min-height:44px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);color:var(--c-text);font:inherit}
+[data-wallet-rows]{margin-top:8px}

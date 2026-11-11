@@ -182,8 +182,11 @@ type Edit struct {
 
 // clearing is the ledger account where money of a provider lands.
 func clearing(provider string) string {
-	if provider == "manual" {
+	switch provider {
+	case "manual":
 		return "manual_clearing"
+	case "gift_card", "store_credit":
+		return "gift_card_liability" // what the store owes to card holders
 	}
 	return "psp_clearing"
 }
@@ -398,18 +401,22 @@ func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Ord
 	var o Order
 	var enc []byte
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		var methodJSON, taxJSON []byte
+		var methodJSON, taxJSON, riskJSON []byte
 		err := tx.QueryRow(ctx, `SELECT id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, created_at,
 				COALESCE(customer_id,''), payment_status, fulfillment_status, refunded_total, source,
-				shipping_method, tax_detail, display_number
+				shipping_method, tax_detail, display_number, risk, installments
 			FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, id).
 			Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.ItemsTotal, &o.Discounts, &o.Shipping, &o.TaxIncluded, &o.GrandTotal, &enc, &o.CreatedAt,
-				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber)
+				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber, &riskJSON, &o.Installments)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		if err != nil {
 			return err
+		}
+		var rk Risk
+		if json.Unmarshal(riskJSON, &rk) == nil && rk.Level != "" {
+			o.Risk = &rk
 		}
 		var m ShippingMethod
 		if json.Unmarshal(methodJSON, &m) == nil && m.Name != "" {
@@ -541,6 +548,7 @@ type ListFilter struct {
 	Status      []string
 	Payment     []string
 	Fulfillment []string
+	Review      bool // only orders flagged by the fraud rules and not yet reviewed
 	Channel     string
 	CustomerID  string
 	From, To    *time.Time
@@ -611,6 +619,9 @@ func (s *Service) where(tenant string, f ListFilter) (string, []any, error) {
 	}
 	if len(f.Status) > 0 {
 		w += ` AND o.status = ANY(` + arg(f.Status) + `)`
+	}
+	if f.Review {
+		w += ` AND o.risk->>'level' = 'review'`
 	}
 	if len(f.Payment) > 0 {
 		w += ` AND o.payment_status = ANY(` + arg(f.Payment) + `)`

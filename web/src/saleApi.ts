@@ -26,12 +26,12 @@ export interface Order {
   customer?: { email: string; name: string; phone?: string; address?: string; notes?: string };
   customerId?: string; customerName?: string; customerEmail?: string;
   paymentStatus: string; fulfillmentStatus: string; refundedTotal: number; paidTotal: number; balance: number; itemsCount?: number;
-  lines: OLine[] | null; events?: OEvent[]; payment?: OPayment; invoice?: { status: string; url?: string; attempts: number; lastError?: string };
+  lines: OLine[] | null; events?: OEvent[]; payment?: OPayment; payments?: OPayment[] | null; risk?: { level: string; reasons?: string[]; clearedBy?: string }; installments?: number; invoice?: { status: string; url?: string; attempts: number; lastError?: string };
   fulfillments?: Fulfillment[]; refunds?: Refund[]; returns?: Return[]; notes?: ONote[];
   promotions?: { promotionId: string; promotionName: string; coupon?: string; amount: number; status: string }[];
   createdAt: string;
 }
-export interface OrderQuery { q?: string; status?: string; payment?: string; fulfillment?: string; from?: string; to?: string; customer?: string; cursor?: string; limit?: number }
+export interface OrderQuery { review?: string; q?: string; status?: string; payment?: string; fulfillment?: string; from?: string; to?: string; customer?: string; cursor?: string; limit?: number }
 export interface Quote { items: { line: number; sku: string; qty: number; amount: number }[]; itemsAmount: number; shipping: number; suggested: number; maxRefundable: number; shippingLeft: number; tax: number }
 export interface OrderView { id: string; name: string; filters: OrderQuery }
 export interface Draft { id: string; number: number; status: string; currency: string; items: { sku: string; title: string; qty: number; unit: number; total: number }[]; customer?: { email: string; name: string }; grandTotal: number; itemsTotal: number; shipping: number; discount: number; note: string; orderId?: string; createdAt?: string; payUrl?: string }
@@ -51,6 +51,7 @@ async function download(path: string, fallback: string) {
 }
 
 export const sale = {
+  clearRisk: (id: string) => request<void>("POST", `/v1/orders/${enc(id)}/risk/clear`, {}, { as: "none" }),
   orders: (f: OrderQuery) => request<{ items: Order[]; nextCursor: string; total: number }>("GET", "/v1/orders" + qs({ ...f })),
   order: (id: string) => request<Order>("GET", `/v1/orders/${enc(id)}`),
   exportOrders: (f: OrderQuery) => download("/v1/orders/export.csv" + qs({ ...f, cursor: undefined, limit: undefined }), "pedidos.csv"),
@@ -62,7 +63,7 @@ export const sale = {
   updateFulfillment: (id: string, fid: string, b: { status?: string; carrier?: string; trackingNumber?: string; trackingUrl?: string }) =>
     request<Order>("PATCH", `/v1/orders/${enc(id)}/fulfillments/${enc(fid)}`, b),
   refundQuote: (id: string, b: { lines: { line: number; qty: number }[]; shipping: number; restock: boolean }) => request<Quote>("POST", `/v1/orders/${enc(id)}/refunds/quote`, b),
-  refund: (id: string, b: { lines: { line: number; qty: number }[]; shipping: number; amount?: number; reason: string; restock: boolean; notify?: boolean }, key: string) =>
+  refund: (id: string, b: { lines: { line: number; qty: number }[]; shipping: number; amount?: number; reason: string; restock: boolean; notify?: boolean; toCredit?: boolean }, key: string) =>
     request<Refund>("POST", `/v1/orders/${enc(id)}/refunds`, b, { headers: { "Idempotency-Key": key } }),
   createReturn: (id: string, b: { items: { line: number; qty: number; reason: string }[]; note: string }) => request<Return>("POST", `/v1/orders/${enc(id)}/returns`, b),
   addNote: (id: string, body: string, visibility: "internal" | "customer") => request<ONote>("POST", `/v1/orders/${enc(id)}/notes`, { body, visibility }),

@@ -18,6 +18,7 @@ const (
 	TplInvoiceReady   = "invoice_available"
 	TplAbandonedCart  = "abandoned_cart"
 	TplPaymentLink    = "payment_link"
+	TplGiftCard       = "gift_card"
 )
 
 // Blocks are the editable parts of a template. Body paragraphs are separated
@@ -142,6 +143,12 @@ var Definitions = []Definition{
 			CTA:  "Volver a mi carrito", Footer: "Recibes este correo porque empezaste una compra en nuestra tienda."},
 		Variables: append(append([]Variable{}, common...), Variable{"carrito.total", "Total del carrito", "$1,598.00 MXN"}),
 		ShowItems: true, Optional: true},
+	{Key: TplGiftCard, Name: "Tarjeta de regalo o saldo a favor", Description: "Se envía con el código al crear una tarjeta de regalo o al reembolsar como saldo a favor.",
+		Subject: "Tienes {{tarjeta.saldo}} para usar en {{tienda.nombre}}",
+		Blocks: Blocks{Heading: "{{cliente.nombre}}, tienes saldo en {{tienda.nombre}}",
+			Body: "Tu código es:\n\n{{tarjeta.codigo}}\n\nSaldo: {{tarjeta.saldo}}. Vigencia: {{tarjeta.vence}}.\n\nEscríbelo al pagar, en “Tarjeta de regalo o saldo a favor”. Si no lo usas todo, el resto queda guardado en el mismo código.",
+			CTA:  "Ir a la tienda", Footer: "Guarda este correo: el código funciona como dinero en la tienda."},
+		Variables: append(append([]Variable{}, common...), Variable{"tarjeta.codigo", "Código de la tarjeta", "ABCD-EFGH-JKLM-NPQR"}, Variable{"tarjeta.saldo", "Saldo", "$500.00 MXN"}, Variable{"tarjeta.vence", "Vigencia", "No vence"})},
 	{Key: TplPaymentLink, Name: "Enlace de pago", Description: "Se envía al mandar un pedido borrador o un saldo pendiente para que el cliente pague.",
 		Subject: "Completa el pago de tu pedido en {{tienda.nombre}}",
 		Blocks: Blocks{Heading: "Tu pedido está listo para pagar",

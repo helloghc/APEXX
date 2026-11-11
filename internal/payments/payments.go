@@ -28,6 +28,7 @@ type ChargeRequest struct {
 	FeeAmount      int64  // Apexx application fee
 	IdempotencyKey string
 	Email          string
+	Installments   int // monthly payments without interest (0 or 1 = single payment)
 }
 
 // InvoiceLine is one line of an invoice.

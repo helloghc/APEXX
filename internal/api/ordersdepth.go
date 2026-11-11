@@ -50,6 +50,7 @@ func orderFilter(w http.ResponseWriter, r *http.Request) (orders.ListFilter, boo
 	q := r.URL.Query()
 	f := orders.ListFilter{Q: q.Get("q"), Status: multi(q.Get("status")), Payment: multi(q.Get("payment")), Fulfillment: multi(q.Get("fulfillment")),
 		Channel: q.Get("channel"), CustomerID: q.Get("customer"), Sort: q.Get("sort"), Cursor: q.Get("cursor"), Limit: limitOf(r)}
+	f.Review = q.Get("review") == "1"
 	if b := q.Get("before"); b != "" && f.Cursor == "" {
 		f.Cursor = b // older clients page with ?before=<number>
 	}

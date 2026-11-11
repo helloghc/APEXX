@@ -13,7 +13,11 @@
 <div class="field"><label for="postal">Código postal</label><input id="postal" name="postal" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="postal-code" required></div>
 <div data-ship-options></div>
 </fieldset>
-<fieldset><legend>Pago</legend><div data-payment><p class="muted">Cargando métodos de pago…</p></div></fieldset>
+<fieldset><legend>Tarjeta de regalo o saldo a favor</legend>
+<div class="giftrow"><label for="gc" class="sr">Código de la tarjeta</label><input id="gc" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="24"><button type="button" class="btn ghost" data-gc-apply>Aplicar</button></div>
+<p class="note" role="status" data-gc-status></p><ul class="giftlist" data-gc-list></ul>
+</fieldset>
+<fieldset><legend>Pago</legend><div data-payment><p class="muted">Cargando métodos de pago…</p></div><div data-installments></div></fieldset>
 <div data-checkout-extras></div>
 <p class="error" role="alert" data-error></p>
 <button class="btn" type="submit" data-pay>Pagar</button>

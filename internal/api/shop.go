@@ -316,6 +316,7 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &req) {
 		return
 	}
+	req.ClientIP = s.clientIP(r)
 	errs := validateItems(req.Channel, req.Items)
 	if !strings.Contains(req.Customer.Email, "@") || len(req.Customer.Email) > 200 {
 		errs = append(errs, apierr.FieldError{Field: "customer.email", Code: "invalid", Message: "Correo inválido"})
@@ -323,7 +324,7 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(req.Customer.Name) == "" || len(req.Customer.Name) > 200 || len(req.Customer.Address) > 500 {
 		errs = append(errs, apierr.FieldError{Field: "customer.name", Code: "invalid", Message: "Revisa tu nombre y dirección"})
 	}
-	if !strings.HasPrefix(req.PaymentMethod, "pm_") {
+	if !strings.HasPrefix(req.PaymentMethod, "pm_") && len(req.GiftCards) == 0 {
 		errs = append(errs, apierr.FieldError{Field: "paymentMethod", Code: "invalid", Message: "Método de pago inválido"})
 	}
 	errs = append(errs, validateCartExtras(&cart.Request{Coupons: req.Coupons})...)
@@ -369,6 +370,11 @@ func (s *Server) shopConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.extendShopConfig(tenant, out)
+	if s.Orders != nil {
+		if inst, _, err := s.Orders.PaymentRules(r.Context(), tenant); err == nil && inst.Enabled {
+			out["installments"] = inst
+		}
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, out)
 }

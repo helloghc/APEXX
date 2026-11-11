@@ -81,7 +81,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
             {open && <StatusPill status={o.fulfillmentStatus} />}
             {(o.status === "cancelled" || o.status === "refunded") && <StatusPill status={o.status} />}
           </div>
-          <p className="text-sm text-muted-foreground">{dateTime(o.createdAt)} · canal {o.channel}</p>
+          <p className="text-sm text-muted-foreground">{dateTime(o.createdAt)} · canal {o.channel}{o.installments ? ` · ${o.installments} meses sin intereses` : ""}</p>
         </div>
         {canEdit && (
           <div className="flex flex-wrap gap-2">
@@ -93,6 +93,13 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
         )}
       </div>
 
+      {o.risk?.level === "review" && (
+        <Notice tone="warn">
+          <strong>Revisa este pedido antes de enviarlo.</strong> Tus reglas antifraude lo marcaron: {(o.risk.reasons ?? []).join("; ")}.{" "}
+          {canEdit && <Button size="sm" variant="outline" className="ml-2" onClick={() => void sale.clearRisk(o.id).then(() => { toast.success("Pedido marcado como revisado."); refresh(); }).catch((e) => toast.error(errorMessage(e)))}>Ya lo revisé, está bien</Button>}
+        </Notice>
+      )}
+      {o.risk?.level === "cleared" && <p className="text-sm text-muted-foreground">Revisado por {o.risk.clearedBy || "el equipo"} tras la alerta antifraude.</p>}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid content-start gap-5">
           <Card>
@@ -243,8 +250,12 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
             <CardContent className="grid gap-2 text-sm">
               {o.payment ? (
                 <>
-                  <div className="flex items-center gap-2"><StatusPill status={o.payment.status} /><span className="tabular-nums">{formatMoney(o.payment.amount, cur)}</span></div>
-                  <span className="break-all font-mono text-xs text-muted-foreground">{o.payment.provider} · {o.payment.ref}</span>
+                  {(o.payments && o.payments.length > 1 ? o.payments : [o.payment]).map((p, i) => (
+                    <div key={i} className="grid gap-0.5">
+                      <div className="flex items-center gap-2"><StatusPill status={p.status} /><span className="tabular-nums">{formatMoney(p.amount, cur)}</span><span className="text-muted-foreground">{p.provider === "gift_card" ? "Tarjeta de regalo o saldo" : p.provider === "manual" ? "Pago manual" : "Tarjeta"}</span></div>
+                      <span className="break-all font-mono text-xs text-muted-foreground">{p.provider} · {p.ref}</span>
+                    </div>
+                  ))}
                 </>
               ) : <span className="text-muted-foreground">Sin pago registrado.</span>}
               {o.balance > 0 && <Notice tone="warn">El cliente debe {formatMoney(o.balance, cur)}.</Notice>}
@@ -324,6 +335,7 @@ function RefundDialog({ order, onClose, onDone }: DP) {
   const [reason, setReason] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [busy, setBusy] = useState(false);
+  const [toCredit, setToCredit] = useState(false);
   const key = useMemo(() => `refund-${order.id}-${Date.now()}`, [order.id]);
   const lines = picked(qty);
   const linesKey = JSON.stringify(lines) + shipping + restock;
@@ -341,8 +353,8 @@ function RefundDialog({ order, onClose, onDone }: DP) {
     if (cents == null) return;
     setBusy(true);
     try {
-      await sale.refund(order.id, { lines, shipping: quote?.shipping ?? 0, amount: cents, reason: reason.trim(), restock }, key);
-      toast.success(`Reembolso de ${formatMoney(cents, order.currency)} enviado.`);
+      await sale.refund(order.id, { lines, shipping: quote?.shipping ?? 0, amount: cents, reason: reason.trim(), restock, toCredit }, key);
+      toast.success(toCredit ? `Saldo a favor de ${formatMoney(cents, order.currency)} enviado al cliente por correo.` : `Reembolso de ${formatMoney(cents, order.currency)} enviado.`);
       onDone();
       onClose();
     } catch (e) {
@@ -352,11 +364,12 @@ function RefundDialog({ order, onClose, onDone }: DP) {
     }
   }
   return (
-    <Shell title="Reembolsar" description="Elige qué productos reembolsar o escribe un monto. El dinero vuelve al mismo medio de pago." onClose={onClose}
+    <Shell title="Reembolsar" description="Elige qué productos reembolsar o escribe un monto. El dinero vuelve al mismo medio de pago, o se entrega como saldo a favor." onClose={onClose}
       footer={<Button onClick={() => void go()} disabled={busy || invalid}>{busy ? "Reembolsando…" : `Reembolsar ${cents ? formatMoney(cents, order.currency) : ""}`}</Button>}>
       <QtyPicker lines={order.lines} max={left} value={qty} onChange={setQty} />
       {order.shipping > 0 && <label className="flex items-center gap-2 text-sm"><Checkbox checked={shipping} onCheckedChange={(c) => setShipping(!!c)} /> Incluir el envío ({formatMoney(quote?.shippingLeft ?? order.shipping, order.currency)})</label>}
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={restock} onCheckedChange={(c) => setRestock(!!c)} /> Devolver al inventario las piezas que aún no se envían</label>
+      <label className="flex items-center gap-2 text-sm"><Checkbox checked={toCredit} onCheckedChange={(c) => setToCredit(!!c)} /> Dar saldo a favor en lugar de devolver el dinero (el cliente recibe un código por correo)</label>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5"><Label htmlFor="rf-amount">Monto a reembolsar ({order.currency})</Label>
           <Input id="rf-amount" inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value); setTouched(true); }} />

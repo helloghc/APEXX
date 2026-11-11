@@ -74,6 +74,7 @@ export const NAV: { route: string; label: string; module?: string; level?: Level
   { route: "reportes", label: "Reportes", module: "reports" },
   { route: "equipo", label: "Equipo", module: "team" },
   { route: "pagos", label: "Pagos", module: "payments" },
+  { route: "tarjetas", label: "Tarjetas y antifraude", module: "payments" },
   { route: "configuracion", label: "Configuración", module: "settings" },
   { route: "conectores", label: "Conectores", module: "settings" },
   { route: "operacion", label: "Operación", module: "settings", level: "admin" },

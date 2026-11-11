@@ -163,7 +163,41 @@
       if (!cart().length) { location.href = base + "/cart"; return; }
       const r = await simulate($("#postal").value.trim(), { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
       if (r.status === 200 && shipBox) shipBox.innerHTML = renderOptions(r.body);
-      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
+      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); paintWallet(); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
+    }
+    // Gift cards and store credit pay first; the card only pays what is left.
+    let cards = [];
+    const gcStatus = $("[data-gc-status]"), gcList = $("[data-gc-list]"), instBox = $("[data-installments]");
+    const walletOf = () => { const g = last ? last.totals.grand.amount : 0; return Math.min(g, cards.reduce((a, c) => a + c.balance, 0)); };
+    const instCount = () => { const sel = $("#msi"); return sel && Number(sel.value) > 1 ? Number(sel.value) : undefined; };
+    function paintWallet() {
+      if (!last) return;
+      const cur = last.totals.grand.currency, g = last.totals.grand.amount, w = walletOf(), due = g - w;
+      if (gcList) gcList.innerHTML = cards.map((c, i) => "<li>Tarjeta ••••" + esc(c.last4) + " · saldo " + money({ amount: c.balance, currency: cur }) + " <button type='button' class='linkbtn' data-gc-del='" + i + "'>Quitar</button></li>").join("");
+      const old = $("[data-wallet-rows]", summary); if (old) old.remove();
+      if (w > 0) summary.insertAdjacentHTML("beforeend", "<table class='totals' data-wallet-rows><tr><td>Tarjeta de regalo o saldo</td><td class='num'>−" + money({ amount: w, currency: cur }) + "</td></tr><tr class='grand'><td>A pagar</td><td class='num'>" + money({ amount: due, currency: cur }) + "</td></tr></table>");
+      payBtn.textContent = due > 0 ? "Pagar " + money({ amount: due, currency: cur }) : "Confirmar pedido";
+      payBox.hidden = due === 0;
+      const ins = cfg.installments;
+      if (instBox) {
+        const keep = instCount();
+        instBox.innerHTML = ins && ins.enabled && due >= (ins.minAmount || 0) && due > 0 ? "<div class='field'><label for='msi'>Meses sin intereses</label><select id='msi' name='msi'><option value='1'>Un solo pago de " + money({ amount: due, currency: cur }) + "</option>" +
+          ins.plans.map((n) => "<option value='" + n + "'" + (n === keep ? " selected" : "") + ">" + n + " pagos de " + money({ amount: Math.ceil(due / n), currency: cur }) + " sin intereses</option>").join("") + "</select><p class='note'>Disponible con tarjetas de crédito participantes.</p></div>" : "";
+      }
+    }
+    const gcApply = $("[data-gc-apply]");
+    if (gcApply) {
+      gcApply.addEventListener("click", async () => {
+        const code = $("#gc").value.trim().toUpperCase(); if (!code) { gcStatus.textContent = "Escribe el código de tu tarjeta."; return; }
+        if (cards.some((c) => c.code.replace(/[^A-Z0-9]/g, "") === code.replace(/[^A-Z0-9]/g, ""))) { gcStatus.textContent = "Esa tarjeta ya está aplicada."; return; }
+        gcApply.disabled = true;
+        const r = await post("/giftcard", { code }).catch(() => ({ status: 0, body: {} }));
+        gcApply.disabled = false;
+        if (r.status === 200) { cards.push({ code, last4: r.body.last4, balance: r.body.balance.amount }); $("#gc").value = ""; gcStatus.textContent = "Tarjeta aplicada."; paintWallet(); }
+        else gcStatus.textContent = r.status === 429 ? "Demasiados intentos. Espera un minuto." : (r.body.detail || "No pudimos validar la tarjeta. Intenta de nuevo.");
+      });
+      $("#gc").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); gcApply.click(); } });
+      gcList.addEventListener("click", (e) => { const b = e.target.closest("[data-gc-del]"); if (b) { cards.splice(Number(b.dataset.gcDel), 1); gcStatus.textContent = "Tarjeta quitada."; paintWallet(); } });
     }
     $("#postal").addEventListener("change", () => { store.set(ZIP, $("#postal").value.trim()); refresh(); });
     $("#email").addEventListener("change", refresh); // promotions limited per customer are confirmed with the email
@@ -200,8 +234,9 @@
       if (co.termsCheckbox && !f.get("terms")) { errBox.textContent = "Acepta los términos y condiciones para continuar."; $("#terms").focus(); return; }
       if (!(pickup() && !String(f.get("postal"))) && !/^[0-9]{5}$/.test(String(f.get("postal")))) { errBox.textContent = "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
-      let pm = String(f.get("pm") || "");
-      if (stripe) {
+      const covered = !!last && walletOf() >= last.totals.grand.amount; // gift cards pay it all: no card needed
+      let pm = covered ? "pm_gift_card" : String(f.get("pm") || "");
+      if (stripe && !covered) {
         const sub = await elements.submit();
         if (sub.error) { errBox.textContent = sub.error.message; payBtn.disabled = false; refresh(); return; }
         const r = await stripe.createPaymentMethod({ elements, params: { billing_details: { email: f.get("email"), name: f.get("name") } } });
@@ -215,7 +250,7 @@
         channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty })),
         shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined,
         customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, paymentMethod: pm,
-        coupons: coupons(), expectedTotal: last ? last.totals.grand.amount : undefined,
+        coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,
       }, { "Idempotency-Key": key });
       if (res.status === 201) {
         sessionStorage.removeItem("apexx_idem"); sessionStorage.setItem("apexx_last_order", JSON.stringify(res.body));

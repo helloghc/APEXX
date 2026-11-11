@@ -91,6 +91,7 @@ function OrderList() {
         <Input aria-label="Hasta" type="date" className="w-40" value={f.to ?? ""} onChange={(e) => set({ to: e.target.value })} />
         {filtered && <Button variant="ghost" onClick={() => { setF({}); setQ(""); }}>Limpiar</Button>}
         {filtered && <Button variant="outline" onClick={saveView}><Bookmark aria-hidden="true" /> Guardar vista</Button>}
+        <Button variant={f.review ? "default" : "outline"} aria-pressed={!!f.review} onClick={() => setF({ ...f, review: f.review ? undefined : "1" })}>Por revisar (antifraude)</Button>
         <Button variant="outline" onClick={() => void sale.exportOrders(query).catch((e) => toast.error(errorMessage(e)))}><Download aria-hidden="true" /> Exportar CSV</Button>
       </div>
       <ErrorBox error={list.error} onRetry={() => void list.refetch()} />

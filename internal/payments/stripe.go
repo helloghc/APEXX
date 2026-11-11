@@ -125,6 +125,13 @@ func (s *Stripe) Charge(ctx context.Context, r ChargeRequest) (Charge, error) {
 	if r.FeeAmount > 0 {
 		f.Set("application_fee_amount", strconv.FormatInt(r.FeeAmount, 10))
 	}
+	if r.Installments > 1 {
+		// Meses sin intereses (Mexico): Stripe declines when the card has no such plan.
+		f.Set("payment_method_options[card][installments][enabled]", "true")
+		f.Set("payment_method_options[card][installments][plan][count]", strconv.Itoa(r.Installments))
+		f.Set("payment_method_options[card][installments][plan][interval]", "month")
+		f.Set("payment_method_options[card][installments][plan][type]", "fixed_count")
+	}
 	var pi paymentIntent
 	err := s.call(ctx, http.MethodPost, "/v1/payment_intents", r.Account, r.IdempotencyKey, f, &pi)
 	if errors.Is(err, ErrDeclined) {

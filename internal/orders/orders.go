@@ -73,6 +73,12 @@ type CheckoutRequest struct {
 	Customer      Customer    `json:"customer"`
 	PaymentMethod string      `json:"paymentMethod"` // pm_... from Stripe.js
 	Coupons       []string    `json:"coupons,omitempty"`
+	// GiftCards are codes of gift cards or store credit to pay with first.
+	GiftCards []string `json:"giftCards,omitempty"`
+	// Installments is the number of monthly payments without interest (0 = one payment).
+	Installments int `json:"installments,omitempty"`
+	// ClientIP is set by the server (never by clients) for risk rules.
+	ClientIP string `json:"-"`
 	// ExpectedTotal is the grand total the shopper saw (minor units). When sent,
 	// the order is only placed if the total is still the same.
 	ExpectedTotal *int64 `json:"expectedTotal,omitempty"`
@@ -147,6 +153,9 @@ type Order struct {
 	CreatedAt   time.Time `json:"createdAt"`
 	// Promotions and coupons this order used, with their state (reserved, redeemed, released).
 	Promotions []promostore.Redemption `json:"promotions,omitempty"`
+
+	Risk         *Risk `json:"risk,omitempty"`         // set when fraud rules flagged the order
+	Installments int   `json:"installments,omitempty"` // meses sin intereses chosen at checkout
 
 	// After-sale state (see depth.go).
 	CustomerID        string        `json:"customerId,omitempty"`
@@ -389,7 +398,26 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		return Result{}, err
 	}
 	tot := sim.Totals
-	var number int64
+	var number, wallet int64
+
+	// Store rules: instalments offered and fraud checks.
+	instRules, riskRules, err := s.PaymentRules(ctx, tenant)
+	if err != nil {
+		return Result{}, err
+	}
+	if !instRules.Allows(req.Installments, tot.Grand.Amount) {
+		return problem(409, "installments_unavailable", "Ese plazo de meses sin intereses no está disponible para este pedido", nil), nil
+	}
+	risk, ipHash, blocked, err := s.evaluateRisk(ctx, tenant, riskRules, req, tot.Grand.Amount)
+	if err != nil {
+		return Result{}, err
+	}
+	if blocked != "" {
+		_ = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+			return store.Audit(ctx, tx, tenant, "risk", "order.blocked", req.PostalCode, map[string]any{"reason": blocked, "total": tot.Grand.Amount})
+		})
+		return problem(403, "order_blocked", "No pudimos procesar tu pedido. Escríbenos y con gusto te ayudamos.", nil), nil
+	}
 
 	// 2. Reserve stock and create the order atomically.
 	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
@@ -420,10 +448,20 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		if err := promostore.ReserveTx(ctx, tx, tenant, id, custHash, string(tot.Grand.Currency), redemptions); err != nil {
 			return err
 		}
+		if wallet, err = s.redeemWalletTx(ctx, tx, tenant, actor, id, req.GiftCards, tot.Grand.Amount, string(tot.Grand.Currency)); err != nil {
+			return err
+		}
+		if err := s.afterCreateTx(ctx, tx, tenant, id, req, risk, ipHash); err != nil {
+			return err
+		}
 		return s.event(ctx, tx, tenant, id, actor, "order.created", nil, StatusPendingPayment, map[string]any{"promotions": sim.Promotions, "coupons": sim.Coupons, "shippingOption": method.ID, "acceptedTerms": req.AcceptedTerms})
 	})
 	if errors.Is(err, store.ErrInsufficient) {
 		return problem(409, "insufficient_stock", err.Error(), nil), nil
+	}
+	var gce *GiftCardError
+	if errors.As(err, &gce) {
+		return problem(409, gce.Code, gce.Message, nil), nil
 	}
 	var lim *promostore.LimitError
 	if errors.As(err, &lim) {
@@ -434,16 +472,22 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		return Result{}, err
 	}
 
-	// 3. Charge. The idempotency key is the order id, so a retry never charges twice.
-	fee := tot.Grand.Amount * acct.FeeBps / 10000
-	ch, payErr := acct.Provider.Charge(ctx, payments.ChargeRequest{
-		Account: acct.Account, OrderID: id, Amount: tot.Grand.Amount, Currency: string(tot.Grand.Currency),
-		PaymentMethod: req.PaymentMethod, FeeAmount: fee, IdempotencyKey: "charge-" + id, Email: req.Customer.Email,
-	})
-	if payErr != nil {
-		// Unknown outcome (network, Stripe outage): leave the order pending; the
-		// reconciler resolves it with Lookup. Reservations expire meanwhile.
-		return problem(502, "payment_pending", "No se pudo confirmar el pago; el pedido quedó pendiente y se resolverá automáticamente", map[string]any{"orderId": id}), nil
+	// 3. Charge what gift cards did not cover. The idempotency key is the order
+	// id, so a retry never charges twice.
+	due := tot.Grand.Amount - wallet
+	ch := payments.Charge{Status: "captured", Ref: "gift_card"}
+	if due > 0 {
+		var payErr error
+		ch, payErr = acct.Provider.Charge(ctx, payments.ChargeRequest{
+			Account: acct.Account, OrderID: id, Amount: due, Currency: string(tot.Grand.Currency),
+			PaymentMethod: req.PaymentMethod, FeeAmount: due * acct.FeeBps / 10000, IdempotencyKey: "charge-" + id, Email: req.Customer.Email,
+			Installments: req.Installments,
+		})
+		if payErr != nil {
+			// Unknown outcome (network, Stripe outage): leave the order pending; the
+			// reconciler resolves it with Lookup. Reservations expire meanwhile.
+			return problem(502, "payment_pending", "No se pudo confirmar el pago; el pedido quedó pendiente y se resolverá automáticamente", map[string]any{"orderId": id}), nil
+		}
 	}
 	if err := s.settle(ctx, tenant, actor, id, acct, ch); err != nil {
 		return Result{}, err
@@ -475,11 +519,22 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		if ch.Status == "captured" {
 			pstatus = "captured"
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO payments (tenant_id, id, order_id, provider, provider_ref, status, amount, currency)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, tenant, newID("pay_"), id, acct.Provider.Name(), ch.Ref, pstatus, grand, cur); err != nil {
+		// Gift cards already took their part when the order was created.
+		cards, wallet, err := walletPartsTx(ctx, tx, tenant, id)
+		if err != nil {
 			return err
 		}
+		due := grand - wallet
+		if due > 0 {
+			if _, err := tx.Exec(ctx, `INSERT INTO payments (tenant_id, id, order_id, provider, provider_ref, status, amount, currency)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, tenant, newID("pay_"), id, acct.Provider.Name(), ch.Ref, pstatus, due, cur); err != nil {
+				return err
+			}
+		}
 		if ch.Status != "captured" {
+			if err := releaseWalletTx(ctx, tx, tenant, actor, id); err != nil {
+				return err
+			}
 			if err := store.ReleaseTx(ctx, tx, tenant, id); err != nil {
 				return err
 			}
@@ -508,9 +563,16 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		}
 		// Double entry: cash at Stripe vs sales and tax payable.
 		txID := "pay-" + id
-		if err := ledger(ctx, tx, tenant, txID, id, cur, map[string]int64{
-			clearing(acct.Provider.Name()): grand, "sales": -(grand - tax), "tax_payable": -tax,
-		}); err != nil {
+		for _, c := range cards {
+			if _, err := tx.Exec(ctx, `INSERT INTO payments (tenant_id, id, order_id, provider, provider_ref, status, amount, currency)
+				VALUES ($1,$2,$3,'gift_card',$4,'captured',$5,$6)`, tenant, newID("pay_"), id, c.CardID, c.Amount, cur); err != nil {
+				return err
+			}
+		}
+		entries := map[string]int64{"sales": -(grand - tax), "tax_payable": -tax}
+		entries[clearing(acct.Provider.Name())] += due
+		entries[clearing("gift_card")] += wallet
+		if err := ledger(ctx, tx, tenant, txID, id, cur, entries); err != nil {
 			return err
 		}
 		if err := s.afterPaidTx(ctx, tx, tenant, id); err != nil {
