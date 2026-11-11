@@ -76,9 +76,9 @@ func DefaultSections() []SectionDefinition {
 				"showSearch": {Type: "boolean", Title: "Mostrar búsqueda", Default: true},
 			}),
 			Template: `<header class="sx-header"><div class="hdr-inner">` +
-				`<details class="hdr-menu-m"><summary aria-label="Abrir menú"><span></span><span></span><span></span></summary><nav aria-label="Menú móvil"><ul>{{range links .S.menu}}<li><a href="{{.URL}}">{{.Label}}</a></li>{{end}}</ul></nav></details>` +
+				`<details class="hdr-menu-m"><summary aria-label="Abrir menú"><span></span><span></span><span></span></summary><nav aria-label="Menú móvil"><ul data-menu="header">{{range links .S.menu}}<li><a href="{{.URL}}">{{.Label}}</a></li>{{end}}</ul></nav></details>` +
 				`<a class="hdr-logo" href="index">{{.S.logoText}}</a>` +
-				`<nav class="hdr-nav" aria-label="Principal"><ul>{{range links .S.menu}}<li><a href="{{.URL}}">{{.Label}}</a></li>{{end}}</ul></nav>` +
+				`<nav class="hdr-nav" aria-label="Principal"><ul data-menu="header">{{range links .S.menu}}<li><a href="{{.URL}}">{{.Label}}</a></li>{{end}}</ul></nav>` +
 				`<div class="hdr-tools">{{if .S.showSearch}}<form class="hdr-search" action="c" role="search"><label for="hq-{{.ID}}" class="sr">Buscar productos</label><input id="hq-{{.ID}}" name="q" type="search" placeholder="Buscar"><button type="submit" aria-label="Buscar"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></form>{{end}}` +
 				`<a class="hdr-cart" href="cart"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 7h14l-1.5 12h-11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="currentColor" stroke-width="2"/></svg><span class="sr">Carrito</span><span class="hdr-count" data-cart-count aria-live="polite">0</span></a></div>` +
 				`</div></header>`,
@@ -212,7 +212,7 @@ func DefaultSections() []SectionDefinition {
 				"about":     area("Sobre la tienda", 300), "social": area("Redes (Etiqueta | url)", 400),
 				"legal": str("Texto legal", 160),
 			}),
-			Template: `<footer class="sx-footer"><div class="ft-grid"><div class="ft-about"><p class="ft-logo">{{.S.storeName}}</p>{{with .S.about}}<p>{{.}}</p>{{end}}<ul class="ft-social">{{range links .S.social}}<li><a href="{{.URL}}" rel="noopener">{{.Label}}</a></li>{{end}}</ul></div>{{range .Blocks}}<nav class="ft-col" aria-label="{{index .Settings "title"}}"><p class="ft-title">{{index .Settings "title"}}</p><ul>{{range links (index .Settings "links")}}<li><a href="{{.URL}}">{{.Label}}</a></li>{{end}}</ul></nav>{{end}}</div><div class="ft-bottom"><p>{{.S.legal}}</p><p>Pagos seguros con Stripe · Visa · Mastercard · American Express</p></div></footer>`,
+			Template: `<footer class="sx-footer"><div class="ft-grid"><div class="ft-about"><p class="ft-logo">{{.S.storeName}}</p>{{with .S.about}}<p>{{.}}</p>{{end}}<ul class="ft-social">{{range links .S.social}}<li><a href="{{.URL}}" rel="noopener">{{.Label}}</a></li>{{end}}</ul></div>{{range .Blocks}}<nav class="ft-col" aria-label="{{index .Settings "title"}}"><p class="ft-title">{{index .Settings "title"}}</p><ul>{{range links (index .Settings "links")}}<li><a href="{{.URL}}">{{.Label}}</a></li>{{end}}</ul></nav>{{end}}<template data-menu="footer"></template></div><div class="ft-bottom"><p>{{.S.legal}}</p><p>Pagos seguros con Stripe · Visa · Mastercard · American Express</p></div></footer>`,
 		},
 		{
 			Type: "video-wall", Version: "1.0.0", Name: "Muro de videos", Category: "contenido",

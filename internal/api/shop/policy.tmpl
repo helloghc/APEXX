@@ -1,0 +1,15 @@
+{{define "content"}}
+<article class="policy">
+{{if .Policy}}
+<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/index">Inicio</a> › {{.Policy.Title}}</nav>
+<h1>{{.Policy.Title}}</h1>
+<p class="muted">Última actualización: {{.Updated}}</p>
+<div class="policy-body">{{.Body}}</div>
+{{with .Others}}<nav class="policy-more" aria-label="Otras políticas"><h2>Otras políticas</h2><ul>{{range .}}<li><a href="{{$.Base}}/politicas/{{.Slug}}">{{.Title}}</a></li>{{end}}</ul></nav>{{end}}
+{{else}}
+<h1>Página no encontrada</h1>
+<p class="muted">Esta página no existe o todavía no se publica.</p>
+<p><a class="btn btn-ghost" href="{{.Base}}/index">Volver al inicio</a></p>
+{{end}}
+</article>
+{{end}}

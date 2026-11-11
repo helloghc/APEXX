@@ -161,13 +161,15 @@ func (s *Server) Routes() http.Handler {
 	handle("POST /s/{tenant}/api/simulate", s.shopSimulate)
 	handle("POST /s/{tenant}/api/checkout", s.shopCheckout)
 
+	s.routesSettings(handle)
+
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		apierr.NotFound(w, "No existe la ruta "+r.Method+" "+r.URL.Path)
 	})
-	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(mux)))
+	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(s.siteRouting(mux))))
 }
 
 // metricsGuard exposes /metrics only to the monitoring agent: a bearer token

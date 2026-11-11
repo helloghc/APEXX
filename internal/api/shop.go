@@ -27,7 +27,7 @@ var shopFS embed.FS
 
 var shopPages = func() map[string]*template.Template {
 	m := map[string]*template.Template{}
-	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks"} {
+	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy"} {
 		m[p] = template.Must(template.ParseFS(shopFS, "shop/layout.tmpl", "shop/"+p+".tmpl"))
 	}
 	return m
@@ -87,7 +87,8 @@ func (s *Server) shopContext(w http.ResponseWriter, r *http.Request) (*projectio
 		internalError(w, s.Log, err)
 		return nil, pageData{}, false
 	}
-	return t, pageData{Store: tenant, Tenant: tenant, Base: "/s/" + tenant + "/" + r.PathValue("site"), Channel: ch, Chrome: st.LiveChrome()}, true
+	pd := pageData{Store: tenant, Tenant: tenant, Base: "/s/" + tenant + "/" + r.PathValue("site"), Channel: ch, Chrome: st.LiveChrome()}
+	return t, s.decorate(r, t, pd), true
 }
 
 func (s *Server) renderShop(w http.ResponseWriter, page string, data any, cache bool) {
@@ -360,11 +361,15 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
-	_, release, ok := s.publicTenant(w, r, checkoutLimiter)
+	t, release, ok := s.publicTenant(w, r, checkoutLimiter)
 	if !ok {
 		return
 	}
 	defer release()
+	if !t.Site().Settings.Checkout.GuestCheckout {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "account_required", Detail: "Esta tienda solo vende a clientes con cuenta"})
+		return
+	}
 	key := r.Header.Get("Idempotency-Key")
 	if len(key) < 8 || len(key) > 200 {
 		apierr.BadRequest(w, "Falta Idempotency-Key")
@@ -425,6 +430,7 @@ func (s *Server) shopConfig(w http.ResponseWriter, r *http.Request) {
 			out["mode"], out["publishableKey"], out["stripeAccount"] = "stripe", s.Payments.PlatformPublishableKey, a.AccountID
 		}
 	}
+	s.extendShopConfig(tenant, out)
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, out)
 }

@@ -35,7 +35,8 @@ type Tenant struct {
 	Pricing   *pricing.Service
 	Cart      *cart.Service
 
-	mu sync.RWMutex // guards Cart.Channels and Cart.Promos swaps
+	mu sync.RWMutex // guards Cart.Channels, Cart.Promos and Cart.Logistics swaps
+	siteState
 }
 
 // Simulate runs a cart simulation with a consistent view of channels and promotions.
@@ -81,6 +82,8 @@ type Projector struct {
 	maxLag   atomic.Int64
 	loadedAt time.Time
 	wake     chan struct{}
+
+	hostIdx hostIndex
 
 	hooksMu sync.RWMutex
 	hooks   map[string][]func(tenant, key string)
@@ -143,6 +146,9 @@ func (p *Projector) Load(ctx context.Context) error {
 			return fmt.Errorf("load tenant %s: %w", id, err)
 		}
 	}
+	if err := p.loadHosts(ctx); err != nil {
+		return err
+	}
 	p.cursor.Store(start)
 	p.loadedAt = time.Now()
 	return nil
@@ -182,6 +188,9 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 		return err
 	}
 	if err := p.applyPromotions(ctx, t); err != nil {
+		return err
+	}
+	if err := p.applySettings(ctx, t, ""); err != nil {
 		return err
 	}
 	p.mu.Lock()
@@ -349,6 +358,10 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 		return p.applyChannels(ctx, t)
 	case store.TopicPromotion:
 		return p.applyPromotions(ctx, t)
+	case store.TopicSettings:
+		if err := p.applySettings(ctx, t, e.Key); err != nil {
+			return err
+		}
 	}
 	p.hooksMu.RLock()
 	hs := p.hooks[e.Topic]
