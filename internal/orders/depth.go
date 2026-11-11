@@ -187,6 +187,8 @@ func clearing(provider string) string {
 		return "manual_clearing"
 	case "gift_card", "store_credit":
 		return "gift_card_liability" // what the store owes to card holders
+	case "company_credit":
+		return "accounts_receivable" // what companies owe the store
 	}
 	return "psp_clearing"
 }

@@ -33,6 +33,11 @@ func (s *Server) walletFail(w http.ResponseWriter, err error) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: gce.Code, Detail: gce.Message})
 		return
 	}
+	var cre *orders.CreditError
+	if errors.As(err, &cre) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: cre.Code, Detail: cre.Message})
+		return
+	}
 	s.fail(w, err)
 }
 

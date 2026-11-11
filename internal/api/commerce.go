@@ -189,8 +189,21 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 	if !strings.Contains(req.Customer.Email, "@") {
 		errs = append(errs, apierr.FieldError{Field: "customer.email", Code: "invalid", Message: "Correo inválido"})
 	}
-	if !strings.HasPrefix(req.PaymentMethod, "pm_") {
+	if !strings.HasPrefix(req.PaymentMethod, "pm_") && req.PaymentMethod != "credit" {
 		errs = append(errs, apierr.FieldError{Field: "paymentMethod", Code: "invalid", Message: "Envía el id pm_… que genera Stripe.js; Apexx nunca recibe datos de tarjeta"})
+	}
+	if req.CompanyID != "" {
+		// A publishable storefront key must never be able to spend a company's credit.
+		if !p.Permissions.Allows("orders", "edit") {
+			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Comprar a nombre de una empresa por API requiere acceso de edición a pedidos"})
+			return
+		}
+		c, err := s.Orders.CompanyAccessByID(r.Context(), p.Tenant, req.CompanyID)
+		if err != nil {
+			s.walletFail(w, err)
+			return
+		}
+		req.Company = c
 	}
 	errs = append(errs, validateCartExtras(&cart.Request{Coupons: req.Coupons})...)
 	if len(errs) > 0 {

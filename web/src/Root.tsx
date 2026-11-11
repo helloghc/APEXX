@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat, Store } from "lucide-react";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat, Store, Building2, Database } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -39,6 +39,8 @@ const Account = lazy(() => import("@/pages/account/index").then((m) => ({ defaul
 const AcceptInvite = lazy(() => import("@/pages/account/index").then((m) => ({ default: m.AcceptInvite })));
 const Marketplace = lazy(() => import("@/pages/marketplace/index").then((m) => ({ default: m.Marketplace })));
 const SellerPortal = lazy(() => import("@/pages/marketplace/index").then((m) => ({ default: m.SellerPortal })));
+const Companies = lazy(() => import("@/pages/b2b/index").then((m) => ({ default: m.Companies })));
+const CustomData = lazy(() => import("@/pages/b2b/index").then((m) => ({ default: m.CustomData })));
 const Settings = lazy(() => import("@/pages/settings/Settings").then((m) => ({ default: m.Settings })));
 const Reports = lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.Reports })));
 const Ops = lazy(() => import("@/pages/reports/Ops").then((m) => ({ default: m.Ops })));
@@ -243,6 +245,8 @@ const ICONS: Record<string, typeof HomeIcon> = {
   tarjetas: Gift,
   suscripciones: Repeat,
   marketplace: Store,
+  empresas: Building2,
+  datos: Database,
   configuracion: Settings2,
   conectores: Cable,
   reportes: BarChart3,
@@ -316,6 +320,12 @@ function Shell({ me }: { me: Me }) {
       break;
     case "marketplace":
       body = <Marketplace me={me} route={route} />;
+      break;
+    case "empresas":
+      body = <Companies me={me} route={route} />;
+      break;
+    case "datos":
+      body = <CustomData me={me} route={route} />;
       break;
     case "configuracion":
       body = <Settings me={me} sub={route[1]} rest={route.slice(2)} />;

@@ -237,7 +237,7 @@ func markCredit(parts []refundPart, toCredit bool) {
 		return
 	}
 	for i := range parts {
-		if parts[i].Provider != "gift_card" {
+		if parts[i].Provider != "gift_card" && parts[i].Provider != "company_credit" {
 			parts[i].Provider = "store_credit"
 		}
 	}
@@ -373,6 +373,11 @@ func (s *Service) providerRefund(ctx context.Context, tenant, refundID string, a
 			continue // money handed back outside the platform; only recorded
 		case "gift_card":
 			if err := s.walletRefund(ctx, tenant, refundID, p); err != nil {
+				return err
+			}
+			continue
+		case "company_credit":
+			if err := s.creditRefundPart(ctx, tenant, refundID, p); err != nil {
 				return err
 			}
 			continue
@@ -651,6 +656,9 @@ func (s *Service) Cancel(ctx context.Context, tenant, actor, id, reason string) 
 				return err
 			}
 			if err := releaseWalletTx(ctx, tx, tenant, actor, id); err != nil {
+				return err
+			}
+			if err := releaseCreditTx(ctx, tx, tenant, actor, id); err != nil {
 				return err
 			}
 			if err := promostore.ReleaseTx(ctx, tx, tenant, id); err != nil {

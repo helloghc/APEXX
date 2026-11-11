@@ -188,6 +188,18 @@
           ins.plans.map((n) => "<option value='" + n + "'" + (n === keep ? " selected" : "") + ">" + n + " pagos de " + money({ amount: Math.ceil(due / n), currency: cur }) + " sin intereses</option>").join("") + "</select><p class='note'>Disponible con tarjetas de crédito participantes.</p></div>" : "";
       }
     }
+    // Signed-in buyers of a company: company price, and credit when the store gives it.
+    let company = null;
+    const coBox = $("[data-company]"), onCredit = () => !!(company && $("#paycredit") && $("#paycredit").checked);
+    const TERMS = { net15: "15 días", net30: "30 días", net60: "60 días" };
+    fetch(api + "/company").then((x) => (x.status === 200 ? x.json() : null)).then((c) => {
+      if (!c || !coBox) return;
+      company = c; $("#email").value = c.email; $("#email").readOnly = true;
+      coBox.innerHTML = "<p class='testnote'>Compras para <strong>" + esc(c.name) + "</strong>" + (c.discountBps ? " con " + c.discountBps / 100 + "% de precio de empresa" : "") + ".</p>" +
+        (c.terms !== "prepaid" ? "<div class='testcards'><label><input type='radio' name='paymode' value='card' checked> Pagar con tarjeta</label><label><input type='radio' name='paymode' id='paycredit' value='credit'> Pagar a crédito de la empresa (" + (TERMS[c.terms] || "") + ") · disponible " + money({ amount: c.available, currency: "MXN" }) + "</label></div>" : "");
+      coBox.addEventListener("change", () => { payBox.hidden = onCredit(); if (instBox && onCredit()) instBox.innerHTML = ""; payBtn.textContent = onCredit() ? "Confirmar pedido a crédito" : payBtn.textContent; if (!onCredit()) paintWallet(); });
+      refresh();
+    }).catch(() => {});
     const gcApply = $("[data-gc-apply]");
     if (gcApply) {
       gcApply.addEventListener("click", async () => {
@@ -237,8 +249,8 @@
       if (co.termsCheckbox && !f.get("terms")) { errBox.textContent = "Acepta los términos y condiciones para continuar."; $("#terms").focus(); return; }
       if (!(pickup() && !String(f.get("postal"))) && !/^[0-9]{5}$/.test(String(f.get("postal")))) { errBox.textContent = "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
-      const covered = !!last && walletOf() >= last.totals.grand.amount; // gift cards pay it all: no card needed
-      let pm = covered ? "pm_gift_card" : String(f.get("pm") || "");
+      const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount); // credit or gift cards pay it all: no card needed
+      let pm = onCredit() ? "credit" : covered ? "pm_gift_card" : String(f.get("pm") || "");
       if (stripe && !covered) {
         const sub = await elements.submit();
         if (sub.error) { errBox.textContent = sub.error.message; payBtn.disabled = false; refresh(); return; }
@@ -460,5 +472,23 @@
     const r = await fetch("/s/" + tenant + "/api/subscription/" + encodeURIComponent(box.dataset.subscription) + "/" + b.dataset.subAct, { method: "POST" }).then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
     if (r.ok) location.reload();
     else { out.textContent = r.body.detail || "No pudimos hacer el cambio. Intenta de nuevo."; box.querySelectorAll("[data-sub-act]").forEach((x) => (x.disabled = false)); }
+  });
+})();
+
+/* ==== public forms ==== */
+(() => {
+  const f = document.querySelector("[data-form]"); if (!f) return;
+  const tenant = document.body.dataset.tenant, err = f.querySelector("[data-form-error]"), ok = document.querySelector("[data-form-ok]"), btn = f.querySelector("button[type=submit]");
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault(); err.textContent = "";
+    const data = {}; let website = "";
+    for (const el of f.elements) { if (!el.name) continue; if (el.name === "website") website = el.value; else data[el.name] = el.type === "checkbox" ? (el.checked ? "true" : "") : el.value; }
+    btn.disabled = true;
+    const r = await fetch("/s/" + tenant + "/api/forms/" + encodeURIComponent(f.dataset.form), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data, website }) })
+      .then(async (x) => ({ status: x.status, body: await x.json().catch(() => ({})) })).catch(() => ({ status: 0, body: {} }));
+    btn.disabled = false;
+    if (r.status === 201 || r.status === 204) { f.hidden = true; ok.hidden = false; ok.textContent = r.body.message || "¡Gracias! Recibimos tu información."; ok.focus && ok.focus(); return; }
+    err.textContent = r.status === 429 ? "Enviaste varios formularios seguidos. Espera un minuto." : (r.body.detail || "No pudimos enviar el formulario. Intenta de nuevo.");
+    const first = r.body.errors && r.body.errors[0] && f.elements[r.body.errors[0].field]; if (first && first.focus) first.focus();
   });
 })();

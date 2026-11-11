@@ -1,0 +1,27 @@
+{{define "content"}}
+<div class="policy">
+{{if .Entity}}
+<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/index">Inicio</a> / {{.Entity.Name}}</nav>
+<h1>{{.Entity.Name}}</h1>
+{{with .Entity.Description}}<p class="muted">{{.}}</p>{{end}}
+<form class="pubform" data-form="{{.Entity.ID}}" novalidate>
+{{range .Entity.Fields}}
+{{if eq .Type "checkbox"}}<label class="shipopt"><input type="checkbox" name="{{.Key}}"{{if .Required}} required{{end}}> <span>{{.Label}}</span></label>
+{{else}}<div class="field"><label for="f-{{.Key}}">{{.Label}}{{if not .Required}} (opcional){{end}}</label>
+{{if eq .Type "textarea"}}<textarea id="f-{{.Key}}" name="{{.Key}}" rows="4" maxlength="4000"{{if .Required}} required{{end}}></textarea>
+{{else if eq .Type "select"}}<select id="f-{{.Key}}" name="{{.Key}}"{{if .Required}} required{{end}}><option value="">Elige…</option>{{range .Options}}<option>{{.}}</option>{{end}}</select>
+{{else}}<input id="f-{{.Key}}" name="{{.Key}}" maxlength="300" {{if eq .Type "email"}}type="email" autocomplete="email"{{else if eq .Type "phone"}}type="tel" autocomplete="tel"{{else if eq .Type "number"}}inputmode="decimal"{{else}}type="text"{{end}}{{if .Required}} required{{end}}>{{end}}
+</div>{{end}}
+{{end}}
+<div class="sr" aria-hidden="true"><label>No llenes este campo <input name="website" tabindex="-1" autocomplete="off"></label></div>
+<p class="error" role="alert" data-form-error></p>
+<button class="btn" type="submit">Enviar</button>
+</form>
+<p class="acct-ok" role="status" data-form-ok hidden></p>
+{{else}}
+<h1>Formulario no encontrado</h1>
+<p class="muted">Este formulario no existe o ya no está disponible.</p>
+<p><a class="btn ghost" href="{{.Base}}/index">Volver al inicio</a></p>
+{{end}}
+</div>
+{{end}}

@@ -91,7 +91,7 @@ describe("reports and operations permissions", () => {
     expect(routes).toContain("reportes");
     expect(routes).not.toContain("operacion");
     const ops = { ...base, owner: false, permissions: { settings: "admin" as const } };
-    expect(visibleNav(ops).map((n) => n.route)).toEqual(["inicio", "correos", "configuracion", "conectores", "operacion"]);
+    expect(visibleNav(ops).map((n) => n.route)).toEqual(["inicio", "correos", "datos", "configuracion", "conectores", "operacion"]);
     expect(can(ops, "reports", "read")).toBe(false);
     expect(visibleNav({ ...base, owner: true, permissions: {} }).map((n) => n.route)).toEqual(expect.arrayContaining(["reportes", "operacion"]));
   });

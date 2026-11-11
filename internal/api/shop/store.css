@@ -389,3 +389,9 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .subplan select{min-height:44px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);color:var(--c-text);font:inherit}
 .subchoice:not(:has(input[value=sub]:checked)) .subplan{display:none}
 .subactions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.subactions .btn{width:auto}
+
+/* Formularios públicos */
+.pubform{display:grid;gap:16px;max-width:560px;margin-top:20px}
+.pubform .field{display:grid;gap:6px}
+.pubform input:not([type=checkbox]),.pubform select,.pubform textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);color:var(--c-text);font:inherit}
+.pubform .btn{width:auto;justify-self:start}

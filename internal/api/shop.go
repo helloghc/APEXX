@@ -46,7 +46,7 @@ var shopFuncs = template.FuncMap{
 
 var shopPages = func() map[string]*template.Template {
 	m := map[string]*template.Template{}
-	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription"} {
+	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form"} {
 		m[p] = template.Must(template.New(p).Funcs(shopFuncs).ParseFS(shopFS, "shop/layout.tmpl", "shop/"+p+".tmpl"))
 	}
 	return m
@@ -289,6 +289,9 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 		internalError(w, s.Log, err)
 		return
 	}
+	if c, _ := s.shopperCompany(r); c != nil {
+		req.Extra = append(req.Extra, orders.CompanyPromo(c)...)
+	}
 	res, err := t.Simulate(req)
 	if err != nil {
 		apierr.BadRequest(w, "Canal de venta no disponible")
@@ -318,6 +321,11 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.ClientIP = s.clientIP(r)
+	// A shopper gets company price and credit only from their signed-in account.
+	req.CompanyID = ""
+	if c, email := s.shopperCompany(r); c != nil {
+		req.Company, req.Customer.Email = c, email
+	}
 	errs := validateItems(req.Channel, req.Items)
 	if !strings.Contains(req.Customer.Email, "@") || len(req.Customer.Email) > 200 {
 		errs = append(errs, apierr.FieldError{Field: "customer.email", Code: "invalid", Message: "Correo inválido"})
@@ -325,7 +333,7 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(req.Customer.Name) == "" || len(req.Customer.Name) > 200 || len(req.Customer.Address) > 500 {
 		errs = append(errs, apierr.FieldError{Field: "customer.name", Code: "invalid", Message: "Revisa tu nombre y dirección"})
 	}
-	if !strings.HasPrefix(req.PaymentMethod, "pm_") && len(req.GiftCards) == 0 {
+	if !strings.HasPrefix(req.PaymentMethod, "pm_") && len(req.GiftCards) == 0 && req.PaymentMethod != "credit" {
 		errs = append(errs, apierr.FieldError{Field: "paymentMethod", Code: "invalid", Message: "Método de pago inválido"})
 	}
 	errs = append(errs, validateCartExtras(&cart.Request{Coupons: req.Coupons})...)

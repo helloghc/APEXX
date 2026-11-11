@@ -181,6 +181,8 @@ func (s *Server) Routes() http.Handler {
 	s.routesAccount(handle)
 	s.routesFeeds(handle)
 	s.routesMarketplace(handle)
+	s.routesB2B(handle)
+	s.routesEntities(handle)
 
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))

@@ -80,6 +80,11 @@ type CheckoutRequest struct {
 	Installments int `json:"installments,omitempty"`
 	// ClientIP is set by the server (never by clients) for risk rules.
 	ClientIP string `json:"-"`
+	// CompanyID buys for a company. Only honoured for server-side integrations
+	// with permission to edit orders; shoppers get their company from their session.
+	CompanyID string `json:"companyId,omitempty"`
+	// Company is set by the server when the signed-in shopper buys for a company.
+	Company *CompanyAccess `json:"-"`
 	// Renewal is set by the subscription worker for the deliveries after the first.
 	Renewal *Renewal `json:"-"`
 	// ExpectedTotal is the grand total the shopper saw (minor units). When sent,
@@ -344,7 +349,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		return Result{}, err
 	}
 	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items, ShippingOption: req.ShippingOption,
-		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup})
+		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup, Extra: CompanyPromo(req.Company)})
 	if err != nil {
 		return problem(400, "invalid_request", err.Error(), nil), nil
 	}
@@ -364,8 +369,8 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		if r.ShippingDiscount != nil {
 			amt += r.ShippingDiscount.Amount
 		}
-		if r.ID == "subscription" {
-			continue // the subscription discount is a rule of the store, not a stored promotion with limits
+		if r.ID == "subscription" || r.ID == "company" {
+			continue // rules of the store (subscription, company price), not stored promotions with limits
 		}
 		redemptions = append(redemptions, promostore.RedemptionReq{PromotionID: r.ID, Name: r.Name, Coupon: r.Coupon, CampaignID: r.CampaignID, Amount: amt})
 	}
@@ -408,7 +413,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		return Result{}, err
 	}
 	tot := sim.Totals
-	var number, wallet int64
+	var number, wallet, credit int64
 
 	// Subscribed lines (Simulate cleared the plans the store does not offer).
 	subscribed := false
@@ -473,6 +478,14 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		if wallet, err = s.redeemWalletTx(ctx, tx, tenant, actor, id, req.GiftCards, tot.Grand.Amount, string(tot.Grand.Currency)); err != nil {
 			return err
 		}
+		if req.PaymentMethod == "credit" {
+			credit = tot.Grand.Amount - wallet
+			if credit > 0 {
+				if err := creditChargeTx(ctx, tx, tenant, actor, id, req.Company, credit); err != nil {
+					return err
+				}
+			}
+		}
 		if err := s.afterCreateTx(ctx, tx, tenant, id, req, risk, ipHash); err != nil {
 			return err
 		}
@@ -480,6 +493,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 	})
 	if errors.Is(err, store.ErrInsufficient) {
 		return problem(409, "insufficient_stock", err.Error(), nil), nil
+	}
+	var cre *CreditError
+	if errors.As(err, &cre) {
+		return problem(409, cre.Code, cre.Message, nil), nil
 	}
 	var gce *GiftCardError
 	if errors.As(err, &gce) {
@@ -496,8 +513,8 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 
 	// 3. Charge what gift cards did not cover. The idempotency key is the order
 	// id, so a retry never charges twice.
-	due := tot.Grand.Amount - wallet
-	ch := payments.Charge{Status: "captured", Ref: "gift_card"}
+	due := tot.Grand.Amount - wallet - credit
+	ch := payments.Charge{Status: "captured", Ref: "no_card"}
 	if due > 0 {
 		var payErr error
 		ch, payErr = acct.Provider.Charge(ctx, payments.ChargeRequest{
@@ -553,7 +570,11 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		if err != nil {
 			return err
 		}
-		due := grand - wallet
+		onCredit, company, err := creditPartTx(ctx, tx, tenant, id)
+		if err != nil {
+			return err
+		}
+		due := grand - wallet - onCredit
 		if due > 0 {
 			if _, err := tx.Exec(ctx, `INSERT INTO payments (tenant_id, id, order_id, provider, provider_ref, status, amount, currency)
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, tenant, newID("pay_"), id, acct.Provider.Name(), ch.Ref, pstatus, due, cur); err != nil {
@@ -562,6 +583,9 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		}
 		if ch.Status != "captured" {
 			if err := releaseWalletTx(ctx, tx, tenant, actor, id); err != nil {
+				return err
+			}
+			if err := releaseCreditTx(ctx, tx, tenant, actor, id); err != nil {
 				return err
 			}
 			if err := store.ReleaseTx(ctx, tx, tenant, id); err != nil {
@@ -598,9 +622,16 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 				return err
 			}
 		}
+		if onCredit > 0 {
+			if _, err := tx.Exec(ctx, `INSERT INTO payments (tenant_id, id, order_id, provider, provider_ref, status, amount, currency)
+				VALUES ($1,$2,$3,'company_credit',$4,'captured',$5,$6)`, tenant, newID("pay_"), id, company, onCredit, cur); err != nil {
+				return err
+			}
+		}
 		entries := map[string]int64{"sales": -(grand - tax), "tax_payable": -tax}
 		entries[clearing(acct.Provider.Name())] += due
 		entries[clearing("gift_card")] += wallet
+		entries[clearing("company_credit")] += onCredit
 		if err := ledger(ctx, tx, tenant, txID, id, cur, entries); err != nil {
 			return err
 		}
