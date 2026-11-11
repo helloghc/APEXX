@@ -11,6 +11,10 @@ describe("idiomas del panel", () => {
     expect(translate(id, " Pedidos ")).toBe(" Pesanan ");
     expect(translate(ja, "Guardar")).toBe("保存");
   });
+  it("traduce frases con partes variables", () => {
+    expect(translate(en, "Buscar Marca")).toBe("Search Brand");
+    expect(translate(id, "Analítica reconstruida: 12 pedidos en 3 s")).toBe("Analitik dibangun ulang: 12 pesanan dalam 3 dtk");
+  });
   it("deja en español lo que no conoce", () => {
     expect(translate(en, "Playera Sierra talla M")).toBeNull();
   });

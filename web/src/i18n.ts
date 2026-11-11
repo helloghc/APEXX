@@ -43,6 +43,22 @@ export function setLanguage(code: string) {
 
 const NUMBER = /[0-9][0-9.,]*[0-9]|[0-9]/g;
 
+type Pattern = { re: RegExp; out: string };
+const patterns = new WeakMap<Record<string, string>, Pattern[]>();
+
+/** Phrases with variable parts are stored as "Hola, {}" and matched as a pattern. */
+function patternsOf(dict: Record<string, string>): Pattern[] {
+  let list = patterns.get(dict);
+  if (!list) {
+    list = Object.keys(dict)
+      .filter((k) => k.includes("{}") && k.replace(/\{\}/g, "").trim().length >= 3)
+      .sort((a, b) => b.length - a.length)
+      .map((k) => ({ re: new RegExp("^" + k.split("{}").map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.+?)") + "$", "s"), out: dict[k] ?? "" }));
+    patterns.set(dict, list);
+  }
+  return list;
+}
+
 /** Translates one phrase; "3 pedidos" is looked up as "# pedidos". Exported for tests. */
 export function translate(dict: Record<string, string>, text: string): string | null {
   const core = text.trim().replace(/\s+/g, " ");
@@ -50,11 +66,21 @@ export function translate(dict: Record<string, string>, text: string): string | 
   let out = dict[core];
   if (out === undefined) {
     const nums = core.match(NUMBER);
-    if (!nums) return null;
-    const pattern = dict[core.replace(NUMBER, "#")];
-    if (pattern === undefined) return null;
-    let i = 0;
-    out = pattern.replace(/#/g, () => nums[i++] ?? "#");
+    const numbered = nums ? dict[core.replace(NUMBER, "#")] : undefined;
+    if (nums && numbered !== undefined) {
+      let i = 0;
+      out = numbered.replace(/#/g, () => nums[i++] ?? "#");
+    } else {
+      for (const p of patternsOf(dict)) {
+        const m = p.re.exec(core);
+        if (!m) continue;
+        let i = 1;
+        // The variable part may itself be a known phrase ("Agregar {}" + "Marca").
+        out = p.out.replace(/\{\}/g, () => { const v = m[i++] ?? ""; return dict[v] ?? v; });
+        break;
+      }
+      if (out === undefined) return null;
+    }
   }
   const lead = text.slice(0, text.length - text.trimStart().length);
   const trail = text.slice(text.trimEnd().length);

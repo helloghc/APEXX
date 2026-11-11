@@ -1,0 +1,1654 @@
+2px solid #2447d3
+Bahasa Indonesia
+Bearer {}
+Buen Fin 2026
+Correos de México
+Creando tu cuenta…
+Creando…
+Crear atributo
+Crear borrador
+Crear campaña
+Crear categoría
+Crear cliente
+Crear colección
+Crear cupones
+Crear cupón
+Crear devolución
+Crear envío
+Crear llave
+Crear marca
+Crear mi cuenta
+Crear miembro
+Crear opción
+Crear paquetería
+Crear perfil
+Crear tarjeta
+Crear ubicación
+Crear webhook
+Crear y activar
+Crear zona
+Crédito a 15 días
+Crédito a 30 días
+Crédito a 60 días
+Crédito disponible
+Cualquier categoría
+Cualquier marca
+Cuando alguien compre en tu tienda, el pedido aparecerá aquí al instante.
+Cuando alguien envíe el formulario, su respuesta aparecerá aquí.
+Cuando cambias la dirección de un producto o migras de otra plataforma, las redirecciones llevan a tus clientes (y a Google) a la página nueva.
+Cuando crees una promoción y alguien la use, aquí verás cuánto descuento dio y cuánta venta la acompañó.
+Cuando se pague un pedido verás aquí qué productos, marcas y categorías venden más.
+Cuenta conectada
+Cuenta creada. Entra con tu correo y tu contraseña.
+Cuenta de Stripe del vendedor
+Cuenta de Stripe guardada
+Cupón
+Cupón creado
+Cupón creado.
+Cuándo está listo
+Cuéntale al comprador qué es, para quién y de qué está hecho.
+Código QR para tu app de verificación
+Código copiado.
+Código de barras
+Código de verificación
+Código postal de entrega
+Códigos copiados.
+Códigos únicos, por ejemplo para una campaña de correo. Cada código se guarda protegido.
+Cómo aparece el producto en Google. Si lo dejas vacío se usa el nombre y la descripción.
+Cómo combinar
+Cómo combinar las reglas
+Cómo se cobra
+Cópialo y entrégalo a tu cliente.
+Da de alta a tus clientes de mayoreo: define su descuento, su plazo de pago y quién puede comprar a su nombre.
+Da de alta a un vendedor, asígnale sus productos y define tu comisión. Sus ventas aparecerán aquí automáticamente.
+Dar acceso al portal
+Dar saldo a favor en lugar de devolver el dinero (el cliente recibe un código por correo)
+Datos de la tienda guardados
+Datos del comprador
+Datos que puedes insertar
+Datos registrados
+De contado
+De dónde llegan
+De {}:00 a {}:59
+Debe ser al menos 1.
+Debe ser https y pública.
+Debe ser mayor al precio.
+Debe {}. Anota la transferencia que recibiste.
+Define a dónde llega esta zona. Después le agregas opciones de entrega.
+Define la tasa y a qué destinos aplica.
+Define opciones como Talla o Color y genera todas las combinaciones. Cada variante tiene su SKU, precio y existencias.
+Define qué información quieres guardar.
+Deja de aplicar de inmediato y se borran sus cupones. Esta acción no se puede deshacer.
+Dejar como está
+Dejaremos de enviarle eventos. Las entregas pendientes no se enviarán.
+Dejarán de verse en la tienda. Puedes volver a activarlos cuando quieras.
+Demasiados intentos. Espera un minuto y vuelve a intentar.
+Dentro de
+Desactivar miembro
+Desactivar tarjeta
+Desactivar webhook
+Describe cada imagen: lo leen los lectores de pantalla y los buscadores.
+Describe la imagen (obligatorio)
+Describe la imagen con al menos 3 caracteres.
+Describe la imagen para personas con lector de pantalla y para buscadores.
+Descripción
+Descripción (opcional)
+Descripción del producto.
+Descripción para buscadores
+Descuento del escalón {}
+Descuento en
+Descuento en esas piezas
+Descuento por periodo: {} {} en {} pedidos.
+Descuento sobre precio de lista (%)
+Descuentos por porcentaje o monto, envío gratis, 3x2, escalonadas, regalos y paquetes. Cada una explica al comprador por qué aplica o qué le falta.
+Desde (monto)
+Desde (piezas)
+Desde el inicio
+Desde la secuencia (exclusiva)
+Desde {}
+Deshacer (Ctrl+Z)
+Deshacer publicación
+Después asigna productos al perfil y crea opciones de entrega para él.
+Después de esta hora el pedido sale al siguiente día hábil.
+Después lo llenas en cada producto.
+Devolución cancelada.
+Devolución completada
+Devolución recibida
+Devolución recibida y reembolsada.
+Devolución recibida.
+Devolución solicitada
+Devolución {} creada. Cuando llegue el paquete, márcala como recibida.
+Devolver al inventario las piezas que aún no se envían
+Devuelto (pedido no completado)
+Direcciones del catálogo
+Dirección copiada.
+Dirección del catálogo para {}
+Dirección nueva lista. Actualízala en Google y Meta.
+Dirección web
+Dirección, horario y si los clientes pueden recoger aquí sus pedidos.
+Dirección:
+Directo o sin origen
+Disponible para pagar hoy:
+Dispositivo desconocido
+Dominio agregado
+Dominio agregado. Ahora configura tu DNS.
+Dominio eliminado
+Dominio eliminado.
+Dominio principal actualizado.
+Dominio verificado
+Duplicar promoción
+Duplicar sección
+Duplicar {}
+Déjalo vacío y te mostramos tus tiendas. O escribe su identificador, por ejemplo mi-tienda.
+Día agregado al calendario
+Día eliminado
+Día festivo guardado
+Días de descanso obligatorio de la Ley Federal del Trabajo. Se pueden cargar otra vez sin duplicar.
+Días de espera por venta
+Días desde la última compra
+Días que cuentan
+Edición manual
+Editar atributo
+Editar campaña
+Editar campos
+Editar categoría
+Editar empresa
+Editar lista de precios
+Editar marca
+Editar región
+Editar segmento
+Editar selección
+Editar vendedor
+Editar {}
+Editor de producto
+Ejemplo con la guía 1234567890:
+Ejemplo: un precio de $1,000.00 queda en
+Ejemplo: {}
+El RFC tiene 12 caracteres (empresa) o 13 (persona física).
+El SKU entra en alerta cuando sus unidades disponibles en una ubicación llegan a este número o menos.
+El cambio se aplica a todas sus variantes y se ve en la tienda de inmediato. Queda registrado en la auditoría.
+El catálogo está apagado: las direcciones responden “no encontrado” hasta que lo actives y guardes.
+El cliente debe
+El comprador solo escribe su correo, nombre y dirección. Es la opción que más ventas convierte.
+El código de 6 dígitos de tu app, o uno de tus códigos de respaldo.
+El código no es correcto. Usa el código actual de tu app o un código de respaldo.
+El código postal tiene 5 dígitos.
+El descuento nunca supera el valor de los productos.
+El descuento y los mínimos se calculan solo sobre estos productos.
+El destino es la misma ruta de origen.
+El destino no puede tener espacios.
+El envío se descuenta completo. Puedes limitarlo con el tope de descuento por pedido en “Límites”.
+El identificador no puede tener espacios ni “/”.
+El logo debe pesar menos de 512 KB
+El logo es opcional.
+El mismo día
+El máximo no puede ser menor que el mínimo.
+El periodo máximo es de dos años.
+El precio especial aplica cada vez que el carrito tiene el conjunto completo.
+El precio y el crédito aplican cuando un comprador de la lista entra a su cuenta en tu tienda.
+El prefijo se antepone al número consecutivo en la confirmación y en los correos. Los pedidos anteriores conservan su número.
+El registro está íntegro: nadie lo alteró
+El registro fue alterado desde la entrada {}
+El secreto del webhook empieza con whsec_.
+Elegir categorías
+Elegir de la biblioteca
+Elegir el regalo
+Elegir logo
+Elegir regalo
+Elegir {}
+Elige al menos un estado o escribe un rango, o cambia la cobertura a todo el país.
+Elige de la biblioteca o sube imágenes nuevas. Las que subas quedan seleccionadas.
+Elige dónde se recoge.
+Elige el destino
+Elige el producto de regalo.
+Elige la fecha inicial y la final.
+Elige la fecha.
+Elige la tienda
+Elige qué podrá hacer. Puedes afinar sus permisos después con “Editar acceso”.
+Elige qué productos reembolsar o escribe un monto. El dinero vuelve al mismo medio de pago, o se entrega como saldo a favor.
+Elige un tema y ajústalo a tu marca. Los cambios se ven en la vista previa y salen al publicar.
+Elige una categoría
+Elige una política publicada
+Elige una política publicada.
+Elige una sección de la lista para editar sus textos, imágenes y opciones.
+Elige una ubicación
+Elige una zona
+Elige una zona.
+Elige…
+Eliminado con todos sus registros.
+Eliminando…
+Eliminar campaña
+Eliminar de todos modos
+Eliminar los sin uso
+Eliminar opción
+Eliminar paquetería
+Eliminar perfil
+Eliminar producto
+Eliminar registro
+Eliminar rol {}
+Eliminar ubicación
+Eliminar vista {}
+Eliminar zona
+Eliminar {}
+Emisión
+Empaca, envía y registra la guía: le avisamos al cliente con su enlace de rastreo.
+Empezar desde cero
+Empezará sola el
+Empieza con acct_.
+Empieza con la configuración recomendada para México: zona metropolitana y resto del país, envío estándar y exprés, carga pesada, envío gratis desde $1,499 y feriados oficiales. Después la ajustas a tu gusto.
+Empieza con pk_. La usa el checkout en el navegador.
+Empieza con sk_ o rk_. Se cifra al guardarla.
+Empieza con whsec_. Stripe lo muestra al crear el endpoint.
+Empieza por el aviso de privacidad y los términos: tus clientes y los medios de pago los piden.
+Empresa guardada.
+En camino
+En cola
+En cuanto alguien visite tu tienda o compre, aquí verás ventas, pedidos y el recorrido de tus clientes. Prueba con otro periodo si ya vendiste antes.
+En el panel de Stripe crea un endpoint con esta URL y los eventos payment_intent.succeeded y payment_intent.payment_failed.
+En la tienda aparecen como “Vendido y enviado por
+En los productos participantes.
+En marcha desde {}
+En pausa (sin acceso al portal)
+En revisión
+En uso
+En uso en
+En vivo ·
+En “{}” el inicio es mayor que el final.
+English (US)
+Enlace copiado.
+Enlace de invitación
+Enlace de pago enviado por correo.
+Enlace externo
+Entrando…
+Entrar con una API key
+Entraste con una llave de API. La seguridad de la cuenta es para personas con sesión iniciada.
+Entrega elegida:
+Entrega en {}{}.
+Entregar ahora
+Entregas del webhook
+Enviamos {} al vendedor.
+Enviando…
+Enviar a:
+Enviar enlace de pago
+Enviar este correo
+Enviar invitación
+Enviar pedido #
+Enviar productos
+Enviar prueba
+Enviar prueba a
+Envía cada cambio de tu tienda a tus sistemas (ERP, marketplaces, facturación) con eventos firmados.
+Envío (MXN)
+Envío a domicilio
+Envío creado
+Envío creado.
+Envío creado. Le avisamos al cliente por correo.
+Envío entregado
+Envío parcial
+Envío registrado
+Envío registrado. Le avisamos al cliente.
+Envío: {}
+Es un
+Esa tienda pide tu código de verificación: cierra sesión y entra desde el inicio.
+Escribe a dónde debe llevar.
+Escribe cuántas unidades de {} mover.
+Escribe el contenido antes de publicar.
+Escribe el código de 6 dígitos que muestra la app.
+Escribe el mismo “grupo de clientes” de una lista de precios (Promociones › Listas de precios). Esa lista fija el precio de cada producto para esta empresa.
+Escribe el motivo, por ejemplo Inventario anual.
+Escribe el nombre de la campaña.
+Escribe el nombre de la colección.
+Escribe el nombre de la tienda.
+Escribe el nombre del grupo.
+Escribe el nombre del producto.
+Escribe el nombre.
+Escribe el peso en kg, por ejemplo 1.5.
+Escribe el peso en kg, por ejemplo 30.
+Escribe el precio del paquete.
+Escribe el título.
+Escribe la ciudad.
+Escribe la dirección de la página.
+Escribe la dirección web del producto.
+Escribe la ruta anterior, por ejemplo /tenis-rojos.
+Escribe solo la ruta dentro de tu tienda, sin el dominio.
+Escribe tu correo y tu contraseña.
+Escribe tu dominio, por ejemplo www.mitienda.mx.
+Escribe tus términos
+Escribe un correo válido.
+Escribe un código postal y un pedido de ejemplo. Verás cada opción, disponible o no, con su motivo, la fórmula del precio y la fecha estimada.
+Escribe un código postal y un precio para ver cuánto impuesto contiene y por qué.
+Escribe un identificador (por ejemplo P-1001).
+Escribe un monto mayor a cero.
+Escribe un monto válido.
+Escribe un nombre para reconocer la promoción.
+Escribe un nombre, por ejemplo Estándar.
+Escribe un nombre, por ejemplo Norte.
+Escribe un nombre.
+Escribe un número de secuencia desde 0.
+Escribe un número entero de unidades, por ejemplo 5.
+Escribe un porcentaje entre 0 y 100.
+Escribe un porcentaje entre 0.01 y 100.
+Escribe un porcentaje mayor que 0
+Escribe un porcentaje, por ejemplo -10.
+Escribe un porcentaje, por ejemplo -15.
+Escribe un presupuesto mayor a cero.
+Escribe un valor y Enter
+Escribe una URL completa, por ejemplo https://hooks.mi-erp.com/apexx.
+Escribe una URL https completa.
+Escribe una categoría y Enter
+Escribe una dirección anterior para ver a dónde llega hoy.
+Escribe una marca y Enter
+Escribe una nota…
+Escribe una opción y Enter
+Escribe una palabra y pulsa Enter
+Escribe y presiona Enter.
+Ese dominio no es válido. Ejemplo: www.mitienda.mx.
+Ese día volverá a contar como hábil en las fechas de entrega.
+España
+Español
+Español (México)
+Esta empresa tiene
+Esta imagen está en uso
+Esta promoción ya se usó en pedidos. Se archivará: deja de aplicar y sus cupones dejan de funcionar, pero el historial se conserva.
+Esta sección se comparte entre páginas y se edita en su propio documento.
+Esta tienda todavía no conectó Stripe: los compradores no pueden pagar.
+Esta ubicación tiene {} unidades. Transfiérelas a otra ubicación antes de eliminarla.
+Esta ubicación ya tiene inventario pero le faltan nombre y dirección.
+Estado de cuenta
+Estado de la página
+Estado de los productos
+Estados Unidos
+Estados o códigos postales
+Este ajuste se edita con un control que llegará en la próxima versión.
+Este año
+Este campo es obligatorio
+Este dispositivo
+Este es el único momento en que se muestra el código completo.
+Este menú está vacío. Agrega tu primer enlace.
+Este mes
+Este servidor no tiene tareas en segundo plano activas.
+Este tipo de sección no está en el catálogo. Quítala o reemplázala.
+Este vendedor no tiene cuenta de Stripe: edítalo para poder pagarle desde aquí.
+Estilo de la tienda
+Etiqueta del campo
+Etiquetas y segmentos
+Evento reenviado
+Eventos recientes
+Excluir variantes
+Existencias ajustadas
+Existencias de este momento{}
+Existencias en {}
+Exportando…
+Exportar selección
+Factura emitida
+Falló
+Falta crear la opción en Envíos
+Falta código postal
+Falta el SKU.
+Faltan sus datos
+Fecha y hora de la compra
+Fechas a elegir
+Feriados oficiales
+Fijar precio
+Fijar productos
+Filas con errores (
+Filtrar estados
+Filtrar por ubicación
+Fin del registro
+Firma (inicio)
+Forma de pago
+Formulario guardado.
+Frágil
+Fuera de estas fechas sus promociones no aplican, aunque estén activas.
+General (IVA de la región)
+Generar cupones en lote
+Generar variantes
+Global: {}
+Google Merchant Center
+Gratis en pedidos desde
+Grupo de precios (precio por producto)
+Guarda estos códigos de respaldo.
+Guarda las reglas para probarlas.
+Guardada. Escribe para cambiarla
+Guardado. Aplica desde la siguiente compra.
+Guardado. Ya aplica en tu tienda.
+Guardando…
+Guardar acceso
+Guardar borrador
+Guardar cambios
+Guardar cuenta de Stripe
+Guardar etiquetas
+Guardar respuesta
+Guardar segmento
+Guardar umbral
+Guardar vista
+Guardar y publicar
+Guárdalo ahora: no se volverá a mostrar.
+HTML comprimido frente al límite de la plantilla
+Hacer principal
+Hasta (kg)
+Hasta 8 letras mayúsculas, números o guiones.
+Hasta {}
+Hay SKUs repetidos.
+Hay dos escalones con el mismo mínimo.
+Hay una cadena: conviene apuntar la primera ruta directo al destino final.
+Hecha por
+Historial de demostración cargado
+Historial de publicaciones
+Hola, {}
+Hora de corte
+Hoy tu tienda cobra una sola tarifa ({}: {} + {} por kg).
+IP desconocida
+IVA general
+Id de la cuenta conectada
+Idioma a traducir
+Idioma del panel / Panel language
+Idioma · Language
+Idiomas de la tienda
+Idiomas guardados.
+Imagen de la variante
+Imagen eliminada.
+Imagen subida
+Importar CSV
+Importar lista
+Importar redirecciones
+Importar {} productos
+Impuesto por producto
+Imágenes
+Imágenes de la biblioteca
+Incluir clientes que cumplan
+Incluir el envío (
+Incluye sus subcategorías.
+Indica cuántas piezas llevan el beneficio.
+Indica cuántas piezas se compran.
+Indicadores del embudo
+Información general
+Inicia sesión
+Iniciando…
+Iniciaron el pago
+Instrucciones para quien recoge
+Integración (API key)
+Inventario anual
+Inventarios, cierres de fin de año, días locales.
+Invitación
+Invitación cancelada.
+Invitación enviada
+Invitación lista: comparte la contraseña temporal con {}
+Invitar miembro
+Ir a Zonas
+Ir a conectores
+Ir a iniciar sesión
+JavaScript de las secciones frente al límite
+Kg adicional después del último tramo
+La URL de rastreo usa
+La URL debe usar https.
+La apertura debe ser antes del cierre.
+La biblioteca está vacía. Sube la primera imagen arriba.
+La búsqueda por correo o teléfono necesita el dato completo, porque se guardan cifrados.
+La contraseña debe tener al menos 12 caracteres.
+La contraseña no es correcta.
+La contraseña nueva debe tener al menos 12 caracteres.
+La contraseña temporal debe tener al menos 12 caracteres.
+La empresa que entrega tus pedidos.
+La entrega se cobrará en el próximo minuto.
+La fecha de fin debe ser posterior a la de inicio.
+La fecha final es anterior a la inicial.
+La llave publicable empieza con pk_.
+La mayoría de los productos llevan la tasa general. Marca aquí los exentos o de tasa 0% (por ejemplo alimentos o libros).
+La moneda no cambia: los precios ya están en ella.
+La persona solo verá los productos, pedidos y estado de cuenta de este vendedor. Nada más de tu tienda.
+La primera es la principal. Se generan tamaños optimizados automáticamente.
+La principal
+La promoción ya tenía usos: se archivó para conservar el historial
+La página de inicio se reemplaza por la plantilla del tema. Guardamos tu versión actual para que puedas volver a ella.
+La página deja de existir en tu tienda y los enlaces hacia ella dejan de funcionar.
+La página no tiene secciones. Agrega la primera.
+La ruta no puede tener espacios.
+La tienda debe
+La tienda en vivo no cambia hasta que publiques.
+La tienda funciona, pero hay puntos que revisar.
+La tienda mostrará el nombre en texto hasta que subas otro.
+La tienda todavía no te asigna productos.
+La ubicación desaparece de inventario y de las opciones de transferencia. No se puede deshacer.
+Largo del código
+Las compras a crédito por encima de este total esperan a que alguien de la empresa las apruebe.
+Las devoluciones se crean desde el detalle de un pedido. Al recibir el paquete decides si cada pieza vuelve al inventario.
+Las direcciones actuales dejan de funcionar de inmediato. Tendrás que pegar las nuevas en Google y Meta.
+Las dos contraseñas nuevas no coinciden.
+Las especificaciones marcadas como filtrables aparecen como filtros en la tienda.
+Las fechas usan la hora del centro de México (
+Las llaves se guardan cifradas con la llave de tu tienda y nunca se vuelven a mostrar.
+Las opciones inactivas no se ofrecen a los compradores.
+Las rutas anteriores volverán a mostrar “página no encontrada”.
+Las subcategorías suben un nivel.
+Las unidades salen del origen y entran al destino al mismo tiempo. Las reservadas por pedidos en curso no se pueden mover.
+Las {} tareas corren a tiempo.
+Le enviamos el enlace a {}.
+Le enviamos el enlace por correo. También puedes copiarlo.
+Lista de SKUs
+Lista de redirecciones
+Lista eliminada. Los precios volvieron a su valor base.
+Lista guardada. Los precios ya se actualizaron en la tienda.
+Lista para publicar
+Listo el mismo día
+Listo en {}
+Listo. Cada cambio quedó en el historial y puedes revertirlo con un cambio inverso.
+Llave creada
+Llave de API de SendGrid
+Llave publicable
+Llave publicable:
+Llave secreta o restringida
+Llave secreta:
+Llaves propias de Stripe
+Llegó tarde
+Lleva X, paga Y
+Lleva a
+Lleva con beneficio (piezas)
+Lleva directo a
+Lleva un término directo a una página: “envíos” a tu política de envíos, “buen fin” a la colección de la campaña.
+Lo agregaron
+Lo que el comprador ve y elige en el carrito.
+Lo que has vendido, la comisión de la tienda y los pagos que has recibido.
+Lo verá el cliente en el correo
+Logo actualizado
+Logo de {}
+Logo eliminado
+Los 10 con más ingresos, por {}
+Los agotados no se envían, para no pagar anuncios de algo que no puedes vender.
+Los cambios aplican de inmediato en la tienda.
+Los cambios aplican en la siguiente acción que haga esta persona.
+Los cambios se ven en la tienda de inmediato.
+Los clientes entran y salen solos según las reglas.
+Los clientes pueden pasar por su pedido. Después crea la opción “Recoger en tienda” en Envíos.
+Los compradores de esta zona se quedarán con las opciones de la zona siguiente más general, si existe.
+Los compradores dejarán de verla de inmediato. Los pedidos que ya la usaron conservan sus datos.
+Los destinos de esta región usarán la región predeterminada. Los pedidos anteriores no cambian.
+Los días del calendario no cuentan para despachar ni para entregar, así la fecha prometida al comprador es realista.
+Los escalones son por
+Los feriados del
+Los menús que ven tus clientes arriba y abajo de la tienda. Los cambios se ven de inmediato, sin publicar.
+Los mismos productos
+Los precios se toman del catálogo. Después podrás enviar el enlace de pago.
+Los productos entran y salen solos según las reglas.
+Los textos que tú escribes (nombres de productos, menús, títulos de secciones) no se traducen solos. Escribe aquí el texto tal como aparece en español y cómo debe verse en el otro idioma. También sirve para cambiar una traducción de Apexx.
+Los tramos no pueden tener valores negativos.
+Lotes generados
+Límite de crédito (MXN)
+Línea {}: escribe “SKU, precio”.
+Línea {}: usa el formato /ruta-anterior,/ruta-nueva
+Línea {}: {}
+Marca actualizada.
+Marca creada.
+Marca eliminada.
+Marca guardada
+Marca qué piezas están en buen estado para volver a venderse. Regresan a la misma ubicación de donde salieron.
+Marcado como en camino.
+Marcado como entregado.
+Marcar en camino
+Marcar entregado
+Marketing: todos
+Marketplace y vendedores
+Mayor descuento otorgado
+Mayor gasto
+Mayor prioridad
+Mensaje al enviar
+Menú
+Menú guardado
+Menú guardado. Ya está en tu tienda.
+Menús
+Mes pasado
+Meta (Facebook e Instagram)
+Mi Tienda S.A. de C.V.
+Miembro (ya no existe)
+Miembro del equipo
+Miembro desactivado: su sesión se cerró
+Miembro invitado
+Miembro reactivado
+Mientras no agregues regiones se usa la tasa del canal de venta{}. Carga las tasas de México para tener IVA general y de frontera con un clic.
+Mira exactamente qué vería un comprador y por qué.
+Mismo nombre en las promociones que se combinan.
+Miércoles
+Monto (MXN)
+Monto a reembolsar (
+Monto de compra
+Monto de descuento en el pedido
+Monto de descuento por pieza
+Monto del pedido
+Monto después de descuentos. Con $0 nunca es gratis.
+Monto máximo
+Monto máximo de descuento
+Mostrando {} de {}
+Mostrar como filtro en la tienda
+Mostrar el precio actual como “precio anterior” (tachado) en la tienda
+Motivo (opcional)
+Mover antes
+Mover después
+Mover sección
+Mover {}
+Movimiento cancelado.
+Movimiento de {} cancelado.
+Muestra un campo de texto libre (hasta 500 caracteres) para instrucciones de entrega o dedicatorias.
+Más pedidos
+Más recientes
+Más usadas
+Máximo (días hábiles)
+Máximo disponible:
+Máximo por producto
+Máximo {}
+Máximo {} caracteres
+México
+Mínimo (días hábiles)
+Mínimo 12 caracteres.
+Mínimo del escalón {}
+Mínimo {}
+Mínimo {} caracteres
+Módulo
+Móvil
+Nada por agotarse
+Nada por aquí: todas las búsquedas encontraron productos.
+Nada que cambiar: la selección ya estaba así
+Nada vendido en este periodo
+Nadie abrió una página de producto en este periodo.
+Navegación del panel
+Ninguna entrada coincide con los filtros
+Ninguna fila coincide con la búsqueda.
+Ninguna imagen coincide con la búsqueda.
+Ninguna promoción coincide con estos filtros.
+Ninguna promoción pertenece a esta campaña. Elige “
+Ninguna ruta coincide con tu búsqueda.
+Ninguna ubicación ofrece recolección.
+Ninguno todavía.
+Ningún SKU con unidades disponibles coincide.
+Ningún SKU está en ese estado.
+Ningún cliente coincide
+Ningún comprador podría terminar este pedido: no hay opción de entrega disponible.
+Ningún cupón coincide
+Ningún estado coincide.
+Ningún pedido coincide
+Ningún producto coincide
+Ningún producto coincide.
+Ningún producto la usa.
+Ningún producto lo usa.
+Ningún producto oculto.
+Ningún producto tiene reglas propias: todos usan la tasa general y el perfil estándar.
+Ningún producto todavía.
+Nivel de acceso por módulo
+Nivel principal
+No aceptan
+No aplica
+No aplica en este carrito
+No disponible en este tipo de página
+No disponibles
+No es como se describe
+No había otras sesiones.
+No hay categorías.
+No hay conexión con el servidor. Revisa tu red e intenta de nuevo.
+No hay marcas.
+No hay más SKU con unidades disponibles aquí.
+No hay más eventos.
+No hay opciones
+No hay promociones todavía
+No hay secciones con ese nombre.
+No modifica el precio base: se aplica encima mientras esté vigente.
+No publicado
+No puedes reembolsar más de lo cobrado.
+No quedan piezas disponibles para esta acción.
+No se pagó ni se reembolsó ningún pedido entre el
+No se publicó: {}
+No se pudo abrir la página:
+No se pudo cargar la vista previa:
+No se pudo consultar la base de datos.
+No se pudo copiar.
+No se pudo descargar (HTTP
+No se pudo descargar el archivo
+No se pudo deshacer: {}
+No se pudo enviar
+No se pudo exportar
+No se pudo exportar (HTTP
+No se pudo exportar: {}
+No se pudo restaurar: {}
+No se pudo verificar
+No se pudo verificar: {}
+No se puede cambiar después.
+No se puede cambiar.
+No se puede deshacer.
+No se usa en ningún producto.
+No tienes pedidos pendientes. ¡Todo enviado!
+Nombre (A–Z)
+Nombre comercial
+Nombre de la opción {}
+Nombre de la variante
+Nombre de quien la recibe
+Nombre o razón social
+Nombre para el comprador
+Nombre, marca o SKU
+Noroeste (Tijuana)
+Nota (opcional)
+Nota agregada
+Nota agregada al pedido
+Nota del cliente:
+Nota guardada.
+Nota interna
+Nota interna (cuenta bancaria, contrato…)
+Nota para la tienda
+Notas e historial
+Notas internas
+Nueva empresa
+Nueva nota
+Nueva opción de entrega
+Nueva paquetería
+Nueva redirección
+Nueva región
+Nueva región de impuestos
+Nueva tarjeta de regalo
+Nueva zona
+Nuevo cliente
+Nuevo estado
+Nuevo perfil
+Nuevo webhook
+Número
+Número de guía
+Número de pedido
+Número de pedidos
+Número de piezas
+Número entero.
+Número máximo de usos
+Ocultar producto
+Ocultar productos
+Oculto y fuera de los listados.
+Ocultos en la búsqueda
+Opcional. A esa hora pasa a activo.
+Opcional. Hasta 8 caracteres: A-Z, 0-9 y guion.
+Opcional. Pedidos más pesados no ven esta opción.
+Opcional: cm, kg, GB…
+Opcional: prueba la hora de corte y los feriados.
+Opciones separadas por coma
+Opciones separadas por coma: Tienda, Restaurante, Otro
+Opciones y variantes
+Opción activa
+Opción creada. Ya aparece en el carrito.
+Opción de entrega guardada
+Opción eliminada
+Opción guardada. Ya aplica en el carrito.
+Opinión eliminada.
+Opinión publicada.
+Opinión rechazada.
+Organización
+Otra persona guardó este producto mientras lo editabas. Recarga la página para ver su versión antes de volver a guardar.
+Otros productos
+Pacífico (Chihuahua)
+Pacífico (Mazatlán)
+Pagar ahora {}
+Pagarle en automático cuando su saldo disponible alcance el mínimo
+Pago al vendedor
+Pago cobrado
+Pago enviado
+Pago manual
+Pago mínimo (MXN)
+Pago no enviado: saldo devuelto
+Pago pendiente
+Pago rechazado
+Pago recibido
+Pago registrado.
+Pago y factura
+Pago: {}
+Palabras que significan lo mismo para tus clientes. Si alguien busca “remera” y tú vendes “playeras”, las encuentra.
+Paquete en camino
+Paquete entregado
+Paquetería
+Paquetería activa
+Paquetería creada
+Paquetería eliminada
+Paquetería guardada
+Para cambiar la cuenta de Stripe necesitas nivel Admin en Pagos.
+Para cambiar precios, existencias o fotos, escribe a la tienda.
+Para crear cupones primero necesitas una promoción que pida cupón.
+Para el vendedor
+Para integraciones (ERP, conectores) o para el storefront. Cada llave tiene un rol fijo.
+Para integraciones y pruebas. Se guarda solo en esta pestaña.
+Para ofrecer recolección escribe la dirección.
+Para reconocerla después, por ejemplo “ERP SAP”.
+Para registrar a alguien que compra por teléfono o en mostrador.
+Para un término, estos productos salen primero (aunque su nombre no coincida). Útil para lanzamientos y campañas.
+Pausada: ninguna de sus promociones aplica.
+País
+Pedido #
+Pedido a crédito
+Pedido borrador creado.
+Pedido cancelado
+Pedido cancelado y reembolsado. El stock volvió al inventario.
+Pedido cancelado.
+Pedido creado
+Pedido editado
+Pedido enviado
+Pedido marcado como revisado.
+Pedido no completado
+Pedido reembolsado
+Pedidos hasta ($)
+Pedidos por enviar
+Pedidos por tipo de cliente: {} de clientes nuevos y {} de clientes que regresan.
+Pedir aprobación desde (MXN)
+Pedir que acepten los términos
+Pega tu llave secreta (sk_…) o restringida (rk_…).
+Pega una línea por redirección: ruta anterior, coma, ruta nueva. Puedes copiarlas de una hoja de cálculo.
+Perfil creado
+Perfil de envío
+Perfil de envío de {}
+Perfil de envío guardado
+Perfil de los productos
+Perfil de productos
+Perfil eliminado
+Perfil guardado
+Perfiles de envío
+Periodo anterior
+Permanente (301)
+Permanente (301): la página cambió para siempre
+Permisos de miembro cambiados
+Personas que compran a nombre de la empresa.
+Perú
+Perú (Lima)
+Peso (g)
+Peso en gramos
+Peso máximo del pedido (kg)
+Peso total (kg)
+Pide a un administrador de la tienda que te dé permiso, o vuelve al
+Pie de página
+Piezas de regalo
+Piezas de {}
+Plantilla guardada.
+Plantilla restablecida.
+Política
+Política eliminada.
+Política guardada
+Política publicada.
+Política que se enlaza
+Ponle un nombre, por ejemplo IVA frontera.
+Por agotarse (1 a 5)
+Por cada kg
+Por categoría
+Por cobrar
+Por dispositivo
+Por día
+Por enviar
+Por hora
+Por marca
+Por mes
+Por monto del pedido
+Por monto: {}
+Por pagar a vendedores
+Por peso: {}{}
+Por reglas
+Por semana
+Por separado cuestan {}{}.
+Por tramos de peso
+Porcentaje desde un mínimo
+Portal de vendedor
+Portal de vendedor · la tienda cobra {} de comisión por venta
+Precio (
+Precio antes
+Precio base
+Precio cambiado
+Precio con impuestos
+Precio de lista
+Precio de oferta
+Precio del envío
+Precio del paquete
+Precio desde
+Precio hasta
+Precio inválido.
+Precios actualizados en {} {}
+Precios cambiados
+Precios fijos por SKU
+Prefiere entregas por la tarde…
+Prendas que duran
+Presenta tu número de pedido y una identificación.
+Presupuesto usado
+Primero crea una zona de envío (a dónde entregas). Luego agrega las opciones de esa zona.
+Probar un cálculo
+Probar un pedido
+Probar una búsqueda
+Probar una ruta
+Producto actualizado. Aplica al siguiente carrito.
+Producto creado.
+Producto de regalo
+Producto eliminado.
+Producto equivocado
+Producto guardado
+Productos (
+Productos completos
+Productos con descuento
+Productos con otra clase de impuesto
+Productos con otro perfil
+Productos de {}
+Productos del paquete
+Productos del vendedor (
+Productos del vendedor actualizados.
+Productos en el origen
+Productos fijados
+Productos más vistos
+Productos que llevan el beneficio
+Productos que no aparecen al buscar ni en el catálogo general (siguen disponibles con su enlace directo).
+Productos relacionados
+Productos y variantes
+Productos › Fuentes de datos › Agregar fuente › Archivo desde una URL.
+Productos, variantes, precios y existencias
+Promociones de la campaña
+Promociones que aplican (
+Promociones que no aplican (
+Promoción activada
+Promoción archivada
+Promoción creada
+Promoción eliminada
+Promoción guardada
+Promoción pausada
+Promoción que activa
+Prueba con otra palabra o quita algún filtro.
+Prueba con otra palabra.
+Prueba con otra persona, acción o fechas.
+Prueba quitando algún filtro.
+Próxima entrega:
+Próximo intento:
+Publicación
+Publicación deshecha
+Publicado desde el editor
+Publicado en {} ms
+Publicador del diseño
+Publicando…
+Publicar automáticamente
+Publicar mi catálogo
+Publicar tu tienda
+Puedes enviar todo o solo una parte. El stock ya está apartado para este pedido.
+Puedes usar títulos (## Título), listas (- punto), **negritas** y enlaces [texto](https://…). Deja una línea en blanco entre párrafos.
+Puedes ver el equipo. Para invitar o cambiar accesos necesitas nivel Admin en Equipo.
+Puedes ver esta configuración. Para cambiarla necesitas nivel
+Pulsa Espacio para tomar la sección, flechas para moverla y Espacio para soltarla. Escape cancela.
+Página de destino
+Páginas por sesión
+Pégalas una sola vez en cada plataforma, como fuente de datos programada (“scheduled fetch”).
+Quedan {}
+Quien visite la ruta anterior llegará a la nueva.
+Quitar bloque
+Quitar de una categoría
+Quitar de una categoría…
+Quitar día
+Quitar escalón {}
+Quitar fecha
+Quitar filtros
+Quitar grupo
+Quitar imagen
+Quitar logo
+Quitar opción
+Quitar redirección
+Quitar regla
+Quitar sección
+Quitar traducción {}
+Quitar tramo {}
+Quitar una pieza de {}
+Quitar variante {}
+Quitar {}
+Quién la ve
+Qué hace
+Qué productos llevan el beneficio
+Qué productos transporta esta opción.
+Qué se le pide al comprador antes de pagar. Los cambios aplican de inmediato, sin publicar la tienda.
+Reabasto de temporada
+Reactivar miembro
+Reactivar tarjeta
+Recibir devolución D-
+Recolección
+Recolección en esta ubicación
+Recolección en tienda
+Recolección:
+Recomendado. Autorizas tu cuenta existente en Stripe y Apexx solo guarda su identificador.
+Reconstruyendo…
+Recordar otra vez
+Recordatorio enviado.
+Redirecciones de búsqueda
+Redirección creada. Ya funciona.
+Redirección guardada
+Redondeo de esquinas:
+Reembolsando…
+Reembolsar al cliente ahora
+Reembolsar {}
+Reembolso completado
+Reembolso de {} enviado.
+Reembolso enviado al cliente.
+Reembolso fallido
+Reembolso o cancelación
+Reembolso parcial
+Reembolsos y devoluciones
+Reenviar enlace
+Reenviar eventos
+Referencia de la transferencia
+Regalo de una promoción
+Regalo por aniversario, compensación…
+Regiones de impuestos
+Registra las existencias de tus productos en Catálogo para ver el valor de tu inventario y lo que está por agotarse.
+Registra lo que el cliente va a devolver. El reembolso se hace cuando recibas el paquete.
+Registra tu primera ubicación
+Registrar envío
+Registrar pago
+Registrar pago al vendedor
+Registrar pago de la empresa
+Registrar pago hecho por fuera
+Registro eliminado.
+Región
+Región de impuestos
+Región de impuestos guardada
+Región eliminada.
+Región guardada. Aplica desde la siguiente compra.
+Región predeterminada
+Reglas guardadas. Ya aplican en tu tienda.
+Rehacer (Ctrl+Shift+Z)
+Reportes y analítica
+Respuesta guardada.
+Respuesta pública a {}
+Respuesta pública de la tienda (opcional)
+Restablecer el original
+Restablecer plantilla
+Restablecer {}
+Revisa este pedido antes de enviarlo.
+Revisa los campos marcados
+Revisa los campos marcados antes de guardar.
+Revisado por
+Revisando la invitación…
+Revisando…
+Revisar el catálogo
+Rol eliminado.
+Ruta anterior
+SG.…
+SKU con menos existencias. Exporta el CSV para verlos todos.
+SKU repetido.
+SKUs y precios
+Sacar del submenú
+Saldo (MXN)
+Saldo a favor
+Saldo a favor de {} enviado al cliente por correo.
+Saldo a tu favor
+Saldo pendiente
+Saltar próxima entrega
+Se actualizan
+Se agrega solo al carrito, sin costo, si hay existencias. Si el comprador ya lo tenía en el carrito, esa pieza queda gratis.
+Se agregaron {} regiones.
+Se aplica a
+Se borra su valor en {} productos.
+Se cerraron {} sesiones.
+Se cobra por kg iniciado.
+Se crean
+Se libera el stock apartado. No se puede deshacer.
+Se marcan como enviados todos tus productos de este pedido.
+Se muestran en la ficha del producto.
+Se muestran las primeras
+Se muestran los primeros
+Se preselecciona
+Se publica
+Se quita de la tienda y de las colecciones. Los pedidos anteriores conservan sus datos. Esta acción no se puede deshacer.
+Se recoge en
+Se reembolsan {} al cliente, el stock vuelve a su ubicación y se anulan los cupones usados. No se puede deshacer.
+Se reencolaron {} eventos
+Se reenviarán
+Se restauró la publicación {}
+Se saltó la próxima entrega.
+Se usa cuando el destino no cae en ninguna otra región.
+Se usa en inventario e integraciones. No se puede cambiar después.
+Se usa la región más específica: primero código postal, luego estado y al final la región predeterminada.
+Se usa si no hay regiones de impuestos.
+Secciones de la página
+Sección global
+Secreto del webhook (opcional)
+Secreto del webhook:
+Secreto para verificar la firma
+Segmento eliminado.
+Segmento guardado.
+Según el destino
+Seleccionar {}
+Semana del
+Separados por coma, espacio o salto de línea
+Sesiones por periodo: {} en total, {} con compra.
+Sesiones por {}
+Sesiones que llegaron al menos hasta cada paso. Una sesión es una persona durante un día.
+Sesiones que lo vieron
+Sesión cerrada.
+Si dos listas coinciden, gana la mayor.
+Si eliges marcas o categorías además de productos, deben cumplirse ambas condiciones.
+Si la eliminas, desaparece de los productos y marcas que la usan. No se puede deshacer.
+Si un código postal cae en varias zonas, se usa la más específica.
+Siempre gratis
+Siguientes 50
+Sin RFC
+Sin acceso
+Sin aprobación
+Sin cambios registrados
+Sin carritos abandonados
+Sin categoría
+Sin clientes en este periodo
+Sin correos todavía
+Sin código postal: solo aplica la recolección.
+Sin datos en este periodo.
+Sin definir
+Sin devoluciones
+Sin direcciones guardadas.
+Sin dirección
+Sin dominios propios
+Sin entregas todavía.
+Sin enviar
+Sin marca
+Sin movimientos todavía.
+Sin nombre
+Sin notas.
+Sin opiniones aquí
+Sin pago registrado.
+Sin paquetería
+Sin paquetería (reparto propio)
+Sin permisos
+Sin precio
+Sin presupuesto
+Sin productos asignados.
+Sin redirecciones
+Sin regiones todavía
+Sin registros todavía
+Sin región
+Sin respuesta
+Sin resultados
+Sin resultados. Agrega un sinónimo o una redirección para este término.
+Sin resultados. Revisa la ortografía o prueba con el SKU.
+Sin suscripciones aquí
+Sin tarjetas todavía
+Sin transportista
+Sin título
+Sin ventas en este periodo
+Sinónimos
+Sirven para colecciones automáticas y búsqueda.
+Sitio de origen de la sesión (solo el dominio)
+Solicitudes de mayoreo
+Solo algunos SKUs
+Solo cambiar el estilo
+Solo el último tramo puede ser “sin límite”.
+Solo en las variantes que todavía no tienen precio anterior.
+Solo hay {} unidades disponibles de {}.
+Solo mi equipo
+Solo productos con existencias
+Solo se aceptan imágenes JPG, PNG, WebP o GIF.
+Solo se puede eliminar un perfil sin productos ni opciones de entrega.
+Solo se puede eliminar una paquetería que ninguna opción de entrega usa.
+Solo tu equipo lo ve.
+Solo un administrador de pagos puede cambiar esto.
+Solo un administrador de pedidos puede cambiar esto.
+Sonora (Hermosillo)
+Stripe Connect
+Stripe no aceptó el envío. El saldo regresó al vendedor.
+Subiendo y generando tamaños…
+Subiendo…
+Subir o bajar precios
+Subir o bajar precios (%)…
+Subir precios
+Subir {}
+Suma de los descuentos de todas sus promociones.
+Sumar o restar monto
+Sureste (Cancún)
+Sus precios dejan de venderse. Los pedidos anteriores se conservan.
+Sus {} productos quedan sin marca.
+Suscripción al boletín
+Suscripción cancelada.
+Suscripción de
+Suscripción en pausa.
+Suscripción reactivada.
+Suspendida (compra como cliente normal)
+Sábado
+Sí / No
+Sí, desactivar
+Talla o medida
+Tamaños generados
+También aplican:
+También busca:
+También lo enviamos a {}.
+También pueden comprar, sin límite de aprobación.
+Tarifa fija
+Tarjeta actualizada.
+Tarjeta creada
+Tarjeta de regalo
+Tarjeta de regalo o saldo
+Tarjeta ••••
+Tarjetas de regalo
+Tasa (%)
+Tasa 0%
+Tasa de respaldo (%)
+Teléfono (opcional)
+Teléfono obligatorio
+Tema {}
+Tema {} aplicado al borrador
+Temporal (302)
+Temporal (302): solo por un tiempo
+Terminan pronto
+Terminar en .90
+Texto alternativo
+Texto alternativo de
+Texto alternativo guardado.
+Texto corto
+Texto de introducción
+Texto del botón
+Texto del enlace
+Texto en español
+Texto en español {}
+Texto largo
+Texto secundario
+Texto sobre el acento
+Tiempo de entrega
+Tienda (opcional)
+Tienda (pública, para el storefront)
+Tienda México
+Tienda Norte
+Tienda física
+Tienda publicada
+Tienda {}
+Tiene cuenta
+Tiene {} opciones de entrega. Elimínalas o cámbialas de zona primero.
+Tienes cambios sin guardar
+Tipo de campo
+Tipo de descuento del escalón {}
+Tipo de enlace
+Tipo de presupuesto
+Tipo de producto
+Tipografía
+Todas las campañas
+Todas las etiquetas
+Todas las ubicaciones
+Todavía no agregas traducciones propias en este idioma.
+Todavía no eliges productos.
+Todavía no ha comprado.
+Todavía no hay actividad
+Todavía no hay búsquedas en este periodo.
+Todavía no hay categorías.
+Todavía no hay menús.
+Todavía no hay movimientos.
+Todavía no hay pedidos. El primero aparecerá aquí en cuanto se pague.
+Todavía no hay perfiles: todos los productos usan el estándar.
+Todavía no hay productos
+Todavía no hay publicaciones.
+Todavía no hay transferencias
+Todavía no hay ventas ni visitas en este periodo
+Todavía no hay webhooks. Crea uno para enviar los cambios de tu tienda a otro sistema.
+Todavía no se usa en ningún pedido.
+Todavía no tienes empresas
+Todavía no tienes formularios
+Todavía no tienes políticas
+Todavía no tienes políticas publicadas.
+Todavía no tienes vendedores
+Todavía no vemos los registros DNS.
+Todo México
+Todo lo que coincide ya está agregado.
+Todos los canales
+Todos los demás
+Todos los destinos sin otra región
+Todos los días
+Todos los productos
+Todos los productos del canal
+Todos los productos pagan la tasa general de su región, salvo los de esta lista (por ejemplo libros a tasa 0% o servicios exentos).
+Todos los productos usan el perfil estándar, salvo los de esta lista.
+Todos los segmentos
+Tomaste {}, posición {} de {}.
+Total gastado
+Traducción
+Traducción {}
+Tramo {}: hasta kg
+Tramo {}: pedidos hasta
+Tramo {}: precio
+Transferencia T-{} hecha: {} unidades
+Transferir stock
+Transferir {} unidades
+Transfiriendo…
+Tu acceso al catálogo es de solo lectura.
+Tu acceso al diseño no permite publicar. Pide nivel Admin en Diseño de la tienda.
+Tu acceso es de lectura: el correo y el teléfono se muestran parcialmente.
+Tu acceso es de solo lectura: puedes revisar la promoción y probarla, pero no guardar cambios.
+Tu acceso no incluye datos personales del cliente.
+Tu acceso no incluye esta sección.
+Tu acceso no incluye las cifras de venta
+Tu acceso no incluye ver los correos.
+Tu acceso no permite esta acción. Pide permiso a un administrador de la tienda.
+Tu acceso todavía no incluye ninguna sección. Pide permisos a un administrador de la tienda.
+Tu calendario está vacío
+Tu catálogo siempre al día en Google Shopping y en Facebook e Instagram: precios, existencias e imágenes se leen de tu tienda, sin subir archivos.
+Tu cliente la usa escribiendo el código al pagar. Si no gasta todo, el resto queda en la misma tarjeta.
+Tu comisión (%)
+Tu contraseña actual no es correcta.
+Tu estado de cuenta
+Tu nombre
+Tu sesión terminó. Vuelve a iniciar sesión.
+Tu tienda dejará de responder en ese dominio. Seguirá funcionando en la dirección de Apexx.
+Tu tienda está escrita en español. Activa otros idiomas y Apexx traduce todos los textos fijos (botones, carrito, pago, cuenta). Cada idioma tiene su propia dirección para Google.
+Tus productos
+Tus propias traducciones
+Tus reglas antifraude lo marcaron:
+Título
+Título del producto
+Título para buscadores
+Títulos
+Tú
+Tú eliges cada producto y su orden.
+URL de destino
+URL de rastreo
+URL del endpoint
+Ubicación
+Ubicación activa
+Ubicación creada
+Ubicación eliminada
+Ubicación guardada
+Umbral actualizado
+Umbral de
+Umbral general de la tienda: {}. Con 0 este SKU nunca avisa.
+Un SKU por línea.
+Un administrador puede darte el permiso «Reportes y analítica» desde Equipo. Mientras tanto, estas son las secciones que sí puedes usar.
+Un cupón activa una promoción cuando el comprador escribe su código en el carrito. Si no es válido, se le explica por qué.
+Un código que cualquiera puede usar, por ejemplo BIENVENIDA10.
+Un momento…
+Un paquete necesita al menos 2 piezas en total.
+Un producto activo necesita precio.
+Un producto en dos categorías cuenta en ambas.
+Un producto entra si cumple
+Una línea por SKU: SKU, precio. Puedes pegar desde una hoja de cálculo.
+Una opción es lo que el comprador elige en el carrito: por ejemplo “Estándar, $99, 2 a 4 días”.
+Una ruta de tu tienda o una URL completa.
+Una transferencia mueve unidades de una ubicación a otra en un solo paso. Queda registrada con quién la hizo y cuándo.
+Una ubicación es una bodega o tienda con inventario. Con su dirección y horario puedes ofrecer recolección en tienda.
+Una ubicación inactiva conserva su inventario pero no ofrece recolección.
+Una zona es un área de entrega: todo el país, algunos estados o rangos de códigos postales. Cada zona tiene sus propias opciones y precios.
+Unidades de un mismo artículo por pedido.
+Unidades de {}
+Uno por línea. Un rango se escribe 22000-22999.
+Usa el id que empieza con acct_ que te da Stripe Connect.
+Usa minúsculas, números y guiones (por ejemplo cdmx-1).
+Usa minúsculas, números y guiones (por ejemplo tenis-rojos).
+Usa minúsculas, números y guiones, por ejemplo mx o mayoreo.
+Usa un monto positivo a favor del vendedor o negativo en su contra (por ejemplo -150).
+Usa una ruta que empiece con / o una URL https completa.
+Usar API key
+Usar configuración recomendada
+Usar el umbral general
+Usar imagen
+Usar la plantilla {}
+Usar mis llaves de Stripe
+Usar plantilla completa
+Usar {} imágenes
+Usos máximos
+Usos totales
+Usos totales por código
+Valores de {}
+Valores elegidos
+Variantes (SKU)
+Variantes excluidas
+Vence (opcional)
+Vence en 7 días y funciona una sola vez.
+Vendedor guardado.
+Ventas brutas
+Ventas de vendedores
+Ventas netas por {}: {} {} en el periodo, {} en el anterior.
+Ventas por {}
+Ver detalle de la entrada {}
+Ver en la tienda
+Ver ficha del cliente
+Ver gráfica
+Ver las respuestas requiere permiso de edición en Configuración, porque contienen datos personales.
+Ver mis tiendas
+Ver más
+Ver pedidos
+Ver sus {} cupones
+Verificación en dos pasos desactivada.
+Verificación en dos pasos restablecida.
+Verificando…
+Vieron un producto
+Visible en la tienda
+Visible en la tienda.
+Visible en tu tienda y disponible para enlazar en el checkout y los menús.
+Visible para el cliente
+Vista de pedidos guardada
+Vista guardada.
+Vista previa
+Vista previa de la página
+Vista previa del correo
+Vista previa en vivo de lo que cumple las reglas.
+Vistas guardadas:
+Volver a como estaba
+Volver a la publicación anterior
+Volver a lo general
+Volver al color del tema
+Volver al inventario
+Válido desde
+Válido hasta
+Webhook creado.
+Webhook de Stripe
+Webhook desactivado
+Ya está agregado
+Ya está en la lista
+Ya existe una ubicación con ese identificador.
+Ya lo revisé, está bien
+Ya tenías la configuración recomendada.
+Ya tenías las regiones de México.
+Zona activa
+Zona creada
+Zona de envío guardada
+Zona eliminada
+Zona guardada
+Zona norte
+acct_…
+al cliente.
+al menos
+bad path
+cada {} min
+cobro(s) fallido(s)
+como máximo
+compras@empresa.com director@empresa.com
+cualquiera de
+códigos ·
+de descuento otorgado en
+destino activo
+destinos activos
+donde va el número de guía.
+día
+días ·
+el equipo
+en Configuración.
+en alerta · umbral general:
+en pausa
+entradas cargadas
+envíos
+eventos a este webhook.
+fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100vh-48px)] w-[min(560px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border bg-card p-6 text-card-foreground shadow-lg
+fixed left-1/2 top-1/2 z-50 grid w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border bg-card p-6 text-card-foreground shadow-lg
+formulario abierto en la tienda
+guardada y cifrada
+guardado y cifrado
+hace {} días
+hace {} min
+imágenes
+inset-y-0 left-0 h-full w-[min(320px,85vw)] border-r
+inset-y-0 right-0 h-full w-[min(560px,92vw)] border-l overflow-y-auto
+intento(s) · proveedor
+la opción
+las reglas.
+mayoreo, vip…
+miércoles
+más {}
+más → {}
+no configurado
+no disponible
+no se necesita
+no tiene redirección.
+nunca cuentan. Zona horaria:
+oferta, verano…
+opción
+pago automático apagado
+pago automático desde {}
+pedido devuelto
+pedidos devueltos
+piezas, las
+por la lista “{}”
+precios cambian en
+producto actualizado
+producto seleccionado
+productos actualizados
+productos seleccionados
+productos…
+promociones no se borran: quedan sin campaña y dejan de depender de estas fechas y presupuesto.
+radial-gradient(900px 500px at 50% -10%, var(--accent-soft), transparent 70%), var(--bg)
+remera roja
+se quedaron
+solo uso interno
+sábado
+test failed
+tras la alerta antifraude.
+useSidebar must be used inside SidebarProvider
+vencido. Puedes suspenderla para que no compre a crédito hasta que pague.
+ver pedido
+verano, oferta…
+visible para el cliente
+w-full min-w-[var(--radix-select-trigger-width)] translate-y-1
+y con el cupón escrito
+y hasta 1000
+y hasta 90
+y vuelve aquí.
+{} + {} por kg
+{} SKU sin precio no suman
+{} SKU · {} reservadas
+{} a {} días hábiles
+{} activa
+{} actualizado. Aplica al siguiente carrito.
+{} aviso(s)
+{} bloqueo(s)
+{} canceladas
+{} clientes cumplen hoy estas reglas.
+{} compra · {} agrega al carrito
+{} compras · {}
+{} cupones
+{} cupones actualizados.
+{} cupones generados. Descárgalos desde “Lotes generados”.
+{} de 5 estrellas
+{} de las ventas brutas
+{} de menor precio van
+{} de {}
+{} de {} filas
+{} de {} necesitan atención.
+{} de {} pedidos
+{} de {} usos
+{} devueltas
+{} días
+{} día{} hábil{}
+{} día{} sin operación
+{} en hexadecimal
+{} enlaces. Usa las flechas para ordenar y la sangría para crear submenús (hasta {} niveles).
+{} entradas en total.
+{} enviadas
+{} está conectado.
+{} feriados oficiales de {} en el calendario
+{} fijo
+{} filas
+{} fuera de la lista.
+{} imágenes subidas
+{} imágenes. Cada una se guarda en varios tamaños y en WebP para que la tienda cargue rápido.
+{} ms
+{} pedidos · ticket {}
+{} por pedido
+{} precios actualizados. Ya se ven en la tienda.
+{} problemas
+{} promociones: {}
+{} páginas vistas
+{} quedó en la posición {}.
+{} rangos de CP
+{} redirecciones eliminadas.
+{} redirecciones importadas.
+{} reembolsadas
+{} seleccionadas
+{} sesiones con carrito
+{} sesiones · antes {}
+{} sesiones · {} terminó en compra
+{} sobre la posición {}.
+{} unidades o menos disponibles
+{} unidades · {} del total
+{} variantes
+{} variantes: {} nuevas{}.
+{} y {} más
+{} ya estaba{} en la biblioteca y se reutiliz{}.
+{} {}(s) con venta
+{} · entrega {}{} · desde {}
+{} · saldo {} de {}{}
+{}% de descuento
+{}: abre
+{}: cierra
+{}: guardado
+{}: no se guardó
+{}: {} de impuesto sobre {} sin impuesto
+¡Gracias! Te contactamos en 24 horas.
+· +{}/kg extra
+· activa
+· cada venta espera
+· canal
+· comisión
+· desde {}
+· desde {} pzas
+· encabezado
+· enviada
+· faltan {} para envío gratis
+· gratis desde {}
+· guía {}
+· idioma principal
+· inició
+· interactiva
+· lista “{}”
+· máx.
+· pediste {}, hay {}
+· pie de página
+· subida el
+· suspendida
+· valor a precio de venta del canal {}
+· vence {}
+· y {} más
+· {} meses sin intereses
+· {} quedan igual
+· {} reservadas
+· {} sin precio
+· {}% de descuento
+¿A qué tienda quieres entrar?
+¿Archivar {} {}?
+¿Cambiar las direcciones del catálogo?
+¿Cancelar el pedido #{}?
+¿Cancelar esta suscripción? No se harán más cobros.
+¿Desactivar este webhook?
+¿Eliminar el atributo “{}”?
+¿Eliminar el canal {}?
+¿Eliminar el perfil {}?
+¿Eliminar esta imagen?
+¿Eliminar este producto?
+¿Eliminar este registro?
+¿Eliminar la campaña “
+¿Eliminar la marca “{}”?
+¿Eliminar la zona {}?
+¿Eliminar {} redirecciones?
+¿Eliminar {}?
+¿Eliminar “
+¿Eliminar “{}” y sus {} registros? No se puede deshacer.
+¿Eliminar “{}”?
+¿No puedes escanear? Escribe esta clave:
+¿Quitar el logo?
+¿Quitar la verificación en dos pasos de {}? Podrá entrar solo con su contraseña hasta que la active de nuevo.
+¿Quitar {} del calendario?
+¿Quitar {}?
+¿Reconstruir la analítica de la tienda?
+¿{} {}% los precios de {} {}?
+Última compra
+Última revisión: {}
+Últimas 200 entregas · se actualiza cada 5 s
+Último intento de cobro:
+Último resultado
+Últimos 12 meses
+Últimos 90 días
+Únete al equipo de {}
+Única
+Útil cuando la paquetería necesita llamar para entregar. Si está apagado, el teléfono es opcional.
+Útil si tu sistema estuvo caído o perdió datos. Primero calcula cuántos eventos se enviarán.
+“{}” activada
+“{}” desactivada
+“{}” no es un código postal ni un rango (ejemplo: 01000-16999).
+” en el campo Campaña al crear o editar una promoción.
+”. El vendedor ve sus pedidos en su portal y registra la guía.
+← Datos y formularios
+← Todas las políticas
+≤{} kg {}
