@@ -20,3 +20,20 @@ Avances parciales de agentes detenidos: `.claude/worktrees/agent-*` (local, no e
 | Cierre | Auditorías completas (flujos, reversión, uso humano comprador y plataforma, resiliencia, seguridad) | **Hecho**: auditorías de acceso (295 rutas), aislamiento (107 tablas), reversión, caídas, velocidad y uso humano por rol; 7 defectos encontrados y corregidos. Resultado y pendientes externos en [`docs/audit/cierre.md`](audit/cierre.md) |
 
 Entorno local: Postgres en 127.0.0.1:5432 (arrancar con pg_ctl -D /var/lib/apexx-pg/data), variables en el scratchpad `dev.env`, tienda de QA con `apexx qa-setup`.
+
+## Después de la fase L (noviembre 2026)
+
+Hecho y probado:
+
+- Panel con tres temas (rosa, lavanda, niebla) en lugar de claro y oscuro.
+- Encabezado y pie editables como secciones en el diseñador; etiquetas para redes sociales.
+- B2B: precio por producto por empresa y aprobaciones de compra.
+- Varias tiendas con una misma cuenta (elegir tienda al entrar y cambiar desde el panel).
+- Tienda en seis idiomas (es, en, fr, pt, id, ja) con una dirección por idioma y hreflang; `internal/i18n`.
+- Panel en seis idiomas con diccionario de 792 frases por idioma; `web/src/i18n.ts`.
+- Pruebas automáticas propias de clientes y devoluciones.
+
+Pendiente de lo pedido: pago automático a vendedores (hoy se registra la transferencia hecha por fuera).
+
+Siguiente etapa: ver `docs/audit/benchmark-shopify-magento-medusa.html`, que compara función por función
+con Shopify, Magento y Medusa y ordena lo que falta en siete etapas.
