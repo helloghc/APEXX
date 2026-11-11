@@ -116,10 +116,16 @@ func validateCategory(c *catalog.Category) []apierr.FieldError {
 }
 
 func (s *Server) saveCategory(w http.ResponseWriter, r *http.Request, id string, create bool) {
-	var c catalog.Category
-	if !decode(w, r, &c) {
+	// "active" defaults to true when the body omits it.
+	var in struct {
+		catalog.Category
+		Active *bool `json:"active"`
+	}
+	if !decode(w, r, &in) {
 		return
 	}
+	c := in.Category
+	c.Active = in.Active == nil || *in.Active
 	c.ID = id
 	if errs := validateCategory(&c); len(errs) > 0 {
 		apierr.BadRequest(w, "La categoría tiene errores", errs...)
@@ -223,10 +229,16 @@ func (s *Server) listBrands(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) saveBrand(w http.ResponseWriter, r *http.Request, id string, create bool) {
-	var b catalog.Brand
-	if !decode(w, r, &b) {
+	// "active" defaults to true when the body omits it.
+	var in struct {
+		catalog.Brand
+		Active *bool `json:"active"`
+	}
+	if !decode(w, r, &in) {
 		return
 	}
+	b := in.Brand
+	b.Active = in.Active == nil || *in.Active
 	b.ID, b.Name = id, strings.TrimSpace(b.Name)
 	b.Handle = handleOr(b.Handle, b.Name)
 	var errs []apierr.FieldError
@@ -413,10 +425,16 @@ func (s *Server) saveCollection(w http.ResponseWriter, r *http.Request, id strin
 	if !ok {
 		return
 	}
-	var c catalog.Collection
-	if !decode(w, r, &c) {
+	// "active" defaults to true when the body omits it.
+	var in struct {
+		catalog.Collection
+		Active *bool `json:"active"`
+	}
+	if !decode(w, r, &in) {
 		return
 	}
+	c := in.Collection
+	c.Active = in.Active == nil || *in.Active
 	c.ID = id
 	if errs := validateCollection(t, &c); len(errs) > 0 {
 		apierr.BadRequest(w, "La colección tiene errores", errs...)
