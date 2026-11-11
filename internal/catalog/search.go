@@ -80,18 +80,7 @@ func (s *Store) Search(q, after string, limit int) ([]Product, string) {
 			continue
 		}
 		if len(qs) > 0 {
-			hay := words(p.Title + " " + p.Brand + " " + p.Handle + " " + strings.Join(p.Categories, " "))
-			for _, v := range p.Variants {
-				hay = append(hay, words(v.SKU)...)
-			}
-			ok := true
-			for _, t := range qs {
-				if !tokenMatches(t, hay) {
-					ok = false
-					break
-				}
-			}
-			if !ok {
+			if !matchesAll(qs, p.hay) {
 				continue
 			}
 		}
@@ -104,14 +93,33 @@ func (s *Store) Search(q, after string, limit int) ([]Product, string) {
 	return out, next
 }
 
+// haystack returns the folded words a query is matched against.
+func haystack(p *Product) []string {
+	hay := words(p.Title + " " + p.Brand + " " + p.Handle + " " + p.Type + " " + strings.Join(p.Categories, " ") + " " + strings.Join(p.Tags, " "))
+	for _, v := range p.Variants {
+		hay = append(hay, words(v.SKU)...)
+		if v.Barcode != "" {
+			hay = append(hay, fold(v.Barcode))
+		}
+	}
+	return hay
+}
+
+func matchesAll(qs, hay []string) bool {
+	for _, t := range qs {
+		if !tokenMatches(t, hay) {
+			return false
+		}
+	}
+	return true
+}
+
 // ByHandle returns an active product by handle.
 func (s *Store) ByHandle(h string) (Product, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	for _, p := range s.byID {
-		if p.Handle == h && p.Status == "active" {
-			return *p, true
-		}
+	if p, ok := s.byID[s.byHdl[h]]; ok && p.Status == "active" {
+		return *p, true
 	}
 	return Product{}, false
 }

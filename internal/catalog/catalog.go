@@ -25,6 +25,19 @@ type Variant struct {
 	Options     map[string]string `json:"options,omitempty"`
 	Barcode     string            `json:"barcode,omitempty"`
 	WeightGrams int64             `json:"weightGrams"`
+	MediaID     string            `json:"mediaId,omitempty"` // image of this variant
+}
+
+// Option is a product option such as "Talla" with its values in display order.
+type Option struct {
+	Name   string   `json:"name"`
+	Values []string `json:"values"`
+}
+
+// Related lists products shown next to this one.
+type Related struct {
+	Similar     []string `json:"similar,omitempty"`
+	Accessories []string `json:"accessories,omitempty"`
 }
 
 // Product groups variants.
@@ -40,12 +53,29 @@ type Product struct {
 	Variants    []Variant         `json:"variants"`
 	Version     int64             `json:"version"`
 	UpdatedAt   time.Time         `json:"updatedAt"`
+
+	// Advanced catalog. Categories holds category ids (legacy rows may hold
+	// names or handles; the taxonomy resolves them). Attributes maps an
+	// attribute definition id to its value.
+	BrandID        string     `json:"brandId,omitempty"`
+	Type           string     `json:"type,omitempty"`
+	Tags           []string   `json:"tags,omitempty"`
+	Options        []Option   `json:"options,omitempty"`
+	SEOTitle       string     `json:"seoTitle,omitempty"`
+	SEODescription string     `json:"seoDescription,omitempty"`
+	PublishAt      *time.Time `json:"publishAt,omitempty"` // a draft becomes active at this time
+	Media          []string   `json:"media,omitempty"`     // ordered media ids; the first is the cover
+	Related        Related    `json:"related"`
+	CreatedAt      time.Time  `json:"createdAt"`
+
+	hay []string // folded search words, computed on Upsert
 }
 
 // Store keeps products ordered by id.
 type Store struct {
 	mu    sync.RWMutex
 	byID  map[string]*Product
+	byHdl map[string]string // handle -> product id
 	bySKU map[string]string // sku -> product id
 	ids   []string          // sorted
 	bus   *events.Bus
@@ -53,19 +83,28 @@ type Store struct {
 
 // New creates an empty store.
 func New(bus *events.Bus) *Store {
-	return &Store{byID: map[string]*Product{}, bySKU: map[string]string{}, bus: bus}
+	return &Store{byID: map[string]*Product{}, byHdl: map[string]string{}, bySKU: map[string]string{}, bus: bus}
 }
 
-// Upsert creates or replaces a product.
+// Upsert creates or replaces a product. A zero UpdatedAt means "now".
 func (s *Store) Upsert(p Product) {
-	p.UpdatedAt = time.Now().UTC()
+	if p.UpdatedAt.IsZero() {
+		p.UpdatedAt = time.Now().UTC()
+	}
+	if p.CreatedAt.IsZero() {
+		p.CreatedAt = p.UpdatedAt
+	}
 	if p.Status == "" {
 		p.Status = "active"
 	}
+	p.hay = haystack(&p)
 	s.mu.Lock()
 	if old, ok := s.byID[p.ID]; ok {
 		for _, v := range old.Variants {
 			delete(s.bySKU, v.SKU)
+		}
+		if s.byHdl[old.Handle] == p.ID {
+			delete(s.byHdl, old.Handle)
 		}
 	} else {
 		i := sort.SearchStrings(s.ids, p.ID)
@@ -75,6 +114,7 @@ func (s *Store) Upsert(p Product) {
 	}
 	cp := p
 	s.byID[p.ID] = &cp
+	s.byHdl[p.Handle] = p.ID
 	for _, v := range p.Variants {
 		s.bySKU[v.SKU] = p.ID
 	}
@@ -137,4 +177,53 @@ func (s *Store) Count() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.ids)
+}
+
+// Delete removes a product (it was deleted from the database).
+func (s *Store) Delete(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	old, ok := s.byID[id]
+	if !ok {
+		return
+	}
+	for _, v := range old.Variants {
+		delete(s.bySKU, v.SKU)
+	}
+	if s.byHdl[old.Handle] == id {
+		delete(s.byHdl, old.Handle)
+	}
+	delete(s.byID, id)
+	if i := sort.SearchStrings(s.ids, id); i < len(s.ids) && s.ids[i] == id {
+		s.ids = append(s.ids[:i], s.ids[i+1:]...)
+	}
+}
+
+// Products returns every product in id order. The pointed-to products are
+// never modified after Upsert (each Upsert stores a fresh copy), so callers
+// may read them without holding a lock but must not write to them.
+func (s *Store) Products() []*Product {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]*Product, len(s.ids))
+	for i, id := range s.ids {
+		out[i] = s.byID[id]
+	}
+	return out
+}
+
+// IDByHandle returns the id of the product with handle h, in any status.
+func (s *Store) IDByHandle(h string) (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	id, ok := s.byHdl[h]
+	return id, ok
+}
+
+// ProductOfSKU returns the id of the product that owns sku.
+func (s *Store) ProductOfSKU(sku string) (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	id, ok := s.bySKU[sku]
+	return id, ok
 }
