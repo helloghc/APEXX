@@ -295,3 +295,26 @@ func VerifyWebhook(payload []byte, header, secret string, now time.Time) error {
 	}
 	return errors.New("stripe webhook: signature mismatch")
 }
+
+// Transfer implements Transferer with a Stripe Connect transfer to the
+// seller's connected account.
+func (s *Stripe) Transfer(ctx context.Context, account, destination string, amount int64, currency, idem string) (string, error) {
+	f := url.Values{}
+	f.Set("amount", strconv.FormatInt(amount, 10))
+	f.Set("currency", strings.ToLower(currency))
+	f.Set("destination", destination)
+	var out struct {
+		ID string `json:"id"`
+	}
+	if err := s.call(ctx, http.MethodPost, "/v1/transfers", account, idem, f, &out); err != nil {
+		// A request Stripe rejects (unknown or restricted account, no funds)
+		// will not succeed on retry; a timeout, 409, 429 or 5xx may.
+		for _, code := range []string{": 400 ", ": 402 ", ": 403 ", ": 404 "} {
+			if strings.Contains(err.Error(), code) {
+				return "", fmt.Errorf("%w: %s", ErrDeclined, err.Error())
+			}
+		}
+		return "", err
+	}
+	return out.ID, nil
+}

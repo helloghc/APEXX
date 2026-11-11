@@ -137,3 +137,27 @@ func (bp breakerProvider) Invoice(ctx context.Context, r payments.InvoiceRequest
 	})
 	return inv, err
 }
+
+// Transfer lets seller payouts through the same breaker. A rejected account
+// is an answer, not an outage, so it does not count against the breaker.
+func (bp breakerProvider) Transfer(ctx context.Context, account, destination string, amount int64, currency, key string) (string, error) {
+	tr, ok := bp.Provider.(payments.Transferer)
+	if !ok {
+		return "", payments.ErrDeclined
+	}
+	var ref string
+	var declined error
+	err := bp.b.Do(func() error {
+		var e error
+		ref, e = tr.Transfer(ctx, account, destination, amount, currency, key)
+		if errors.Is(e, payments.ErrDeclined) {
+			declined = e
+			return nil
+		}
+		return e
+	})
+	if declined != nil {
+		return "", declined
+	}
+	return ref, err
+}

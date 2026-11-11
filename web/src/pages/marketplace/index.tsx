@@ -19,7 +19,8 @@ import { dateTime, ErrorBox, Notice, Page } from "../common";
 import { EmptyState, SkeletonRows } from "../promotions/shared";
 
 const enc = encodeURIComponent;
-interface Seller { id: string; name: string; email: string; commissionBps: number; status: string; note: string; products: number; balance: number; sales: number; commission: number }
+interface Seller { id: string; name: string; email: string; commissionBps: number; status: string; note: string; products: number; balance: number; sales: number; commission: number; payoutAccount: string; payoutAuto: boolean; payoutMin: number; payoutHoldDays: number; payable: number }
+interface Payout { id: string; amount: number; status: string; destination: string; ref?: string; error?: string; actor: string; createdAt: string }
 interface Entry { id: string; kind: string; orderId?: string; orderNumber?: number; gross: number; commission: number; net: number; note?: string; at: string }
 interface Detail { seller: Seller; products: { id: string; title: string }[]; statement: Entry[] }
 interface PortalProduct { id: string; title: string; status: string; variants: { sku: string; title: string; available: number; price: number }[] }
@@ -31,12 +32,15 @@ const api = {
   save: (s: Partial<Seller>) => (s.id ? request<Seller>("PUT", `/v1/sellers/${enc(s.id)}`, s) : request<Seller>("POST", "/v1/sellers", s)),
   products: (id: string, productIds: string[]) => request<void>("PUT", `/v1/sellers/${enc(id)}/products`, { productIds }, { as: "none" }),
   entry: (id: string, b: { kind: string; amount: number; note: string }) => request<void>("POST", `/v1/sellers/${enc(id)}/entries`, b, { as: "none" }),
+  payouts: (id: string) => request<{ items: Payout[] }>("GET", `/v1/sellers/${enc(id)}/payouts`).then((r) => r.items),
+  payNow: (id: string) => request<Payout>("POST", `/v1/sellers/${enc(id)}/payouts`, {}),
   invite: (id: string, b: { email: string; name: string }) => request<{ link: string; emailed: boolean }>("POST", `/v1/sellers/${enc(id)}/invite`, b),
   me: () => request<{ seller: Seller; products: PortalProduct[]; statement: Entry[] }>("GET", "/v1/seller/me"),
   orders: (pending: boolean) => request<{ items: Line[] }>("GET", `/v1/seller/orders${pending ? "?pending=1" : ""}`).then((r) => r.items),
   ship: (orderId: string, b: { carrier: string; trackingNumber: string }) => request<unknown>("POST", `/v1/seller/orders/${enc(orderId)}/ship`, b),
 };
-const KIND: Record<string, string> = { sale: "Venta", refund: "Reembolso o cancelación", payout: "Pago al vendedor", adjust: "Ajuste" };
+const KIND: Record<string, string> = { sale: "Venta", refund: "Reembolso o cancelación", payout: "Pago al vendedor", adjust: "Ajuste", payout_failed: "Pago no enviado: saldo devuelto" };
+const PAYOUT: Record<string, string> = { pending: "En camino", paid: "Enviado", failed: "No se pudo enviar" };
 const pct = (bps: number) => `${bps / 100}%`;
 
 function Statement({ rows, linkOrders }: { rows: Entry[]; linkOrders: boolean }) {
@@ -110,9 +114,14 @@ function SellerDialog({ seller, onClose, onDone }: { seller?: Seller; onClose: (
   const [rate, setRate] = useState(String((seller?.commissionBps ?? 1500) / 100));
   const [status, setStatus] = useState(seller?.status ?? "active");
   const [note, setNote] = useState(seller?.note ?? "");
+  const [account, setAccount] = useState(seller?.payoutAccount ?? "");
+  const [auto, setAuto] = useState(seller?.payoutAuto ?? false);
+  const [min, setMin] = useState(String((seller?.payoutMin ?? 0) / 100));
+  const [hold, setHold] = useState(String(seller?.payoutHoldDays ?? 7));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const save = useMutation({
-    mutationFn: () => api.save({ id: seller?.id, name, email, commissionBps: Math.round((Number(rate.replace(",", ".")) || 0) * 100), status, note }),
+    mutationFn: () => api.save({ id: seller?.id, name, email, commissionBps: Math.round((Number(rate.replace(",", ".")) || 0) * 100), status, note,
+      payoutAccount: account.trim(), payoutAuto: auto, payoutMin: Math.round((Number(min.replace(",", ".")) || 0) * 100), payoutHoldDays: Math.max(0, Math.round(Number(hold) || 0)) }),
     onSuccess: () => { toast.success("Vendedor guardado."); onDone(); onClose(); },
     onError: (e) => { setErrors(fieldErrors(e)); toast.error(errorMessage(e)); },
   });
@@ -125,6 +134,13 @@ function SellerDialog({ seller, onClose, onDone }: { seller?: Seller; onClose: (
           <div className="grid gap-1.5"><Label htmlFor="sl-email">Correo de contacto</Label><Input id="sl-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />{errors.email && <p className="text-sm text-bad">{errors.email}</p>}</div>
           <div className="grid gap-1.5"><Label htmlFor="sl-rate">Tu comisión (%)</Label><Input id="sl-rate" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} />{errors.commissionBps && <p className="text-sm text-bad">{errors.commissionBps}</p>}</div>
           {seller && <div className="grid gap-1.5"><span className="text-sm font-medium">Estado</span><Select value={status} onValueChange={setStatus}><SelectTrigger aria-label="Estado"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Activo</SelectItem><SelectItem value="paused">En pausa (sin acceso al portal)</SelectItem></SelectContent></Select></div>}
+          <fieldset className="grid gap-4 rounded-md border p-3 sm:col-span-2 sm:grid-cols-2">
+            <legend className="px-1 text-sm font-medium">Pago al vendedor</legend>
+            <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="sl-acct">Cuenta de Stripe del vendedor</Label><Input id="sl-acct" value={account} onChange={(e) => setAccount(e.target.value)} placeholder="acct_…" autoComplete="off" aria-invalid={!!errors.payoutAccount} /><p className="text-sm text-muted-foreground">Con ella puedes enviarle su dinero desde aquí. Sin ella, registra a mano la transferencia que hagas por fuera.</p>{errors.payoutAccount && <p className="text-sm text-bad">{errors.payoutAccount}</p>}</div>
+            <div className="grid gap-1.5"><Label htmlFor="sl-hold">Días de espera por venta</Label><Input id="sl-hold" inputMode="numeric" value={hold} onChange={(e) => setHold(e.target.value)} aria-invalid={!!errors.payoutHoldDays} /><p className="text-sm text-muted-foreground">Así una devolución sale de su saldo y no de tu bolsillo.</p>{errors.payoutHoldDays && <p className="text-sm text-bad">{errors.payoutHoldDays}</p>}</div>
+            <div className="grid gap-1.5"><Label htmlFor="sl-min">Pago mínimo (MXN)</Label><Input id="sl-min" inputMode="decimal" value={min} onChange={(e) => setMin(e.target.value)} aria-invalid={!!errors.payoutMin} />{errors.payoutMin && <p className="text-sm text-bad">{errors.payoutMin}</p>}</div>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2"><input type="checkbox" className="mt-1" checked={auto} onChange={(e) => setAuto(e.target.checked)} /><span>Pagarle en automático cuando su saldo disponible alcance el mínimo</span></label>
+          </fieldset>
           <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="sl-note">Nota interna (cuenta bancaria, contrato…)</Label><Input id="sl-note" value={note} onChange={(e) => setNote(e.target.value)} /></div>
         </form>
         <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" form="seller-form" disabled={save.isPending}>{save.isPending ? "Guardando…" : "Guardar"}</Button></DialogFooter>
@@ -141,6 +157,12 @@ function SellerPage({ id, isAdmin, canEdit }: { id: string; isAdmin: boolean; ca
   const [pay, setPay] = useState<"payout" | "adjust" | null>(null);
   const [invite, setInvite] = useState(false);
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["seller", id] }); void qc.invalidateQueries({ queryKey: ["sellers"] }); };
+  const payouts = useQuery({ queryKey: ["seller", id, "payouts"], queryFn: () => api.payouts(id) });
+  const payNow = useMutation({
+    mutationFn: () => api.payNow(id),
+    onSuccess: (p) => { if (p.status === "failed") toast.error("Stripe no aceptó el envío. El saldo regresó al vendedor."); else toast.success(p.status === "paid" ? `Enviamos ${formatMoney(p.amount)} al vendedor.` : "El pago quedó en camino; lo reintentamos solos."); refresh(); },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
   const setProducts = useMutation({ mutationFn: (ids: string[]) => api.products(id, ids), onSuccess: () => { toast.success("Productos del vendedor actualizados."); refresh(); }, onError: (e) => toast.error(errorMessage(e)) });
   if (q.error || !q.data) return <Page title="Vendedor"><ErrorBox error={q.error} onRetry={() => void q.refetch()} />{!q.error && <p className="text-sm text-muted-foreground">Cargando…</p>}</Page>;
   const { seller: s, products, statement } = q.data;
@@ -152,8 +174,15 @@ function SellerPage({ id, isAdmin, canEdit }: { id: string; isAdmin: boolean; ca
       ))}</div>
       <Card>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Estado de cuenta</CardTitle><CardDescription>Cada venta pagada suma; los reembolsos y cancelaciones restan en la misma proporción.</CardDescription></div>
-          {isAdmin && <div className="flex gap-2"><Button variant="outline" onClick={() => setPay("adjust")}>Ajuste</Button><Button onClick={() => setPay("payout")} disabled={s.balance <= 0}>Registrar pago</Button></div>}</CardHeader>
-        <CardContent><Statement rows={statement} linkOrders /></CardContent>
+          {isAdmin && <div className="flex gap-2"><Button variant="outline" onClick={() => setPay("adjust")}>Ajuste</Button><Button variant="outline" onClick={() => setPay("payout")} disabled={s.balance <= 0}>Registrar pago hecho por fuera</Button>{s.payoutAccount && <Button onClick={() => payNow.mutate()} disabled={s.payable <= 0 || payNow.isPending}>{payNow.isPending ? "Enviando…" : `Pagar ahora ${formatMoney(s.payable)}`}</Button>}</div>}</CardHeader>
+        <CardContent className="grid gap-4">
+          <p className="text-sm text-muted-foreground" data-testid="payout-summary">{s.payoutAccount ? <>Disponible para pagar hoy: <strong className="text-foreground">{formatMoney(s.payable)}</strong> · cada venta espera {s.payoutHoldDays} días · {s.payoutAuto ? `pago automático desde ${formatMoney(s.payoutMin)}` : "pago automático apagado"}</> : "Este vendedor no tiene cuenta de Stripe: edítalo para poder pagarle desde aquí."}</p>
+          {(payouts.data?.length ?? 0) > 0 && (
+            <div className="overflow-x-auto rounded-md border"><Table><TableHeader><TableRow><TableHead>Pago enviado</TableHead><TableHead>Estado</TableHead><TableHead>Referencia</TableHead><TableHead className="text-right">Monto</TableHead></TableRow></TableHeader>
+              <TableBody>{payouts.data!.map((p) => (<TableRow key={p.id}><TableCell>{new Date(p.createdAt).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}</TableCell><TableCell>{PAYOUT[p.status] ?? p.status}{p.status === "failed" && p.error ? <span className="block text-sm text-muted-foreground">{p.error}</span> : null}</TableCell><TableCell className="font-mono text-sm">{p.ref || "—"}</TableCell><TableCell className="text-right tabular-nums">{formatMoney(p.amount)}</TableCell></TableRow>))}</TableBody></Table></div>
+          )}
+          <Statement rows={statement} linkOrders />
+        </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Productos del vendedor ({products.length})</CardTitle><CardDescription>En la tienda aparecen como “Vendido y enviado por {s.name}”. El vendedor ve sus pedidos en su portal y registra la guía.</CardDescription></div>

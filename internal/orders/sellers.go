@@ -30,6 +30,12 @@ type Seller struct {
 	Balance       int64     `json:"balance"`    // what the store owes the seller now
 	Sales         int64     `json:"sales"`      // gross sold, net of refunds
 	Commission    int64     `json:"commission"` // commission earned by the store
+	// Automatic payouts.
+	PayoutAccount  string `json:"payoutAccount"`  // the seller's connected account at the payment provider
+	PayoutAuto     bool   `json:"payoutAuto"`     // pay by itself when there is enough to pay
+	PayoutMin      int64  `json:"payoutMin"`      // do not send less than this
+	PayoutHoldDays int    `json:"payoutHoldDays"` // days a sale waits, so returns come out of it first
+	Payable        int64  `json:"payable"`        // what can be sent today
 }
 
 // SellerEntry is one movement of a seller's statement.
@@ -63,18 +69,31 @@ func (in *Seller) clean() error {
 	case len(in.Note) > 500:
 		return FieldError{"note", "Nota de hasta 500 caracteres"}
 	}
+	in.PayoutAccount = strings.TrimSpace(in.PayoutAccount)
+	switch {
+	case len(in.PayoutAccount) > 100 || strings.ContainsAny(in.PayoutAccount, " \t\n"):
+		return FieldError{"payoutAccount", "Escribe el identificador de la cuenta tal como lo da Stripe, por ejemplo acct_…"}
+	case in.PayoutAuto && in.PayoutAccount == "":
+		return FieldError{"payoutAccount", "Para pagar en automático hace falta la cuenta de Stripe del vendedor"}
+	case in.PayoutMin < 0:
+		return FieldError{"payoutMin", "El mínimo no puede ser negativo"}
+	case in.PayoutHoldDays < 0 || in.PayoutHoldDays > 90:
+		return FieldError{"payoutHoldDays", "La espera debe estar entre 0 y 90 días"}
+	}
 	return nil
 }
 
 const sellerSelect = `SELECT s.id, s.name, s.email, s.commission_bps, s.status, s.note, s.created_at,
 	(SELECT count(*) FROM seller_products p WHERE p.tenant_id=s.tenant_id AND p.seller_id=s.id)::int,
-	COALESCE(e.net,0), COALESCE(e.gross,0), COALESCE(e.commission,0)
+	COALESCE(e.net,0), COALESCE(e.gross,0), COALESCE(e.commission,0),
+	s.payout_account, s.payout_auto, s.payout_min, s.payout_hold_days,
+	GREATEST(0, COALESCE(e.net,0) - COALESCE((SELECT sum(y.net) FROM seller_entries y WHERE y.tenant_id=s.tenant_id AND y.seller_id=s.id AND y.kind='sale' AND y.net > 0 AND y.created_at > now() - make_interval(days => s.payout_hold_days)),0))
 	FROM sellers s LEFT JOIN (SELECT seller_id, sum(net) AS net, sum(gross) AS gross, sum(commission) AS commission FROM seller_entries WHERE tenant_id=$1 GROUP BY seller_id) e ON e.seller_id=s.id
 	WHERE s.tenant_id=$1`
 
 func scanSeller(r pgx.Row) (Seller, error) {
 	var x Seller
-	return x, r.Scan(&x.ID, &x.Name, &x.Email, &x.CommissionBps, &x.Status, &x.Note, &x.CreatedAt, &x.Products, &x.Balance, &x.Sales, &x.Commission)
+	return x, r.Scan(&x.ID, &x.Name, &x.Email, &x.CommissionBps, &x.Status, &x.Note, &x.CreatedAt, &x.Products, &x.Balance, &x.Sales, &x.Commission, &x.PayoutAccount, &x.PayoutAuto, &x.PayoutMin, &x.PayoutHoldDays, &x.Payable)
 }
 
 // Sellers lists the sellers of a store with their balances.
@@ -130,13 +149,16 @@ func (s *Service) SaveSeller(ctx context.Context, tenant, actor string, in Selle
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		if in.ID == "" {
 			in.ID = newID("sel_")
-			if _, err := tx.Exec(ctx, `INSERT INTO sellers (tenant_id, id, name, email, commission_bps, status, note) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-				tenant, in.ID, in.Name, in.Email, in.CommissionBps, in.Status, in.Note); err != nil {
+			if !in.PayoutAuto && in.PayoutHoldDays == 0 {
+				in.PayoutHoldDays = 7
+			}
+			if _, err := tx.Exec(ctx, `INSERT INTO sellers (tenant_id, id, name, email, commission_bps, status, note, payout_account, payout_auto, payout_min, payout_hold_days) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+				tenant, in.ID, in.Name, in.Email, in.CommissionBps, in.Status, in.Note, in.PayoutAccount, in.PayoutAuto, in.PayoutMin, in.PayoutHoldDays); err != nil {
 				return err
 			}
 		} else {
-			ct, err := tx.Exec(ctx, `UPDATE sellers SET name=$3, email=$4, commission_bps=$5, status=$6, note=$7, updated_at=now() WHERE tenant_id=$1 AND id=$2`,
-				tenant, in.ID, in.Name, in.Email, in.CommissionBps, in.Status, in.Note)
+			ct, err := tx.Exec(ctx, `UPDATE sellers SET name=$3, email=$4, commission_bps=$5, status=$6, note=$7, payout_account=$8, payout_auto=$9, payout_min=$10, payout_hold_days=$11, updated_at=now() WHERE tenant_id=$1 AND id=$2`,
+				tenant, in.ID, in.Name, in.Email, in.CommissionBps, in.Status, in.Note, in.PayoutAccount, in.PayoutAuto, in.PayoutMin, in.PayoutHoldDays)
 			if err != nil {
 				return err
 			}

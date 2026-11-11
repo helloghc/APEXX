@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/helloghc/apexx/internal/apierr"
@@ -20,6 +21,8 @@ func (s *Server) routesMarketplace(handle func(string, http.HandlerFunc)) {
 	handle("PUT /v1/sellers/{id}", s.authed(mod, auth.Admin, s.saveSeller))
 	handle("PUT /v1/sellers/{id}/products", s.authed(mod, auth.Edit, s.setSellerProducts))
 	handle("POST /v1/sellers/{id}/entries", s.authed(mod, auth.Admin, s.sellerEntry))
+	handle("GET /v1/sellers/{id}/payouts", s.authed(mod, auth.Read, s.sellerPayouts))
+	handle("POST /v1/sellers/{id}/payouts", s.authed(mod, auth.Admin, s.paySeller))
 	handle("POST /v1/sellers/{id}/invite", s.authed(mod, auth.Admin, s.inviteSeller))
 
 	handle("GET /v1/seller/me", s.authed("", "", s.sellerOnly(s.sellerMe)))
@@ -232,4 +235,34 @@ func (s *Server) sellerShip(w http.ResponseWriter, r *http.Request, sel orders.S
 		return
 	}
 	httpx.JSON(w, r, http.StatusCreated, f)
+}
+
+func (s *Server) sellerPayouts(w http.ResponseWriter, r *http.Request) {
+	list, err := s.Orders.SellerPayouts(r.Context(), principal(r).Tenant, r.PathValue("id"), 100)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": nonNil(list)})
+}
+
+// paySeller sends the seller what can be paid today (or the amount given).
+func (s *Server) paySeller(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Amount int64 `json:"amount"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	p := principal(r)
+	out, err := s.Orders.PaySeller(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), body.Amount)
+	if errors.Is(err, orders.ErrNothingToPay) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "nothing_to_pay", Detail: "Hoy no hay saldo que se pueda pagar a este vendedor"})
+		return
+	}
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusCreated, out)
 }

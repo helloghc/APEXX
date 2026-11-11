@@ -8,6 +8,7 @@ package payments
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 )
 
@@ -82,13 +83,14 @@ var ErrDeclined = errors.New("payments: declined")
 // "pm_card_visa" succeeds, "pm_card_chargeDeclined" is declined. It honours
 // idempotency keys exactly like Stripe does.
 type Sandbox struct {
-	mu       sync.Mutex
-	byKey    map[string]Charge
-	byOrder  map[string]Charge
-	refunds  map[string]int64
-	invoices map[string]Invoice
-	FailNext error // injected failure for the next call (chaos tests)
-	Calls    int
+	mu        sync.Mutex
+	byKey     map[string]Charge
+	byOrder   map[string]Charge
+	refunds   map[string]int64
+	invoices  map[string]Invoice
+	transfers map[string]int64
+	FailNext  error // injected failure for the next call (chaos tests)
+	Calls     int
 }
 
 // NewSandbox creates a sandbox provider.
@@ -176,4 +178,41 @@ func (s *Sandbox) Invoice(_ context.Context, r InvoiceRequest) (Invoice, error) 
 	inv := Invoice{Ref: "in_sbx_" + r.OrderID, URL: "https://invoice.example/" + r.OrderID}
 	s.invoices[r.IdempotencyKey] = inv
 	return inv, nil
+}
+
+// Transferer is a provider that can send money to a third party's account
+// (marketplace seller payouts). The idempotency key makes a retry safe.
+type Transferer interface {
+	Transfer(ctx context.Context, account, destination string, amount int64, currency, idempotencyKey string) (ref string, err error)
+}
+
+// Transfer implements Transferer. A destination that contains "fail" is
+// declined, like an account Stripe cannot pay out to.
+func (s *Sandbox) Transfer(_ context.Context, _, destination string, amount int64, _ string, key string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.fail(); err != nil {
+		return "", err
+	}
+	if s.transfers == nil {
+		s.transfers = map[string]int64{}
+	}
+	if strings.Contains(destination, "fail") {
+		return "", ErrDeclined
+	}
+	if _, ok := s.transfers[key]; !ok {
+		s.transfers[key] = amount
+	}
+	return "tr_" + key, nil
+}
+
+// Transferred returns the total sent to sellers through the sandbox.
+func (s *Sandbox) Transferred() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var n int64
+	for _, v := range s.transfers {
+		n += v
+	}
+	return n
 }
