@@ -3,6 +3,7 @@
 package pricing
 
 import (
+	"math/bits"
 	"sort"
 	"sync"
 	"time"
@@ -42,6 +43,65 @@ type List struct {
 	StartsAt      *time.Time
 	EndsAt        *time.Time
 	Items         map[string]int64 // sku -> override amount (ignored for adjust)
+	Currency      money.Currency   // currency of the override amounts ("" = MXN)
+}
+
+// Conversion lets a channel show prices of another channel in its own
+// currency, so a new market needs no price list of its own. A SKU with a
+// price set in the channel keeps that fixed price.
+type Conversion struct {
+	From       string         // channel whose prices are converted
+	Currency   money.Currency // currency of this channel
+	RateMicros int64          // 1 unit of the source currency = RateMicros / 1e6 units of this one
+	Rounding   string         // "" keeps cents, "unit" whole units, "99" ends in .99, "ten" tens
+}
+
+// Plain converts without the market's rounding (shipping, thresholds).
+func (c Conversion) Plain(amount int64) int64 {
+	c.Rounding = ""
+	return c.Convert(amount)
+}
+
+// Back converts an amount of this currency into the source currency.
+func (c Conversion) Back(amount int64) int64 {
+	if amount <= 0 || c.RateMicros <= 0 {
+		return 0
+	}
+	hi, lo := bits.Mul64(uint64(amount), 1_000_000)
+	if hi >= uint64(c.RateMicros) {
+		return 1<<62 - 1
+	}
+	q, r := bits.Div64(hi, lo, uint64(c.RateMicros))
+	v := int64(q)
+	if r*2 >= uint64(c.RateMicros) {
+		v++
+	}
+	return v
+}
+
+// Convert turns an amount in minor units of the source currency into this one.
+func (c Conversion) Convert(amount int64) int64 {
+	if amount <= 0 || c.RateMicros <= 0 {
+		return 0
+	}
+	hi, lo := bits.Mul64(uint64(amount), uint64(c.RateMicros))
+	if hi >= 1_000_000 {
+		return 1<<62 - 1
+	}
+	q, r := bits.Div64(hi, lo, 1_000_000)
+	v := int64(q)
+	if r*2 >= 1_000_000 {
+		v++
+	}
+	switch c.Rounding {
+	case "unit":
+		v = (v + 50) / 100 * 100
+	case "99":
+		v = v/100*100 + 99
+	case "ten":
+		v = (v + 500) / 1000 * 1000
+	}
+	return v
 }
 
 // Applies reports whether the list is in force for channel, group and now.
@@ -60,6 +120,14 @@ type Service struct {
 	mu     sync.RWMutex
 	prices map[string]map[string][]Tier // channel -> sku -> tiers sorted by MinQty
 	lists  []*List                      // sorted by priority desc, id
+	conv   map[string]Conversion        // channel -> conversion from another channel
+}
+
+// SetConversions replaces every channel conversion of the store.
+func (s *Service) SetConversions(m map[string]Conversion) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.conv = m
 }
 
 // SetList adds or replaces a price list.
@@ -130,6 +198,37 @@ func (s *Service) Base(channel, sku string, qty int64) (Quote, bool) {
 }
 
 func (s *Service) base(channel, sku string, qty int64) (Quote, bool) {
+	q, _, ok := s.baseConv(channel, sku, qty)
+	return q, ok
+}
+
+// baseConv also returns the conversion used, if the price came from another
+// channel. A channel converts from one channel only, never in a chain.
+func (s *Service) baseConv(channel, sku string, qty int64) (Quote, *Conversion, bool) {
+	if q, ok := s.own(channel, sku, qty); ok {
+		return q, nil, true
+	}
+	c, ok := s.conv[channel]
+	if !ok || c.From == "" || c.From == channel {
+		return Quote{}, nil, false
+	}
+	q, ok := s.own(c.From, sku, qty)
+	if !ok {
+		return Quote{}, nil, false
+	}
+	q.Unit = money.New(c.Convert(q.Unit.Amount), c.Currency)
+	if q.CompareAt != nil {
+		ca := money.New(c.Convert(q.CompareAt.Amount), c.Currency)
+		if ca.Amount > q.Unit.Amount {
+			q.CompareAt = &ca
+		} else {
+			q.CompareAt = nil
+		}
+	}
+	return q, &c, true
+}
+
+func (s *Service) own(channel, sku string, qty int64) (Quote, bool) {
 	tiers := s.prices[channel][sku]
 	var best *Tier
 	for i := range tiers {
@@ -149,7 +248,7 @@ func (s *Service) base(channel, sku string, qty int64) (Quote, bool) {
 func (s *Service) ResolveAt(channel, sku string, qty int64, group string, now time.Time) (Quote, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	q, ok := s.base(channel, sku, qty)
+	q, conv, ok := s.baseConv(channel, sku, qty)
 	if !ok {
 		return q, false
 	}
@@ -162,6 +261,17 @@ func (s *Service) ResolveAt(channel, sku string, qty int64, group string, now ti
 			amt, has := l.Items[sku]
 			if !has {
 				continue
+			}
+			lc := l.Currency
+			if lc == "" {
+				lc = "MXN"
+			}
+			switch {
+			case lc == q.Unit.Currency:
+			case conv != nil && s.currencyOf(conv.From) == lc:
+				amt = conv.Convert(amt) // the list is in the source currency
+			default:
+				continue // a fixed price in another currency does not apply here
 			}
 			unit = amt
 		} else {
@@ -201,4 +311,14 @@ func sign(v int64) int64 {
 		return -1
 	}
 	return 1
+}
+
+// currencyOf returns the currency of the prices of a channel.
+func (s *Service) currencyOf(channel string) money.Currency {
+	for _, tiers := range s.prices[channel] {
+		if len(tiers) > 0 {
+			return tiers[0].Unit.Currency
+		}
+	}
+	return ""
 }

@@ -3,21 +3,25 @@
   const body = document.body;
   // Builder pages are static per revision, so they learn the store from the URL.
   const parts = location.pathname.split("/");
-  const tenant = body.dataset.tenant || parts[2], base = body.dataset.base || "/s/" + parts[2] + "/" + parts[3], channel = body.dataset.channel || "mx";
+  const MK = document.documentElement.getAttribute("data-mk") || "";
+  const tenant = body.dataset.tenant || parts[2], base = body.dataset.base || "/s/" + parts[2] + "/" + parts[3], channel = MK || body.dataset.channel || "mx";
   const api = "/s/" + tenant + "/api";
   // The language travels in the URL; links built here keep it.
   const HL = document.documentElement.getAttribute("data-hl") || "";
+  // Language and market travel in the URL; links built here keep both.
   const withLang = (u) => {
-    if (!HL || !u || u.charAt(0) !== "/" || /[?&]hl=/.test(u)) return u;
+    if (!u || u.charAt(0) === "#" || u.indexOf("//") === 0 || u.indexOf("/s/assets/") === 0 || /^[a-z][a-z0-9+.-]*:/i.test(u)) return u;
     const h = u.indexOf("#"), tail = h < 0 ? "" : u.slice(h);
     if (h >= 0) u = u.slice(0, h);
-    return u + (u.indexOf("?") < 0 ? "?" : "&") + "hl=" + HL + tail;
+    if (HL && !/[?&]hl=/.test(u)) u += (u.indexOf("?") < 0 ? "?" : "&") + "hl=" + HL;
+    if (MK && !/[?&]mk=/.test(u)) u += (u.indexOf("?") < 0 ? "?" : "&") + "mk=" + MK;
+    return u + tail;
   };
   if (HL) {
     const plain = window.fetch.bind(window);
     window.fetch = (u, o = {}) => (typeof u === "string" && u.indexOf(api) === 0 ? plain(u, Object.assign({}, o, { headers: Object.assign({ "X-Apexx-Lang": HL }, o.headers || {}) })) : plain(u, o));
   }
-  if (HL) document.addEventListener("click", (e) => {
+  if (HL || MK) document.addEventListener("click", (e) => {
     const a = e.target.closest && e.target.closest("a[href]");
     if (a && !a.closest(".langs")) a.setAttribute("href", withLang(a.getAttribute("href")));
   }, true);
@@ -86,6 +90,23 @@
     if (ok) { ok.textContent = r.status === 400 ? "Revisa tu correo e intenta de nuevo." : "No pudimos guardar tu correo. Intenta más tarde."; ok.hidden = false; }
   }));
 
+  // Pages published from the designer carry the prices of the main channel;
+  // in another market they are refreshed in its currency.
+  if (MK) {
+    const cards = Array.from(document.querySelectorAll(".pcard"));
+    const handles = cards.map((c) => { const a = c.querySelector("a.pcard-link"); const m = a && (a.getAttribute("href") || "").match(/(?:^|\/)p\/([^/?#]+)/); return m ? m[1] : ""; });
+    const want = handles.filter(Boolean);
+    if (want.length) fetch(api + "/prices?channel=" + encodeURIComponent(MK) + "&handles=" + encodeURIComponent(want.slice(0, 60).join(","))).then((r) => r.ok ? r.json() : null).then((j) => {
+      if (!j) return;
+      cards.forEach((c, i) => {
+        const p = j.items[handles[i]], el = c.querySelector(".pcard-price");
+        if (!p || !el) return;
+        el.textContent = "";
+        if (p.compareAt) { const sale = document.createElement("span"); sale.className = "sale"; sale.textContent = p.price; const old = document.createElement("s"); old.textContent = p.compareAt; el.append(sale, " ", old); } else el.textContent = p.price;
+      });
+    }).catch(() => {});
+  }
+
   // Product page: add to cart.
   const buy = $("[data-buy]");
   if (buy) {
@@ -109,17 +130,22 @@
   }
 
   function renderTotals(r) {
-    const t = r.totals;
+    const t = r.totals, adj = (t.taxAdjust && t.taxAdjust.amount) || 0;
+    const taxLines = r.tax && r.tax.lines && r.tax.lines.length ? r.tax.lines : [{ label: "IVA", tax: t.taxIncluded.amount }];
     const promos = (r.promotions || []).filter((p) => p.applied || !p.coupon).map((p) => "<p class='promo" + (p.applied ? " on" : "") + "'>" + (p.applied ? "✓ " : "") + esc(p.name) + ": " + esc(p.reason) +
       (p.coupon ? " <button type='button' class='linkbtn' data-coupon-del='" + esc(p.coupon) + "'>Quitar cupón " + esc(p.coupon) + "</button>" : "") + (p.hint ? " <span class='muted'>" + esc(p.hint) + "</span>" : "") + "</p>").join("");
     const msgs = (r.messages || []).map((m) => "<li>" + esc(m.text) + "</li>").join("");
     return (msgs ? "<ul class='msgs'>" + msgs + "</ul>" : "") + promos +
       "<table class='totals'><tr><td>Productos</td><td class='num'>" + money(t.items) + "</td></tr>" +
       (t.discounts.amount ? "<tr><td>Descuentos</td><td class='num'>−" + money(t.discounts) + "</td></tr>" : "") +
-      "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + (r.shipping.estimate ? ". " + esc(r.shipping.estimate.text) : ", " + r.shipping.estimateDays + " días") + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : "Ingresa tu código postal") + "</td></tr>" +
+      "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + (r.shipping.estimate ? ". " + esc(r.shipping.estimate.text) : ", " + r.shipping.estimateDays + " días") + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : ((r.messages || []).some((m) => m.code === "no_shipping_option") ? "Sin entrega disponible" : "Ingresa tu código postal")) + "</td></tr>" +
+      // Where prices exclude tax it is added before the total; an exempt buyer
+      // sees the tax taken out.
+      (adj > 0 ? taxLines.map((x) => "<tr><td>" + esc(x.label) + "</td><td class='num'>" + money({ amount: x.tax, currency: t.grand.currency }) + "</td></tr>").join("") : "") +
+      (adj < 0 ? "<tr><td>Impuestos (exento)</td><td class='num'>−" + money({ amount: -adj, currency: t.grand.currency }) + "</td></tr>" : "") +
       "<tr class='grand'><td>Total</td><td class='num'>" + money(t.grand) + "</td></tr>" +
-      ((r.tax && r.tax.lines && r.tax.lines.length ? r.tax.lines : [{ label: "IVA", tax: t.taxIncluded.amount }]).map((x) =>
-        "<tr><td class='muted'>" + esc(x.label) + (x.rateBps === 0 ? "" : " incluido") + "</td><td class='num muted'>" + money({ amount: x.tax, currency: t.grand.currency }) + "</td></tr>").join("")) + "</table>";
+      (adj === 0 ? taxLines.map((x) =>
+        "<tr><td class='muted'>" + esc(x.label) + (x.rateBps === 0 ? "" : " incluido") + "</td><td class='num muted'>" + money({ amount: x.tax, currency: t.grand.currency }) + "</td></tr>").join("") : "") + "</table>";
   }
 
   // Cart page.
@@ -263,7 +289,7 @@
         if (!String(f.get(k) || "").trim()) { errBox.textContent = "Falta " + label + "."; form.elements[k].focus(); return; }
       }
       if (co.termsCheckbox && !f.get("terms")) { errBox.textContent = "Acepta los términos y condiciones para continuar."; $("#terms").focus(); return; }
-      if (!(pickup() && !String(f.get("postal"))) && !/^[0-9]{5}$/.test(String(f.get("postal")))) { errBox.textContent = "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
+      if (!(pickup() && !String(f.get("postal"))) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
       const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount); // credit or gift cards pay it all: no card needed
       let pm = onCredit() ? "credit" : covered ? "pm_gift_card" : String(f.get("pm") || "");

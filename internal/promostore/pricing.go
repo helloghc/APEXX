@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/helloghc/apexx/internal/money"
 	"sort"
 	"strings"
 	"time"
@@ -311,18 +312,19 @@ func (s *Store) LoadPriceLists(ctx context.Context, tenant, id string) ([]pricin
 		return nil, err
 	}
 	for i := range lists {
-		rows, err := s.DB.System.Query(ctx, `SELECT sku, COALESCE(amount,0) FROM price_list_items WHERE tenant_id=$1 AND list_id=$2`, tenant, lists[i].ID)
+		rows, err := s.DB.System.Query(ctx, `SELECT sku, COALESCE(amount,0), currency FROM price_list_items WHERE tenant_id=$1 AND list_id=$2`, tenant, lists[i].ID)
 		if err != nil {
 			return nil, err
 		}
 		for rows.Next() {
-			var sku string
+			var sku, cur string
 			var amt int64
-			if err := rows.Scan(&sku, &amt); err != nil {
+			if err := rows.Scan(&sku, &amt, &cur); err != nil {
 				rows.Close()
 				return nil, err
 			}
 			lists[i].Items[sku] = amt
+			lists[i].Currency = money.Currency(cur)
 		}
 		rows.Close()
 		if err := rows.Err(); err != nil {

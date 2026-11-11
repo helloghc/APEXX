@@ -27,6 +27,14 @@ type Channel struct {
 	TaxBps        int64          `json:"taxBps"`              // legacy rate, used only while the store has no tax regions
 	MaxQtyPerItem int64          `json:"maxQtyPerItem"`
 	Shipping      ShippingRate   `json:"shipping"` // legacy single rate, used only while the store has no shipping options
+
+	// Market: a channel shoppers can pick in the store, with its own currency.
+	Market       bool   `json:"market,omitempty"`       // offered in the storefront's country selector
+	PriceFrom    string `json:"priceFrom,omitempty"`    // channel whose prices are converted when a SKU has none here
+	RateMicros   int64  `json:"rateMicros,omitempty"`   // 1 unit of that currency = RateMicros/1e6 of this one
+	Rounding     string `json:"rounding,omitempty"`     // "", unit, 99, ten
+	TaxExclusive bool   `json:"taxExclusive,omitempty"` // prices before tax; tax is added at checkout
+	Language     string `json:"language,omitempty"`     // storefront language of the market (es, en…)
 }
 
 // ShippingRate is the legacy single rate of a channel. Stores that configure
@@ -55,6 +63,8 @@ type Request struct {
 	Extra   []promo.Promotion `json:"-"` // unsaved definitions to preview
 	Only    []string          `json:"-"` // evaluate only these promotions
 	Group   string            `json:"-"` // customer group for price lists (placeholder)
+	// TaxExempt removes tax from the order (a company with an exemption).
+	TaxExempt bool `json:"-"`
 	// ShippingOption is the option the shopper chose. Empty or unavailable:
 	// the cheapest available delivery is used.
 	ShippingOption string `json:"shippingOption,omitempty"`
@@ -107,14 +117,18 @@ type Shipping struct {
 	Quote        *logistics.Quote    `json:"-"`
 }
 
-// Totals always add up: Grand = Items - Discounts + Shipping. Shipping is
-// already net of ShippingDiscount, which is reported for information.
+// Totals always add up: Grand = Items - Discounts + Shipping + TaxAdjust.
+// Shipping is already net of ShippingDiscount, which is reported for
+// information. TaxAdjust is the tax added on top in markets whose prices
+// exclude it, or the tax taken out for an exempt buyer (negative); it is zero
+// for the usual price that already includes tax.
 type Totals struct {
 	Items            money.Money `json:"items"`
 	Discounts        money.Money `json:"discounts"`
 	Shipping         money.Money `json:"shipping"`
 	ShippingDiscount money.Money `json:"shippingDiscount"`
 	Tax              money.Money `json:"taxIncluded"`
+	TaxAdjust        money.Money `json:"taxAdjust"`
 	Grand            money.Money `json:"grand"`
 }
 
@@ -269,6 +283,20 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	afterDiscount, _ := items.Sub(discounts)
 
 	shipping, shipDisc := money.Zero(cur), money.Zero(cur)
+	// Shipping rules are written in the currency of the store. A market that
+	// converts its prices converts them too: thresholds are compared in the
+	// store currency and the resulting price is shown in the market's.
+	conv := s.conversion(ch)
+	baseSubtotal := afterDiscount.Amount
+	if conv != nil {
+		baseSubtotal = conv.Back(afterDiscount.Amount)
+	}
+	shipCur := func(v int64) int64 {
+		if conv != nil {
+			return conv.Plain(v)
+		}
+		return v
+	}
 	// promoShipping applies free-shipping promotions to the chosen option.
 	promoShipping := func(free bool) {
 		price := res.Shipping.Price
@@ -284,9 +312,12 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	case weight == 0:
 	case s.Logistics.HasOptions():
 		res.ShippingOptions = s.Logistics.Quotes(logistics.QuoteInput{
-			Country: ch.Country, PostalCode: req.PostalCode, Subtotal: afterDiscount.Amount, WeightGrams: weight,
+			Country: ch.Country, PostalCode: req.PostalCode, Subtotal: baseSubtotal, WeightGrams: weight,
 			Profiles: profiles, Currency: string(cur), Now: now,
 		})
+		for i := range res.ShippingOptions {
+			res.ShippingOptions[i].Price = shipCur(res.ShippingOptions[i].Price)
+		}
 		if i := logistics.Choose(res.ShippingOptions, req.ShippingOption); i >= 0 {
 			q := res.ShippingOptions[i]
 			// Without a postal code only pickup can be chosen, and only explicitly.
@@ -311,6 +342,18 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	case req.PostalCode != "":
 		// Legacy: one rate per channel, by weight.
 		sh := ch.Shipping
+		if sh.Base.Currency == "" && conv != nil {
+			if src, ok := s.Channels[ch.PriceFrom]; ok && src.Shipping.Base.Currency != "" {
+				sh = src.Shipping
+				sh.Base, sh.PerKg = money.New(shipCur(sh.Base.Amount), cur), money.New(shipCur(sh.PerKg.Amount), cur)
+				if !sh.FreeOver.IsZero() {
+					sh.FreeOver = money.New(shipCur(sh.FreeOver.Amount), cur)
+				}
+			}
+		}
+		if sh.Base.Currency == "" {
+			sh.Base, sh.PerKg, sh.FreeOver = money.Zero(cur), money.Zero(cur), money.Zero(cur)
+		}
 		kg := (weight + 999) / 1000
 		price, _ := sh.Base.Add(sh.PerKg.Mul(kg))
 		reason := "Por peso: base " + logistics.FormatMoney(sh.Base.Amount) + " + " + logistics.FormatMoney(sh.PerKg.Amount) + " por kg"
@@ -373,9 +416,33 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		parts = append(parts, logistics.TaxPart{Class: lineClass[i], Gross: pl.LineTotal.Amount - share})
 	}
 	parts = append(parts, logistics.TaxPart{Class: logistics.TaxGeneral, Gross: shipping.Amount})
-	taxRes := s.Logistics.Tax(ch.Country, req.PostalCode, ch.TaxRegion, ch.TaxBps, parts)
+	taxRes := s.Logistics.TaxFor(ch.Country, req.PostalCode, ch.TaxRegion, ch.TaxBps, parts, ch.TaxExclusive)
+	adjust := money.Zero(cur)
+	switch {
+	case req.TaxExempt:
+		if !ch.TaxExclusive {
+			adjust = money.New(-taxRes.Total, cur) // the price included tax the buyer does not owe
+		}
+		taxRes = logistics.Exempt(taxRes)
+	case ch.TaxExclusive:
+		adjust = money.New(taxRes.Total, cur)
+	}
+	grand.Amount += adjust.Amount
 	res.Tax = &taxRes
 	tax := money.New(taxRes.Total, cur)
-	res.Totals = Totals{Items: items, Discounts: discounts, Shipping: shipping, ShippingDiscount: shipDisc, Tax: tax, Grand: grand}
+	res.Totals = Totals{Items: items, Discounts: discounts, Shipping: shipping, ShippingDiscount: shipDisc, Tax: tax, TaxAdjust: adjust, Grand: grand}
 	return res, nil
+}
+
+// conversion returns how a market converts from the channel it takes prices
+// from, or nil when the channel has its own prices in its own currency.
+func (s *Service) conversion(ch Channel) *pricing.Conversion {
+	if ch.PriceFrom == "" || ch.RateMicros <= 0 {
+		return nil
+	}
+	src, ok := s.Channels[ch.PriceFrom]
+	if !ok || src.Currency == ch.Currency && ch.RateMicros == 1_000_000 {
+		return nil
+	}
+	return &pricing.Conversion{From: ch.PriceFrom, Currency: ch.Currency, RateMicros: ch.RateMicros}
 }

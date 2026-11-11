@@ -119,7 +119,7 @@ func setup(t *testing.T) *env {
 		_ = db.SetPrices(ctx, "store-a", "test", "mx", sku, []pricing.Tier{{MinQty: 1, Unit: money.New(10000, "MXN"), CompareAt: &cmp}})
 	}
 	e.newSrv = func() *httptest.Server {
-		log := slog.New(slog.NewTextHandler(io.Discard, nil))
+		log := slog.New(slog.NewTextHandler(logOut(), nil))
 		proj := projection.New(db, sysURL.String(), log)
 		if err := proj.Load(ctx); err != nil {
 			t.Fatal(err)
@@ -505,4 +505,12 @@ func TestShopperStorefront(t *testing.T) {
 	if cfg["mode"] != "sandbox" {
 		t.Fatalf("config %v", cfg)
 	}
+}
+
+// logOut sends server logs to stderr when APEXX_TEST_LOG is set.
+func logOut() io.Writer {
+	if os.Getenv("APEXX_TEST_LOG") != "" {
+		return os.Stderr
+	}
+	return io.Discard
 }

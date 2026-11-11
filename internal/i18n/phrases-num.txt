@@ -37,3 +37,8 @@ Carrito || Cart || Panier || Carrinho || Keranjang || カート
 Gracias || Thank you || Merci || Obrigado || Terima kasih || ありがとうございます
 IVA #% incluido || VAT #% included || TVA #% incluse || IVA #% incluído || Termasuk PPN #% || 消費税#%込み
 Envío gratis || Free shipping || Livraison gratuite || Frete grátis || Gratis ongkir || 送料無料
+Impuestos (exento) || Taxes (exempt) || Taxes (exonéré) || Impostos (isento) || Pajak (dibebaskan) || 税金（免税）
+Sin entrega disponible || No delivery available || Aucune livraison disponible || Sem entrega disponível || Pengiriman tidak tersedia || 配送不可
+Impuesto #% || Tax #% || Taxe #% || Imposto #% || Pajak #% || 税 #%
+Impuesto #% incluido || Tax #% included || Taxe #% incluse || Imposto #% incluído || Termasuk pajak #% || 税 #%込み
+IVA #% || VAT #% || TVA #% || IVA #% || PPN #% || 消費税 #%

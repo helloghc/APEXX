@@ -361,10 +361,39 @@ func (p *Projector) applyChannels(ctx context.Context, t *Tenant) error {
 		c.ID = id
 		chs[id] = c
 	}
+	conv := map[string]pricing.Conversion{}
+	for id, c := range chs {
+		if c.PriceFrom != "" && c.PriceFrom != id && c.RateMicros > 0 {
+			conv[id] = pricing.Conversion{From: c.PriceFrom, Currency: c.Currency, RateMicros: c.RateMicros, Rounding: c.Rounding}
+		}
+	}
+	t.Pricing.SetConversions(conv)
 	t.mu.Lock()
 	t.Cart.Channels = chs
 	t.mu.Unlock()
 	return nil
+}
+
+// Markets lists the channels shoppers can pick in the storefront, the main
+// channel first.
+func (t *Tenant) Markets(main string) []cart.Channel {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	var out []cart.Channel
+	if c, ok := t.Cart.Channels[main]; ok {
+		out = append(out, c)
+	}
+	ids := make([]string, 0, len(t.Cart.Channels))
+	for id, c := range t.Cart.Channels {
+		if c.Market && id != main {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		out = append(out, t.Cart.Channels[id])
+	}
+	return out
 }
 
 // loadPromotions fills the engine with every promotion, campaign and price

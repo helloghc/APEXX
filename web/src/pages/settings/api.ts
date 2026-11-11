@@ -223,6 +223,12 @@ export interface Channel {
   taxBps: number;
   maxQtyPerItem: number;
   shipping: unknown;
+  market?: boolean;
+  priceFrom?: string;
+  rateMicros?: number;
+  rounding?: string;
+  taxExclusive?: boolean;
+  language?: string;
 }
 
 export interface CheckoutRules {

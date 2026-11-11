@@ -174,6 +174,7 @@ func (s *Server) Routes() http.Handler {
 	handle("GET /s/fonts/{file}", shopFonts)
 	handle("GET /s/{tenant}/api/config", s.shopConfig)
 	handle("POST /s/{tenant}/api/simulate", s.shopSimulate)
+	handle("GET /s/{tenant}/api/prices", s.shopPrices)
 	handle("POST /s/{tenant}/api/checkout", s.shopCheckout)
 
 	// Customers, after-sale and notifications (routes_customers.go).

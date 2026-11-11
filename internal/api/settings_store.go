@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/helloghc/apexx/internal/i18n"
 	"io"
 	"net"
 	"net/http"
@@ -112,6 +113,34 @@ func (s *Server) validateChannel(r *http.Request, c *cart.Channel) ([]apierr.Fie
 	}
 	if c.Shipping.Base.Currency != "" && c.Shipping.Base.Currency != c.Currency {
 		add("shipping", "invalid", "La tarifa de envío debe estar en la moneda del canal")
+	}
+	// Market fields.
+	switch c.Rounding {
+	case "", "unit", "99", "ten":
+	default:
+		add("rounding", "invalid", "Redondeo: sin redondeo, a la unidad, terminación .99 o a la decena")
+	}
+	if c.Language != "" && !i18n.Known(c.Language) {
+		add("language", "invalid", "Idioma no disponible")
+	}
+	if c.PriceFrom != "" {
+		src, ok := channelOf(s, r, c.PriceFrom)
+		switch {
+		case c.PriceFrom == c.ID:
+			add("priceFrom", "invalid", "Un canal no puede tomar los precios de sí mismo")
+		case !ok:
+			add("priceFrom", "unknown", "El canal de origen no existe")
+		case src.PriceFrom != "":
+			add("priceFrom", "invalid", "El canal de origen también convierte precios; elige uno con precios propios")
+		}
+		if c.RateMicros <= 0 || c.RateMicros > 1_000_000_000_000 {
+			add("rateMicros", "out_of_range", "Escribe el tipo de cambio: cuánto vale 1 unidad de la moneda de origen")
+		}
+	} else if c.RateMicros != 0 {
+		c.RateMicros = 0
+	}
+	if c.Market && c.Country == "" {
+		add("country", "required", "Un mercado necesita su país")
 	}
 	return errs, nil
 }
@@ -722,4 +751,13 @@ func rank(id string) int {
 		return 1
 	}
 	return 2
+}
+
+// channelOf returns a saved channel of the store making the request.
+func channelOf(s *Server, r *http.Request, id string) (cart.Channel, bool) {
+	t, ok := s.Proj.Tenant(principal(r).Tenant)
+	if !ok {
+		return cart.Channel{}, false
+	}
+	return t.Channel(id)
 }

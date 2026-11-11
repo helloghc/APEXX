@@ -62,7 +62,7 @@ func TestStorefrontLanguages(t *testing.T) {
 		return string(b)
 	}
 	// Only Spanish: ?hl is ignored and the page is untouched.
-	body := get(home+"?hl=id")
+	body := get(home + "?hl=id")
 	if strings.Contains(body, "hreflang") || !strings.Contains(body, `<html lang="es">`) {
 		t.Fatalf("una tienda solo en español no debe anunciar otros idiomas: %.300s", body)
 	}
@@ -79,7 +79,7 @@ func TestStorefrontLanguages(t *testing.T) {
 	if strings.Contains(es, `hreflang="fr"`) {
 		t.Error("anuncia un idioma que la tienda no activó")
 	}
-	id := get(home+"?hl=id")
+	id := get(home + "?hl=id")
 	for _, want := range []string{`<html lang="id" data-hl="id">`, `shop.js?hl=id`, "Lompat ke konten", "Semua barang kami", `?hl=id"`} {
 		if !strings.Contains(id, want) {
 			t.Errorf("indonesio: falta %s", want)
@@ -89,7 +89,7 @@ func TestStorefrontLanguages(t *testing.T) {
 		t.Error("indonesio: quedó texto en español")
 	}
 	// A language the store did not turn on falls back to Spanish.
-	fr := get(home+"?hl=fr")
+	fr := get(home + "?hl=fr")
 	if !strings.Contains(fr, `<html lang="es">`) {
 		t.Error("francés no está activo: debe verse en español")
 	}

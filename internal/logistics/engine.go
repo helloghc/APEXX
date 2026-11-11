@@ -434,6 +434,19 @@ type TaxResult struct {
 	Total      int64     `json:"total"`
 }
 
+// Exempt returns the result for a buyer that owes no tax: every line keeps
+// its net amount and carries zero tax.
+func Exempt(r TaxResult) TaxResult {
+	out := r
+	out.Reason = "Comprador exento de impuestos"
+	out.Lines = make([]TaxLine, len(r.Lines))
+	for i, l := range r.Lines {
+		out.Lines[i] = TaxLine{Class: l.Class, Label: "Exento", RateBps: 0, Gross: l.Net, Net: l.Net}
+	}
+	out.Total = 0
+	return out
+}
+
 // TaxRegionFor picks the tax region of a destination and says why.
 // channelRegion is the region configured on the sales channel; fallbackBps is
 // the legacy channel rate used when the store has no regions.
@@ -453,7 +466,15 @@ func (c *Config) TaxRegionFor(country, cp, channelRegion string, fallbackBps int
 	if hit != nil {
 		return *hit, "Región " + hit.Name + ": " + why
 	}
-	whole := func(r TaxRegion) bool { return len(r.States) == 0 && len(r.PostalRanges) == 0 }
+	// The fallbacks only use regions of the destination country: a Mexican
+	// rate never applies to a sale abroad.
+	dest := country
+	if dest == "" {
+		dest = "MX"
+	}
+	whole := func(r TaxRegion) bool {
+		return len(r.States) == 0 && len(r.PostalRanges) == 0 && (r.Country == "" || strings.EqualFold(r.Country, dest))
+	}
 	for _, r := range c.TaxRegions {
 		if r.ID == channelRegion && channelRegion != "" && whole(r) {
 			return r, "Región " + r.Name + ": región fiscal del canal de venta"
@@ -490,8 +511,14 @@ func percent(bps int64) string {
 
 // Tax computes the tax contained in tax-inclusive amounts, grouped by class.
 func (c *Config) Tax(country, cp, channelRegion string, fallbackBps int64, parts []TaxPart) TaxResult {
+	return c.TaxFor(country, cp, channelRegion, fallbackBps, parts, false)
+}
+
+// TaxFor is Tax for prices that include tax (exclusive false) or that are
+// before tax (exclusive true), where the tax is added on top.
+func (c *Config) TaxFor(country, cp, channelRegion string, fallbackBps int64, parts []TaxPart, exclusive bool) TaxResult {
 	region, reason := c.TaxRegionFor(country, cp, channelRegion, fallbackBps)
-	res := TaxResult{RegionID: region.ID, RegionName: region.Name, Reason: reason, Inclusive: true, Lines: []TaxLine{}}
+	res := TaxResult{RegionID: region.ID, RegionName: region.Name, Reason: reason, Inclusive: !exclusive, Lines: []TaxLine{}}
 	gross := map[string]int64{}
 	for _, p := range parts {
 		cl := p.Class
@@ -506,6 +533,15 @@ func (c *Config) Tax(country, cp, channelRegion string, fallbackBps int64, parts
 			continue
 		}
 		rate, label := ClassRate(region, cl)
+		if country != "" && !strings.EqualFold(country, "MX") {
+			label = strings.Replace(label, "IVA", "Impuesto", 1) // IVA is the Mexican name
+		}
+		if exclusive {
+			tax := (g*rate + 5000) / 10000
+			res.Lines = append(res.Lines, TaxLine{Class: cl, Label: label, RateBps: rate, Gross: g + tax, Net: g, Tax: tax})
+			res.Total += tax
+			continue
+		}
 		tax := g * rate / (10000 + rate)
 		res.Lines = append(res.Lines, TaxLine{Class: cl, Label: label, RateBps: rate, Gross: g, Net: g - tax, Tax: tax})
 		res.Total += tax

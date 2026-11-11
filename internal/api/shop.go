@@ -91,7 +91,10 @@ func (s *Server) shopContext(w http.ResponseWriter, r *http.Request) (*projectio
 		http.NotFound(w, r)
 		return nil, pageData{}, false
 	}
-	ch := "mx"
+	ch := mainChannel
+	if mk := marketParam(t, r.URL.Query().Get("mk")); mk != "" {
+		ch = mk
+	}
 	if _, ok := t.Channel(ch); !ok {
 		http.Error(w, "La tienda no tiene canal de venta configurado", http.StatusServiceUnavailable)
 		return nil, pageData{}, false
@@ -280,6 +283,10 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 		apierr.BadRequest(w, "El carrito tiene errores", errs...)
 		return
 	}
+	if !shopChannel(t, req.Channel) {
+		apierr.BadRequest(w, "Canal de venta no disponible")
+		return
+	}
 	// Trying codes is limited separately, so coupons cannot be guessed in bulk.
 	if len(req.Coupons) > 0 && !couponLimiter.allow(r.PathValue("tenant")+"|"+s.clientIP(r)) {
 		w.Header().Set("Retry-After", "60")
@@ -293,6 +300,7 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 	if c, _ := s.shopperCompany(r); c != nil {
 		req.Extra = append(req.Extra, orders.CompanyPromo(c)...)
 		req.Group = orders.CompanyGroup(c)
+		req.TaxExempt = c.TaxExempt
 	}
 	res, err := t.Simulate(req)
 	if err != nil {
@@ -329,6 +337,9 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 		req.Company, req.Customer.Email = c, email
 	}
 	errs := validateItems(req.Channel, req.Items)
+	if !shopChannel(t, req.Channel) {
+		errs = append(errs, apierr.FieldError{Field: "channel", Code: "invalid", Message: "Canal de venta no disponible en la tienda"})
+	}
 	if !strings.Contains(req.Customer.Email, "@") || len(req.Customer.Email) > 200 {
 		errs = append(errs, apierr.FieldError{Field: "customer.email", Code: "invalid", Message: "Correo inválido"})
 	}
@@ -393,4 +404,48 @@ func (s *Server) shopConfig(w http.ResponseWriter, r *http.Request) {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	b, _ := json.Marshal(v)
 	writeJSONRaw(w, status, b, false)
+}
+
+// shopChannel reports whether shoppers may buy through a channel: the main
+// one or a market the store offers. Wholesale or private channels are only
+// reachable with a key of the store.
+func shopChannel(t interface {
+	Markets(string) []cart.Channel
+}, ch string) bool {
+	if ch == "" || ch == mainChannel {
+		return true
+	}
+	return marketParam(t, ch) == ch
+}
+
+// shopPrices answers the price of products in a market, so pages published
+// once (the designer's pages) show the right currency without re-publishing.
+func (s *Server) shopPrices(w http.ResponseWriter, r *http.Request) {
+	t, ok := s.Proj.Tenant(r.PathValue("tenant"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	ch := r.URL.Query().Get("channel")
+	if !shopChannel(t, ch) {
+		apierr.BadRequest(w, "Canal de venta no disponible")
+		return
+	}
+	if ch == "" {
+		ch = mainChannel
+	}
+	out := map[string]map[string]string{}
+	for i, h := range strings.Split(r.URL.Query().Get("handles"), ",") {
+		if i >= 60 {
+			break
+		}
+		p, ok := t.Catalog.ByHandle(strings.TrimSpace(h))
+		if !ok {
+			continue
+		}
+		c := cardOf(t, ch, p)
+		out[p.Handle] = map[string]string{"price": c.Price, "compareAt": c.CompareAt}
+	}
+	w.Header().Set("Cache-Control", "public, max-age=30")
+	writeJSON(w, http.StatusOK, map[string]any{"channel": ch, "items": out})
 }

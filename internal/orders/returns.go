@@ -167,7 +167,7 @@ func (s *Service) GetReturn(ctx context.Context, tenant, id string) (Return, err
 func addValueTx(ctx context.Context, tx pgx.Tx, tenant, orderID, txID string, o orderRow, after Totals) error {
 	d := after.GrandTotal - o.GrandTotal
 	taxD := after.TaxIncluded - o.TaxIncluded
-	if _, err := tx.Exec(ctx, `UPDATE orders SET items_total=$3, discounts=$4, shipping=$5, tax_included=$6, grand_total=$7 WHERE tenant_id=$1 AND id=$2`,
+	if _, err := tx.Exec(ctx, `UPDATE orders SET items_total=$3, discounts=$4, shipping=$5, tax_included=$6, grand_total=$7, tax_adjust=$7 - $3 + $4 - $5 WHERE tenant_id=$1 AND id=$2`,
 		tenant, orderID, after.ItemsTotal, after.Discounts, after.Shipping, after.TaxIncluded, after.GrandTotal); err != nil {
 		return err
 	}

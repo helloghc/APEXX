@@ -396,7 +396,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 		return Result{}, err
 	}
 	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items, ShippingOption: req.ShippingOption,
-		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup, Extra: CompanyPromo(req.Company), Group: CompanyGroup(req.Company)})
+		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup, Extra: CompanyPromo(req.Company), Group: CompanyGroup(req.Company), TaxExempt: req.Company != nil && req.Company.TaxExempt})
 	if err != nil {
 		return problem(400, "invalid_request", err.Error(), nil), nil
 	}
@@ -505,10 +505,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code,
-				shipping_method, tax_detail, display_number)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+				shipping_method, tax_detail, display_number, tax_adjust)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
 			tenant, id, number, req.Channel, StatusPendingPayment, string(tot.Grand.Currency), tot.Items.Amount, tot.Discounts.Amount,
-			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number)); err != nil {
+			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number), tot.TaxAdjust.Amount); err != nil {
 			return err
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {

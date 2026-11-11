@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/helloghc/apexx/internal/cart"
 	"html"
 	"html/template"
 	"net/http"
@@ -103,13 +104,25 @@ func (s *Server) localized(next http.Handler) http.Handler {
 			return
 		}
 		t, ok := s.Proj.Tenant(parts[0])
-		if !ok || len(t.Languages().Enabled) == 0 {
+		if !ok {
 			next.ServeHTTP(w, r)
 			return
 		}
 		cfg := t.Languages()
-		lang := r.URL.Query().Get("hl")
-		if !cfg.Has(lang) {
+		markets := t.Markets(mainChannel)
+		if len(cfg.Enabled) == 0 && len(markets) < 2 {
+			next.ServeHTTP(w, r)
+			return
+		}
+		q := r.URL.Query()
+		mk := marketParam(t, q.Get("mk"))
+		lang := q.Get("hl")
+		if lang == "" && mk != "" {
+			if c, _ := t.Channel(mk); c.Language != "" {
+				lang = c.Language // a market opens in its own language
+			}
+		}
+		if lang != i18n.Default && !cfg.Has(lang) {
 			lang = i18n.Default
 		}
 		lw := &langWriter{ResponseWriter: w, lang: lang, status: http.StatusOK}
@@ -122,7 +135,7 @@ func (s *Server) localized(next http.Handler) http.Handler {
 			} else {
 				origin += r.URL.Path
 			}
-			body = localizePage(body, lang, cfg, origin, r.URL.Query())
+			body = localizePage(body, page{lang: lang, mk: mk, cfg: cfg, markets: markets, url: origin, q: q})
 			w.Header().Del("Content-Length")
 			w.Header().Set("Content-Language", lang)
 		}
@@ -131,33 +144,80 @@ func (s *Server) localized(next http.Handler) http.Handler {
 	})
 }
 
+// marketParam returns the market asked for in the address when the store
+// offers it to shoppers; "" means the main channel.
+func marketParam(t interface {
+	Markets(string) []cart.Channel
+}, mk string) string {
+	if mk == "" || mk == mainChannel {
+		return ""
+	}
+	for _, c := range t.Markets(mainChannel) {
+		if c.ID == mk {
+			return mk
+		}
+	}
+	return ""
+}
+
 func isCustomHost(r *http.Request) bool {
 	v, _ := r.Context().Value(hostKey{}).(bool)
 	return v
 }
 
 // withLang adds the language to an internal link.
-func withLang(href, lang string) string {
-	if lang == i18n.Default || href == "" || href[0] != '/' || strings.HasPrefix(href, "//") || strings.HasPrefix(href, "/s/assets/") || strings.HasPrefix(href, "/s/fonts/") || strings.HasPrefix(href, "/media/") || strings.Contains(href, "hl=") {
+func withLang(href, lang string) string { return withParams(href, lang, "") }
+
+// withParams keeps the language and the market in an internal link.
+func withParams(href, lang, mk string) string {
+	if href == "" || href[0] == '#' || strings.HasPrefix(href, "//") || strings.HasPrefix(href, "/s/assets/") || strings.HasPrefix(href, "/s/fonts/") || strings.HasPrefix(href, "/media/") {
 		return href
+	}
+	// Relative links ("p/playera") stay in the store too; anything with a
+	// scheme (https:, mailto:, tel:) leaves it and is not touched.
+	if href[0] != '/' {
+		if i := strings.IndexAny(href, ":/?#"); i >= 0 && href[i] == ':' {
+			return href
+		}
 	}
 	frag := ""
 	if i := strings.IndexByte(href, '#'); i >= 0 {
 		href, frag = href[:i], href[i:]
 	}
-	sep := "?"
-	if strings.Contains(href, "?") {
-		sep = "&"
+	add := func(k, v string) {
+		if v == "" || strings.Contains(href, k+"=") {
+			return
+		}
+		sep := "?"
+		if strings.Contains(href, "?") {
+			sep = "&"
+		}
+		href += sep + k + "=" + v
 	}
-	return href + sep + "hl=" + lang + frag
+	if lang != i18n.Default {
+		add("hl", lang)
+	}
+	add("mk", mk)
+	return href + frag
 }
 
-// localizePage translates a finished page, keeps the language in its links
-// and tells search engines where the other languages live.
-func localizePage(page []byte, lang string, cfg *i18n.Config, pageURL string, q url.Values) []byte {
-	out := string(page)
+// page is what localizePage needs to know about the request.
+type page struct {
+	lang, mk string
+	cfg      *i18n.Config
+	markets  []cart.Channel
+	url      string
+	q        url.Values
+}
+
+// localizePage translates a finished page, keeps the language and the market
+// in its links and tells search engines where the other versions live.
+func localizePage(body []byte, p page) []byte {
+	lang, cfg := p.lang, p.cfg
+	out := string(body)
+	keep := func(h string) string { return withParams(h, lang, p.mk) }
 	if lang != i18n.Default {
-		out = i18n.Markup(out, i18n.With(lang, cfg.Own[lang]), i18n.Options{Href: func(h string) string { return withLang(h, lang) }, FormParam: lang})
+		out = i18n.Markup(out, i18n.With(lang, cfg.Own[lang]), i18n.Options{Href: keep, FormParam: lang})
 		tag := lang
 		if l, ok := i18n.Find(lang); ok {
 			tag = l.Tag
@@ -173,38 +233,83 @@ func localizePage(page []byte, lang string, cfg *i18n.Config, pageURL string, q 
 		}
 		out = strings.Replace(out, `<html lang="es">`, `<html lang="`+tag+`" data-hl="`+lang+`">`, 1)
 		out = strings.Replace(out, `/s/assets/shop.js?v=`, `/s/assets/shop.js?hl=`+lang+`&amp;v=`, 1)
+	} else if p.mk != "" {
+		out = i18n.Markup(out, func(string) (string, bool) { return "", false }, i18n.Options{Href: keep})
 	}
-	link := func(code string) string {
+	if p.mk != "" {
+		out = strings.Replace(out, `<html lang="`, `<html data-mk="`+html.EscapeString(p.mk)+`" lang="`, 1)
+	}
+	link := func(code, mk string) string {
 		v := url.Values{}
-		for k, vals := range q {
-			if k != "hl" {
+		for k, vals := range p.q {
+			if k != "hl" && k != "mk" {
 				v[k] = vals
 			}
 		}
 		if code != i18n.Default {
 			v.Set("hl", code)
 		}
-		if enc := v.Encode(); enc != "" {
-			return pageURL + "?" + enc
+		if mk != "" {
+			v.Set("mk", mk)
 		}
-		return pageURL
+		if enc := v.Encode(); enc != "" {
+			return p.url + "?" + enc
+		}
+		return p.url
 	}
 	var head, nav strings.Builder
-	nav.WriteString(`<nav class="langs" aria-label="Idioma / Language"><ul>`)
-	for _, l := range i18n.Languages {
-		if l.Code != i18n.Default && !cfg.Has(l.Code) {
-			continue
+	nav.WriteString(`<nav class="langs" aria-label="Idioma y país / Language and country">`)
+	if len(cfg.Enabled) > 0 {
+		nav.WriteString(`<ul>`)
+		for _, l := range i18n.Languages {
+			if l.Code != i18n.Default && !cfg.Has(l.Code) {
+				continue
+			}
+			u := html.EscapeString(link(l.Code, p.mk))
+			if p.mk == "" {
+				head.WriteString(`<link rel="alternate" hreflang="` + l.Tag + `" href="` + u + `">`)
+			}
+			cur := ""
+			if l.Code == lang {
+				cur = ` aria-current="true"`
+			}
+			nav.WriteString(`<li><a href="` + u + `" hreflang="` + l.Tag + `" lang="` + l.Tag + `"` + cur + `>` + html.EscapeString(l.Name) + `</a></li>`)
 		}
-		u := html.EscapeString(link(l.Code))
-		head.WriteString(`<link rel="alternate" hreflang="` + l.Tag + `" href="` + u + `">`)
-		cur := ""
-		if l.Code == lang {
-			cur = ` aria-current="true"`
-		}
-		nav.WriteString(`<li><a href="` + u + `" hreflang="` + l.Tag + `" lang="` + l.Tag + `"` + cur + `>` + html.EscapeString(l.Name) + `</a></li>`)
+		nav.WriteString(`</ul>`)
 	}
-	head.WriteString(`<link rel="alternate" hreflang="x-default" href="` + html.EscapeString(link(i18n.Default)) + `">`)
-	nav.WriteString(`</ul></nav>`)
+	if len(p.markets) > 1 {
+		nav.WriteString(`<ul class="markets">`)
+		for i, c := range p.markets {
+			mk := c.ID
+			if i == 0 {
+				mk = ""
+			}
+			ml := lang
+			if c.Language != "" && (c.Language == i18n.Default || cfg.Has(c.Language)) {
+				ml = c.Language
+			}
+			u := html.EscapeString(link(ml, mk))
+			if c.Country != "" {
+				head.WriteString(`<link rel="alternate" hreflang="` + ml + `-` + c.Country + `" href="` + u + `">`)
+			}
+			cur := ""
+			if mk == p.mk {
+				cur = ` aria-current="true"`
+			}
+			name := c.Name
+			if name == "" {
+				name = countryName(c.Country)
+			}
+			if name == "" {
+				name = strings.ToUpper(c.ID)
+			}
+			label := name + " (" + string(c.Currency) + ")"
+			nav.WriteString(`<li><a href="` + u + `"` + cur + `>` + html.EscapeString(label) + `</a></li>`)
+		}
+		nav.WriteString(`</ul>`)
+	}
+	head.WriteString(`<link rel="alternate" hreflang="x-default" href="` + html.EscapeString(link(i18n.Default, "")) + `">`)
+	nav.WriteString(`</nav>`)
 	out = strings.Replace(out, "</head>", head.String()+"</head>", 1)
 	if i := strings.LastIndex(out, "</body>"); i >= 0 {
 		out = out[:i] + nav.String() + out[i:]
@@ -285,4 +390,37 @@ func localizeJSON(body []byte, look i18n.Lookup) []byte {
 		return body
 	}
 	return out.Bytes()
+}
+
+// countryName names the countries Apexx sells to most, in their own words.
+func countryName(code string) string {
+	switch strings.ToUpper(code) {
+	case "MX":
+		return "México"
+	case "US":
+		return "United States"
+	case "CA":
+		return "Canada"
+	case "ES":
+		return "España"
+	case "FR":
+		return "France"
+	case "BR":
+		return "Brasil"
+	case "PT":
+		return "Portugal"
+	case "ID":
+		return "Indonesia"
+	case "JP":
+		return "日本"
+	case "CO":
+		return "Colombia"
+	case "AR":
+		return "Argentina"
+	case "CL":
+		return "Chile"
+	case "PE":
+		return "Perú"
+	}
+	return code
 }
