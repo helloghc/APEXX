@@ -8,6 +8,7 @@ import (
 
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/inventory"
+	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/pricing"
 	"github.com/helloghc/apexx/internal/promo"
@@ -16,13 +17,19 @@ import (
 // Channel configures one sales channel. Every rule is visible through the API.
 type Channel struct {
 	ID            string         `json:"id"`
+	Name          string         `json:"name,omitempty"`
 	Currency      money.Currency `json:"currency"`
-	TaxBps        int64          `json:"taxBps"` // prices are tax-inclusive; tax is reported, not added
+	Locale        string         `json:"locale,omitempty"`    // es-MX
+	Country       string         `json:"country,omitempty"`   // MX
+	TaxRegion     string         `json:"taxRegion,omitempty"` // tax region used when the destination matches no specific one
+	PriceList     string         `json:"priceList,omitempty"` // reserved: price list of the channel
+	TaxBps        int64          `json:"taxBps"`              // legacy rate, used only while the store has no tax regions
 	MaxQtyPerItem int64          `json:"maxQtyPerItem"`
-	Shipping      ShippingRate   `json:"shipping"`
+	Shipping      ShippingRate   `json:"shipping"` // legacy single rate, used only while the store has no shipping options
 }
 
-// ShippingRate prices one package by total weight, not per unit.
+// ShippingRate is the legacy single rate of a channel. Stores that configure
+// shipping options (internal/logistics) no longer use it.
 type ShippingRate struct {
 	Name         string      `json:"name"`
 	Base         money.Money `json:"base"`
@@ -36,6 +43,9 @@ type Request struct {
 	Channel    string `json:"channel"`
 	PostalCode string `json:"postalCode,omitempty"`
 	Items      []Item `json:"items"`
+	// ShippingOption is the option the shopper chose. Empty or unavailable:
+	// the cheapest available delivery is used.
+	ShippingOption string `json:"shippingOption,omitempty"`
 }
 
 // Item is one requested line.
@@ -61,14 +71,21 @@ type Line struct {
 	CompareAt    *money.Money `json:"compareAt,omitempty"`
 	Total        money.Money  `json:"total"`
 	Available    int64        `json:"available"`
+	TaxClass     string       `json:"taxClass,omitempty"`
 }
 
 // Shipping is the selected delivery option.
 type Shipping struct {
-	Name         string      `json:"name"`
-	Price        money.Money `json:"price"`
-	EstimateDays int         `json:"estimateDays"`
-	WeightGrams  int64       `json:"weightGrams"`
+	ID           string              `json:"id,omitempty"`
+	Name         string              `json:"name"`
+	Kind         string              `json:"kind,omitempty"`
+	Carrier      string              `json:"carrier,omitempty"`
+	Price        money.Money         `json:"price"`
+	PriceReason  string              `json:"priceReason,omitempty"`
+	EstimateDays int                 `json:"estimateDays"`
+	Estimate     *logistics.Estimate `json:"estimate,omitempty"`
+	WeightGrams  int64               `json:"weightGrams"`
+	Quote        *logistics.Quote    `json:"-"`
 }
 
 // Totals always add up: Grand = Items - Discounts + Shipping.
@@ -86,8 +103,12 @@ type Result struct {
 	Lines      []Line         `json:"lines"`
 	Promotions []promo.Result `json:"promotions"`
 	Shipping   *Shipping      `json:"shipping,omitempty"`
-	Totals     Totals         `json:"totals"`
-	Messages   []Message      `json:"messages"`
+	// ShippingOptions lists every option of the store for this cart, available
+	// or not, each with its reason.
+	ShippingOptions []logistics.Quote    `json:"shippingOptions"`
+	Tax             *logistics.TaxResult `json:"tax,omitempty"`
+	Totals          Totals               `json:"totals"`
+	Messages        []Message            `json:"messages"`
 }
 
 // Service wires the domain modules together.
@@ -97,6 +118,7 @@ type Service struct {
 	Pricing   *pricing.Service
 	Promos    *promo.Engine
 	Channels  map[string]Channel
+	Logistics *logistics.Config // zones, options, estimates and tax regions; nil = legacy channel rules
 	Now       func() time.Time
 }
 
@@ -116,7 +138,9 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		now = s.Now
 	}
 	cur := ch.Currency
-	res := Result{Channel: ch.ID, Lines: []Line{}, Messages: []Message{}}
+	res := Result{Channel: ch.ID, Lines: []Line{}, Messages: []Message{}, ShippingOptions: []logistics.Quote{}}
+	var profiles []string
+	var lineClass []string // tax class of each priced line, parallel to promoLines
 	items := money.Zero(cur)
 	var weight int64
 	var promoLines []promo.Line
@@ -152,6 +176,10 @@ func (s *Service) Simulate(req Request) (Result, error) {
 			SKU: it.SKU, Title: p.Title + " " + v.Title, RequestedQty: it.Qty, Qty: qty,
 			Unit: q.Unit, CompareAt: q.CompareAt, Total: q.Unit.Mul(qty), Available: avail,
 		}
+		class := s.Logistics.ProductClassOf(p.ID)
+		if class.TaxClass != logistics.TaxGeneral {
+			line.TaxClass = class.TaxClass
+		}
 		res.Lines = append(res.Lines, line)
 		if qty == 0 {
 			continue
@@ -162,6 +190,8 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		}
 		weight += v.WeightGrams * qty
 		promoLines = append(promoLines, promo.Line{SKU: it.SKU, Qty: qty, LineTotal: line.Total})
+		profiles = append(profiles, class.ShippingProfile)
+		lineClass = append(lineClass, class.TaxClass)
 	}
 
 	discounts := money.Zero(cur)
@@ -171,25 +201,72 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	afterDiscount, _ := items.Sub(discounts)
 
 	shipping := money.Zero(cur)
-	if weight > 0 && req.PostalCode != "" {
+	switch {
+	case weight == 0:
+	case s.Logistics.HasOptions():
+		res.ShippingOptions = s.Logistics.Quotes(logistics.QuoteInput{
+			Country: ch.Country, PostalCode: req.PostalCode, Subtotal: afterDiscount.Amount, WeightGrams: weight,
+			Profiles: profiles, Currency: string(cur), Now: now(),
+		})
+		if i := logistics.Choose(res.ShippingOptions, req.ShippingOption); i >= 0 {
+			q := res.ShippingOptions[i]
+			// Without a postal code only pickup can be chosen, and only explicitly.
+			if req.PostalCode != "" || (q.Kind == logistics.KindPickup && q.ID == req.ShippingOption) {
+				shipping = money.New(q.Price, cur)
+				res.Shipping = &Shipping{ID: q.ID, Name: q.Name, Kind: q.Kind, Carrier: q.Carrier, Price: shipping, PriceReason: q.PriceReason,
+					EstimateDays: q.EstimateDays, Estimate: q.Estimate, WeightGrams: weight, Quote: &q}
+				if req.ShippingOption != "" && req.ShippingOption != q.ID {
+					res.Messages = append(res.Messages, Message{Code: "shipping_option_changed", Text: "La opción de entrega que elegiste ya no está disponible; se eligió " + q.Name})
+				}
+			}
+		}
+		switch {
+		case res.Shipping != nil:
+		case req.PostalCode == "":
+			res.Messages = append(res.Messages, Message{Code: "postal_code_required", Text: "Ingresa un código postal para calcular el envío"})
+		default:
+			res.Messages = append(res.Messages, Message{Code: "no_shipping_option", Text: "No hay opciones de entrega para el código postal " + req.PostalCode})
+		}
+	case req.PostalCode != "":
+		// Legacy: one rate per channel, by weight.
 		sh := ch.Shipping
 		kg := (weight + 999) / 1000
 		price, _ := sh.Base.Add(sh.PerKg.Mul(kg))
+		reason := "Por peso: base " + logistics.FormatMoney(sh.Base.Amount) + " + " + logistics.FormatMoney(sh.PerKg.Amount) + " por kg"
 		if !sh.FreeOver.IsZero() && afterDiscount.Amount >= sh.FreeOver.Amount {
 			price = money.Zero(cur)
+			reason = "Gratis: el pedido alcanza el mínimo de " + logistics.FormatMoney(sh.FreeOver.Amount)
 		}
 		shipping = price
-		res.Shipping = &Shipping{Name: sh.Name, Price: price, EstimateDays: sh.EstimateDays, WeightGrams: weight}
-	} else if weight > 0 {
+		q := logistics.Quote{ID: "channel", Name: sh.Name, Kind: logistics.KindDelivery, Available: true, Reason: "Tarifa única del canal de venta",
+			Price: price.Amount, PriceReason: reason, Free: price.IsZero(), EstimateDays: sh.EstimateDays}
+		res.ShippingOptions = []logistics.Quote{q}
+		res.Shipping = &Shipping{ID: q.ID, Name: sh.Name, Kind: q.Kind, Price: price, PriceReason: reason, EstimateDays: sh.EstimateDays, WeightGrams: weight, Quote: &q}
+	default:
 		res.Messages = append(res.Messages, Message{Code: "postal_code_required", Text: "Ingresa un código postal para calcular el envío"})
 	}
 
 	grand, _ := afterDiscount.Add(shipping)
-	// Tax included in a tax-inclusive price: grand * rate / (1 + rate).
-	tax := money.Zero(cur)
-	if ch.TaxBps > 0 {
-		tax = money.New(grand.Amount*ch.TaxBps/(10000+ch.TaxBps), cur)
+	// Prices include tax. The tax inside each amount depends on the class of
+	// the product and on the region of the destination. Discounts are spread
+	// over the lines in proportion to their totals.
+	parts := make([]logistics.TaxPart, 0, len(promoLines)+1)
+	left := discounts.Amount
+	for i, pl := range promoLines {
+		share := int64(0)
+		if items.Amount > 0 {
+			share = discounts.Amount * pl.LineTotal.Amount / items.Amount
+		}
+		if i == len(promoLines)-1 {
+			share = left
+		}
+		left -= share
+		parts = append(parts, logistics.TaxPart{Class: lineClass[i], Gross: pl.LineTotal.Amount - share})
 	}
+	parts = append(parts, logistics.TaxPart{Class: logistics.TaxGeneral, Gross: shipping.Amount})
+	taxRes := s.Logistics.Tax(ch.Country, req.PostalCode, ch.TaxRegion, ch.TaxBps, parts)
+	res.Tax = &taxRes
+	tax := money.New(taxRes.Total, cur)
 	res.Totals = Totals{Items: items, Discounts: discounts, Shipping: shipping, Tax: tax, Grand: grand}
 	if res.Promotions == nil {
 		res.Promotions = []promo.Result{}
