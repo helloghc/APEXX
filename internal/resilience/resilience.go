@@ -173,7 +173,10 @@ func Every(ctx context.Context, log *slog.Logger, name string, interval time.Dur
 		t := time.NewTicker(interval)
 		defer t.Stop()
 		for {
-			if err := fn(ctx); err != nil {
+			start := time.Now()
+			err := fn(ctx)
+			recordRun(name, interval, start, err)
+			if err != nil {
 				log.Warn("periodic task failed", "worker", name, "err", err)
 			}
 			select {

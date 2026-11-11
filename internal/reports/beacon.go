@@ -116,7 +116,7 @@ func (e *ValidationError) Error() string { return "reports: invalid beacon" }
 var (
 	reChannel = regexp.MustCompile(`^[a-z0-9_-]{0,32}$`)
 	reHost    = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]{0,98}[a-z0-9])?$`)
-	reSKU     = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
+	reSKU     = regexp.MustCompile(`^[^\x00-\x1f]{1,64}$`)
 	reOrder   = regexp.MustCompile(`^ord_[a-z0-9]{6,48}$`)
 	rePath    = regexp.MustCompile(`^/[A-Za-z0-9/_.~%-]{0,199}$`)
 	reShop    = regexp.MustCompile(`^/s/[^/]+/([^/]+)/(.*)$`)
@@ -284,10 +284,8 @@ func (s *Service) Ingest(ctx context.Context, tenant string, b Beacon, c Client,
 		return Outcome{}, nil
 	}
 	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		_, err := tx.CopyFrom(ctx, pgx.Identifier{"analytics_events"},
-			[]string{"tenant_id", "at", "type", "visitor", "channel", "site", "path", "product_id", "sku", "qty", "value", "order_id", "referrer", "device"},
-			pgx.CopyFromRows(rows))
-		return err
+		return insertRows(ctx, tx, "analytics_events",
+			[]string{"tenant_id", "at", "type", "visitor", "channel", "site", "path", "product_id", "sku", "qty", "value", "order_id", "referrer", "device"}, rows)
 	})
 	return Outcome{Stored: len(rows)}, err
 }
@@ -350,3 +348,34 @@ func (s *Service) Purge(ctx context.Context) (int64, error) {
 
 // ErrNoTenantKey means the tenant key is not loaded on this node yet.
 var ErrNoTenantKey = errors.New("reports: tenant key not loaded")
+
+// insertRows writes rows with multi-row INSERTs (COPY cannot be used on
+// tables with row level security).
+func insertRows(ctx context.Context, tx pgx.Tx, table string, cols []string, rows [][]any) error {
+	per := 60000 / len(cols)
+	for len(rows) > 0 {
+		n := min(per, len(rows))
+		var sb strings.Builder
+		sb.WriteString("INSERT INTO " + table + " (" + strings.Join(cols, ", ") + ") VALUES ")
+		args := make([]any, 0, n*len(cols))
+		for i, r := range rows[:n] {
+			if i > 0 {
+				sb.WriteByte(',')
+			}
+			sb.WriteByte('(')
+			for j := range cols {
+				if j > 0 {
+					sb.WriteByte(',')
+				}
+				fmt.Fprintf(&sb, "$%d", len(args)+j+1)
+			}
+			sb.WriteByte(')')
+			args = append(args, r...)
+		}
+		if _, err := tx.Exec(ctx, sb.String(), args...); err != nil {
+			return err
+		}
+		rows = rows[n:]
+	}
+	return nil
+}

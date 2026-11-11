@@ -23,6 +23,7 @@ import (
 	"github.com/helloghc/apexx/internal/httpx"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/projection"
+	"github.com/helloghc/apexx/internal/reports"
 	"github.com/helloghc/apexx/internal/resilience"
 	"github.com/helloghc/apexx/internal/store"
 	"github.com/helloghc/apexx/internal/webhooks"
@@ -41,6 +42,7 @@ type Server struct {
 	Bulkhead      *resilience.Bulkhead
 	Payments      *PaymentAccounts
 	Webhooks      *webhooks.Service
+	Reports       *reports.Service // analytics, reports and operations (built from DB and Keys when nil)
 	SecureCookies bool
 	TrustProxy    bool   // honour X-Forwarded-For (only behind our own proxy)
 	MetricsToken  string // bearer token for /metrics; empty = loopback/private callers only
@@ -52,6 +54,8 @@ type Server struct {
 	loginHits map[string][]time.Time
 
 	metrics *metrics
+
+	eventsLimiter *shopLimiter // analytics beacon: per store and address
 }
 
 // Routes builds the HTTP handler.
@@ -160,6 +164,8 @@ func (s *Server) Routes() http.Handler {
 	handle("GET /s/{tenant}/api/config", s.shopConfig)
 	handle("POST /s/{tenant}/api/simulate", s.shopSimulate)
 	handle("POST /s/{tenant}/api/checkout", s.shopCheckout)
+
+	s.routesReports(handle)
 
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))
