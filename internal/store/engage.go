@@ -12,6 +12,9 @@ import (
 // KeySearch is the TopicSettings key of the search configuration.
 const KeySearch = "search"
 
+// KeySubscriptions is the TopicSettings key of the subscription configuration.
+const KeySubscriptions = "subscriptions"
+
 // GetDoc loads a tenant document into v. It reports whether it exists.
 func (d *DB) GetDoc(ctx context.Context, tenant, kind, id string, v any) (bool, error) {
 	found := false

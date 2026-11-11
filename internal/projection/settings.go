@@ -11,6 +11,7 @@ import (
 	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/sitecfg"
 	"github.com/helloghc/apexx/internal/store"
+	"github.com/helloghc/apexx/internal/subs"
 )
 
 // SiteView is what the storefront needs to know about a store besides the
@@ -31,6 +32,15 @@ var emptySite = &SiteView{Policies: map[string]sitecfg.Policy{}, Menus: map[stri
 type siteState struct {
 	site   atomic.Pointer[SiteView]
 	search atomic.Pointer[engage.SearchConfig]
+	subs   atomic.Pointer[subs.Config]
+}
+
+// Subscriptions returns how the store offers recurring purchases (never nil).
+func (t *Tenant) Subscriptions() *subs.Config {
+	if v := t.subs.Load(); v != nil {
+		return v
+	}
+	return &subs.Config{}
 }
 
 // Search returns the search configuration of the store (never nil).
@@ -82,6 +92,14 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 		}
 		cfg.Normalize()
 		t.search.Store(&cfg)
+	}
+	if key == "" || key == store.KeySubscriptions {
+		var cfg subs.Config
+		if _, err := p.db.GetDoc(ctx, t.ID, "subscriptions", "config", &cfg); err != nil {
+			return err
+		}
+		_ = cfg.Normalize()
+		t.subs.Store(&cfg)
 	}
 	if key == store.KeyDomains {
 		return p.loadHosts(ctx)

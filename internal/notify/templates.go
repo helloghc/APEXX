@@ -9,16 +9,18 @@ import (
 
 // Template keys.
 const (
-	TplOrderConfirmed = "order_confirmed"
-	TplOrderShipped   = "order_shipped"
-	TplOrderDelivered = "order_delivered"
-	TplRefundIssued   = "refund_issued"
-	TplReturnReceived = "return_received"
-	TplAccessCode     = "access_code"
-	TplInvoiceReady   = "invoice_available"
-	TplAbandonedCart  = "abandoned_cart"
-	TplPaymentLink    = "payment_link"
-	TplGiftCard       = "gift_card"
+	TplOrderConfirmed      = "order_confirmed"
+	TplOrderShipped        = "order_shipped"
+	TplOrderDelivered      = "order_delivered"
+	TplRefundIssued        = "refund_issued"
+	TplReturnReceived      = "return_received"
+	TplAccessCode          = "access_code"
+	TplInvoiceReady        = "invoice_available"
+	TplAbandonedCart       = "abandoned_cart"
+	TplPaymentLink         = "payment_link"
+	TplGiftCard            = "gift_card"
+	TplSubscriptionCreated = "subscription_created"
+	TplSubscriptionFailed  = "subscription_failed"
 )
 
 // Blocks are the editable parts of a template. Body paragraphs are separated
@@ -149,6 +151,18 @@ var Definitions = []Definition{
 			Body: "Tu código es:\n\n{{tarjeta.codigo}}\n\nSaldo: {{tarjeta.saldo}}. Vigencia: {{tarjeta.vence}}.\n\nEscríbelo al pagar, en “Tarjeta de regalo o saldo a favor”. Si no lo usas todo, el resto queda guardado en el mismo código.",
 			CTA:  "Ir a la tienda", Footer: "Guarda este correo: el código funciona como dinero en la tienda."},
 		Variables: append(append([]Variable{}, common...), Variable{"tarjeta.codigo", "Código de la tarjeta", "ABCD-EFGH-JKLM-NPQR"}, Variable{"tarjeta.saldo", "Saldo", "$500.00 MXN"}, Variable{"tarjeta.vence", "Vigencia", "No vence"})},
+	{Key: TplSubscriptionCreated, Name: "Suscripción activa", Description: "Se envía al iniciar una compra recurrente, con el enlace para administrarla.",
+		Subject: "Tu suscripción en {{tienda.nombre}} está activa",
+		Blocks: Blocks{Heading: "{{cliente.nombre}}, tu suscripción está lista",
+			Body: "Recibirás {{suscripcion.productos}} {{suscripcion.frecuencia}}.\n\nPróxima entrega: {{suscripcion.proxima}}. Cobramos a tu tarjeta guardada el día de cada entrega.\n\nPuedes pausar, saltar una entrega o cancelar cuando quieras, sin llamar a nadie.",
+			CTA:  "Administrar mi suscripción", Footer: "Guarda este correo: el botón es tu acceso a la suscripción."},
+		Variables: append(append([]Variable{}, common...), Variable{"suscripcion.productos", "Productos", "1 × Café en grano 1 kg"}, Variable{"suscripcion.frecuencia", "Frecuencia", "cada mes"}, Variable{"suscripcion.proxima", "Próxima entrega", "11 de diciembre de 2026"})},
+	{Key: TplSubscriptionFailed, Name: "Suscripción con pago pendiente", Description: "Se envía cuando el cobro de una entrega falla tres veces y la suscripción queda detenida.",
+		Subject: "No pudimos cobrar tu suscripción en {{tienda.nombre}}",
+		Blocks: Blocks{Heading: "Tu suscripción está detenida",
+			Body: "Hola {{cliente.nombre}}, intentamos cobrar tu entrega {{suscripcion.frecuencia}} y tu tarjeta no pasó.\n\nNo te preocupes: no se hizo ningún cargo. Entra a tu suscripción para reactivarla o cancelarla.",
+			CTA:  "Revisar mi suscripción", Footer: ""},
+		Variables: append(append([]Variable{}, common...), Variable{"suscripcion.frecuencia", "Frecuencia", "cada mes"})},
 	{Key: TplPaymentLink, Name: "Enlace de pago", Description: "Se envía al mandar un pedido borrador o un saldo pendiente para que el cliente pague.",
 		Subject: "Completa el pago de tu pedido en {{tienda.nombre}}",
 		Blocks: Blocks{Heading: "Tu pedido está listo para pagar",

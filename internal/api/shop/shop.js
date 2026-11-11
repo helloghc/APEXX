@@ -21,9 +21,11 @@
     let j = {}; try { j = await r.json(); } catch {}
     return { status: r.status, body: j };
   }
+  const PLAN = { "1w": "cada semana", "2w": "cada 2 semanas", "1m": "cada mes", "2m": "cada 2 meses", "3m": "cada 3 meses", "6m": "cada 6 meses" };
+  const planNote = (sku) => { const l = cart().find((x) => x.sku === sku); return l && l.plan && PLAN[l.plan] ? "<br><small class='muted'>Suscripción: entrega " + PLAN[l.plan] + "</small>" : ""; };
   // Only coupons the store confirmed as applied are kept; an invalid code is never stored or shown as applied.
   const coupons = () => store.get(CPN, []);
-  const simulate = (zip, extra = {}) => post("/simulate", { channel, postalCode: zip || undefined, shippingOption: store.get(SHIP, "") || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty })), coupons: coupons(), ...extra });
+  const simulate = (zip, extra = {}) => post("/simulate", { channel, postalCode: zip || undefined, shippingOption: store.get(SHIP, "") || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined })), coupons: coupons(), ...extra });
   // Drops stored codes that stopped applying and returns the reasons to show.
   const syncCoupons = (r) => {
     const res = r.coupons || [], lost = res.filter((c) => !c.applied && coupons().includes(c.code));
@@ -83,7 +85,8 @@
       const s = sel(); if (!s) { status.textContent = "Elige una opción."; return; }
       const qty = Math.max(1, Math.min(50, parseInt($("#qty").value, 10) || 1));
       const c = cart(); const line = c.find((l) => l.sku === s.value);
-      if (line) line.qty = Math.min(50, line.qty + qty); else c.push({ sku: s.value, qty, title: s.dataset.title });
+      const plan = buy.querySelector("input[name=mode]:checked")?.value === "sub" ? (buy.querySelector("#plan")?.value || "") : "";
+      if (line) { line.qty = Math.min(50, line.qty + qty); line.plan = plan; } else c.push({ sku: s.value, qty, title: s.dataset.title, plan });
       saveCart(c);
       status.innerHTML = "Agregado al carrito. <a href='" + base + "/cart'>Ver carrito</a>";
     });
@@ -121,7 +124,7 @@
       if (r.status !== 200) { view.innerHTML = "<p class='error'>No pudimos calcular tu carrito: " + esc(r.body.detail || "intenta de nuevo") + "</p>"; return; }
       const lostCoupons = syncCoupons(r.body);
       if (lostCoupons.length && couponStatus) couponStatus.textContent = lostCoupons.join(" ");
-      const rows = r.body.lines.map((l) => l.gift ? "<tr><td>" + esc(l.title) + "</td><td>" + l.qty + "</td><td class='num'>Gratis</td><td></td></tr>" : "<tr><td>" + esc(l.title) + (l.compareAt ? " <s class='muted'>" + money(l.compareAt) + "</s>" : "") + "</td>" +
+      const rows = r.body.lines.map((l) => l.gift ? "<tr><td>" + esc(l.title) + "</td><td>" + l.qty + "</td><td class='num'>Gratis</td><td></td></tr>" : "<tr><td>" + esc(l.title) + planNote(l.sku) + (l.compareAt ? " <s class='muted'>" + money(l.compareAt) + "</s>" : "") + "</td>" +
         "<td><span class='qty'><button type='button' data-dec='" + esc(l.sku) + "' aria-label='Quitar uno de " + esc(l.title) + "'>−</button><span>" + l.qty + "</span>" +
         "<button type='button' data-inc='" + esc(l.sku) + "' aria-label='Agregar uno de " + esc(l.title) + "'>+</button></span></td>" +
         "<td class='num'>" + money(l.total) + "</td><td><button type='button' class='linkbtn' data-del='" + esc(l.sku) + "'>Quitar</button></td></tr>").join("");
@@ -163,7 +166,7 @@
       if (!cart().length) { location.href = base + "/cart"; return; }
       const r = await simulate($("#postal").value.trim(), { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
       if (r.status === 200 && shipBox) shipBox.innerHTML = renderOptions(r.body);
-      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); paintWallet(); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
+      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + planNote(l.sku) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); paintWallet(); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
     }
     // Gift cards and store credit pay first; the card only pays what is left.
     let cards = [];
@@ -202,7 +205,7 @@
     $("#postal").addEventListener("change", () => { store.set(ZIP, $("#postal").value.trim()); refresh(); });
     $("#email").addEventListener("change", refresh); // promotions limited per customer are confirmed with the email
     // Remember the cart of a shopper who typed an email (abandoned cart recovery).
-    const track = () => { const em = $("#email").value.trim(); if (/^\S+@\S+\.\S+$/.test(em) && cart().length) post("/cart/track", { email: em, name: $("#name").value.trim(), channel, site: base.split("/").pop(), items: cart().map((l) => ({ sku: l.sku, qty: l.qty })) }).catch(() => {}); };
+    const track = () => { const em = $("#email").value.trim(); if (/^\S+@\S+\.\S+$/.test(em) && cart().length) post("/cart/track", { email: em, name: $("#name").value.trim(), channel, site: base.split("/").pop(), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined })) }).catch(() => {}); };
     $("#email").addEventListener("change", track); $("#name").addEventListener("change", track);
     if (shipBox) onShipChange(shipBox, refresh);
     (async () => {
@@ -247,7 +250,7 @@
       let key = sessionStorage.getItem("apexx_idem");
       if (!key) { key = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9-]/gi, ""); sessionStorage.setItem("apexx_idem", key); }
       const res = await post("/checkout", {
-        channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty })),
+        channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined })),
         shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined,
         customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, paymentMethod: pm,
         coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,
@@ -443,5 +446,19 @@
     btn.disabled = false;
     if (r.ok) { rf.reset(); out.textContent = "¡Gracias! Tu opinión se publicará cuando la tienda la revise."; }
     else out.textContent = r.status === 429 ? "Demasiados intentos. Espera un minuto." : (r.body.detail || "No pudimos enviar tu opinión. Intenta de nuevo.");
+  });
+})();
+
+/* ==== subscription manage page ==== */
+(() => {
+  const box = document.querySelector("[data-subscription]"); if (!box) return;
+  const tenant = document.body.dataset.tenant, out = box.querySelector("[data-sub-status]");
+  box.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-sub-act]"); if (!b) return;
+    if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
+    box.querySelectorAll("[data-sub-act]").forEach((x) => (x.disabled = true)); out.textContent = "Un momento…";
+    const r = await fetch("/s/" + tenant + "/api/subscription/" + encodeURIComponent(box.dataset.subscription) + "/" + b.dataset.subAct, { method: "POST" }).then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    if (r.ok) location.reload();
+    else { out.textContent = r.body.detail || "No pudimos hacer el cambio. Intenta de nuevo."; box.querySelectorAll("[data-sub-act]").forEach((x) => (x.disabled = false)); }
   });
 })();

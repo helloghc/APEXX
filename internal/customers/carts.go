@@ -18,8 +18,9 @@ import (
 
 // CartItem is one requested line of a tracked cart.
 type CartItem struct {
-	SKU string `json:"sku"`
-	Qty int64  `json:"qty"`
+	SKU  string `json:"sku"`
+	Qty  int64  `json:"qty"`
+	Plan string `json:"plan,omitempty"` // subscription frequency chosen for the line
 }
 
 // CartLine is a priced line of a tracked cart.

@@ -220,7 +220,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 			}
 			return lines, res.Totals.Items.Amount, string(res.Totals.Items.Currency), true
 		}}
-	ord := &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve, Notify: mail, PublicURL: publicURL}
+	ord := &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve, Notify: mail, PublicURL: publicURL, Log: log}
 	resilience.Every(ctx, log, "mailer", 2*time.Second, func(ctx context.Context) error {
 		_, err := mail.Send(ctx)
 		return err
@@ -328,6 +328,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		Media:         mediaStore,
 	}
 	// Searches are counted in memory and saved in batches.
+	// Subscriptions: deliveries that are due are charged and ordered.
+	resilience.Every(ctx, log, "subscriptions", time.Minute, func(ctx context.Context) error {
+		_, err := ord.RenewSubscriptions(ctx)
+		return err
+	})
 	resilience.Every(ctx, log, "search-terms", 15*time.Second, srv.FlushSearchTerms)
 	hs := &http.Server{
 		Addr: env("APEXX_ADDR", ":8080"), Handler: srv.Routes(),

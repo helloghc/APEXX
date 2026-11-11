@@ -1,0 +1,26 @@
+{{define "content"}}
+<div class="policy">
+<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/index">Inicio</a> / Mi suscripción</nav>
+{{if .Sub}}
+<h1>Mi suscripción</h1>
+<div class="acct-box" data-subscription="{{.Token}}">
+<p><strong>{{if eq .Sub.Status "active"}}Activa{{else if eq .Sub.Status "paused"}}En pausa{{else if eq .Sub.Status "past_due"}}Detenida: no pudimos cobrar tu tarjeta{{else}}Cancelada{{end}}</strong> · entrega {{.Sub.PlanLabel}}{{with .Percent}} · {{.}}% de descuento en cada entrega{{end}}</p>
+<ul>{{range .Sub.Items}}<li>{{.Qty}} × {{.Title}}</li>{{end}}</ul>
+{{if eq .Sub.Status "active"}}<p>Próxima entrega: <strong>{{.Next}}</strong>. Ese día cobramos a tu tarjeta guardada.</p>{{end}}
+{{if eq .Sub.Status "past_due"}}<p>No se hizo ningún cargo. Reactívala para intentar de nuevo o cancélala.</p>{{end}}
+<p class="note" role="status" data-sub-status></p>
+<div class="subactions">
+{{if eq .Sub.Status "active"}}<button class="btn ghost" type="button" data-sub-act="skip">Saltar la próxima entrega</button><button class="btn ghost" type="button" data-sub-act="pause">Pausar</button>{{end}}
+{{if or (eq .Sub.Status "paused") (eq .Sub.Status "past_due")}}<button class="btn" type="button" data-sub-act="resume">Reactivar</button>{{end}}
+{{if ne .Sub.Status "cancelled"}}<button class="btn ghost" type="button" data-sub-act="cancel" data-confirm="¿Cancelar tu suscripción? No se harán más cobros ni entregas.">Cancelar suscripción</button>{{end}}
+</div>
+</div>
+{{if .Sub.Orders}}<h2>Entregas</h2>
+<table><thead><tr><th>Pedido</th><th>Fecha</th><th class="num">Total</th></tr></thead><tbody>{{range .Sub.Orders}}<tr><td>#{{.Number}}</td><td>{{day .At}}</td><td class="num">{{cents .Total}}</td></tr>{{end}}</tbody></table>{{end}}
+{{else}}
+<h1>Suscripción no encontrada</h1>
+<p class="muted">Este enlace no es válido o ya cambió. Usa el botón del correo más reciente de tu suscripción.</p>
+<p><a class="btn ghost" href="{{.Base}}/index">Volver al inicio</a></p>
+{{end}}
+</div>
+{{end}}

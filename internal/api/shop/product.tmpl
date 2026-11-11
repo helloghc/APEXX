@@ -12,6 +12,11 @@
 {{range $i, $v := .P.Variants}}<label class="opt"><input type="radio" name="sku" value="{{$v.SKU}}" data-title="{{$.P.Title}} · {{$v.Title}}" data-price="{{$v.Price}}" data-compare="{{$v.CompareAt}}" data-available="{{$v.Available}}"{{if $v.Img}} data-img="{{$v.Img}}" data-imgset="{{$v.ImgSet}}"{{end}} {{if eq $i $.FirstAvailable}}checked{{end}} {{if eq $v.Available 0}}disabled{{end}}>
 <span>{{$v.Title}}<small>{{if eq $v.Available 0}}Agotado{{else}}{{$v.Available}} disponibles{{end}}</small></span></label>{{end}}
 </div></fieldset>
+{{with .Sub}}<fieldset class="subchoice"><legend>¿Cómo lo quieres?</legend>
+<label class="opt"><input type="radio" name="mode" value="" checked><span>Compra única</span></label>
+<label class="opt"><input type="radio" name="mode" value="sub"><span>Suscríbete{{with .Percent}} y ahorra {{.}}%{{end}}<small>Entrega automática. Pausa, salta o cancela cuando quieras.</small></span></label>
+<label class="subplan" for="plan">Entrega <select id="plan" name="plan">{{range .Plans}}<option value="{{.id}}">{{.label}}</option>{{end}}</select></label>
+</fieldset>{{end}}
 <div class="qtyrow"><label for="qty">Cantidad <input id="qty" name="qty" type="number" min="1" max="50" value="1" inputmode="numeric"></label>
 <button class="btn" type="submit" {{if .SoldOut}}disabled{{end}}>{{if .SoldOut}}Agotado{{else}}Agregar al carrito{{end}}</button></div>
 <p class="note" role="status" data-buy-status></p>

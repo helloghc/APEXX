@@ -88,6 +88,8 @@ func (s *Stripe) call(ctx context.Context, method, path, account, idem string, f
 type paymentIntent struct {
 	ID               string `json:"id"`
 	Status           string `json:"status"`
+	Customer         string `json:"customer"`
+	PaymentMethod    string `json:"payment_method"`
 	LastPaymentError *struct {
 		Code string `json:"code"`
 	} `json:"last_payment_error"`
@@ -132,6 +134,26 @@ func (s *Stripe) Charge(ctx context.Context, r ChargeRequest) (Charge, error) {
 		f.Set("payment_method_options[card][installments][plan][interval]", "month")
 		f.Set("payment_method_options[card][installments][plan][type]", "fixed_count")
 	}
+	switch {
+	case r.SaveCard:
+		// The card is attached to a customer so later deliveries can be charged.
+		cf := url.Values{}
+		if r.Email != "" {
+			cf.Set("email", r.Email)
+		}
+		cf.Set("metadata[apexx_order]", r.OrderID)
+		var cus struct {
+			ID string `json:"id"`
+		}
+		if err := s.call(ctx, http.MethodPost, "/v1/customers", r.Account, "cus-"+r.IdempotencyKey, cf, &cus); err != nil {
+			return Charge{}, err
+		}
+		f.Set("customer", cus.ID)
+		f.Set("setup_future_usage", "off_session")
+	case r.OffSession:
+		f.Set("customer", r.Customer)
+		f.Set("off_session", "true")
+	}
 	var pi paymentIntent
 	err := s.call(ctx, http.MethodPost, "/v1/payment_intents", r.Account, r.IdempotencyKey, f, &pi)
 	if errors.Is(err, ErrDeclined) {
@@ -140,7 +162,11 @@ func (s *Stripe) Charge(ctx context.Context, r ChargeRequest) (Charge, error) {
 	if err != nil {
 		return Charge{}, err
 	}
-	return pi.charge(), nil
+	c := pi.charge()
+	if r.SaveCard {
+		c.Customer, c.PaymentMethod = pi.Customer, pi.PaymentMethod
+	}
+	return c, nil
 }
 
 // Refund refunds amount of a PaymentIntent.

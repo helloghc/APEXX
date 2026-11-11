@@ -16,6 +16,9 @@ type Charge struct {
 	Ref    string `json:"ref"`    // PaymentIntent id
 	Status string `json:"status"` // captured | failed | requires_action
 	Reason string `json:"reason,omitempty"`
+	// Set when the card was saved (ChargeRequest.SaveCard).
+	Customer      string `json:"customer,omitempty"`
+	PaymentMethod string `json:"paymentMethod,omitempty"`
 }
 
 // ChargeRequest asks the provider to charge a tokenized payment method.
@@ -29,6 +32,11 @@ type ChargeRequest struct {
 	IdempotencyKey string
 	Email          string
 	Installments   int // monthly payments without interest (0 or 1 = single payment)
+	// SaveCard keeps the payment method for future charges of a subscription.
+	SaveCard bool
+	// Customer and OffSession charge a saved payment method without the shopper present.
+	Customer   string
+	OffSession bool
 }
 
 // InvoiceLine is one line of an invoice.
@@ -113,6 +121,9 @@ func (s *Sandbox) Charge(_ context.Context, r ChargeRequest) (Charge, error) {
 	c := Charge{Ref: "pi_sbx_" + r.OrderID, Status: "captured"}
 	if r.PaymentMethod == "pm_card_chargeDeclined" {
 		c.Status, c.Reason = "failed", "card_declined"
+	}
+	if r.SaveCard && c.Status == "captured" {
+		c.Customer, c.PaymentMethod = "cus_sbx_"+r.OrderID, r.PaymentMethod
 	}
 	s.byKey[r.IdempotencyKey] = c
 	s.byOrder[r.OrderID] = c

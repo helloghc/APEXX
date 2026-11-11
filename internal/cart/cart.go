@@ -64,6 +64,8 @@ type Request struct {
 type Item struct {
 	SKU string `json:"sku"`
 	Qty int64  `json:"qty"`
+	// Plan is the subscription frequency of the line ("1m"); "" = one-time purchase.
+	Plan string `json:"plan,omitempty"`
 }
 
 // Message is a machine-readable notice about the cart.

@@ -512,9 +512,15 @@ type variantView struct {
 
 type specView struct{ Name, Value string }
 
+type subChoice struct {
+	Percent string
+	Plans   []map[string]string
+}
+
 type productPage struct {
 	pageData
 	Handle  string
+	Sub     *subChoice // set when the product can be bought on subscription
 	Reviews store.ProductReviews
 	Average string // "4.6"
 	P       struct {
@@ -632,6 +638,12 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		ld["description"] = p.Description
 	}
 	pg.Handle = p.Handle
+	if cfg := t.Subscriptions(); cfg.Enabled && len(cfg.Plans) > 0 && cfg.Allows(p.ID, cfg.Plans[0]) && !pg.SoldOut {
+		pg.Sub = &subChoice{Plans: planList(cfg.Plans)}
+		if cfg.DiscountBps > 0 {
+			pg.Sub.Percent = strconv.FormatFloat(float64(cfg.DiscountBps)/100, 'f', -1, 64)
+		}
+	}
 	pg.Reviews = s.productReviews(r.Context(), t.ID, p.ID)
 	if pg.Reviews.Count > 0 {
 		pg.Average = strconv.FormatFloat(pg.Reviews.Average, 'f', 1, 64)

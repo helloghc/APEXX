@@ -177,6 +177,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesReports(handle)
 	s.routesEngage(handle)
 	s.routesWallet(handle)
+	s.routesSubscriptions(handle)
 
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))

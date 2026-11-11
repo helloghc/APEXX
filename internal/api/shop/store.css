@@ -381,3 +381,11 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .giftlist{list-style:none;padding:0;margin:6px 0 0;display:grid;gap:6px;font-size:.94rem}
 [data-installments] select{width:100%;min-height:44px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);color:var(--c-text);font:inherit}
 [data-wallet-rows]{margin-top:8px}
+
+/* Suscripciones */
+.subchoice{border:0;padding:0;margin:18px 0;display:grid;gap:8px}
+.subchoice legend{font-weight:600;margin-bottom:8px;padding:0}
+.subplan{display:flex;align-items:center;gap:10px;font-size:.95rem}
+.subplan select{min-height:44px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);color:var(--c-text);font:inherit}
+.subchoice:not(:has(input[value=sub]:checked)) .subplan{display:none}
+.subactions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.subactions .btn{width:auto}

@@ -49,6 +49,7 @@ type env struct {
 	adminA  string // admin key of tenant "a"
 	sfA     string // storefront key of tenant "a"
 	adminB  string
+	orders  *orders.Service
 }
 
 func setup(t *testing.T) *env {
@@ -127,6 +128,7 @@ func setup(t *testing.T) *env {
 		s := &Server{DB: db, Proj: proj, Auth: &auth.Service{DB: db}, Keys: keys, Library: lib, Log: log, Payments: pa,
 			Orders:   &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve},
 			Webhooks: &webhooks.Service{DB: db, Keys: keys, Proj: proj, AllowPrivate: true}}
+		e.orders = s.Orders
 		srv := httptest.NewServer(s.Routes())
 		t.Cleanup(srv.Close)
 		return srv

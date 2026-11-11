@@ -50,6 +50,26 @@ func (t *Tenant) Promos() *promo.Engine { return t.Cart.Promos }
 func (t *Tenant) Simulate(req cart.Request) (cart.Result, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
+	// Lines bought on subscription get the store's subscription discount. A
+	// plan the store does not offer for that product is cleared, so callers
+	// can trust Items[i].Plan after the call.
+	cfg := t.Subscriptions()
+	var skus []string
+	for i := range req.Items {
+		if req.Items[i].Plan == "" {
+			continue
+		}
+		_, p, err := t.Catalog.VariantBySKU(req.Items[i].SKU)
+		if err != nil || !cfg.Allows(p.ID, req.Items[i].Plan) {
+			req.Items[i].Plan = ""
+			continue
+		}
+		skus = append(skus, req.Items[i].SKU)
+	}
+	if len(skus) > 0 && cfg.DiscountBps > 0 {
+		req.Extra = append(append([]promo.Promotion{}, req.Extra...), promo.Promotion{ID: "subscription", Name: "Suscríbete y ahorra", Type: promo.TypeItemPercent,
+			Status: "active", Bps: cfg.DiscountBps, Target: promo.Target{SKUs: skus}})
+	}
 	return t.Cart.Simulate(req)
 }
 

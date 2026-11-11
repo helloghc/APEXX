@@ -69,6 +69,7 @@ export const NAV: { route: string; label: string; module?: string; level?: Level
   { route: "promociones", label: "Promociones", module: "promotions" },
   { route: "busqueda", label: "Búsqueda y opiniones", module: "catalog" },
   { route: "pedidos", label: "Pedidos", module: "orders" },
+  { route: "suscripciones", label: "Suscripciones", module: "orders" },
   { route: "clientes", label: "Clientes", module: "customers" },
   { route: "correos", label: "Correos", module: "settings" },
   { route: "reportes", label: "Reportes", module: "reports" },

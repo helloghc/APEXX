@@ -41,11 +41,12 @@ var shopFuncs = template.FuncMap{
 	},
 	"stars5": func() []int { return []int{5, 4, 3, 2, 1} },
 	"day":    func(t time.Time) string { return shortDate(t) },
+	"cents":  func(n int64) string { return pesos(money.New(n, "MXN")) },
 }
 
 var shopPages = func() map[string]*template.Template {
 	m := map[string]*template.Template{}
-	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy", "favorites"} {
+	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription"} {
 		m[p] = template.Must(template.New(p).Funcs(shopFuncs).ParseFS(shopFS, "shop/layout.tmpl", "shop/"+p+".tmpl"))
 	}
 	return m

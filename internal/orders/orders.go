@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -79,6 +80,8 @@ type CheckoutRequest struct {
 	Installments int `json:"installments,omitempty"`
 	// ClientIP is set by the server (never by clients) for risk rules.
 	ClientIP string `json:"-"`
+	// Renewal is set by the subscription worker for the deliveries after the first.
+	Renewal *Renewal `json:"-"`
 	// ExpectedTotal is the grand total the shopper saw (minor units). When sent,
 	// the order is only placed if the total is still the same.
 	ExpectedTotal *int64 `json:"expectedTotal,omitempty"`
@@ -215,6 +218,7 @@ type Service struct {
 	PublicURL  string          // origin for links in emails
 	ReserveTTL time.Duration
 	Now        func() time.Time
+	Log        *slog.Logger // optional
 }
 
 func (s *Service) ttl() time.Duration {
@@ -310,6 +314,9 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 	// Checkout rules of the store (Configuración → Checkout).
 	rules := t.Site().Settings
 	var fieldErrs []map[string]string
+	if req.Renewal != nil {
+		rules.Checkout.PhoneRequired, rules.Checkout.TermsCheckbox = false, false // accepted when the subscription started
+	}
 	if rules.Checkout.PhoneRequired && len(strings.TrimSpace(req.Customer.Phone)) < 7 {
 		fieldErrs = append(fieldErrs, map[string]string{"field": "customer.phone", "code": "required", "message": "Escribe un teléfono de contacto"})
 	}
@@ -357,6 +364,9 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		if r.ShippingDiscount != nil {
 			amt += r.ShippingDiscount.Amount
 		}
+		if r.ID == "subscription" {
+			continue // the subscription discount is a rule of the store, not a stored promotion with limits
+		}
 		redemptions = append(redemptions, promostore.RedemptionReq{PromotionID: r.ID, Name: r.Name, Coupon: r.Coupon, CampaignID: r.CampaignID, Amount: amt})
 	}
 	// Every requested unit must be allocated; otherwise show the simulation back.
@@ -399,6 +409,18 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 	}
 	tot := sim.Totals
 	var number, wallet int64
+
+	// Subscribed lines (Simulate cleared the plans the store does not offer).
+	subscribed := false
+	for _, it := range req.Items {
+		subscribed = subscribed || it.Plan != ""
+	}
+	if subscribed && len(req.GiftCards) > 0 {
+		return problem(409, "gift_card_not_with_subscription", "Una suscripción se paga con tarjeta bancaria, para poder cobrar las siguientes entregas. Quita la tarjeta de regalo o compra una sola vez.", nil), nil
+	}
+	if subscribed && req.Installments > 1 {
+		return problem(409, "installments_unavailable", "Las suscripciones no se pagan a meses sin intereses", nil), nil
+	}
 
 	// Store rules: instalments offered and fraud checks.
 	instRules, riskRules, err := s.PaymentRules(ctx, tenant)
@@ -481,7 +503,8 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		ch, payErr = acct.Provider.Charge(ctx, payments.ChargeRequest{
 			Account: acct.Account, OrderID: id, Amount: due, Currency: string(tot.Grand.Currency),
 			PaymentMethod: req.PaymentMethod, FeeAmount: due * acct.FeeBps / 10000, IdempotencyKey: "charge-" + id, Email: req.Customer.Email,
-			Installments: req.Installments,
+			Installments: req.Installments, SaveCard: subscribed && req.Renewal == nil,
+			Customer: renewalCustomer(req.Renewal), OffSession: req.Renewal != nil,
 		})
 		if payErr != nil {
 			// Unknown outcome (network, Stripe outage): leave the order pending; the
@@ -498,6 +521,12 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 	}
 	if ch.Status != "captured" {
 		return problem(402, "payment_declined", "El pago fue rechazado: "+ch.Reason, map[string]any{"order": o}), nil
+	}
+	if subscribed && req.Renewal == nil {
+		if err := s.createSubscriptions(ctx, tenant, id, req, sim.Lines, t.Subscriptions().DiscountBps, method.ID, ch); err != nil && s.Log != nil {
+			// The order is paid and stands; the store can see the failure and re-create the plan.
+			s.Log.Error("create subscription", "tenant", tenant, "order", id, "err", err)
+		}
 	}
 	b, _ := json.Marshal(o)
 	return Result{Status: 201, Body: b}, nil
@@ -783,4 +812,11 @@ func (s *Service) ResolvePending(ctx context.Context, tenant, id string) error {
 		return nil
 	}
 	return s.settle(ctx, tenant, "stripe-webhook", id, acct, ch)
+}
+
+func renewalCustomer(r *Renewal) string {
+	if r == nil {
+		return ""
+	}
+	return r.PaymentCustomer
 }
