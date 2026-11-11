@@ -338,6 +338,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		return err
 	})
 	resilience.Every(ctx, log, "search-terms", 15*time.Second, srv.FlushSearchTerms)
+	resilience.Every(ctx, log, "catalog-sync", time.Minute, srv.SyncCatalogs)
 	hs := &http.Server{
 		Addr: env("APEXX_ADDR", ":8080"), Handler: srv.Routes(),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second,

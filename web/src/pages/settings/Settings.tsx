@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Languages as LanguagesIcon } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Languages as LanguagesIcon, Copy } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -16,12 +16,14 @@ const Redirects = lazy(() => import("./Redirects").then((m) => ({ default: m.Red
 const Domains = lazy(() => import("./Domains").then((m) => ({ default: m.Domains })));
 const Feeds = lazy(() => import("./Feeds").then((m) => ({ default: m.Feeds })));
 const Languages = lazy(() => import("./Languages").then((m) => ({ default: m.Languages })));
+const CatalogSource = lazy(() => import("./CatalogSource").then((m) => ({ default: m.CatalogSource })));
 const Checkout = lazy(() => import("./Checkout").then((m) => ({ default: m.Checkout })));
 
 export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "tienda", label: "Tienda", icon: Store, group: "General" },
   { id: "checkout", label: "Checkout", icon: ShoppingBag, group: "General" },
   { id: "canales", label: "Canales", icon: ArrowLeftRight, group: "General" },
+  { id: "catalogo-maestro", label: "Catálogo maestro", icon: Copy, group: "General" },
   { id: "ubicaciones", label: "Ubicaciones", icon: MapPin, group: "Logística" },
   { id: "envios", label: "Envíos", icon: Truck, group: "Logística" },
   { id: "impuestos", label: "Impuestos", icon: Percent, group: "Logística" },
@@ -68,6 +70,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "idiomas":
       body = <Languages me={me} />;
+      break;
+    case "catalogo-maestro":
+      body = <CatalogSource me={me} />;
       break;
     case "checkout":
       body = <Checkout me={me} />;
