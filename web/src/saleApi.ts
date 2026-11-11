@@ -99,7 +99,9 @@ export const crm = {
     request<{ items: Customer[]; nextCursor: string; total: number }>("GET", "/v1/customers" + qs({ ...f })),
   get: (id: string) => request<Customer>("GET", `/v1/customers/${enc(id)}`),
   create: (b: { email: string; name: string; phone?: string; tags?: string[]; marketingConsent?: boolean }) => request<Customer>("POST", "/v1/customers", b),
-  update: (id: string, b: Partial<Pick<Customer, "name" | "phone" | "tags" | "marketingConsent" | "status">> & { version: number }) => request<Customer>("PATCH", `/v1/customers/${enc(id)}`, b),
+  // The version travels in If-Match: two people editing the same customer do not overwrite each other.
+  update: (id: string, { version, ...b }: Partial<Pick<Customer, "name" | "phone" | "tags" | "marketingConsent" | "status">> & { version: number }) =>
+    request<Customer>("PATCH", `/v1/customers/${enc(id)}`, b, { headers: { "If-Match": `"${version}"` } }),
   orders: (id: string) => request<{ items: Order[] }>("GET", `/v1/customers/${enc(id)}/orders`),
   addNote: (id: string, body: string) => request<unknown>("POST", `/v1/customers/${enc(id)}/notes`, { body }),
   tags: () => request<{ tags: string[] | Record<string, number> | null }>("GET", "/v1/customers/tags").then((r) => (Array.isArray(r.tags) ? r.tags : Object.keys(r.tags ?? {}))),

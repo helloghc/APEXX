@@ -27,7 +27,9 @@ import (
 	"github.com/helloghc/apexx/internal/builder"
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/crypto"
+	"github.com/helloghc/apexx/internal/customers"
 	"github.com/helloghc/apexx/internal/money"
+	"github.com/helloghc/apexx/internal/notify"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/pricing"
@@ -126,8 +128,10 @@ func setup(t *testing.T) *env {
 		pa := &PaymentAccounts{DB: db, Keys: keys, Sandbox: e.sandbox, Breakers: &resilience.Breakers{Threshold: 5, Cooldown: time.Second}}
 		lib, _ := builder.NewLibrary(builder.DefaultSections()...)
 		DefaultHome = seed.HomeTemplate
+		mail := &notify.Service{DB: db, Keys: keys}
 		s := &Server{DB: db, Proj: proj, Auth: &auth.Service{DB: db, Keys: keys}, Keys: keys, Library: lib, Log: log, Payments: pa,
-			Orders:   &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve},
+			Customers: &customers.Service{DB: db, Keys: keys, Notify: mail}, Notify: mail,
+			Orders:   &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve, Notify: mail},
 			Webhooks: &webhooks.Service{DB: db, Keys: keys, Proj: proj, AllowPrivate: true}}
 		e.orders, e.server = s.Orders, s
 		srv := httptest.NewServer(s.Routes())
