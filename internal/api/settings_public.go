@@ -211,6 +211,7 @@ func absolutize(doc []byte, base string) []byte {
 // decorate finishes the data of a shop page: store name, links prefix and
 // the theme chrome with the store's menus.
 func (s *Server) decorate(r *http.Request, t *projection.Tenant, pd pageData) pageData {
+	pd.Origin, _ = s.origin(r, t.Site())
 	site := t.Site()
 	if site.Settings.Name != "" {
 		pd.Store = site.Settings.Name

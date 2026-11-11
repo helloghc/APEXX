@@ -16,6 +16,9 @@ import s from "./SectionList.module.css";
 import ui from "../ui.module.css";
 
 interface Props {
+  /** Fixed sections above and below the page body (shared look of the whole store). */
+  header?: SectionInstance[];
+  footer?: SectionInstance[];
   sections: SectionInstance[];
   defs: Map<string, SectionDefinition>;
   issues: Map<number, SectionIssues>;
@@ -64,6 +67,18 @@ export function SectionList(p: Props) {
         </button>
       </div>
       <p className={s.hint}>Arrastra para reordenar. Con teclado: enfoca el asa, Espacio, flechas y Espacio.</p>
+      {(p.header ?? []).length > 0 && (
+        <ul className={s.items} aria-label="Encabezado" data-testid="fixed-header">
+          {(p.header ?? []).map((sec) => (
+            <li key={sec.id} className={`${s.row} ${p.selected === sec.id ? s.selected : ""}`}>
+              <button className={s.name} onClick={() => p.onSelect(sec.id)} aria-current={p.selected === sec.id ? "true" : undefined}>
+                {nameOf(sec, p.defs)} <small>· encabezado</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -94,6 +109,18 @@ export function SectionList(p: Props) {
         </SortableContext>
       </DndContext>
       {p.sections.length === 0 && <p className={s.empty}>La página no tiene secciones. Agrega la primera.</p>}
+      {(p.footer ?? []).length > 0 && (
+        <ul className={s.items} aria-label="Pie de página" data-testid="fixed-footer">
+          {(p.footer ?? []).map((sec) => (
+            <li key={sec.id} className={`${s.row} ${p.selected === sec.id ? s.selected : ""}`}>
+              <button className={s.name} onClick={() => p.onSelect(sec.id)} aria-current={p.selected === sec.id ? "true" : undefined}>
+                {nameOf(sec, p.defs)} <small>· pie de página</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
     </nav>
   );
 }

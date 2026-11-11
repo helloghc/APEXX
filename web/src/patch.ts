@@ -13,6 +13,23 @@ export function mainSections(t: Template): SectionInstance[] {
   return t.regions.main ?? [];
 }
 
+/** The fixed regions around the page body: their sections are edited but not moved or removed. */
+export type Region = "main" | "header" | "footer";
+
+export function regionSections(t: Template, region: Region): SectionInstance[] {
+  return t.regions[region] ?? [];
+}
+
+/** locate finds a section by id in any region. */
+export function locate(t: Template, id: string | null): { region: Region; index: number; section: SectionInstance } | null {
+  if (!id) return null;
+  for (const region of ["header", "main", "footer"] as Region[]) {
+    const index = regionSections(t, region).findIndex((x) => x.id === id);
+    if (index >= 0) return { region, index, section: regionSections(t, region)[index] as SectionInstance };
+  }
+  return null;
+}
+
 export function newId(prefix: string): string {
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}_${Date.now().toString(36)}${rand}`;
@@ -80,10 +97,10 @@ export function duplicateSection(t: Template, index: number, id = newId("sec")):
 }
 
 /** setSetting writes (or removes, when value is undefined) one setting of a section. */
-export function setSetting(t: Template, index: number, key: string, value: Json | undefined): Edit | null {
-  const sec = mainSections(t)[index];
+export function setSetting(t: Template, index: number, key: string, value: Json | undefined, region: Region = "main"): Edit | null {
+  const sec = regionSections(t, region)[index];
   if (!sec) return null;
-  const base = `${MAIN}/${index}/settings`;
+  const base = `/regions/${region}/${index}/settings`;
   const path = `${base}/${escapeKey(key)}`;
   const had = sec.settings !== undefined && key in sec.settings;
   const old = sec.settings?.[key];
@@ -106,33 +123,33 @@ export function setSetting(t: Template, index: number, key: string, value: Json 
   };
 }
 
-export function addBlock(t: Template, index: number, type: string, id = newId("blk")): Edit | null {
-  const sec = mainSections(t)[index];
+export function addBlock(t: Template, index: number, type: string, id = newId("blk"), region: Region = "main"): Edit | null {
+  const sec = regionSections(t, region)[index];
   if (!sec) return null;
   const value = { id, type, settings: {} } as unknown as Json;
   if (!sec.blocks) {
-    const path = `${MAIN}/${index}/blocks`;
+    const path = `/regions/${region}/${index}/blocks`;
     return { label: "Agregar bloque", ops: [{ op: "add", path, value: [value] }], inverse: [{ op: "remove", path }] };
   }
   const at = sec.blocks.length;
   return {
     label: "Agregar bloque",
-    ops: [{ op: "add", path: `${MAIN}/${index}/blocks/-`, value }],
-    inverse: [{ op: "remove", path: `${MAIN}/${index}/blocks/${at}` }],
+    ops: [{ op: "add", path: `/regions/${region}/${index}/blocks/-`, value }],
+    inverse: [{ op: "remove", path: `/regions/${region}/${index}/blocks/${at}` }],
   };
 }
 
-export function removeBlock(t: Template, index: number, b: number): Edit | null {
-  const blk = mainSections(t)[index]?.blocks?.[b];
+export function removeBlock(t: Template, index: number, b: number, region: Region = "main"): Edit | null {
+  const blk = regionSections(t, region)[index]?.blocks?.[b];
   if (!blk) return null;
-  const path = `${MAIN}/${index}/blocks/${b}`;
+  const path = `/regions/${region}/${index}/blocks/${b}`;
   return { label: "Quitar bloque", ops: [{ op: "remove", path }], inverse: [{ op: "add", path, value: clone(blk) as unknown as Json }] };
 }
 
-export function setBlockSetting(t: Template, index: number, b: number, key: string, value: string): Edit | null {
-  const blk = mainSections(t)[index]?.blocks?.[b];
+export function setBlockSetting(t: Template, index: number, b: number, key: string, value: string, region: Region = "main"): Edit | null {
+  const blk = regionSections(t, region)[index]?.blocks?.[b];
   if (!blk) return null;
-  const base = `${MAIN}/${index}/blocks/${b}/settings`;
+  const base = `/regions/${region}/${index}/blocks/${b}/settings`;
   if (!blk.settings) {
     return {
       label: "Cambiar bloque",

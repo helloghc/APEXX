@@ -20,6 +20,9 @@ import {
   removeSection,
   setBlockSetting,
   setSetting,
+  locate,
+  regionSections,
+  type Region,
 } from "./patch";
 import { groupIssues } from "./schema";
 import type { Release } from "./types";
@@ -52,8 +55,12 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
   const [publishing, setPublishing] = useState(false);
 
   const sections = template ? mainSections(template) : [];
-  const selIndex = sections.findIndex((x) => x.id === selected);
-  const selSection = selIndex >= 0 ? (sections[selIndex] ?? null) : null;
+  // The selected section can live in the header or footer region too.
+  const sel = template ? locate(template, selected) : null;
+  const selRegion: Region = sel?.region ?? "main";
+  const selIndex = sel?.index ?? -1;
+  const selSection = sel?.section ?? null;
+  const mainIndex = selRegion === "main" ? selIndex : -1;
   const issues = useMemo(() => groupIssues(report?.issues), [report]);
 
   useEffect(() => {
@@ -159,6 +166,8 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
       )}
       <div className={s.main}>
         <SectionList
+          header={regionSections(template, "header")}
+          footer={regionSections(template, "footer")}
           sections={sections}
           defs={defs}
           issues={issues.bySection}
@@ -181,11 +190,11 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
         <SettingsForm
           section={selSection}
           def={selSection?.type ? defs.get(selSection.type) : undefined}
-          issues={issues.bySection.get(selIndex)}
-          onChange={(k, v) => void ed.apply(setSetting(template, selIndex, k, v))}
-          onBlockChange={(b, k, v) => void ed.apply(setBlockSetting(template, selIndex, b, k, v))}
-          onAddBlock={(type) => void ed.apply(addBlock(template, selIndex, type))}
-          onRemoveBlock={(b) => void ed.apply(removeBlock(template, selIndex, b))}
+          issues={selRegion === "main" ? issues.bySection.get(selIndex) : undefined}
+          onChange={(k, v) => void ed.apply(setSetting(template, selIndex, k, v, selRegion))}
+          onBlockChange={(b, k, v) => void ed.apply(setBlockSetting(template, selIndex, b, k, v, selRegion))}
+          onAddBlock={(type) => void ed.apply(addBlock(template, selIndex, type, undefined, selRegion))}
+          onRemoveBlock={(b) => void ed.apply(removeBlock(template, selIndex, b, selRegion))}
         />
       </div>
 
@@ -196,7 +205,7 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
         onClose={() => setPicker(false)}
         onPick={(d) => {
           const id = newId("sec");
-          void ed.apply(addSection(template, d, selIndex >= 0 ? selIndex + 1 : sections.length, id));
+          void ed.apply(addSection(template, d, mainIndex >= 0 ? mainIndex + 1 : sections.length, id));
           setSelected(id);
           setPicker(false);
         }}

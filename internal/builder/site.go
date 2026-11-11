@@ -579,6 +579,9 @@ func (s *Site) renderFull(t Template) Rendered {
 	doc.WriteString("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
 	fmt.Fprintf(&doc, "<title>%s</title><meta name=\"description\" content=\"%s\">",
 		template.HTMLEscapeString(t.SEO.Title), template.HTMLEscapeString(t.SEO.Description))
+	// Social previews (WhatsApp, Facebook, X) read these.
+	fmt.Fprintf(&doc, `<meta property="og:type" content="website"><meta property="og:title" content="%s"><meta property="og:description" content="%s"><meta name="twitter:card" content="summary">`,
+		template.HTMLEscapeString(t.SEO.Title), template.HTMLEscapeString(t.SEO.Description))
 	doc.WriteString(string(rt.Head()))
 	fmt.Fprintf(&doc, `<script src="/s/assets/shop.js?v=%s" defer></script></head><body class="%s"><a class="skip" href="#main">Saltar al contenido</a>`, AssetVersion, rt.BodyClass())
 	doc.Write(header.Bytes())

@@ -634,6 +634,7 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(images) > 0 {
 		ld["image"] = images
+		pg.OGImage = pg.Origin + images[0]
 	}
 	if p.Description != "" {
 		ld["description"] = p.Description

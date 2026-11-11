@@ -60,6 +60,7 @@ type pageData struct {
 	Title, Description, Store, Tenant, Base, Channel, Query string
 	Canonical                                               string // path of the page without filters, for search engines
 	NoIndex                                                 bool   // filtered or paginated views are not indexed
+	Origin, OGImage                                         string // absolute origin and image for social previews
 	Chrome                                                  builder.Chrome
 }
 
