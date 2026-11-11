@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { FormField } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
+import { Logo } from "@/components/Logo";
 import {
   Sidebar,
   SidebarContent,
@@ -124,10 +125,11 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
   }
 
   return (
-    <main className="grid min-h-full place-items-center px-4 py-8">
-      <Card className="w-full max-w-sm">
+    <main className="grid min-h-full place-items-center px-4 py-8" style={{ background: "radial-gradient(900px 500px at 50% -10%, var(--accent-soft), transparent 70%), var(--bg)" }}>
+      <Card className="w-full max-w-sm" style={{ boxShadow: "var(--shadow-2)" }}>
         <CardHeader>
-          <h1 className="text-xl font-semibold leading-none tracking-tight">Inicia sesión en Apexx</h1>
+          <Logo size={32} className="mb-3" />
+          <h1 className="text-2xl font-semibold leading-tight tracking-tight">Inicia sesión</h1>
           <CardDescription>Administra tu tienda: catálogo, pedidos, equipo y diseño.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -248,7 +250,7 @@ function Shell({ me }: { me: Me }) {
     <SidebarProvider>
       <Sidebar label="Menú principal">
         <SidebarHeader>
-          <span className="text-base font-extrabold tracking-tight">Apexx</span>
+          <Logo size={26} />
           <span className="text-xs text-muted-foreground">Tienda {me.tenant}</span>
         </SidebarHeader>
         <SidebarContent>
@@ -287,7 +289,7 @@ function Shell({ me }: { me: Me }) {
       <SidebarInset>
         <header className="flex items-center gap-2 border-b bg-card px-2 py-1 md:hidden">
           <SidebarTrigger />
-          <span className="font-semibold">Apexx</span>
+          <Logo size={22} />
           <span className="truncate text-xs text-muted-foreground">{me.tenant}</span>
         </header>
         <div className={full ? "min-h-0 flex-1 overflow-hidden" : "min-h-0 flex-1 overflow-auto"}>

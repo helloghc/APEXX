@@ -1,0 +1,44 @@
+/* Voltio — tecnología. Oscuro, preciso, datos en monoespaciada, brillo azul. */
+.t-voltio{background:radial-gradient(1200px 600px at 80% -10%,rgb(91 140 255 / .14),transparent 60%),var(--c-bg)}
+.t-voltio .display{font-weight:700;letter-spacing:-.035em}
+.t-voltio h1.display{font-size:clamp(2.4rem,1.2rem + 4.6vw,4.8rem)}
+.t-voltio .eyebrow{font-family:var(--f-accent);color:var(--c-accent);letter-spacing:.08em;font-size:.76rem}
+.t-voltio .eyebrow::before{content:"// "}
+.t-voltio .btn{font-weight:600;box-shadow:0 8px 30px -10px var(--c-primary)}
+.t-voltio .btn-ghost{box-shadow:none;border-color:var(--c-border);color:var(--c-text)}
+.t-voltio .sx-announce{background:linear-gradient(90deg,var(--c-primary),var(--c-accent));font-family:var(--f-accent);font-size:.78rem}
+.t-voltio .sx-header{background:rgb(11 13 18 / .82);backdrop-filter:blur(14px)}
+.t-voltio .hdr-logo{font-weight:800;letter-spacing:.12em;font-size:1.3rem}
+.t-voltio .hdr-logo::after{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c-accent);margin-left:6px;vertical-align:middle}
+.t-voltio .hdr-search{background:var(--c-surface)}
+@media (min-width:900px){.t-voltio .hdr-search input{width:300px}}
+.t-voltio .hero-split{background:transparent}
+.t-voltio .hero-split .hero-media{padding:24px}
+.t-voltio .ph{background:var(--c-surface);border:1px solid var(--c-border)}
+.t-voltio .ph-1,.t-voltio .ph-4{background:radial-gradient(circle at 30% 20%,rgb(91 140 255 / .45),transparent 55%),var(--c-surface)}
+.t-voltio .ph-2,.t-voltio .ph-5{background:radial-gradient(circle at 70% 70%,rgb(45 212 238 / .38),transparent 55%),var(--c-surface)}
+.t-voltio .ph-3,.t-voltio .ph-6{background:linear-gradient(135deg,rgb(91 140 255 / .3),rgb(45 212 238 / .14) 60%,transparent),var(--c-surface)}
+.t-voltio .ph::before{width:62%;height:62%;left:19%;top:19%;right:auto;bottom:auto;border-radius:22%;background:transparent;border:1px solid rgb(241 243 248 / .14);box-shadow:0 0 0 28px rgb(241 243 248 / .03),0 0 80px rgb(91 140 255 / .25)}
+.t-voltio .ph::after{width:10px;height:10px;left:auto;right:14px;top:14px;border-radius:2px;background:var(--c-accent);mix-blend-mode:normal}
+.t-voltio .ph span{font-family:var(--f-accent);color:rgb(241 243 248 / .82);font-weight:300}
+.t-voltio .ph-hero{min-height:240px;border-radius:calc(var(--radius) * 2)}
+@media (min-width:900px){.t-voltio .ph-hero{min-height:420px}}
+@media (max-width:899px){.t-voltio .hero-split .hero-media{padding:0 var(--gutter) 24px}}
+.t-voltio .pcard{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:10px 10px 14px;transition:border-color .2s}
+.t-voltio .pcard:hover{border-color:var(--c-primary)}
+.t-voltio .pcard-media{border:0;border-radius:calc(var(--radius) - 4px)}
+.t-voltio .pcard-price{font-family:var(--f-accent);font-weight:500}
+.t-voltio .pcard-brand{font-family:var(--f-accent);letter-spacing:.04em;text-transform:none}
+.t-voltio .pcard-badge{font-family:var(--f-accent);background:var(--c-accent);color:var(--c-accentText)}
+.t-voltio .pcard-badge.is-sale{background:var(--c-sale);color:#05070C}
+.t-voltio .tile a{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:12px}
+.t-voltio .tile-copy strong{font-weight:700;font-size:1.05rem}
+.t-voltio .sx-benefits ul{border:1px solid var(--c-border);border-radius:var(--radius);padding:24px;background:var(--c-surface)}
+.t-voltio .bf-icon{border-radius:8px;background:rgb(91 140 255 / .16)}
+.t-voltio .bf-icon::after{border-color:var(--c-accent);border-right-color:transparent}
+.t-voltio .sx-imgtext{background:var(--c-surface);border:1px solid var(--c-border);border-radius:calc(var(--radius) * 2);padding:clamp(16px,4vw,40px)}
+.t-voltio .sx-logos a{font-family:var(--f-accent);font-size:1.15rem}
+.t-voltio .sx-faq details{border-color:var(--c-border)}
+.t-voltio .sx-news{background:linear-gradient(135deg,rgb(91 140 255 / .14),rgb(45 212 238 / .06)),var(--c-surface)}
+.t-voltio .price.big,.t-voltio td.num{font-family:var(--f-accent)}
+.t-voltio .summary,.t-voltio .checkout fieldset{background:var(--c-surface)}

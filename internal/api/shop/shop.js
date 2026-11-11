@@ -1,7 +1,9 @@
 // Apexx storefront: cart in localStorage, live simulation, checkout with Stripe.
 (() => {
   const body = document.body;
-  const tenant = body.dataset.tenant, base = body.dataset.base, channel = body.dataset.channel || "mx";
+  // Builder pages are static per revision, so they learn the store from the URL.
+  const parts = location.pathname.split("/");
+  const tenant = body.dataset.tenant || parts[2], base = body.dataset.base || "/s/" + parts[2] + "/" + parts[3], channel = body.dataset.channel || "mx";
   const api = "/s/" + tenant + "/api";
   const KEY = "apexx_cart_" + tenant, ZIP = "apexx_zip_" + tenant;
   const $ = (s, el = document) => el.querySelector(s);
@@ -22,12 +24,28 @@
   const simulate = (zip) => post("/simulate", { channel, postalCode: zip || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty })) });
   count();
 
+  // Quick add buttons on product cards (shown by themes that want them).
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-quick-add]"); if (!b) return;
+    const c = cart(); const sku = b.dataset.quickAdd; const l = c.find((x) => x.sku === sku);
+    if (l) l.qty = Math.min(50, l.qty + 1); else c.push({ sku, qty: 1, title: b.dataset.title || sku });
+    saveCart(c); b.classList.add("added"); b.textContent = "Agregado ✓";
+    setTimeout(() => { b.classList.remove("added"); b.textContent = "Agregar"; }, 1600);
+  });
+
+  // Newsletter: confirmation on the page (sending to an email tool arrives with connectors).
+  document.querySelectorAll("[data-newsletter]").forEach((f) => f.addEventListener("submit", (e) => {
+    e.preventDefault(); const i = f.querySelector("input[type=email]");
+    if (!i.value.includes("@")) { i.focus(); return; }
+    f.hidden = true; const ok = f.parentElement.querySelector("[data-newsletter-ok]"); if (ok) ok.hidden = false;
+  }));
+
   // Product page: add to cart.
   const buy = $("[data-buy]");
   if (buy) {
     const status = $("[data-buy-status]", buy), out = $("[data-price-out]", buy);
     const sel = () => $("input[name=sku]:checked", buy);
-    const show = () => { const s = sel(); if (s) out.innerHTML = esc(s.dataset.price) + (s.dataset.compare ? " <s>" + esc(s.dataset.compare) + "</s>" : ""); };
+    const show = () => { const s = sel(); if (s) out.innerHTML = s.dataset.compare ? "<span class='sale'>" + esc(s.dataset.price) + "</span> <s>" + esc(s.dataset.compare) + "</s>" : esc(s.dataset.price); };
     buy.addEventListener("change", show);
     buy.addEventListener("submit", (e) => {
       e.preventDefault();

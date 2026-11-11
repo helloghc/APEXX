@@ -1,6 +1,6 @@
 import type { Report } from "../types";
 import type { Device } from "./Preview";
-import { ExternalLink, History, Redo2, Undo2 } from "lucide-react";
+import { ExternalLink, History, Palette, Redo2, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ui from "../ui.module.css";
@@ -20,6 +20,7 @@ interface Props {
   onRedo: () => void;
   onPublish: () => void;
   onHistory: () => void;
+  onStyle?: () => void;
   /** Optional link to the live page. */
   liveUrl?: string;
 }
@@ -91,6 +92,11 @@ export function TopBar(p: Props) {
         <Button variant="outline" size="sm" onClick={p.onRedo} disabled={!p.canRedo} aria-keyshortcuts="Control+Shift+Z" title="Rehacer (Ctrl+Shift+Z)">
           <Redo2 /> Rehacer
         </Button>
+        {p.onStyle && (
+          <Button variant="outline" size="sm" onClick={p.onStyle}>
+            <Palette /> Estilo
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={p.onHistory}>
           <History /> Historial
         </Button>

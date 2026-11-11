@@ -61,6 +61,50 @@ export interface Template {
   name: string;
   seo: { title: string; description: string };
   regions: Record<string, SectionInstance[] | null>;
+  theme?: ThemeSettings;
+}
+
+/** Site theme stored in the home template: a base theme plus overrides. */
+export interface ThemeSettings {
+  id: string;
+  colors?: Record<string, string>;
+  display?: string;
+  body?: string;
+  radius?: number;
+}
+
+export interface StoreTheme {
+  id: string;
+  name: string;
+  vertical: string;
+  description: string;
+  colors: Record<string, string>;
+  display: string;
+  body: string;
+  accentFont?: string;
+  radius: number;
+  buttonStyle: string;
+  cardStyle: string;
+  headerStyle: string;
+  density: string;
+  imageRatio: string;
+  colorScheme: "light" | "dark";
+}
+
+export interface StoreFont {
+  id: string;
+  family: string;
+  file: string;
+  weights: string;
+  fallback: string;
+  kind: string;
+}
+
+export interface ThemesResponse {
+  items: StoreTheme[];
+  fonts: StoreFont[];
+  tokens: string[];
+  contrastPairs: [string, string][];
 }
 
 export interface Issue {

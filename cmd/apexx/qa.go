@@ -24,13 +24,32 @@ type qaData struct {
 }
 
 func (d qaData) Products(limit int) []builder.Card {
-	ps, _ := d.t.Catalog.List("", limit)
+	ps, _ := d.t.Catalog.Search("", "", limit)
 	out := make([]builder.Card, 0, len(ps))
+	price := func(m money.Money) string {
+		w, c := m.Amount/100, m.Amount%100
+		s := strconv.FormatInt(w, 10)
+		for i := len(s) - 3; i > 0; i -= 3 {
+			s = s[:i] + "," + s[i:]
+		}
+		return fmt.Sprintf("$%s.%02d MXN", s, c)
+	}
 	for _, p := range ps {
-		c := builder.Card{Title: p.Title, URL: "p/" + p.Handle}
+		c := builder.Card{Title: p.Title, URL: "p/" + p.Handle, Brand: p.Brand, Tone: builder.ToneOf(p.Title), SoldOut: true}
+		if r := []rune(p.Title); len(r) > 0 {
+			c.Initial = string(r[0])
+		}
+		for _, v := range p.Variants {
+			if d.t.Inventory.Available(v.SKU) > 0 && c.SoldOut {
+				c.SoldOut, c.SKU = false, v.SKU
+			}
+		}
 		if len(p.Variants) > 0 {
 			if q, ok := d.t.Pricing.Resolve("mx", p.Variants[0].SKU, 1); ok {
-				c.Price = fmt.Sprintf("$%d.%02d MXN", q.Unit.Amount/100, q.Unit.Amount%100)
+				c.Price = price(q.Unit)
+				if q.CompareAt != nil && q.CompareAt.Amount > q.Unit.Amount {
+					c.CompareAt = price(*q.CompareAt)
+				}
 			}
 		}
 		out = append(out, c)
@@ -46,6 +65,7 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 	domain := fs.String("email-domain", "qa.apexx.test", "domain for the test accounts")
 	pass := fs.String("password", "", "password for every test account (12+ chars)")
 	n := fs.Int("n", 300, "products")
+	theme := fs.String("theme", builder.DefaultThemeID, "theme of the main site: lienzo, voltio, mercadito or balsamo")
 	_ = fs.Parse(args)
 	if len(*pass) < 12 {
 		fmt.Fprintln(os.Stderr, "usa -password con al menos 12 caracteres")
@@ -125,25 +145,41 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 	t, _ := proj.Tenant(*tenant)
 	lib, err := builder.NewLibrary(builder.DefaultSections()...)
 	must(log, err, "sections")
-	per := store.SitePersister{DB: db, Tenant: *tenant, Site: "main"}
-	drafts, ver, revs, rels, found, err := per.LoadSite()
-	must(log, err, "load site")
-	if !found {
-		must(log, per.Ensure("main"), "site")
-		h := seed.HomeTemplate()
-		must(log, per.SaveDraft(h.Handle, h, 1), "draft")
-		drafts, ver = map[string]builder.Template{h.Handle: h}, 1
+	if _, ok := builder.Themes[*theme]; !ok {
+		fmt.Fprintln(os.Stderr, "tema desconocido:", *theme)
+		os.Exit(2)
 	}
-	site := builder.NewSite("main", lib, qaData{t: t})
-	site.Restore(drafts, ver, revs, rels)
-	site.SetPersister(per)
-	_, _, err = site.Publish("qa-setup", "Sitio inicial de QA")
-	must(log, err, "publish")
+	// "main" uses the chosen theme; one extra site per theme lets QA browse all four.
+	sites := []struct{ id, theme string }{{"main", *theme}}
+	for _, th := range builder.ThemeList() {
+		sites = append(sites, struct{ id, theme string }{th.ID, th.ID})
+	}
+	for _, sd := range sites {
+		per := store.SitePersister{DB: db, Tenant: *tenant, Site: sd.id}
+		drafts, ver, revs, rels, found, err := per.LoadSite()
+		must(log, err, "load site")
+		if !found {
+			must(log, per.Ensure(sd.id), "site")
+		}
+		site := builder.NewSite(sd.id, lib, qaData{t: t})
+		site.Restore(drafts, ver, revs, rels)
+		site.SetPersister(per)
+		if d, _, err := site.Draft("index"); err != nil || d.Theme == nil || d.Theme.ID != sd.theme {
+			_, _, err := site.ApplyStarter("index", builder.Starter(sd.theme), "qa-setup")
+			must(log, err, "starter "+sd.id)
+		}
+		_, _, err = site.Publish("qa-setup", "Sitio de QA ("+sd.theme+")")
+		must(log, err, "publish "+sd.id)
+	}
 
 	sf, err := db.CreateAPIKey(ctx, *tenant, "storefront-qa", "storefront")
 	must(log, err, "storefront key")
 	fmt.Printf("\nTienda de QA lista: %q (%d productos, 2 promociones, sitio publicado)\n\n", *tenant, *n)
-	fmt.Printf("Tienda (comprador):  /s/%s/main/index\nAdmin (plataforma):  /admin/\n\nCuentas (contraseña: la que pasaste en -password):\n", *tenant)
+	fmt.Printf("Tienda (comprador):  /s/%s/main/index  (tema %s)\n", *tenant, *theme)
+	for _, th := range builder.ThemeList() {
+		fmt.Printf("Tema %-10s         /s/%s/%s/index  (%s)\n", th.Name+":", *tenant, th.ID, th.Vertical)
+	}
+	fmt.Printf("Admin (plataforma):  /admin/\n\nCuentas (contraseña: la que pasaste en -password):\n")
 	for _, x := range accounts {
 		fmt.Printf("  %-34s %s@%s\n", x.who, x.email, *domain)
 	}
