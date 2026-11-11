@@ -178,6 +178,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesEngage(handle)
 	s.routesWallet(handle)
 	s.routesSubscriptions(handle)
+	s.routesAccount(handle)
 
 	if s.Admin != nil {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))
@@ -345,6 +346,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		Store    string `json:"store"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		Code     string `json:"code"` // two-step verification: app code or a recovery code
 	}
 	if !decode(w, r, &body) {
 		return
@@ -355,10 +357,20 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "too_many_attempts", Detail: "Demasiados intentos; espera un minuto"})
 		return
 	}
-	token, m, err := s.Auth.Login(r.Context(), body.Store, body.Email, body.Password, s.clientIP(r), r.UserAgent())
+	token, m, err := s.Auth.Login(r.Context(), body.Store, body.Email, body.Password, body.Code, s.clientIP(r), r.UserAgent())
 	if errors.Is(err, auth.ErrBadCredentials) {
 		s.loginFailed(limitKey)
 		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_credentials", Detail: "Correo o contraseña incorrectos"})
+		return
+	}
+	if errors.Is(err, auth.ErrTOTPRequired) {
+		// Not a failed attempt: the password was right, the second step is missing.
+		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "totp_required", Detail: "Escribe el código de tu app de verificación"})
+		return
+	}
+	if errors.Is(err, auth.ErrBadCode) {
+		s.loginFailed(limitKey)
+		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_code", Detail: "El código de verificación no es correcto"})
 		return
 	}
 	if err != nil {
@@ -382,7 +394,15 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
-	httpx.JSON(w, r, http.StatusOK, principal(r))
+	p := principal(r)
+	out := struct {
+		auth.Principal
+		TwoStep bool `json:"twoStep"` // two-step verification is on for this member
+	}{Principal: p}
+	if p.Kind == "member" {
+		_ = s.DB.System.QueryRow(r.Context(), `SELECT totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 AND id=$2`, p.Tenant, p.ID).Scan(&out.TwoStep)
+	}
+	httpx.JSON(w, r, http.StatusOK, out)
 }
 
 func (s *Server) listMembers(w http.ResponseWriter, r *http.Request) {

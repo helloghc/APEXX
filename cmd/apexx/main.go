@@ -320,7 +320,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 
 	srv := &api.Server{
 		Reports: rep,
-		DB:      db, Proj: proj, Auth: &auth.Service{DB: db}, Orders: ord, Keys: keys, Library: lib, Log: log,
+		DB:      db, Proj: proj, Auth: &auth.Service{DB: db, Keys: keys}, Orders: ord, Keys: keys, Library: lib, Log: log,
 		Admin: webui.Handler(), Payments: pa, Webhooks: wh, Customers: cust, Notify: mail, Bulkhead: resilience.NewBulkhead(256),
 		SecureCookies: env("APEXX_SECURE_COOKIES", "true") == "true",
 		TrustProxy:    env("APEXX_TRUST_PROXY", "false") == "true",

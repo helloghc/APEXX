@@ -90,6 +90,7 @@ export interface Me {
   email?: string;
   owner: boolean;
   permissions: Permissions;
+  twoStep?: boolean;
 }
 
 export interface Money {
@@ -183,6 +184,7 @@ export interface Member {
   permissions: Permissions;
   createdAt: string;
   lastLoginAt: string | null;
+  twoStep?: boolean;
 }
 
 export interface PaymentAccount {
@@ -243,8 +245,8 @@ export interface PatchResult {
 
 export const api = {
   // session
-  login: (store: string, email: string, password: string) =>
-    request<{ token: string; member: Member }>("POST", "/v1/auth/login", { store, email, password }),
+  login: (store: string, email: string, password: string, code?: string) =>
+    request<{ token: string; member: Member }>("POST", "/v1/auth/login", { store, email, password, code: code || undefined }),
   logout: () => request<void>("POST", "/v1/auth/logout", undefined, { as: "none" }),
   me: () => request<Me>("GET", "/v1/me"),
 

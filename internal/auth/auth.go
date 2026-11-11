@@ -103,6 +103,7 @@ type Principal struct {
 	Owner       bool        `json:"owner"`
 	Permissions Permissions `json:"permissions"`
 	Storefront  bool        `json:"storefront"` // publishable key: may place orders
+	SessionID   string      `json:"-"`          // session of a signed-in member
 }
 
 // Actor is the audit-log name of the principal.
@@ -169,6 +170,8 @@ func ValidatePassword(pw string) error {
 type Service struct {
 	DB         *store.DB
 	SessionTTL time.Duration
+	Keys       Cipher           // encrypts two-step verification secrets; nil = 2FA unavailable
+	Now        func() time.Time // tests
 }
 
 // Errors.
@@ -189,6 +192,7 @@ type Member struct {
 	Permissions Permissions `json:"permissions"`
 	CreatedAt   time.Time   `json:"createdAt"`
 	LastLoginAt *time.Time  `json:"lastLoginAt"`
+	TwoStep     bool        `json:"twoStep"` // two-step verification is on
 }
 
 func newID(prefix string, n int) string {
@@ -235,7 +239,7 @@ func (s *Service) CreateMember(ctx context.Context, tenant, actor, email, name, 
 func (s *Service) Members(ctx context.Context, tenant string) ([]Member, error) {
 	var out []Member
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id, email, name, is_owner, status, permissions, created_at, last_login_at FROM members WHERE tenant_id=$1 ORDER BY created_at`, tenant)
+		rows, err := tx.Query(ctx, `SELECT id, email, name, is_owner, status, permissions, created_at, last_login_at, totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 ORDER BY created_at`, tenant)
 		if err != nil {
 			return err
 		}
@@ -248,7 +252,7 @@ func (s *Service) Members(ctx context.Context, tenant string) ([]Member, error) 
 func scanMember(r pgx.CollectableRow) (Member, error) {
 	var m Member
 	var pj []byte
-	err := r.Scan(&m.ID, &m.Email, &m.Name, &m.Owner, &m.Status, &pj, &m.CreatedAt, &m.LastLoginAt)
+	err := r.Scan(&m.ID, &m.Email, &m.Name, &m.Owner, &m.Status, &pj, &m.CreatedAt, &m.LastLoginAt, &m.TwoStep)
 	_ = json.Unmarshal(pj, &m.Permissions)
 	return m, err
 }
@@ -265,7 +269,7 @@ func (s *Service) UpdateMember(ctx context.Context, tenant, actor, id string, pe
 	}
 	var m Member
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id, email, name, is_owner, status, permissions, created_at, last_login_at FROM members WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, id)
+		rows, err := tx.Query(ctx, `SELECT id, email, name, is_owner, status, permissions, created_at, last_login_at, totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, id)
 		if err != nil {
 			return err
 		}
@@ -304,13 +308,15 @@ func (s *Service) UpdateMember(ctx context.Context, tenant, actor, id string, pe
 }
 
 // Login checks credentials and creates a session; returns the opaque token.
-func (s *Service) Login(ctx context.Context, tenant, email, password, ip, ua string) (string, Member, error) {
+// A member with two-step verification must also send code (from the app, or a
+// recovery code): ErrTOTPRequired asks for it, ErrBadCode rejects it.
+func (s *Service) Login(ctx context.Context, tenant, email, password, code, ip, ua string) (string, Member, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	var m Member
 	var hash string
 	var pj []byte
-	err := s.DB.System.QueryRow(ctx, `SELECT id, email, name, is_owner, status, permissions, password_hash FROM members WHERE tenant_id=$1 AND email=$2`, tenant, email).
-		Scan(&m.ID, &m.Email, &m.Name, &m.Owner, &m.Status, &pj, &hash)
+	err := s.DB.System.QueryRow(ctx, `SELECT id, email, name, is_owner, status, permissions, password_hash, totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 AND email=$2`, tenant, email).
+		Scan(&m.ID, &m.Email, &m.Name, &m.Owner, &m.Status, &pj, &hash, &m.TwoStep)
 	if err != nil {
 		// Burn the same time as a real check so timing does not reveal accounts.
 		CheckPassword("$argon2id$v=19$m=65536,t=2,p=2$c2FsdHNhbHRzYWx0c2FsdA$aGFzaGhhc2hoYXNoaGFzaGhhc2hoYXNoaGFzaGhhc2g", password)
@@ -319,6 +325,11 @@ func (s *Service) Login(ctx context.Context, tenant, email, password, ip, ua str
 	if m.Status != "active" || !CheckPassword(hash, password) {
 		return "", Member{}, ErrBadCredentials
 	}
+	if m.TwoStep {
+		if err := s.checkSecondStep(ctx, tenant, m.ID, code); err != nil {
+			return "", Member{}, err
+		}
+	}
 	_ = json.Unmarshal(pj, &m.Permissions)
 	token := "aps_" + newID("", 32)
 	sum := sha256.Sum256([]byte(token))
@@ -326,8 +337,8 @@ func (s *Service) Login(ctx context.Context, tenant, email, password, ip, ua str
 	if ttl == 0 {
 		ttl = 12 * time.Hour
 	}
-	_, err = s.DB.System.Exec(ctx, `INSERT INTO sessions (token_hash, tenant_id, member_id, expires_at, ip, user_agent) VALUES ($1,$2,$3,$4,$5,$6)`,
-		sum[:], tenant, m.ID, time.Now().Add(ttl), ip, truncate(ua, 200))
+	_, err = s.DB.System.Exec(ctx, `INSERT INTO sessions (token_hash, tenant_id, member_id, expires_at, ip, user_agent, id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		sum[:], tenant, m.ID, time.Now().Add(ttl), ip, truncate(ua, 200), newID("ses_", 8))
 	if err != nil {
 		return "", Member{}, err
 	}
@@ -356,12 +367,16 @@ func (s *Service) Authenticate(ctx context.Context, token string) (Principal, er
 		sum := sha256.Sum256([]byte(token))
 		var p Principal
 		var pj []byte
-		err := s.DB.System.QueryRow(ctx, `SELECT m.tenant_id, m.id, m.name, m.email, m.is_owner, m.permissions
+		var seen time.Time
+		err := s.DB.System.QueryRow(ctx, `SELECT m.tenant_id, m.id, m.name, m.email, m.is_owner, m.permissions, s.id, s.last_seen_at
 			FROM sessions s JOIN members m ON m.tenant_id=s.tenant_id AND m.id=s.member_id
 			WHERE s.token_hash=$1 AND s.expires_at > now() AND m.status='active'`, sum[:]).
-			Scan(&p.Tenant, &p.ID, &p.Name, &p.Email, &p.Owner, &pj)
+			Scan(&p.Tenant, &p.ID, &p.Name, &p.Email, &p.Owner, &pj, &p.SessionID, &seen)
 		if err != nil {
 			return Principal{}, ErrUnauthenticated
+		}
+		if time.Since(seen) > time.Minute { // "last seen" is refreshed at most once a minute
+			_, _ = s.DB.System.Exec(ctx, `UPDATE sessions SET last_seen_at=now() WHERE token_hash=$1`, sum[:])
 		}
 		_ = json.Unmarshal(pj, &p.Permissions)
 		if p.Owner {

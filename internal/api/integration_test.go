@@ -125,7 +125,7 @@ func setup(t *testing.T) *env {
 		pa := &PaymentAccounts{DB: db, Keys: keys, Sandbox: e.sandbox, Breakers: &resilience.Breakers{Threshold: 5, Cooldown: time.Second}}
 		lib, _ := builder.NewLibrary(builder.DefaultSections()...)
 		DefaultHome = seed.HomeTemplate
-		s := &Server{DB: db, Proj: proj, Auth: &auth.Service{DB: db}, Keys: keys, Library: lib, Log: log, Payments: pa,
+		s := &Server{DB: db, Proj: proj, Auth: &auth.Service{DB: db, Keys: keys}, Keys: keys, Library: lib, Log: log, Payments: pa,
 			Orders:   &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve},
 			Webhooks: &webhooks.Service{DB: db, Keys: keys, Proj: proj, AllowPrivate: true}}
 		e.orders = s.Orders

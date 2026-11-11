@@ -19,6 +19,7 @@ const (
 	TplAbandonedCart       = "abandoned_cart"
 	TplPaymentLink         = "payment_link"
 	TplGiftCard            = "gift_card"
+	TplTeamInvite          = "team_invite"
 	TplSubscriptionCreated = "subscription_created"
 	TplSubscriptionFailed  = "subscription_failed"
 )
@@ -163,6 +164,12 @@ var Definitions = []Definition{
 			Body: "Hola {{cliente.nombre}}, intentamos cobrar tu entrega {{suscripcion.frecuencia}} y tu tarjeta no pasó.\n\nNo te preocupes: no se hizo ningún cargo. Entra a tu suscripción para reactivarla o cancelarla.",
 			CTA:  "Revisar mi suscripción", Footer: ""},
 		Variables: append(append([]Variable{}, common...), Variable{"suscripcion.frecuencia", "Frecuencia", "cada mes"})},
+	{Key: TplTeamInvite, Name: "Invitación al equipo", Description: "Se envía a la persona que invitas a administrar la tienda.",
+		Subject: "Te invitaron al equipo de {{tienda.nombre}}",
+		Blocks: Blocks{Heading: "{{cliente.nombre}}, únete al equipo de {{tienda.nombre}}",
+			Body: "{{equipo.invita}} te invitó a administrar la tienda en Apexx.\n\nCrea tu contraseña con el botón de abajo. La invitación vence en 7 días y solo funciona una vez.",
+			CTA:  "Aceptar invitación", Footer: "Si no esperabas esta invitación, ignora este correo."},
+		Variables: append(append([]Variable{}, common...), Variable{"equipo.invita", "Quién invita", "Ana Torres"})},
 	{Key: TplPaymentLink, Name: "Enlace de pago", Description: "Se envía al mandar un pedido borrador o un saldo pendiente para que el cliente pague.",
 		Subject: "Completa el pago de tu pedido en {{tienda.nombre}}",
 		Blocks: Blocks{Heading: "Tu pedido está listo para pagar",

@@ -35,6 +35,8 @@ const Payments = lazy(() => import("@/pages/Payments").then((m) => ({ default: m
 const Engage = lazy(() => import("@/pages/engage/index").then((m) => ({ default: m.Engage })));
 const Wallet = lazy(() => import("@/pages/wallet/index").then((m) => ({ default: m.Wallet })));
 const Subscriptions = lazy(() => import("@/pages/subscriptions/index").then((m) => ({ default: m.Subscriptions })));
+const Account = lazy(() => import("@/pages/account/index").then((m) => ({ default: m.Account })));
+const AcceptInvite = lazy(() => import("@/pages/account/index").then((m) => ({ default: m.AcceptInvite })));
 const Settings = lazy(() => import("@/pages/settings/Settings").then((m) => ({ default: m.Settings })));
 const Reports = lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.Reports })));
 const Ops = lazy(() => import("@/pages/reports/Ops").then((m) => ({ default: m.Ops })));
@@ -58,6 +60,8 @@ function lastStore(): string {
 export function Root() {
   const qc = useQueryClient();
   const meQ = useQuery({ queryKey: ["me"], queryFn: api.me, retry: false, staleTime: 60_000 });
+  const [invited, setInvited] = useState(false);
+  const topRoute = useRoute(); // re-renders when the address changes, so an invitation link works in an open tab
 
   useEffect(() => {
     const on = () => {
@@ -73,6 +77,33 @@ export function Root() {
     body = <main className="grid min-h-full place-items-center text-muted-foreground">Cargando…</main>;
   } else {
     const unauth = meQ.error instanceof ApiError && meQ.error.status === 401;
+    const hash = topRoute;
+    if (hash[0] === "invitacion" && hash[1] && !invited) {
+      return (
+        <>
+          <Suspense fallback={null}>
+            <AcceptInvite
+              token={hash[1]}
+              onDone={(st) => {
+                if (st) {
+                  try {
+                    window.localStorage.setItem(LAST_STORE, st);
+                  } catch {
+                    /* storage blocked */
+                  }
+                }
+                window.location.hash = "";
+                setInvited(true);
+                // A person accepting an invitation must not stay signed in as someone else.
+                const out = meQ.data ? api.logout().catch(() => undefined) : Promise.resolve();
+                void out.finally(() => { qc.setQueryData(["me"], null); void qc.invalidateQueries({ queryKey: ["me"] }); });
+              }}
+            />
+          </Suspense>
+          <Toaster />
+        </>
+      );
+    }
     body =
       !meQ.data || unauth ? (
         <Login
@@ -102,6 +133,8 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [needCode, setNeedCode] = useState(false);
+  const [code, setCode] = useState("");
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -113,7 +146,7 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
     setBusy(true);
     try {
       credentials.save("");
-      await api.login(store.trim(), email.trim(), password);
+      await api.login(store.trim(), email.trim(), password, needCode ? code.trim() : undefined);
       try {
         window.localStorage.setItem(LAST_STORE, store.trim());
       } catch {
@@ -121,8 +154,14 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
       }
       onDone();
     } catch (e2) {
+      if (e2 instanceof ApiError && e2.problem.code === "totp_required") {
+        setNeedCode(true);
+        return;
+      }
       setErr(
-        e2 instanceof ApiError && e2.status === 401
+        e2 instanceof ApiError && e2.problem.code === "invalid_code"
+          ? "El código no es correcto. Usa el código actual de tu app o un código de respaldo."
+          : e2 instanceof ApiError && e2.status === 401
           ? "Correo, contraseña o tienda incorrectos."
           : e2 instanceof ApiError && e2.status === 429
             ? "Demasiados intentos. Espera un minuto y vuelve a intentar."
@@ -153,6 +192,11 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
             <FormField id="login-password" label="Contraseña">
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
             </FormField>
+            {needCode && (
+              <FormField id="login-code" label="Código de verificación" description="El código de 6 dígitos de tu app, o uno de tus códigos de respaldo.">
+                <Input value={code} onChange={(e) => setCode(e.target.value)} autoComplete="one-time-code" inputMode="text" autoFocus className="font-mono tracking-widest" />
+              </FormField>
+            )}
             {err && <Notice tone="bad">{err}</Notice>}
             <Button type="submit" disabled={busy}>
               {busy ? "Entrando…" : "Entrar"}
@@ -207,7 +251,8 @@ function Shell({ me }: { me: Me }) {
   const route = useRoute();
   const nav = visibleNav(me);
   const section = route[0] ?? "inicio";
-  const active = nav.find((n) => n.route === section) ? section : null;
+  // "cuenta" is every member's own security page; it needs no module permission.
+  const active = section === "cuenta" || nav.find((n) => n.route === section) ? section : null;
 
   async function logout() {
     try {
@@ -261,6 +306,9 @@ function Shell({ me }: { me: Me }) {
       break;
     case "suscripciones":
       body = <Subscriptions me={me} route={route} />;
+      break;
+    case "cuenta":
+      body = <Account me={me} />;
       break;
     case "configuracion":
       body = <Settings me={me} sub={route[1]} rest={route.slice(2)} />;
@@ -326,6 +374,11 @@ function Shell({ me }: { me: Me }) {
               {me.owner ? "Dueño" : me.kind === "api_key" ? "API key" : "Miembro"} · {me.email ?? me.tenant}
             </span>
           </div>
+          {me.kind === "member" && (
+            <a href={href("cuenta")} className="text-sm text-primary hover:underline">
+              Mi cuenta y seguridad
+            </a>
+          )}
           <Button variant="outline" size="sm" onClick={() => void logout()}>
             <LogOut /> Cerrar sesión
           </Button>

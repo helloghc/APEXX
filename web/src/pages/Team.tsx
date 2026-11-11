@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { validateMember } from "@/forms";
 import { can, compact, LEVEL_LABEL, LEVELS, MODULES, presetOf, PRESETS } from "@/perms";
+import { accountApi, TeamAccess } from "./account/index";
 import { dateTime, ErrorBox, Notice, Page, Secret, StatusPill } from "./common";
 
 export function Team({ me }: { me: Me }) {
@@ -33,7 +34,7 @@ export function Team({ me }: { me: Me }) {
               <KeyRound /> Crear API key
             </Button>
             <Button onClick={() => setInvite(true)}>
-              <UserPlus /> Invitar miembro
+              <UserPlus /> Crear cuenta con contraseña
             </Button>
           </>
         )
@@ -60,6 +61,7 @@ export function Team({ me }: { me: Me }) {
               <TableCell>{m.owner ? <Badge>Dueño</Badge> : <PermSummary perms={m.permissions} />}</TableCell>
               <TableCell>
                 <StatusPill status={m.status} />
+                {m.twoStep && <Badge variant="ok" className="ml-2">2 pasos</Badge>}
               </TableCell>
               <TableCell className="text-sm">{dateTime(m.lastLoginAt)}</TableCell>
               {isAdmin && (
@@ -67,6 +69,19 @@ export function Team({ me }: { me: Me }) {
                   {!m.owner && (
                     <Button variant="outline" size="sm" onClick={() => setEdit(m)}>
                       Editar acceso
+                    </Button>
+                  )}
+                  {m.twoStep && m.id !== me.id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      title="Úsalo si la persona perdió su teléfono y sus códigos de respaldo"
+                      onClick={() =>
+                        window.confirm(`¿Quitar la verificación en dos pasos de ${m.name || m.email}? Podrá entrar solo con su contraseña hasta que la active de nuevo.`) &&
+                        void accountApi.reset(m.id).then(() => { toast.success("Verificación en dos pasos restablecida."); void q.refetch(); }).catch((e) => toast.error(errorMessage(e)))
+                      }
+                    >
+                      Restablecer 2 pasos
                     </Button>
                   )}
                 </TableCell>
@@ -77,6 +92,8 @@ export function Team({ me }: { me: Me }) {
       </Table>
       {q.isPending && <p className="text-sm text-muted-foreground">Cargando equipo…</p>}
       {!isAdmin && <p className="text-sm text-muted-foreground">Puedes ver el equipo. Para invitar o cambiar accesos necesitas nivel Admin en Equipo.</p>}
+
+      <TeamAccess isAdmin={isAdmin} />
 
       {invite && <MemberDialog onClose={() => setInvite(false)} />}
       {edit && <MemberDialog member={edit} onClose={() => setEdit(null)} />}
