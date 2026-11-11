@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users } from "lucide-react";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import { Home } from "@/pages/Home";
 // Each section loads on demand so the login screen and home stay light.
 const Editor = lazy(() => import("@/App").then((m) => ({ default: m.Editor })));
 const Catalog = lazy(() => import("@/pages/catalog/index").then((m) => ({ default: m.Catalog })));
+const Promotions = lazy(() => import("@/pages/promotions/index").then((m) => ({ default: m.Promotions })));
 const Orders = lazy(() => import("@/pages/Orders").then((m) => ({ default: m.Orders })));
 const Team = lazy(() => import("@/pages/Team").then((m) => ({ default: m.Team })));
 const Payments = lazy(() => import("@/pages/Payments").then((m) => ({ default: m.Payments })));
@@ -178,6 +179,7 @@ const ICONS: Record<string, typeof HomeIcon> = {
   inicio: HomeIcon,
   builder: LayoutTemplate,
   catalogo: Boxes,
+  promociones: BadgePercent,
   pedidos: Receipt,
   equipo: Users,
   pagos: CreditCard,
@@ -216,6 +218,9 @@ function Shell({ me }: { me: Me }) {
       break;
     case "catalogo":
       body = <Catalog me={me} route={route} />;
+      break;
+    case "promociones":
+      body = <Promotions me={me} route={route} />;
       break;
     case "pedidos":
       body = <Orders me={me} orderId={route[1]} />;

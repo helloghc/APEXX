@@ -64,6 +64,7 @@ export const NAV: { route: string; label: string; module?: string }[] = [
   { route: "inicio", label: "Inicio" },
   { route: "builder", label: "Diseño de la tienda", module: "builder" },
   { route: "catalogo", label: "Catálogo", module: "catalog" },
+  { route: "promociones", label: "Promociones", module: "promotions" },
   { route: "pedidos", label: "Pedidos", module: "orders" },
   { route: "equipo", label: "Equipo", module: "team" },
   { route: "pagos", label: "Pagos", module: "payments" },

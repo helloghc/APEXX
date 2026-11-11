@@ -6,7 +6,7 @@ Avances parciales de agentes detenidos: `.claude/worktrees/agent-*` (local, no e
 | Fase | Contenido | Estado |
 | --- | --- | --- |
 | A | Catálogo completo: categorías, marcas, colecciones, variantes, atributos, medios, CSV, filtros en tienda | **Hecha**: backend, admin (productos, editor con variantes, categorías, colecciones, marcas, atributos, medios, importar/exportar), filtros y páginas de categoría/colección en tienda |
-| B | Promociones, cupones, campañas, listas de precios, simulador | Pendiente (parcial en worktree a5882339885404438) |
+| B | Promociones, cupones, campañas, listas de precios, simulador | **Hecha**: motor con 9 tipos y explicación, campañas, cupones (uno y en lote), listas de precios, cambio masivo con vista previa, historial, simulador, cupón en el carrito |
 | C | Clientes, cuentas de comprador, envíos con guía, reembolsos parciales, devoluciones, edición de pedidos | Pendiente (parcial en abc54900c45f7ea4e) |
 | D | Correos transaccionales, bitácora, carritos abandonados, newsletter | Pendiente |
 | E | Almacenes, zonas y tarifas de envío, transportistas, retiro, impuestos | Pendiente (parcial en a50473b7393f14fc8) |
