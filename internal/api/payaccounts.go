@@ -57,7 +57,11 @@ func (pa *PaymentAccounts) Resolve(ctx context.Context, tenant string) (orders.A
 		if pa.Sandbox != nil && errors.Is(err, store.ErrNotFound) {
 			return orders.Account{Provider: pa.wrap(tenant, pa.Sandbox)}, nil
 		}
-		return orders.Account{}, orders.ErrNoPaymentAccount
+		if errors.Is(err, store.ErrNotFound) {
+			return orders.Account{}, orders.ErrNoPaymentAccount
+		}
+		// The database could not answer: that is not "the store has no account".
+		return orders.Account{}, err
 	}
 	var acct orders.Account
 	switch {

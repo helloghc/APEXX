@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgconn"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -314,7 +316,36 @@ func decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 	return true
 }
 
+// unavailable reports whether err means the database could not be reached
+// (down, restarting, or the request ran out of time waiting for it).
+func unavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	var ne net.Error
+	var ce *pgconn.ConnectError
+	if errors.As(err, &ce) || errors.As(err, &ne) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var pe *pgconn.PgError // 57P01..57P03: shutting down or starting up; 08xxx: connection lost
+	if errors.As(err, &pe) {
+		return strings.HasPrefix(pe.Code, "57P") || strings.HasPrefix(pe.Code, "08")
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "connection refused") || strings.Contains(msg, "conn closed") || strings.Contains(msg, "broken pipe") || strings.Contains(msg, "connection reset")
+}
+
 func internalError(w http.ResponseWriter, log *slog.Logger, err error) {
+	if unavailable(err) {
+		// Nothing was written: every change is one transaction. Tell the person so.
+		if log != nil {
+			log.Warn("database unavailable", "err", err)
+		}
+		w.Header().Set("Retry-After", "5")
+		apierr.Write(w, apierr.Problem{Status: http.StatusServiceUnavailable, Code: "temporarily_unavailable",
+			Detail: "El servicio no está disponible por un momento. No se guardó ni se cobró nada; intenta de nuevo en unos segundos"})
+		return
+	}
 	id := make([]byte, 6)
 	_, _ = rand.Read(id)
 	ref := hex.EncodeToString(id)

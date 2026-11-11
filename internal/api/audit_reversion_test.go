@@ -89,3 +89,49 @@ func TestFullOrderReversion(t *testing.T) {
 		t.Fatal("an order was cancelled twice")
 	}
 }
+
+// A purchase cut by a crash leaves its key "in progress". A retry must not
+// hang forever nor buy twice: it waits while the attempt may still be alive,
+// answers with the paid order if there is one, and starts over if there is none.
+func TestInterruptedCheckoutRecovers(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	body := m{"channel": "mx", "postalCode": "53129", "items": []m{{"sku": "S1", "qty": 1}}, "customer": m{"email": "corte@example.com", "name": "Corte"}, "paymentMethod": "pm_card_visa"}
+	_, first := e.do("POST", "/v1/checkout", e.sfA, body, "Idempotency-Key", "crash-key-1")
+	interrupt := func(age string, keepOrder bool) {
+		t.Helper()
+		q := `UPDATE idempotency_keys SET status=0, response='{}', created_at=now() - $1::interval`
+		if !keepOrder {
+			q += `, order_id=NULL`
+		}
+		if _, err := e.db.System.Exec(ctx, q+` WHERE key='crash-key-1'`, age); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Seconds after the cut the first attempt could still be running.
+	interrupt("5 seconds", true)
+	if st, b := e.do("POST", "/v1/checkout", e.sfA, body, "Idempotency-Key", "crash-key-1"); st != 409 || b["code"] != "in_progress" {
+		t.Fatalf("retry while it may still run = %d %v", st, b)
+	}
+	// Later: the order was paid before the crash. Same order back, no second charge.
+	interrupt("2 minutes", true)
+	calls := e.sandbox.Calls
+	st, again := e.do("POST", "/v1/checkout", e.sfA, body, "Idempotency-Key", "crash-key-1")
+	if st != 201 || again["id"] != first["id"] || e.sandbox.Calls != calls {
+		t.Fatalf("retry after a paid interrupted order = %d id %v (first %v) charged again=%v", st, again["id"], first["id"], e.sandbox.Calls != calls)
+	}
+	// The crash happened before any order existed: the retry simply buys.
+	interrupt("2 minutes", false)
+	st, fresh := e.do("POST", "/v1/checkout", e.sfA, body, "Idempotency-Key", "crash-key-1")
+	if st != 201 || fresh["id"] == first["id"] {
+		t.Fatalf("retry of an attempt that created nothing = %d %v", st, fresh["id"])
+	}
+	// An interrupted order still waiting for its payment keeps the shopper waiting, not paying again.
+	if _, err := e.db.System.Exec(ctx, `UPDATE orders SET status='pending_payment' WHERE id=$1`, fresh["id"]); err != nil {
+		t.Fatal(err)
+	}
+	interrupt("2 minutes", true)
+	if st, b := e.do("POST", "/v1/checkout", e.sfA, body, "Idempotency-Key", "crash-key-1"); st != 409 || b["code"] != "in_progress" {
+		t.Fatalf("retry while the order waits for its payment = %d %v", st, b)
+	}
+}

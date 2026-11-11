@@ -245,6 +245,10 @@ type Result struct {
 	Body   json.RawMessage `json:"body"`
 }
 
+// staleKey is how old an "in progress" idempotency key must be to be treated
+// as interrupted. Requests are cut at 15 seconds.
+const staleKey = 45 * time.Second
+
 // Checkout runs the whole purchase. The same idempotency key always returns
 // the same result and never charges twice.
 func (s *Service) Checkout(ctx context.Context, tenant, actor, idemKey string, req CheckoutRequest) (Result, error) {
@@ -253,6 +257,7 @@ func (s *Service) Checkout(ctx context.Context, tenant, actor, idemKey string, r
 
 	// 1. Idempotency gate.
 	var prior *Result
+	var recovered string // order of an interrupted attempt that did get paid
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		var hash []byte
 		var status int
@@ -270,7 +275,33 @@ func (s *Service) Checkout(ctx context.Context, tenant, actor, idemKey string, r
 			return ErrIdempotencyReuse
 		}
 		if status == 0 {
-			return ErrInProgress
+			// Still running, or the process died mid-purchase. A request never
+			// lasts this long, so an old "in progress" key is an interrupted one.
+			var age time.Duration
+			var orderID *string
+			if err := tx.QueryRow(ctx, `SELECT now() - created_at, order_id FROM idempotency_keys WHERE tenant_id=$1 AND key=$2 FOR UPDATE`, tenant, idemKey).Scan(&age, &orderID); err != nil {
+				return err
+			}
+			if age < staleKey {
+				return ErrInProgress
+			}
+			if orderID != nil {
+				var ost string
+				if err := tx.QueryRow(ctx, `SELECT status FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, *orderID).Scan(&ost); err != nil {
+					return err
+				}
+				switch ost {
+				case StatusPendingPayment:
+					return ErrInProgress // the reconciler is about to settle it with the provider
+				case StatusCancelled:
+					// The interrupted attempt ended without a charge: this retry starts over.
+				default:
+					recovered = *orderID // it was paid: answer with that order, never buy twice
+					return nil
+				}
+			}
+			_, err := tx.Exec(ctx, `UPDATE idempotency_keys SET created_at=now(), order_id=NULL WHERE tenant_id=$1 AND key=$2`, tenant, idemKey)
+			return err
 		}
 		prior = &Result{Status: status, Body: body}
 		return nil
@@ -281,8 +312,21 @@ func (s *Service) Checkout(ctx context.Context, tenant, actor, idemKey string, r
 	if prior != nil {
 		return *prior, nil
 	}
+	if recovered != "" {
+		o, err := s.Get(ctx, tenant, recovered, false)
+		if err != nil {
+			return Result{}, err
+		}
+		b, _ := json.Marshal(o)
+		res := Result{Status: 201, Body: b}
+		_ = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+			_, e := tx.Exec(ctx, `UPDATE idempotency_keys SET status=$3, response=$4 WHERE tenant_id=$1 AND key=$2`, tenant, idemKey, res.Status, []byte(res.Body))
+			return e
+		})
+		return res, nil
+	}
 
-	res, err := s.checkout(ctx, tenant, actor, req)
+	res, err := s.checkout(ctx, tenant, actor, idemKey, req)
 	if err != nil {
 		// Unexpected failure: free the key so the client can retry safely.
 		_ = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
@@ -307,12 +351,15 @@ func problem(status int, code, detail string, extra map[string]any) Result {
 	return Result{Status: status, Body: b}
 }
 
-func (s *Service) checkout(ctx context.Context, tenant, actor string, req CheckoutRequest) (Result, error) {
+func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, req CheckoutRequest) (Result, error) {
 	t, ok := s.Projector.Tenant(tenant)
 	if !ok {
 		return Result{}, fmt.Errorf("orders: tenant %s not loaded", tenant)
 	}
 	acct, err := s.Accounts(ctx, tenant)
+	if err != nil && !errors.Is(err, ErrNoPaymentAccount) {
+		return Result{}, err // infrastructure: the key is freed and the shopper can retry
+	}
 	if err != nil {
 		return problem(409, "payment_account_missing", ErrNoPaymentAccount.Error(), nil), nil
 	}
@@ -459,6 +506,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 			return err
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
+			return err
+		}
+		// The key remembers its order, so a retry after a crash finds it.
+		if _, err := tx.Exec(ctx, `UPDATE idempotency_keys SET order_id=$3 WHERE tenant_id=$1 AND key=$2`, tenant, idemKey, id); err != nil {
 			return err
 		}
 		for i, l := range sim.Lines {

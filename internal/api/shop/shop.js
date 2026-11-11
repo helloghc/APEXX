@@ -274,7 +274,7 @@
       sessionStorage.removeItem("apexx_idem");
       const msg = { payment_declined: "Tu pago fue rechazado. Prueba con otra tarjeta.", cart_changed: "Algunos productos cambiaron de precio o disponibilidad. Revisa el resumen.",
         insufficient_stock: "Ya no hay suficientes unidades de un producto. Ajusta tu carrito.", payment_pending: "No pudimos confirmar el pago todavía. No vuelvas a pagar: te avisaremos por correo.",
-        postal_code_required: "Revisa tu código postal.", no_shipping_option: "No hay entregas disponibles para tu código postal.", shipping_option_unavailable: "La opción de entrega cambió. Revisa las opciones y vuelve a intentar.",
+        temporarily_unavailable: "La tienda no pudo procesar tu compra en este momento. No se hizo ningún cargo; intenta de nuevo en unos segundos.", postal_code_required: "Revisa tu código postal.", no_shipping_option: "No hay entregas disponibles para tu código postal.", shipping_option_unavailable: "La opción de entrega cambió. Revisa las opciones y vuelve a intentar.",
         account_required: "Esta tienda solo vende a clientes con cuenta.", payment_account_missing: "La tienda todavía no puede recibir pagos." }[res.body.code];
       payBtn.disabled = false; await refresh();
       errBox.textContent = msg || res.body.detail || "No pudimos completar la compra. Intenta de nuevo.";
