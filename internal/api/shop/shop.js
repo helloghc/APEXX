@@ -281,3 +281,30 @@
       "<p class='muted'>Te enviaremos la factura por correo en unos minutos.</p>";
   }
 })();
+
+/* ==== analytics beacon: begin (no cookies; honours DNT and GPC) ==== */
+(() => {
+  const n = navigator, d = document, b = d.body, t = b.dataset.tenant;
+  if (!t || n.doNotTrack == "1" || window.doNotTrack == "1" || n.globalPrivacyControl || n.webdriver) return;
+  let q = [], m, r = "";
+  try { r = new URL(d.referrer).hostname; if (r == location.hostname) r = ""; } catch {}
+  const flush = () => {
+    if (!q.length) return;
+    const body = JSON.stringify({ c: b.dataset.channel || "", r, e: q.splice(0, 20) });
+    try { n.sendBeacon("/s/" + t + "/api/events", body); } catch {}
+  };
+  const push = (e) => { q.push(e); clearTimeout(m); if (q.length > 9) flush(); else m = setTimeout(flush, 1500); };
+  push({ t: "pv", p: location.pathname });
+  const buy = d.querySelector("[data-buy]");
+  if (buy) buy.addEventListener("submit", () => {
+    const s = buy.querySelector("input[name=sku]:checked"), i = d.getElementById("qty");
+    if (s) push({ t: "ac", s: s.value, q: Math.max(1, Math.min(50, parseInt(i && i.value, 10) || 1)) });
+  });
+  if (d.querySelector("[data-thanks]")) try {
+    const o = JSON.parse(sessionStorage.getItem("apexx_last_order")), k = "apexx_tracked";
+    if (o && sessionStorage.getItem(k) != o.id) { sessionStorage.setItem(k, o.id); push({ t: "pu", o: o.id, v: o.grandTotal }); }
+  } catch {}
+  d.addEventListener("visibilitychange", () => d.visibilityState == "hidden" && flush());
+  addEventListener("pagehide", flush);
+})();
+/* ==== analytics beacon: end ==== */

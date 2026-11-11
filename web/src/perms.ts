@@ -21,6 +21,7 @@ export const MODULES: { id: string; label: string }[] = [
   { id: "builder", label: "Diseño de la tienda" },
   { id: "team", label: "Equipo" },
   { id: "settings", label: "Configuración y conectores" },
+  { id: "reports", label: "Reportes y analítica" },
 ];
 
 const rank: Record<Level, number> = { none: 0, read: 1, edit: 2, admin: 3 };
@@ -61,7 +62,7 @@ export function presetOf(p: Permissions): string | null {
 }
 
 /** NAV lists sidebar entries and the permission needed to see each. */
-export const NAV: { route: string; label: string; module?: string }[] = [
+export const NAV: { route: string; label: string; module?: string; level?: Level }[] = [
   { route: "inicio", label: "Inicio" },
   { route: "builder", label: "Diseño de la tienda", module: "builder" },
   { route: "catalogo", label: "Catálogo", module: "catalog" },
@@ -69,12 +70,14 @@ export const NAV: { route: string; label: string; module?: string }[] = [
   { route: "pedidos", label: "Pedidos", module: "orders" },
   { route: "clientes", label: "Clientes", module: "customers" },
   { route: "correos", label: "Correos", module: "settings" },
+  { route: "reportes", label: "Reportes", module: "reports" },
   { route: "equipo", label: "Equipo", module: "team" },
   { route: "pagos", label: "Pagos", module: "payments" },
   { route: "configuracion", label: "Configuración", module: "settings" },
   { route: "conectores", label: "Conectores", module: "settings" },
+  { route: "operacion", label: "Operación", module: "settings", level: "admin" },
 ];
 
 export function visibleNav(me: Me | null | undefined) {
-  return NAV.filter((n) => !n.module || can(me, n.module, "read"));
+  return NAV.filter((n) => !n.module || can(me, n.module, n.level ?? "read"));
 }

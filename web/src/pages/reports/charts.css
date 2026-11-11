@@ -1,0 +1,68 @@
+/*
+ * Chart colors. Categorical slots in a fixed order (brand blue, brand orange,
+ * aqua, yellow), stepped separately for the light and the dark surface and
+ * checked for color-vision-deficiency separation and contrast. Text never
+ * wears these colors: marks carry identity, labels use the text tokens.
+ */
+:root {
+  --chart-1: #2e44e8;
+  --chart-2: #ff5b2e;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-prev: #a3a9bd;
+  --chart-grid: #e6e9f1;
+  --chart-axis: #c9cedb;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chart-1: #6f80f5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-prev: #5b6382;
+    --chart-grid: #222841;
+    --chart-axis: #343b59;
+  }
+}
+
+.viz-tip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  min-width: 9rem;
+  max-width: 16rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-2, 0 8px 24px -8px rgb(0 0 0 / 0.25));
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.viz-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.viz-swatch[data-line] {
+  height: 3px;
+  border-radius: 2px;
+}
+.viz-skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--surface-2) 25%, color-mix(in srgb, var(--surface-2) 55%, var(--surface)) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: viz-shimmer 1.4s linear infinite;
+}
+@keyframes viz-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (forced-colors: active) {
+  .viz-swatch {
+    forced-color-adjust: none;
+  }
+}

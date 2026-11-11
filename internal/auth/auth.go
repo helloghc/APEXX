@@ -23,7 +23,7 @@ import (
 )
 
 // Modules of the platform.
-var Modules = []string{"catalog", "pricing", "inventory", "promotions", "orders", "customers", "payments", "builder", "team", "settings"}
+var Modules = []string{"catalog", "pricing", "inventory", "promotions", "orders", "customers", "payments", "builder", "team", "settings", "reports"}
 
 // Levels in increasing order.
 const (

@@ -153,3 +153,9 @@ func Rewrap(oldKR, newKR *Keyring, tenant string, wrapped []byte) ([]byte, error
 	}
 	return seal(newKR.master, dk, []byte("tenant:"+tenant))
 }
+
+// Hash returns a keyed hash of data for a purpose. It lets analytics group by
+// a personal value, such as an e-mail, without storing it.
+func (k *Keyring) Hash(tenant, purpose, data string) ([]byte, error) {
+	return k.Blind(tenant, purpose, data)
+}

@@ -6,6 +6,8 @@
 //	apexx seed -tenant S -n 2000  load demo catalog, prices, stock and promotions
 //	apexx import -tenant S -vtex-account A [-limit N] [-dry-run]
 //	                              import catalog, prices and stock from VTEX (read-only on VTEX)
+//	apexx analytics -tenant S [-rebuild] [-demo-orders N -demo-days D -demo-sessions K]
+//	                              rebuild analytics from orders, or load a synthetic sales history (demos/QA)
 //	apexx serve                   run the API, storefront, editor and background workers
 package main
 
@@ -19,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -36,6 +39,7 @@ import (
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/pricing"
 	"github.com/helloghc/apexx/internal/projection"
+	"github.com/helloghc/apexx/internal/reports"
 	"github.com/helloghc/apexx/internal/resilience"
 	"github.com/helloghc/apexx/internal/seed"
 	"github.com/helloghc/apexx/internal/store"
@@ -80,6 +84,8 @@ func main() {
 		cmdImport(ctx, log, os.Args[2:])
 	case "qa-setup":
 		cmdQASetup(ctx, log, os.Args[2:])
+	case "analytics":
+		cmdAnalytics(ctx, log, os.Args[2:])
 	case "rotate-master-key":
 		cmdRotate(ctx, log)
 	default:
@@ -272,6 +278,33 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		return db.PruneOutbox(ctx, proj.Stats().LastID, 30*24*time.Hour)
 	})
 
+	// Analytics: order facts and sales rollups follow every order change; raw
+	// storefront events are rolled up twice a minute and purged after 90 days.
+	rep := &reports.Service{DB: db, Keys: keys, Log: log}
+	var ordersDirty atomic.Bool
+	ordersDirty.Store(true)
+	proj.On(store.TopicOrder, func(_, _ string) { ordersDirty.Store(true) })
+	lastFullSync := time.Time{}
+	resilience.Every(ctx, log, "analytics-orders", 2*time.Second, func(ctx context.Context) error {
+		// Order events wake the sync at once; a sweep every 30 s covers any missed signal.
+		if !ordersDirty.Swap(false) && time.Since(lastFullSync) < 30*time.Second {
+			return nil
+		}
+		lastFullSync = time.Now()
+		_, err := rep.SyncOrders(ctx)
+		if err != nil {
+			ordersDirty.Store(true)
+		}
+		return err
+	})
+	resilience.Every(ctx, log, "analytics-traffic", 30*time.Second, func(ctx context.Context) error {
+		_, err := rep.RollupTraffic(ctx)
+		return err
+	})
+	resilience.Every(ctx, log, "analytics-retention", 6*time.Hour, func(ctx context.Context) error {
+		_, err := rep.Purge(ctx)
+		return err
+	})
 	// Media library files. Local disk is right for one node or a shared
 	// volume; see internal/media/gcs.go for the Cloud Storage back end.
 	if kind := env("APEXX_MEDIA_STORAGE", "local"); kind != "local" {
@@ -286,7 +319,8 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	})
 
 	srv := &api.Server{
-		DB: db, Proj: proj, Auth: &auth.Service{DB: db}, Orders: ord, Keys: keys, Library: lib, Log: log,
+		Reports: rep,
+		DB:      db, Proj: proj, Auth: &auth.Service{DB: db}, Orders: ord, Keys: keys, Library: lib, Log: log,
 		Admin: webui.Handler(), Payments: pa, Webhooks: wh, Customers: cust, Notify: mail, Bulkhead: resilience.NewBulkhead(256),
 		SecureCookies: env("APEXX_SECURE_COOKIES", "true") == "true",
 		TrustProxy:    env("APEXX_TRUST_PROXY", "false") == "true",

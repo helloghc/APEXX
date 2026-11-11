@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2 } from "lucide-react";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3 } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -33,6 +33,8 @@ const Notifications = lazy(() => import("@/pages/notifications/index").then((m) 
 const Team = lazy(() => import("@/pages/Team").then((m) => ({ default: m.Team })));
 const Payments = lazy(() => import("@/pages/Payments").then((m) => ({ default: m.Payments })));
 const Settings = lazy(() => import("@/pages/settings/Settings").then((m) => ({ default: m.Settings })));
+const Reports = lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.Reports })));
+const Ops = lazy(() => import("@/pages/reports/Ops").then((m) => ({ default: m.Ops })));
 const Connectors = lazy(() => import("@/pages/Connectors").then((m) => ({ default: m.Connectors })));
 import { visibleNav } from "@/perms";
 import { href, navigate, useRoute } from "@/router";
@@ -190,6 +192,8 @@ const ICONS: Record<string, typeof HomeIcon> = {
   pagos: CreditCard,
   configuracion: Settings2,
   conectores: Cable,
+  reportes: BarChart3,
+  operacion: Activity,
 };
 
 function Shell({ me }: { me: Me }) {
@@ -248,6 +252,12 @@ function Shell({ me }: { me: Me }) {
       break;
     case "conectores":
       body = <Connectors me={me} />;
+      break;
+    case "reportes":
+      body = <Reports me={me} report={route[1]} />;
+      break;
+    case "operacion":
+      body = <Ops me={me} view={route[1]} />;
       break;
     case "inicio":
       body = <Home me={me} />;
