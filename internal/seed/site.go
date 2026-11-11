@@ -2,28 +2,29 @@ package seed
 
 import "github.com/helloghc/apexx/internal/builder"
 
-// HomeTemplate is the demo home page.
+// HomeTemplate is the demo home page (theme "Lienzo"). The main section ids
+// are stable because tests and QA guides refer to them.
 func HomeTemplate() builder.Template {
+	st := builder.Starter("lienzo")
 	return builder.Template{
 		ID: "tpl_home", Kind: "home", Handle: "index", Name: "Página de inicio",
-		SEO: builder.SEO{Title: "Apexx Demo · Deportes y moda", Description: "Calzado deportivo y moda con envío a todo México."},
+		SEO:   builder.SEO{Title: "Apexx Demo · Deportes y moda", Description: "Calzado deportivo y moda con envío a todo México."},
+		Theme: &builder.ThemeSettings{ID: "lienzo"},
 		Regions: map[string][]builder.SectionInstance{
+			"header": st.Regions["header"],
 			"main": {
-				{ID: "sec_hero", Type: "hero", TypeVersion: "1.2.0", Settings: map[string]any{
-					"heading": "Nueva temporada", "subheading": "Hasta 30% en calzado deportivo",
-					"image": heroImage, "alt": "Corredora con tenis blancos en una pista",
-					"ctaLabel": "Ver colección", "ctaUrl": "/c/running"}},
-				{ID: "sec_benefits", Type: "benefits", TypeVersion: "1.0.0", Settings: map[string]any{"heading": "Por qué comprar aquí"},
+				{ID: "sec_hero", Type: "hero", TypeVersion: "2.0.0", Settings: map[string]any{
+					"eyebrow": "Nueva temporada", "heading": "Nueva temporada", "subheading": "Hasta 30% en calzado deportivo",
+					"ctaLabel": "Ver colección", "ctaUrl": "c", "layout": "full", "height": "large", "monogram": "A"}},
+				{ID: "sec_benefits", Type: "benefits", TypeVersion: "1.1.0", Settings: map[string]any{"heading": "Por qué comprar aquí"},
 					Blocks: []builder.Block{
 						{ID: "b1", Type: "benefit", Settings: map[string]any{"title": "Envío gratis", "text": "desde $1,499"}},
 						{ID: "b2", Type: "benefit", Settings: map[string]any{"title": "Devoluciones", "text": "30 días"}},
 					}},
-				{ID: "sec_new", Type: "product-carousel", TypeVersion: "2.1.0", Settings: map[string]any{"heading": "Novedades", "limit": 8.0}},
-				{ID: "sec_promos", Type: "rich-text", TypeVersion: "1.0.0", Settings: map[string]any{"heading": "Promociones", "body": "10% en compras desde $3,000"}},
+				{ID: "sec_new", Type: "product-carousel", TypeVersion: "2.2.0", Settings: map[string]any{"heading": "Novedades", "limit": 8.0}},
+				{ID: "sec_promos", Type: "rich-text", TypeVersion: "1.1.0", Settings: map[string]any{"heading": "Promociones", "body": "10% en compras desde $3,000"}},
 			},
+			"footer": st.Regions["footer"],
 		},
 	}
 }
-
-// heroImage is an inline SVG so a new store never shows a broken image.
-const heroImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1600' height='900' viewBox='0 0 1600 900'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%231d3fae'/><stop offset='1' stop-color='%23e8a33d'/></linearGradient></defs><rect width='1600' height='900' fill='url(%23g)'/></svg>"

@@ -1,4 +1,4 @@
-import type { Op, Problem, Release, Report, SectionDefinition, Template } from "./types";
+import type { Op, Problem, Release, Report, SectionDefinition, Template, ThemesResponse } from "./types";
 import { ProblemSchema } from "./types";
 
 const KEY = "apexx.apiKey";
@@ -250,6 +250,11 @@ export const api = {
 
   // builder
   sections: () => request<{ items: SectionDefinition[] }>("GET", "/v1/builder/sections").then((r) => r.items),
+  themes: () => request<ThemesResponse>("GET", "/v1/builder/themes"),
+  applyTheme: (site: string, themeId: string, keepContent: boolean) =>
+    request<{ template: Template; version: number; previousRevisionId: string }>("POST", `/v1/sites/${enc(site)}/theme`, { themeId, keepContent }),
+  restoreRevision: (site: string, revisionId: string) =>
+    request<{ template: Template; version: number }>("POST", `/v1/sites/${enc(site)}/restore`, { revisionId }),
   draft: (site: string, handle: string) =>
     request<{ template: Template; version: number }>("GET", `/v1/sites/${enc(site)}/templates/${enc(handle)}/draft`),
   patch: (site: string, handle: string, ops: Op[], ifVersion: number) =>

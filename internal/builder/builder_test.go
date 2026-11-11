@@ -65,7 +65,7 @@ func TestPublishRollbackAndLive(t *testing.T) {
 		t.Fatalf("publish v2: %v %v", err, r2)
 	}
 	html, _, _ := s.Live("index")
-	if !strings.Contains(string(html), "<h1>Black Friday</h1>") {
+	if !strings.Contains(string(html), ">Black Friday</h1>") {
 		t.Fatalf("live html missing new heading: %s", html)
 	}
 	rb, err := s.Rollback("ana")
@@ -73,7 +73,7 @@ func TestPublishRollbackAndLive(t *testing.T) {
 		t.Fatalf("rollback %v %+v", err, rb)
 	}
 	html, _, _ = s.Live("index")
-	if !strings.Contains(string(html), "<h1>Hola</h1>") || strings.Count(string(html), "<h1>") != 1 {
+	if !strings.Contains(string(html), ">Hola</h1>") || strings.Count(string(html), "<h1") != 1 {
 		t.Fatalf("rollback html wrong: %s", html)
 	}
 }
