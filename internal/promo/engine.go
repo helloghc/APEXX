@@ -2,6 +2,7 @@ package promo
 
 import (
 	"fmt"
+	"math/bits"
 	"sort"
 	"strings"
 	"sync"
@@ -1021,7 +1022,6 @@ func distribute(total int64, weights []int64) []int64 {
 		if x <= 0 {
 			continue
 		}
-		// total < w and both fit in int64 minor units; use 128-bit safe split.
 		q, r := mulDiv(total, x, w)
 		out[i] = q
 		given += q
@@ -1037,15 +1037,10 @@ func distribute(total int64, weights []int64) []int64 {
 	return out
 }
 
-// mulDiv returns a*b/c and the remainder without overflowing for the amounts
-// a store can hold (a, b, c < 2^53).
+// mulDiv returns a*b/c and the remainder using a 128-bit product, so large
+// carts never overflow. Callers guarantee a < c, hence the quotient fits.
 func mulDiv(a, b, c int64) (int64, int64) {
-	if a < 1<<31 && b < 1<<31 {
-		return a * b / c, a * b % c
-	}
-	// Split a to keep intermediate products in range.
-	q1, r1 := a/c, a%c
-	hi := q1 * b
-	lo := r1 * b // r1 < c; safe while c*b < 2^63, true for realistic amounts
-	return hi + lo/c, lo % c
+	hi, lo := bits.Mul64(uint64(a), uint64(b))
+	q, r := bits.Div64(hi, lo, uint64(c))
+	return int64(q), int64(r)
 }

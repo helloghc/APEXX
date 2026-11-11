@@ -405,6 +405,10 @@ func (d *DB) StockSKUs(ctx context.Context, tenant string) ([]string, error) {
 // SetPrices replaces the tiers of sku in channel.
 func (d *DB) SetPrices(ctx context.Context, tenant, actor, channel, sku string, tiers []pricing.Tier) error {
 	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		// The price history (written by triggers) records who made the change.
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.actor', $1, true)`, actor); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM prices WHERE tenant_id=$1 AND channel=$2 AND sku=$3`, tenant, channel, sku); err != nil {
 			return err
 		}

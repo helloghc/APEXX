@@ -8,7 +8,9 @@ package crypto
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -20,6 +22,7 @@ type Keyring struct {
 	master cipher.AEAD
 	mu     sync.RWMutex
 	cache  map[string]cipher.AEAD
+	macs   map[string][]byte // per-tenant key for blind indexes, derived from the data key
 }
 
 // NewKeyring builds a keyring from a 64-hex-character master key.
@@ -79,8 +82,29 @@ func (k *Keyring) Load(tenant string, wrapped []byte) error {
 	}
 	k.mu.Lock()
 	k.cache[tenant] = a
+	if k.macs == nil {
+		k.macs = map[string][]byte{}
+	}
+	mk := sha256.Sum256(append([]byte("apexx-blind-index|"), dk...))
+	k.macs[tenant] = mk[:]
 	k.mu.Unlock()
 	return nil
+}
+
+// BlindIndex returns a keyed, deterministic digest of value (HMAC-SHA-256 with
+// a key derived from the tenant data key). It lets the database match personal
+// data such as an email (for per-customer limits) without storing it in clear;
+// destroying the tenant key makes the digests meaningless too.
+func (k *Keyring) BlindIndex(tenant, value string) (string, error) {
+	k.mu.RLock()
+	mk := k.macs[tenant]
+	k.mu.RUnlock()
+	if mk == nil {
+		return "", ErrNoKey
+	}
+	h := hmac.New(sha256.New, mk)
+	h.Write([]byte(value))
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // ErrNoKey means the tenant key was not loaded.

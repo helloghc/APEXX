@@ -105,8 +105,9 @@ func (s *Server) Routes() http.Handler {
 	handle("GET /v1/prices/{channel}/{sku}", s.authed("pricing", auth.Read, s.getPrices))
 	handle("GET /v1/channels/{id}", s.authed("settings", auth.Read, s.getChannel))
 	handle("PUT /v1/channels/{id}", s.authed("settings", auth.Admin, s.putChannel))
-	handle("PUT /v1/promotions/{id}", s.authed("promotions", auth.Edit, s.putPromotion))
 	handle("POST /v1/carts/simulate", s.authed("catalog", auth.Read, s.simulate))
+
+	s.routesPromotions(handle)
 
 	// Orders and payments.
 	handle("POST /v1/checkout", s.authed("", "", s.checkout))
