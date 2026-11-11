@@ -120,6 +120,9 @@ func (s *Server) Routes() http.Handler {
 
 	// Builder.
 	handle("GET /v1/builder/sections", s.authed("builder", auth.Read, s.sections))
+	handle("GET /v1/builder/themes", s.authed("builder", auth.Read, s.themes))
+	handle("POST /v1/sites/{site}/theme", s.authed("builder", auth.Edit, s.applyTheme))
+	handle("POST /v1/sites/{site}/restore", s.authed("builder", auth.Edit, s.restoreRevision))
 	handle("GET /v1/sites/{site}/templates/{handle}/draft", s.authed("builder", auth.Read, s.getDraft))
 	handle("PATCH /v1/sites/{site}/templates/{handle}/draft", s.authed("builder", auth.Edit, s.patchDraft))
 	handle("GET /v1/sites/{site}/templates/{handle}/preview", s.authed("builder", auth.Read, s.preview))
@@ -152,8 +155,8 @@ func (s *Server) Routes() http.Handler {
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		_, _ = w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1d3fae"/><path d="M9 23 16 8l7 15h-4l-3-7-3 7z" fill="#fff"/></svg>`))
 	})
-	handle("GET /s/assets/shop.css", shopAsset("shop.css", "text/css; charset=utf-8"))
-	handle("GET /s/assets/shop.js", shopAsset("shop.js", "text/javascript; charset=utf-8"))
+	handle("GET /s/assets/{file}", shopAssets)
+	handle("GET /s/fonts/{file}", shopFonts)
 	handle("GET /s/{tenant}/api/config", s.shopConfig)
 	handle("POST /s/{tenant}/api/simulate", s.shopSimulate)
 	handle("POST /s/{tenant}/api/checkout", s.shopCheckout)

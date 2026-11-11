@@ -1,17 +1,13 @@
 {{define "layout"}}<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{.Title}} · {{.Store}}</title><meta name="description" content="{{.Description}}">
-<link rel="stylesheet" href="/s/assets/shop.css">
-<script src="/s/assets/shop.js" defer></script>
+{{.Chrome.Head}}
+<script src="/s/assets/shop.js?v=3" defer></script>
 </head>
-<body data-tenant="{{.Tenant}}" data-base="{{.Base}}" data-channel="{{.Channel}}">
+<body class="{{.Chrome.BodyClass}}" data-tenant="{{.Tenant}}" data-base="{{.Base}}" data-channel="{{.Channel}}">
 <a class="skip" href="#main">Saltar al contenido</a>
-<header class="top"><div class="wrap">
-<a class="brand" href="{{.Base}}/index">{{.Store}}</a>
-<form class="search" action="{{.Base}}/c" role="search"><label for="q" class="sr">Buscar productos</label>
-<input id="q" name="q" type="search" placeholder="Buscar productos" value="{{.Query}}"><button type="submit">Buscar</button></form>
-<nav aria-label="Principal"><a href="{{.Base}}/c">Productos</a> <a href="{{.Base}}/cart" class="cartlink">Carrito <span data-cart-count aria-live="polite">0</span></a></nav>
-</div></header>
-<main id="main" class="wrap">{{template "content" .}}</main>
-<footer class="wrap foot"><p>Pagos procesados por Stripe. Tus datos de tarjeta nunca pasan por esta tienda.</p></footer>
+{{.Chrome.Header}}
+<main id="main" class="shop">{{template "content" .}}</main>
+{{.Chrome.Footer}}
 </body></html>{{end}}
+{{define "pcard"}}<li class="pcard"><a class="pcard-link" href="{{.Base}}/p/{{.Handle}}"><div class="pcard-media ph ph-{{.Tone}}" aria-hidden="true"><span>{{.Initial}}</span></div><div class="pcard-body">{{with .Brand}}<p class="pcard-brand">{{.}}</p>{{end}}<h3 class="pcard-title">{{.Title}}</h3><p class="pcard-price">{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p></div></a>{{if .SoldOut}}<p class="pcard-badge">Agotado</p>{{else if .CompareAt}}<p class="pcard-badge is-sale">Oferta</p>{{end}}{{if and .SKU (not .SoldOut)}}<button class="pcard-add" type="button" data-quick-add="{{.SKU}}" data-title="{{.Title}}">Agregar</button>{{end}}</li>{{end}}

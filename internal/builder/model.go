@@ -86,6 +86,7 @@ type Template struct {
 	Handle  string                       `json:"handle"`
 	Name    string                       `json:"name"`
 	SEO     SEO                          `json:"seo"`
+	Theme   *ThemeSettings               `json:"theme,omitempty"`
 	Regions map[string][]SectionInstance `json:"regions"`
 }
 
