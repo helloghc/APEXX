@@ -25,7 +25,7 @@ import { Home } from "@/pages/Home";
 
 // Each section loads on demand so the login screen and home stay light.
 const Editor = lazy(() => import("@/App").then((m) => ({ default: m.Editor })));
-const Catalog = lazy(() => import("@/pages/Catalog").then((m) => ({ default: m.Catalog })));
+const Catalog = lazy(() => import("@/pages/catalog/index").then((m) => ({ default: m.Catalog })));
 const Orders = lazy(() => import("@/pages/Orders").then((m) => ({ default: m.Orders })));
 const Team = lazy(() => import("@/pages/Team").then((m) => ({ default: m.Team })));
 const Payments = lazy(() => import("@/pages/Payments").then((m) => ({ default: m.Payments })));
@@ -215,7 +215,7 @@ function Shell({ me }: { me: Me }) {
       body = <Editor key={site + "/" + pageHandle} site={site} handle={pageHandle} me={me} />;
       break;
     case "catalogo":
-      body = <Catalog me={me} productId={route[1]} />;
+      body = <Catalog me={me} route={route} />;
       break;
     case "pedidos":
       body = <Orders me={me} orderId={route[1]} />;
