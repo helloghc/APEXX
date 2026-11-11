@@ -1,0 +1,180 @@
+<title>Plan Apexx para superar el benchmark</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: a build plan read top to bottom. Rules that apply to every stage first, then the stages in order, then the closing audit. */
+:root{
+  --bg:#fff7fb; --surface:#ffffff; --line:#f0cfe0; --fg:#2a1020; --muted:#6d5361; --accent:#a81f6b; --accent-soft:#ffe3f1;
+  --ok:#17663a; --ok-bg:#e2f4e8; --mid:#8a5300; --mid-bg:#fdefd2; --no:#a3202a; --no-bg:#fde4e4;
+  --display:"Space Grotesk","Inter",system-ui,sans-serif; --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1a0f15; --surface:#24161e; --line:#45293a; --fg:#f8e9f1; --muted:#c3a6b5; --accent:#ff8fc6; --accent-soft:#4a1f37;
+  --ok:#7fdca0; --ok-bg:#173524; --mid:#f2c56b; --mid-bg:#3d2f10; --no:#ff9aa0; --no-bg:#451a1e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1a0f15; --surface:#24161e; --line:#45293a; --fg:#f8e9f1; --muted:#c3a6b5; --accent:#ff8fc6; --accent-soft:#4a1f37;
+  --ok:#7fdca0; --ok-bg:#173524; --mid:#f2c56b; --mid-bg:#3d2f10; --no:#ff9aa0; --no-bg:#451a1e; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:40px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(1.7rem,4vw,2.4rem)} h2{font-size:1.35rem} h3{font-size:1.05rem}
+p{margin:0;max-width:70ch} .muted{color:var(--muted)} .small{font-size:.85rem}
+header,section{display:grid;gap:14px}
+.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.note{background:var(--accent-soft);border-radius:10px;padding:14px 16px}
+ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:78ch}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:grid;gap:8px;min-width:0;align-content:start}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+table.wide{min-width:820px}
+th,td{padding:9px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:14px;min-width:0}
+.stage header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline}
+.stage .n{font-family:var(--display);font-size:1.6rem;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums}
+.tag{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.75rem;font-weight:600;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.cols>div{display:grid;gap:6px;align-content:start;min-width:0}
+.cols h4{margin:0;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.cols ul{margin:0;padding-left:18px;display:grid;gap:5px}
+a{color:var(--accent)}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">Plan de construcción · 11 de noviembre de 2026</span>
+  <h1>Plan Apexx para superar el benchmark</h1>
+  <p>Cierra las 48 funciones que la <a href="https://claude.ai/artifact/JcFjejmyApsAjre77N2a51">auditoría comparativa</a> marcó como faltantes o a medias frente a Shopify, Magento y Medusa, más lo pendiente frente a VTEX. Cada función se rediseña en Go para ser más rápida y más simple que la original, y ninguna etapa se da por terminada sin pasar las mismas auditorías, incluida reversión y prueba como humano.</p>
+  <div class="note"><p><strong>Qué significa «superior» aquí.</strong> No es una opinión: una función cuenta como superior cuando hace lo mismo que la mejor de las cuatro plataformas, cumple su meta de velocidad medida, y pasa las ocho auditorías de abajo. Lo que no se pueda medir dentro de este entorno (carga real, intrusión externa, Stripe en vivo) queda listado al final como validación externa, no se da por hecho.</p></div>
+</header>
+
+<section aria-labelledby="h-reglas">
+  <h2 id="h-reglas">Reglas de diseño: entender, no copiar</h2>
+  <div class="grid2">
+    <div class="box"><h3>Calcular al momento, nunca reindexar</h3><p class="muted">Precios por mercado, catálogos por empresa y reglas se resuelven en memoria sobre las proyecciones que ya existen. Un cambio se ve en segundos, sin tareas nocturnas ni caché que invalidar a mano.</p></div>
+    <div class="box"><h3>Configurar antes que programar</h3><p class="muted">Donde las otras plataformas piden una app o código (funciones, flujos, campos), Apexx ofrece primero una regla declarativa que explica su resultado. El código de terceros queda para lo que de verdad no cabe en una regla.</p></div>
+    <div class="box"><h3>Lo externo nunca frena la venta</h3><p class="muted">Paqueterías, tipos de cambio e impuestos externos se consultan con tiempo límite, caché corta y valor de respaldo. Si un proveedor cae, el carrito sigue cobrando.</p></div>
+    <div class="box"><h3>Todo se puede deshacer</h3><p class="muted">Cada operación que mueve dinero, stock o saldo tiene su operación inversa y deja el libro contable en cero. Cada función nueva se puede apagar por tienda sin perder datos.</p></div>
+    <div class="box"><h3>Aislamiento por tienda desde la tabla</h3><p class="muted">Toda tabla nueva nace con aislamiento forzado por tienda y entra a la auditoría automática. Los datos personales nuevos se cifran con la llave de la tienda.</p></div>
+    <div class="box"><h3>Explicable para quien opera</h3><p class="muted">Cada cálculo (precio, impuesto, envío, aprobación) puede mostrar por qué dio ese resultado, en el panel y en el simulador.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-vel">
+  <h2 id="h-vel">Metas de velocidad</h2>
+  <p>Son topes que se miden en cada etapa con el guion de velocidad del repositorio. Una función que los rompe no se entrega. Hoy la tienda responde entre 4 y 12 ms en la mediana y por debajo de 27 ms en el percentil 95, medido en este entorno.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Qué se mide</th><th>Tope (percentil 95, en el servidor)</th><th>Cómo se sostiene</th></tr></thead>
+    <tbody>
+      <tr><td>Página de tienda (inicio, catálogo, ficha)</td><td class="num">50 ms</td><td>Proyecciones en memoria; precio por mercado y catálogo por empresa resueltos sin consulta a la base.</td></tr>
+      <tr><td>Cálculo de carrito con promociones, impuestos y envío propio</td><td class="num">30 ms</td><td>Motor en memoria; reglas compiladas al guardar, no al calcular.</td></tr>
+      <tr><td>Carrito con tarifa en vivo de paquetería</td><td class="num">30 ms + proveedor, tope 800 ms</td><td>Consulta en paralelo, caché de 5 minutos por origen, destino y peso; tarifa de respaldo al vencer el tiempo.</td></tr>
+      <tr><td>Confirmar un pedido (sin contar al procesador de pago)</td><td class="num">120 ms</td><td>Una transacción; avisos y correos salen después, por la bandeja de salida.</td></tr>
+      <tr><td>Listas del panel (pedidos, productos, clientes)</td><td class="num">150 ms</td><td>Paginación por cursor e índices revisados en cada tabla nueva.</td></tr>
+      <tr><td>Cambio hecho en el panel visible en la tienda</td><td class="num">2 s</td><td>Evento a la proyección; sin indexador.</td></tr>
+      <tr><td>Peso de la página de tienda</td><td class="num">sin crecer</td><td>Presupuesto de peso por sección que ya aplica el diseñador; ninguna función suma scripts de terceros al pago.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section aria-labelledby="h-aud">
+  <h2 id="h-aud">Las ocho auditorías que cierra cada etapa</h2>
+  <p>Son las mismas para todas. Una etapa no se sube como terminada si falla una sola.</p>
+  <div class="scroll"><table class="wide">
+    <thead><tr><th>Auditoría</th><th>Qué comprueba</th><th>Cómo se ejecuta</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. Funcional</strong></td><td>Cada regla de negocio, con sus casos límite.</td><td>Pruebas automáticas contra una base real; una prueba por cada regla y por cada error esperado.</td></tr>
+      <tr><td><strong>2. Seguridad y aislamiento</strong></td><td>Ninguna ruta nueva sin permiso; ninguna tabla nueva sin aislamiento; la llave pública de tienda no alcanza rutas de administración; una tienda no ve a otra.</td><td>Las dos auditorías automáticas existentes (hoy 295 rutas y 107 tablas) crecen con cada etapa, más matriz de permisos por rol y entradas maliciosas.</td></tr>
+      <tr><td><strong>3. Reversión</strong></td><td>Todo lo que mueve dinero, stock, saldo, puntos o crédito vuelve exactamente a su punto de partida al cancelar, devolver o rechazar.</td><td>Prueba de ida y vuelta por flujo y consulta de invariantes: el libro contable suma cero y el stock coincide. También apagar la función y volver a encenderla sin perder datos.</td></tr>
+      <tr><td><strong>4. Fallos</strong></td><td>Corte a media operación, base de datos caída, proveedor externo lento o caído.</td><td>Se interrumpe el proceso a propósito y se verifica que al volver no hay cobro doble, stock perdido ni operación a medias.</td></tr>
+      <tr><td><strong>5. Concurrencia</strong></td><td>Doble clic, dos personas editando lo mismo, dos compradores por la última pieza, dos aprobadores a la vez.</td><td>Pruebas con peticiones simultáneas; gana una, la otra recibe un mensaje claro.</td></tr>
+      <tr><td><strong>6. Velocidad</strong></td><td>Los topes de la tabla anterior, antes y después.</td><td>Guion de velocidad con datos de tamaño real (miles de productos, cientos de reglas).</td></tr>
+      <tr><td><strong>7. Como humano</strong></td><td>Que una persona no encuentre nada roto, desconectado o que no haga lo que dice.</td><td>Detalle en la sección siguiente.</td></tr>
+      <tr><td><strong>8. Registro</strong></td><td>Que lo hecho quede documentado y en git.</td><td>Documento de la etapa con lo construido, lo medido y lo que quedó fuera; solo se sube código que compila y pasa todo.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section aria-labelledby="h-hum">
+  <h2 id="h-hum">La auditoría como humano, a detalle</h2>
+  <p>Se hace en un navegador real, sobre el servidor en marcha, en computadora y en teléfono.</p>
+  <div class="grid2">
+    <div class="box"><h3>Inventario de controles</h3><p class="muted">Un recorrido automático lista cada botón, enlace, campo, interruptor, pestaña y menú de cada pantalla, incluidos los que están dentro de diálogos. La etapa no cierra hasta que cada control fue usado y produjo su efecto: cambió un dato, navegó o mostró un mensaje. Un control sin efecto es un defecto.</p></div>
+    <div class="box"><h3>Conexión de punta a punta</h3><p class="muted">Lo que se guarda en el panel se comprueba donde debe verse: en la tienda, en el carrito, en el correo, en el reporte y en la API. Y al revés: lo que hace el comprador aparece en el panel.</p></div>
+    <div class="box"><h3>Recorridos por persona</h3><p class="muted">Dueño, miembro con permisos limitados, vendedor de marketplace, comprador de empresa, aprobador y comprador común. Cada uno hace su tarea completa de principio a fin, y se verifica que no pueda hacer lo que no le toca.</p></div>
+    <div class="box"><h3>Estados que casi nadie prueba</h3><p class="muted">Pantalla vacía, cargando, error del servidor, sin permiso, sin conexión, texto muy largo, cantidades en cero y negativas, fechas en el pasado, doble envío del formulario.</p></div>
+    <div class="box"><h3>En todas las presentaciones</h3><p class="muted">Tres temas del panel, cuatro temas de tienda, seis idiomas, teléfono de 390 px y escritorio, sin desborde horizontal, navegable con teclado y con etiquetas para lector de pantalla.</p></div>
+    <div class="box"><h3>Reversión hecha a mano</h3><p class="muted">Cada flujo se deshace desde la interfaz, como lo haría quien opera la tienda: cancelar, devolver, rechazar, quitar, desactivar. Se confirma en pantalla que todo volvió a su lugar.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-etapas">
+  <h2 id="h-etapas">Etapas</h2>
+  <p>El orden sigue la dependencia técnica: cada etapa usa lo que dejó la anterior. Tamaño: S pocas pantallas, M un módulo, L varios módulos.</p>
+  <div id="stages" style="display:grid;gap:16px"></div>
+</section>
+
+<section aria-labelledby="h-fin">
+  <h2 id="h-fin">Auditoría final, con todo junto</h2>
+  <ul class="plain">
+    <li>Se repiten las ocho auditorías sobre el sistema completo, no por etapa: las funciones nuevas combinadas entre sí (por ejemplo, una cotización B2B en otra moneda con paquete, tarifa en vivo y aprobación de dos niveles, y luego su devolución con cambio).</li>
+    <li>Inventario de controles de todo el panel y de toda la tienda, en los seis idiomas y los tres temas.</li>
+    <li>Se vuelve a correr la auditoría comparativa: la tabla debe quedar sin filas en «falta» ni «a medias», y se agrega VTEX panel por panel con el documento que ya existe en el repositorio.</li>
+    <li>Reversión general: una tienda de prueba con pedidos de todos los tipos se lleva de vuelta a cero y se comprueban los invariantes.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="h-ext">
+  <h2 id="h-ext">Validación externa: lo que este plan no puede dar por hecho</h2>
+  <ul class="plain">
+    <li><strong>Prueba de intrusión por un tercero.</strong> Las auditorías internas no la sustituyen.</li>
+    <li><strong>Prueba de carga en la infraestructura real de Google Cloud</strong>, con réplica y conmutación por falla. Las metas de velocidad de arriba se miden en un solo servidor.</li>
+    <li><strong>Stripe en vivo</strong>, incluidos pagos a vendedores y medios locales. Aquí se prueba con el simulador.</li>
+    <li><strong>Cuentas reales de paqueterías y de proveedor de impuestos o aranceles</strong> para cerrar la etapa de logística con datos verdaderos.</li>
+    <li><strong>Facturación fiscal (CFDI)</strong> con un proveedor autorizado.</li>
+    <li><strong>Revisión de las traducciones por hablantes nativos</strong> de francés, portugués, indonesio y japonés.</li>
+    <li><strong>Prueba de indexación en VTEX</strong>, que escribe en la cuenta y necesita tu autorización, y la rotación del AppToken.</li>
+  </ul>
+</section>
+</div>
+
+<script>
+const S=[
+{n:0,t:"Cerrar lo que quedó abierto",size:"M",why:"Deja la base completa antes de sumar módulos.",
+ scope:["Pago automático a vendedores con transferencias de Stripe, calendario de pago y retención por devoluciones.","Panel en seis idiomas al 100%: diálogos internos y frases con datos variables.","Tienda: correos al comprador y mensajes de entrega y promociones en los seis idiomas.","Diseñador visual usable en teléfono y revisión de los cuatro temas de tienda en todas sus páginas."],
+ better:["El pago al vendedor sale del libro contable que ya existe: cada peso pagado tiene su asiento y su reverso.","Una prueba falla si aparece en pantalla una frase del panel sin traducción, igual que ya pasa en la tienda."],
+ done:["Devolver un pedido de marketplace ya pagado al vendedor recupera el dinero o lo descuenta del siguiente pago.","Recorrido completo del panel en indonesio y japonés sin texto en español fuera de los datos del comerciante."]},
+{n:1,t:"Mercados: países, monedas e impuestos",size:"L",why:"Abre la venta fuera de México y es base de precios B2B y logística.",
+ scope:["Mercado que agrupa países con moneda, idioma por defecto, dominio o carpeta.","Precio fijo por mercado o tipo de cambio con redondeo.","Impuestos por país, incluidos o no en el precio, por clase de producto.","Exención de impuestos por cliente o empresa, con documento y vigencia.","Traducción por producto, categoría y sección en su propia pantalla.","Catálogo maestro que varias tiendas heredan y ajustan."],
+ better:["El precio por mercado se resuelve en memoria al pedir la página; Magento lo precalcula con indexadores y Shopify lo sincroniza por catálogo.","El tipo de cambio se fija al crear el pedido y queda guardado, así un reembolso devuelve exactamente lo cobrado.","El simulador explica el impuesto línea por línea."],
+ done:["Un pedido en otra moneda se cobra, se reembolsa en parte y se cancela, y el libro suma cero en ambas monedas.","Cambiar un tipo de cambio se ve en la tienda en menos de 2 s y no altera pedidos ya colocados."]},
+{n:2,t:"Campos y objetos propios",size:"M",why:"Es lo que en Shopify resuelve la mitad de las apps; lo usan las etapas 3, 5 y 6.",
+ scope:["Campos tipados en productos, variantes, clientes, pedidos y empresas.","Objetos propios enlazables a productos y clientes, mostrables como sección de tienda.","Uso de esos campos en filtros, segmentos, promociones, plantillas de correo y API.","Exportar y borrar los datos de un cliente a petición."],
+ better:["Los campos se validan al guardar y se leen de la proyección en memoria, sin consulta extra por página.","Un campo puede marcarse como personal y entonces se cifra con la llave de la tienda; ninguna de las otras lo ofrece."],
+ done:["Un campo creado en el panel aparece como filtro en la tienda y como condición de una promoción sin tocar código.","Borrar un cliente anonimiza sus datos y conserva intactos los asientos contables."]},
+{n:3,t:"B2B profundo",size:"L",why:"Magento es la referencia; aquí está la mayor distancia en B2B.",
+ scope:["Sucursales por empresa con catálogo, crédito, plazos y aprobadores propios.","Portal de empresa: invitar usuarios, roles y límite de gasto por persona.","Catálogo visible por empresa.","Precios por volumen en la lista de precios.","Mínimo, máximo y múltiplos por producto.","Cotización negociable con vigencia e historial.","Listas de recompra compartidas.","Pedido rápido por SKU o archivo.","Aprobaciones por monto, categoría o sucursal, con varios niveles y suplente.","Número de orden de compra del cliente.","Formas de pago permitidas por empresa.","Cobro automático al vencer el plazo con tarjeta guardada."],
+ better:["El catálogo por empresa es un filtro de su lista de precios: no hay un segundo catálogo que sincronizar.","La cotización aparta stock solo al aceptarse y vence sola, liberándolo.","Las reglas de aprobación se evalúan en el servidor en el mismo paso del pago; no hay estado intermedio que pueda quedar colgado."],
+ done:["Cotizar, negociar, aprobar en dos niveles, pedir, cobrar al vencimiento y devolver, con el crédito de la empresa de vuelta en su valor inicial.","Un usuario con límite de gasto no puede rebasarlo ni partiendo la compra en dos pedidos simultáneos."]},
+{n:4,t:"Logística y pago conectados",size:"L",why:"Quita trabajo manual diario a quien opera la tienda.",
+ scope:["Interfaz única de paquetería con tarifas en vivo.","Compra de guías y rastreo que actualiza el pedido.","Devolución en autoservicio con guía prepagada y motivos por categoría.","Cambio de producto dentro de la devolución.","Órdenes de surtido para terceros.","Editar un pedido ya colocado.","Botón de pago exprés en ficha y carrito.","Medios de pago locales a través de Stripe.","Aranceles de importación."],
+ better:["Las tarifas se piden en paralelo con tiempo límite y respaldo: un proveedor lento no hace lento el carrito.","El cambio de producto es una sola operación con su diferencia calculada, no una devolución más un pedido nuevo."],
+ done:["Con la paquetería simulada caída, el carrito cobra con tarifa de respaldo dentro del tope de velocidad.","Un cambio de producto revertido deja stock, cobros y saldo como antes."]},
+{n:5,t:"Tipos de producto",size:"M",why:"Completa el catálogo frente a Magento.",
+ scope:["Paquetes con componentes fijos o a elegir e inventario por componente.","Productos digitales con descarga protegida.","Preventa con anticipo y cobro del saldo al surtir.","Opciones personalizables con precio.","Comparador y vistos recientemente."],
+ better:["La disponibilidad del paquete se calcula al momento desde sus componentes; nunca hay un stock de paquete desincronizado.","La descarga usa un enlace firmado que vence, sin exponer el archivo."],
+ done:["Vender la última unidad de un componente agota el paquete en la tienda en menos de 2 s.","Cancelar una preventa devuelve el anticipo y libera la reserva."]},
+{n:6,t:"Extensibilidad",size:"L",why:"Es la ventaja principal de Shopify; se construye al final porque expone todo lo anterior.",
+ scope:["Reglas a la medida en descuentos, envíos y pagos.","Automatizaciones «cuando pase X, haz Y» con historial y reintentos.","Apps de terceros con permisos por alcance, revocables.","Zonas del panel y secciones de tienda para terceros.","API GraphQL para la tienda, operaciones por lotes y SDK con tienda de ejemplo."],
+ better:["Primero reglas declarativas que se explican solas; el código de terceros corre aislado, con tiempo y memoria limitados, y si falla se ignora sin tirar el pago.","Los permisos de una app usan el mismo modelo por módulo que ya protege al equipo."],
+ done:["Una regla de tercero que tarda de más o falla no cambia el tiempo de respuesta del pago más allá del tope.","Revocar una app corta su acceso de inmediato y queda en el registro encadenado."]},
+{n:7,t:"Lealtad, contenido y mostrador",size:"M",why:"Cierra las últimas filas de la comparación.",
+ scope:["Puntos y niveles de lealtad.","Campañas de correo a segmentos con venta atribuida.","Envío de conversiones a plataformas de anuncios desde el servidor.","Blog y contenido programado con vista previa por fecha.","Caja para venta en mostrador.","Lista de regalos y envoltura.","Reportes a la medida.","Conector punchout, solo si un cliente lo requiere."],
+ better:["Los puntos son asientos del mismo libro contable: se revierten con la devolución sin lógica aparte.","Las conversiones salen del servidor con consentimiento, sin scripts de terceros que hagan lenta la tienda."],
+ done:["Devolver un pedido quita exactamente los puntos que dio y devuelve los que se canjearon.","Una versión programada del diseño entra y sale sola en su fecha y se puede ver antes con fecha simulada."]},
+];
+document.getElementById("stages").innerHTML=S.map(s=>`<article class="stage"><header><span class="n">${s.n}</span><h3>${s.t}</h3><span class="tag">Tamaño ${s.size}</span><span class="muted small">${s.why}</span></header><div class="cols"><div><h4>Qué se construye</h4><ul>${s.scope.map(x=>`<li>${x}</li>`).join("")}</ul></div><div><h4>En qué será mejor</h4><ul>${s.better.map(x=>`<li>${x}</li>`).join("")}</ul><h4 style="margin-top:8px">Prueba de terminado, además de las ocho auditorías</h4><ul>${s.done.map(x=>`<li>${x}</li>`).join("")}</ul></div></div></article>`).join("");
+</script>
