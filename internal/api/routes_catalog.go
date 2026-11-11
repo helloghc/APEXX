@@ -27,7 +27,7 @@ func (s *Server) routesCatalog(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/products/{id}", s.authed("catalog", auth.Read, s.getProduct))
 	handle("PUT /v1/products/{id}", s.authed("catalog", auth.Edit, s.putProduct))
 	handle("DELETE /v1/products/{id}", s.authed("catalog", auth.Admin, s.deleteProduct))
-	handle("POST /v1/catalog/variants/generate", s.authed("catalog", auth.Read, s.generateVariants))
+	handle("POST /v1/catalog/variants/generate", s.staff("catalog", auth.Read, s.generateVariants))
 	handle("GET /v1/catalog/summary", s.authed("catalog", auth.Read, s.catalogSummary))
 
 	// Organization.
@@ -42,7 +42,7 @@ func (s *Server) routesCatalog(handle func(string, http.HandlerFunc)) {
 	handle("DELETE /v1/catalog/brands/{id}", s.authed("catalog", auth.Edit, s.deleteBrand))
 	handle("GET /v1/catalog/collections", s.authed("catalog", auth.Read, s.listCollections))
 	handle("POST /v1/catalog/collections", s.authed("catalog", auth.Edit, s.createCollection))
-	handle("POST /v1/catalog/collections/preview", s.authed("catalog", auth.Read, s.previewCollection))
+	handle("POST /v1/catalog/collections/preview", s.staff("catalog", auth.Read, s.previewCollection))
 	handle("GET /v1/catalog/collections/{id}", s.authed("catalog", auth.Read, s.getCollection))
 	handle("PUT /v1/catalog/collections/{id}", s.authed("catalog", auth.Edit, s.updateCollection))
 	handle("DELETE /v1/catalog/collections/{id}", s.authed("catalog", auth.Edit, s.deleteCollection))

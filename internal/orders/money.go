@@ -691,8 +691,17 @@ func (s *Service) Cancel(ctx context.Context, tenant, actor, id, reason string) 
 			return err
 		}
 		for _, l := range lines {
-			// Everything still allocated to the order returns to its location.
-			if _, err := restockFromAllocationsTx(ctx, tx, tenant, id, l.SKU, 1<<40); err != nil {
+			// Units that never left the warehouse return to the location they were
+			// sold from. Units already shipped are in the customer's hands: they
+			// only come back through a return that the warehouse receives.
+			n := l.Qty - l.FulfilledQty - l.CancelledQty
+			if n <= 0 {
+				continue
+			}
+			if _, err := tx.Exec(ctx, `UPDATE order_lines SET cancelled_qty=cancelled_qty+$4 WHERE tenant_id=$1 AND order_id=$2 AND line=$3`, tenant, id, l.Line, n); err != nil {
+				return err
+			}
+			if _, err := restockFromAllocationsTx(ctx, tx, tenant, id, l.SKU, n); err != nil {
 				return err
 			}
 		}

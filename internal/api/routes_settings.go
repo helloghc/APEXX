@@ -16,7 +16,7 @@ func (s *Server) routesSettings(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/locations", s.authed(mod, auth.Read, s.listLocations))
 	handle("PUT /v1/locations/{id}", s.authed(mod, auth.Admin, s.putLocation))
 	handle("DELETE /v1/locations/{id}", s.authed(mod, auth.Admin, s.deleteLocation))
-	handle("GET /v1/locations/{id}/stock", s.authed("inventory", auth.Read, s.locationStock))
+	handle("GET /v1/locations/{id}/stock", s.staff("inventory", auth.Read, s.locationStock))
 	handle("GET /v1/inventory-transfers", s.authed("inventory", auth.Read, s.listTransfers))
 	handle("POST /v1/inventory-transfers", s.authed("inventory", auth.Edit, s.createTransfer))
 	handle("GET /v1/inventory-transfers/{id}", s.authed("inventory", auth.Read, s.getTransfer))

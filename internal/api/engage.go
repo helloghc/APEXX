@@ -22,14 +22,14 @@ import (
 
 // routesEngage registers search merchandising, reviews and wish lists.
 func (s *Server) routesEngage(handle func(string, http.HandlerFunc)) {
-	handle("GET /v1/search/config", s.authed("catalog", auth.Read, s.getSearchConfig))
+	handle("GET /v1/search/config", s.staff("catalog", auth.Read, s.getSearchConfig))
 	handle("PUT /v1/search/config", s.authed("catalog", auth.Edit, s.putSearchConfig))
-	handle("GET /v1/search/terms", s.authed("catalog", auth.Read, s.searchTerms))
-	handle("GET /v1/search/preview", s.authed("catalog", auth.Read, s.searchPreview))
-	handle("GET /v1/reviews", s.authed("catalog", auth.Read, s.listReviews))
+	handle("GET /v1/search/terms", s.staff("catalog", auth.Read, s.searchTerms))
+	handle("GET /v1/search/preview", s.staff("catalog", auth.Read, s.searchPreview))
+	handle("GET /v1/reviews", s.staff("catalog", auth.Read, s.listReviews))
 	handle("POST /v1/reviews/{id}/moderate", s.authed("catalog", auth.Edit, s.moderateReview))
 	handle("DELETE /v1/reviews/{id}", s.authed("catalog", auth.Admin, s.deleteReview))
-	handle("GET /v1/wishlists/top", s.authed("catalog", auth.Read, s.topWishes))
+	handle("GET /v1/wishlists/top", s.staff("catalog", auth.Read, s.topWishes))
 
 	handle("GET /s/{tenant}/api/suggest", s.shopSuggest)
 	handle("GET /s/{tenant}/api/reviews/{handle}", s.shopReviews)

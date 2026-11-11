@@ -15,8 +15,8 @@ func (s *Server) routesPromotions(handle func(string, http.HandlerFunc)) {
 	handle("POST /v1/promotions/bulk", s.authed("promotions", auth.Edit, s.promotionsBulk))
 	handle("POST /v1/promotions/preview", s.authed("promotions", auth.Read, s.previewPromotion))
 	handle("POST /v1/promotions/simulate", s.authed("promotions", auth.Read, s.simulatePromotions))
-	handle("GET /v1/promotions/targets", s.authed("", "", s.searchTargets))
-	handle("GET /v1/promotions/facets", s.authed("", "", s.promotionFacets))
+	handle("GET /v1/promotions/targets", s.staff("", "", s.searchTargets))
+	handle("GET /v1/promotions/facets", s.staff("", "", s.promotionFacets))
 	handle("GET /v1/promotions/{id}", s.authed("promotions", auth.Read, s.getPromotion))
 	handle("PUT /v1/promotions/{id}", s.authed("promotions", auth.Edit, s.putPromotion))
 	handle("DELETE /v1/promotions/{id}", s.authed("promotions", auth.Admin, s.deletePromotion))
@@ -38,12 +38,12 @@ func (s *Server) routesPromotions(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/coupons/export", s.authed("promotions", auth.Read, s.exportCoupons))
 
 	// Price lists, bulk change and history.
-	handle("GET /v1/price-lists", s.authed("pricing", auth.Read, s.listPriceLists))
+	handle("GET /v1/price-lists", s.staff("pricing", auth.Read, s.listPriceLists))
 	handle("POST /v1/price-lists", s.authed("pricing", auth.Edit, s.createPriceList))
-	handle("GET /v1/price-lists/{id}", s.authed("pricing", auth.Read, s.getPriceList))
+	handle("GET /v1/price-lists/{id}", s.staff("pricing", auth.Read, s.getPriceList))
 	handle("PUT /v1/price-lists/{id}", s.authed("pricing", auth.Edit, s.putPriceList))
 	handle("DELETE /v1/price-lists/{id}", s.authed("pricing", auth.Admin, s.deletePriceList))
-	handle("POST /v1/pricing/bulk/preview", s.authed("pricing", auth.Read, s.bulkPricesPreview))
+	handle("POST /v1/pricing/bulk/preview", s.staff("pricing", auth.Read, s.bulkPricesPreview))
 	handle("POST /v1/pricing/bulk/apply", s.authed("pricing", auth.Admin, s.bulkPricesApply))
-	handle("GET /v1/pricing/history", s.authed("pricing", auth.Read, s.priceHistory))
+	handle("GET /v1/pricing/history", s.staff("pricing", auth.Read, s.priceHistory))
 }

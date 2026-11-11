@@ -63,6 +63,7 @@ type Server struct {
 
 	uploadSlots   chan struct{} // bounds concurrent image processing
 	engage        engageState   // search terms and review cache
+	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
 }
 
@@ -85,7 +86,9 @@ func (s *Server) Routes() http.Handler {
 		s.Proj.On("site.draft", evict)
 	}
 	mux := http.NewServeMux()
+	s.patterns = s.patterns[:0]
 	handle := func(pattern string, h http.HandlerFunc) {
+		s.patterns = append(s.patterns, pattern)
 		mux.Handle(pattern, s.metrics.wrap(pattern, h))
 	}
 
@@ -273,6 +276,19 @@ func (s *Server) authed(module, level string, h http.HandlerFunc) http.HandlerFu
 		defer cancel()
 		h(w, r.WithContext(ctx))
 	}
+}
+
+// staff is authed for management routes: the publishable storefront key is
+// refused even when its read permissions would cover the module, because
+// these answers are for the people who run the store.
+func (s *Server) staff(module, level string, h http.HandlerFunc) http.HandlerFunc {
+	return s.authed(module, level, func(w http.ResponseWriter, r *http.Request) {
+		if principal(r).Storefront {
+			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Esta información es del equipo de la tienda; una llave pública de tienda no puede leerla"})
+			return
+		}
+		h(w, r)
+	})
 }
 
 func principal(r *http.Request) auth.Principal {
