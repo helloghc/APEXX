@@ -1,21 +1,24 @@
 {{define "content"}}
-<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/c">Productos</a> › {{.P.Title}}</nav>
-<div class="pdp">
-<div class="ph big" aria-hidden="true">{{.P.Initial}}</div>
 <div>
+<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/index">Inicio</a> / <a href="{{.Base}}/c">Productos</a> / {{.P.Title}}</nav>
+<div class="pdp">
+<div class="ph ph-{{.P.Tone}}" aria-hidden="true"><span>{{.P.Initial}}</span></div>
+<div class="pdp-info">
+{{with .P.Brand}}<p class="eyebrow">{{.}}</p>{{end}}
 <h1>{{.P.Title}}</h1>
-{{with .P.Brand}}<p class="brand-name">{{.}}</p>{{end}}
 <form class="buy" data-buy>
-<fieldset><legend>Elige una opción</legend>
+<p class="price big" data-price-out>{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p>
+<fieldset><legend>Elige una opción</legend><div class="opts">
 {{range $i, $v := .P.Variants}}<label class="opt"><input type="radio" name="sku" value="{{$v.SKU}}" data-title="{{$.P.Title}} · {{$v.Title}}" data-price="{{$v.Price}}" data-compare="{{$v.CompareAt}}" data-available="{{$v.Available}}" {{if eq $i $.FirstAvailable}}checked{{end}} {{if eq $v.Available 0}}disabled{{end}}>
-<span>{{$v.Title}}</span> <span class="muted">{{if eq $v.Available 0}}Agotado{{else}}{{$v.Available}} disponibles{{end}}</span></label>{{end}}
-</fieldset>
-<p class="price big" data-price-out>{{.Price}} {{with .CompareAt}}<s>{{.}}</s>{{end}}</p>
-<label for="qty">Cantidad</label> <input id="qty" name="qty" type="number" min="1" max="50" value="1" inputmode="numeric">
-<button class="btn" type="submit" {{if .SoldOut}}disabled{{end}}>{{if .SoldOut}}Agotado{{else}}Agregar al carrito{{end}}</button>
+<span>{{$v.Title}}<small>{{if eq $v.Available 0}}Agotado{{else}}{{$v.Available}} disponibles{{end}}</small></span></label>{{end}}
+</div></fieldset>
+<div class="qtyrow"><label for="qty">Cantidad <input id="qty" name="qty" type="number" min="1" max="50" value="1" inputmode="numeric"></label>
+<button class="btn" type="submit" {{if .SoldOut}}disabled{{end}}>{{if .SoldOut}}Agotado{{else}}Agregar al carrito{{end}}</button></div>
 <p class="note" role="status" data-buy-status></p>
 </form>
-{{with .P.Description}}<h2>Descripción</h2><p>{{.}}</p>{{end}}
+<ul class="perks"><li>Envío gratis desde $1,499</li><li>Cambios sin costo durante 30 días</li><li>Pago seguro con Stripe</li></ul>
+{{with .P.Description}}<div class="desc"><h2>Descripción</h2><p>{{.}}</p></div>{{end}}
 </div></div>
+</div>
 <script type="application/ld+json">{{.JSONLD}}</script>
 {{end}}

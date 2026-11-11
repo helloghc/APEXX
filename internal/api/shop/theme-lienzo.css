@@ -1,0 +1,39 @@
+/* Lienzo — moda editorial. Serif con contraste alto, aire, líneas finas. */
+.t-lienzo .display{font-weight:400;letter-spacing:-.02em}
+.t-lienzo h1.display{font-weight:300;font-style:normal;font-size:clamp(2.8rem,1.4rem + 5.4vw,6rem)}
+.t-lienzo .eyebrow{letter-spacing:.32em;font-size:.72rem;color:var(--c-text)}
+.t-lienzo .btn{letter-spacing:.18em;text-transform:uppercase;font-size:.78rem;font-weight:500;min-height:52px;padding:0 34px}
+.t-lienzo .sx-announce{background:var(--c-text);font-size:.74rem;letter-spacing:.2em;text-transform:uppercase}
+.t-lienzo .hdr-logo{font-size:2rem;letter-spacing:.42em;font-weight:500;padding-left:.42em}
+.t-lienzo .hdr-nav a{font-size:.78rem;letter-spacing:.18em;text-transform:uppercase}
+.t-lienzo .hero-full .hero-copy{max-width:var(--wrap);text-align:left}
+.t-lienzo .hero-full h1.display{max-width:13ch}
+.t-lienzo .ph{background:#E9E3D9}
+.t-lienzo .ph-1{background:linear-gradient(160deg,#D9CBB8,#B89C80)}
+.t-lienzo .ph-2{background:linear-gradient(160deg,#E7E1D8,#C8BBA9)}
+.t-lienzo .ph-3{background:linear-gradient(160deg,#C9B49E,#8A6D55)}
+.t-lienzo .ph-4{background:linear-gradient(160deg,#DCD6CC,#A79E92)}
+.t-lienzo .ph-5{background:linear-gradient(160deg,#BFA58C,#7B5B44)}
+.t-lienzo .ph-6{background:linear-gradient(160deg,#EAE4DC,#D2C3B0)}
+.t-lienzo .ph::before{width:46%;height:82%;right:auto;left:27%;bottom:-6%;border-radius:200px 200px 0 0;background:rgb(255 255 255 / .22)}
+.t-lienzo .ph::after{width:1px;height:70%;left:50%;top:15%;border-radius:0;background:rgb(25 24 23 / .25);mix-blend-mode:normal}
+.t-lienzo .ph span{color:rgb(25 24 23 / .55);font-style:italic;font-weight:300}
+.t-lienzo .ph-hero span{font-size:clamp(10rem,30vw,26rem);color:rgb(255 255 255 / .5)}
+.t-lienzo .pcard-title{font-size:.92rem;letter-spacing:.02em}
+.t-lienzo .pcard-brand{letter-spacing:.24em;font-size:.68rem}
+.t-lienzo .pcard-badge{border-radius:0;background:var(--c-bg);letter-spacing:.16em}
+.t-lienzo .tile-copy strong{font-size:1.6rem;font-style:italic;font-weight:400}
+.t-lienzo .sx-benefits ul{border-color:var(--c-text)}
+.t-lienzo .bf-icon{background:transparent;border:1px solid var(--c-text)}
+.t-lienzo .sx-quotes figure{background:transparent;border:0;border-top:1px solid var(--c-text);border-radius:0;padding:28px 0 0}
+.t-lienzo .sx-quotes blockquote{font-size:1.6rem;font-style:italic;font-weight:300}
+.t-lienzo .sx-rich .display{font-style:italic;font-weight:300}
+.t-lienzo .sx-news{background:var(--c-text);color:var(--c-bg);border:0}
+.t-lienzo .sx-news .lede{color:rgb(246 244 240 / .75)}
+.t-lienzo .sx-news .btn{background:var(--c-bg);color:var(--c-text);border-color:var(--c-bg)}
+.t-lienzo .sx-news input{background:transparent;color:var(--c-bg);border-color:rgb(246 244 240 / .5)}
+.t-lienzo .sx-news input::placeholder{color:rgb(246 244 240 / .6)}
+.t-lienzo .ft-logo{letter-spacing:.42em}
+.t-lienzo .opt span{border-radius:0}
+.t-lienzo .shop h1{font-weight:300}
+.t-lienzo .pcard-badge.is-sale{background:var(--c-sale);color:#fff}

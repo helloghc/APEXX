@@ -7,6 +7,7 @@ import { can } from "./perms";
 import { Preview, type Device } from "./components/Preview";
 import { SectionList } from "./components/SectionList";
 import { SettingsForm } from "./components/SettingsForm";
+import { StylePanel } from "./components/StylePanel";
 import { TopBar } from "./components/TopBar";
 import {
   addBlock,
@@ -47,6 +48,7 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
   const [device, setDevice] = useState<Device>("desktop");
   const [picker, setPicker] = useState(false);
   const [history, setHistory] = useState(false);
+  const [style, setStyle] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
   const sections = template ? mainSections(template) : [];
@@ -135,6 +137,7 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
         onRedo={() => void ed.redo()}
         onPublish={() => (canPublish ? void publish() : toast.error("Tu acceso al diseño no permite publicar. Pide nivel Admin en Diseño de la tienda."))}
         onHistory={() => setHistory(true)}
+        onStyle={can(me, "builder", "edit") ? () => setStyle(true) : undefined}
         liveUrl={`/s/${encodeURIComponent(me.tenant)}/${encodeURIComponent(SITE)}/${encodeURIComponent(HANDLE)}`}
       />
       {ed.state.conflict && (
@@ -196,6 +199,31 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
           void ed.apply(addSection(template, d, selIndex >= 0 ? selIndex + 1 : sections.length, id));
           setSelected(id);
           setPicker(false);
+        }}
+      />
+      <StylePanel
+        open={style}
+        onClose={() => setStyle(false)}
+        site={SITE}
+        template={template}
+        onEdit={(e) => void ed.apply(e)}
+        onApplied={(prev, name) => {
+          setStyle(false);
+          setSelected(null);
+          void ed.reload();
+          toast.success(`Tema ${name} aplicado al borrador`, {
+            duration: 12000,
+            action: prev
+              ? {
+                  label: "Volver a como estaba",
+                  onClick: () =>
+                    void api
+                      .restoreRevision(SITE, prev)
+                      .then(() => ed.reload())
+                      .catch((e) => toast.error(`No se pudo restaurar: ${message(e)}`)),
+                }
+              : undefined,
+          });
         }}
       />
       <History

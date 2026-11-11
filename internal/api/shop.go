@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/helloghc/apexx/internal/apierr"
+	"github.com/helloghc/apexx/internal/builder"
 	"github.com/helloghc/apexx/internal/cart"
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/money"
@@ -21,7 +22,7 @@ import (
 	"github.com/helloghc/apexx/internal/store"
 )
 
-//go:embed shop/*.tmpl shop/shop.css shop/shop.js
+//go:embed shop/*.tmpl shop/*.css shop/shop.js shop/fonts/*.woff2
 var shopFS embed.FS
 
 var shopPages = func() map[string]*template.Template {
@@ -33,16 +34,18 @@ var shopPages = func() map[string]*template.Template {
 }()
 
 // shopCSP allows only our own assets plus Stripe for the payment form.
-const shopCSP = "default-src 'self'; img-src * data:; style-src 'self'; script-src 'self' https://js.stripe.com; " +
+const shopCSP = "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://js.stripe.com; " +
 	"frame-src https://js.stripe.com https://hooks.stripe.com; connect-src 'self' https://api.stripe.com; base-uri 'none'; form-action 'self'"
 
 type pageData struct {
 	Title, Description, Store, Tenant, Base, Channel, Query string
+	Chrome                                                  builder.Chrome
 }
 
 type cardView struct {
-	Handle, Title, Brand, Initial, Price, CompareAt string
-	SoldOut                                         bool
+	Handle, Title, Brand, Initial, Price, CompareAt, SKU, Base string
+	Tone                                                       int
+	SoldOut                                                    bool
 }
 
 func initial(s string) string {
@@ -75,7 +78,16 @@ func (s *Server) shopContext(w http.ResponseWriter, r *http.Request) (*projectio
 		http.Error(w, "La tienda no tiene canal de venta configurado", http.StatusServiceUnavailable)
 		return nil, pageData{}, false
 	}
-	return t, pageData{Store: tenant, Tenant: tenant, Base: "/s/" + tenant + "/" + r.PathValue("site"), Channel: ch}, true
+	st, err := s.openSite(tenant, r.PathValue("site"))
+	if errors.Is(err, errNoSite) {
+		http.NotFound(w, r)
+		return nil, pageData{}, false
+	}
+	if err != nil {
+		internalError(w, s.Log, err)
+		return nil, pageData{}, false
+	}
+	return t, pageData{Store: tenant, Tenant: tenant, Base: "/s/" + tenant + "/" + r.PathValue("site"), Channel: ch, Chrome: st.LiveChrome()}, true
 }
 
 func (s *Server) renderShop(w http.ResponseWriter, page string, data any, cache bool) {
@@ -93,9 +105,12 @@ func (s *Server) renderShop(w http.ResponseWriter, page string, data any, cache 
 }
 
 func cardOf(t *projection.Tenant, ch string, p catalog.Product) cardView {
-	c := cardView{Handle: p.Handle, Title: p.Title, Brand: p.Brand, Initial: initial(p.Title), SoldOut: true}
+	c := cardView{Handle: p.Handle, Title: p.Title, Brand: p.Brand, Initial: initial(p.Title), Tone: builder.ToneOf(p.Title), SoldOut: true}
 	for _, v := range p.Variants {
 		if t.Inventory.Available(v.SKU) > 0 {
+			if c.SoldOut {
+				c.SKU = v.SKU
+			}
 			c.SoldOut = false
 		}
 	}
@@ -122,7 +137,9 @@ func (s *Server) shopCatalog(w http.ResponseWriter, r *http.Request) {
 	ps, next := t.Catalog.Search(q, r.URL.Query().Get("cursor"), 24)
 	cards := make([]cardView, 0, len(ps))
 	for _, p := range ps {
-		cards = append(cards, cardOf(t, pd.Channel, p))
+		c := cardOf(t, pd.Channel, p)
+		c.Base = pd.Base
+		cards = append(cards, c)
 	}
 	pd.Title, pd.Query, pd.Description = "Productos", q, "Catálogo de "+pd.Store
 	if q != "" {
@@ -189,6 +206,7 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		pageData
 		P struct {
 			Title, Brand, Description, Initial string
+			Tone                               int
 			Variants                           []variantView
 		}
 		Price, CompareAt string
@@ -197,8 +215,9 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		JSONLD           template.JS
 	}{pageData: pd, P: struct {
 		Title, Brand, Description, Initial string
+		Tone                               int
 		Variants                           []variantView
-	}{p.Title, p.Brand, p.Description, initial(p.Title), vs}, Price: price, CompareAt: cmp, FirstAvailable: first, SoldOut: sold, JSONLD: template.JS(ld)}, true)
+	}{p.Title, p.Brand, p.Description, initial(p.Title), builder.ToneOf(p.Title), vs}, Price: price, CompareAt: cmp, FirstAvailable: first, SoldOut: sold, JSONLD: template.JS(ld)}, true)
 }
 
 func firstSKU(p catalog.Product) string {
@@ -226,13 +245,39 @@ func (s *Server) shopStatic(page, title string) http.HandlerFunc {
 	}
 }
 
-func shopAsset(name, ctype string) http.HandlerFunc {
-	b, _ := shopFS.ReadFile("shop/" + name)
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", ctype)
-		w.Header().Set("Cache-Control", "public, max-age=300")
-		_, _ = w.Write(b)
+// shopAssets serves the storefront CSS and script (versioned with ?v=).
+func shopAssets(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("file")
+	ctype := ""
+	switch {
+	case strings.HasSuffix(name, ".css"):
+		ctype = "text/css; charset=utf-8"
+	case name == "shop.js":
+		ctype = "text/javascript; charset=utf-8"
 	}
+	b, err := shopFS.ReadFile("shop/" + name)
+	if ctype == "" || err != nil || strings.Contains(name, "/") {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", ctype)
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write(b)
+}
+
+// shopFonts serves the bundled woff2 fonts with a one-year immutable cache.
+func shopFonts(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("file")
+	b, err := shopFS.ReadFile("shop/fonts/" + name)
+	if err != nil || !strings.HasSuffix(name, ".woff2") || strings.Contains(name, "/") {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "font/woff2")
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	_, _ = w.Write(b)
 }
 
 // ---------- public storefront API ----------
