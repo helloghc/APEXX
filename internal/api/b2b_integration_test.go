@@ -3,7 +3,11 @@ package api
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
+
+	"github.com/helloghc/apexx/internal/cart"
+	"github.com/helloghc/apexx/internal/orders"
 )
 
 // A company buys at its price and on credit up to its limit; refunds and
@@ -96,5 +100,99 @@ func TestCompaniesAndCredit(t *testing.T) {
 	_ = e.db.System.QueryRow(context.Background(), `SELECT count(*) FROM (SELECT tx_id FROM ledger_entries GROUP BY tx_id HAVING sum(amount) <> 0) x`).Scan(&unbalanced)
 	if clear != 0 || unbalanced != 0 {
 		t.Fatalf("buyers in clear: %d; unbalanced ledger transactions: %d", clear, unbalanced)
+	}
+}
+
+// Price per product for a company, and purchases above the buyer's limit that
+// wait for an approver and are placed exactly once.
+func TestCompanyPriceListAndApprovals(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	e.must(201, "POST", "/v1/price-lists", e.adminA, m{"id": "acme", "name": "Precios ACME", "kind": "override", "customerGroup": "acme", "priority": 10,
+		"items": []m{{"sku": "S1", "amount": 7000}}})
+	if st, _ := e.do("POST", "/v1/companies", e.adminA, m{"name": "X", "terms": "net30", "creditLimit": 100000, "approvalThreshold": 1000, "buyerEmails": []string{"a@x.example"}}); st != 400 {
+		t.Fatalf("approval threshold without approvers = %d", st)
+	}
+	co := e.must(201, "POST", "/v1/companies", e.adminA, m{"name": "ACME", "terms": "net30", "creditLimit": 500000, "priceGroup": "acme", "approvalThreshold": 20000,
+		"buyerEmails": []string{"compras@acme.example"}, "approverEmails": []string{"jefa@acme.example"}})
+	id := co["id"].(string)
+	e.drain()
+	got := e.must(200, "GET", "/v1/companies/"+id, e.adminA, nil)
+	if len(got["buyers"].([]any)) != 2 || len(got["approvers"].([]any)) != 1 {
+		t.Fatalf("buyers=%v approvers=%v", got["buyers"], got["approvers"])
+	}
+	// Price per product: S1 costs 70 for the company, 100 for everyone else.
+	body := m{"channel": "mx", "postalCode": "53129", "items": []m{{"sku": "S1", "qty": 1}}, "customer": m{"email": "compras@acme.example", "name": "Carlos Compras"}, "paymentMethod": "credit", "companyId": id}
+	st, o := e.do("POST", "/v1/checkout", e.adminA, body, "Idempotency-Key", "apr-key-1")
+	if st != 201 || o["itemsTotal"].(float64) != 7000 {
+		t.Fatalf("company price = %d items=%v %v", st, o["itemsTotal"], o["detail"])
+	}
+	// A buyer above the threshold: no order, a request for the approver.
+	buyer, err := e.orders.CompanyForEmail(ctx, "store-a", "compras@acme.example")
+	if err != nil || buyer == nil || buyer.Approver || buyer.ApprovalThreshold != 20000 {
+		t.Fatalf("buyer access = %+v %v", buyer, err)
+	}
+	req := orders.CheckoutRequest{Channel: "mx", PostalCode: "53129", Items: []cart.Item{{SKU: "S1", Qty: 4}}, Customer: orders.Customer{Email: "compras@acme.example", Name: "Carlos Compras"}, PaymentMethod: "credit", Company: buyer}
+	before := e.available("S1")
+	res, err := e.orders.Checkout(ctx, "store-a", "storefront:web", "apr-key-2", req)
+	if err != nil || res.Status != 202 || !strings.Contains(string(res.Body), "approval_required") {
+		t.Fatalf("purchase above the threshold = %d %s %v", res.Status, res.Body, err)
+	}
+	if e.available("S1") != before {
+		t.Fatal("a purchase waiting for approval took stock")
+	}
+	var n int
+	_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM purchase_requests WHERE status='pending'`).Scan(&n)
+	if n != 1 {
+		t.Fatalf("pending requests = %d", n)
+	}
+	var clear int
+	_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM purchase_requests WHERE encode(request,'escape') LIKE '%acme.example%'`).Scan(&clear)
+	if clear != 0 {
+		t.Fatal("the purchase request is stored in clear")
+	}
+	// The approver's link: a wrong token finds nothing; the right one shows and decides.
+	if _, err := e.db.System.Exec(ctx, `UPDATE purchase_requests SET token_hash=$1`, orders.HashToken("enlace-de-prueba")); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := e.do("POST", "/s/store-a/api/approval/otro-enlace/approve", "", nil); st != 404 {
+		t.Fatalf("approval with a wrong link = %d", st)
+	}
+	if st, _ := e.do("POST", "/s/store-b/api/approval/enlace-de-prueba/approve", "", nil); st != 404 {
+		t.Fatalf("store B approved a request of store A: %d", st)
+	}
+	owed := e.must(200, "GET", "/v1/companies/"+id, e.adminA, nil)["company"].(map[string]any)["balance"].(float64)
+	e.must(200, "POST", "/s/store-a/api/approval/enlace-de-prueba/approve", "", nil)
+	if e.available("S1") != before-4 {
+		t.Fatalf("approved purchase did not take stock: %v -> %v", before, e.available("S1"))
+	}
+	after := e.must(200, "GET", "/v1/companies/"+id, e.adminA, nil)["company"].(map[string]any)["balance"].(float64)
+	if after <= owed {
+		t.Fatalf("approved purchase is not on the company's credit: %v -> %v", owed, after)
+	}
+	if st, _ := e.do("POST", "/s/store-a/api/approval/enlace-de-prueba/approve", "", nil); st != 409 {
+		t.Fatalf("approving twice = %d", st)
+	}
+	if e.available("S1") != before-4 {
+		t.Fatal("approving twice placed two orders")
+	}
+	// An approver buys above the threshold without waiting.
+	boss, _ := e.orders.CompanyForEmail(ctx, "store-a", "jefa@acme.example")
+	req.Company, req.Customer = boss, orders.Customer{Email: "jefa@acme.example", Name: "Julia Jefa"}
+	if res, err := e.orders.Checkout(ctx, "store-a", "storefront:web", "apr-key-3", req); err != nil || res.Status != 201 {
+		t.Fatalf("approver's own purchase = %d %s %v", res.Status, res.Body, err)
+	}
+	// A rejected request places nothing.
+	req.Company, req.Customer = buyer, orders.Customer{Email: "compras@acme.example", Name: "Carlos Compras"}
+	if res, _ := e.orders.Checkout(ctx, "store-a", "storefront:web", "apr-key-4", req); res.Status != 202 {
+		t.Fatalf("second request = %d", res.Status)
+	}
+	if _, err := e.db.System.Exec(ctx, `UPDATE purchase_requests SET token_hash=$1 WHERE status='pending'`, orders.HashToken("enlace-dos")); err != nil {
+		t.Fatal(err)
+	}
+	stock := e.available("S1")
+	e.must(200, "POST", "/s/store-a/api/approval/enlace-dos/reject", "", nil)
+	if e.available("S1") != stock {
+		t.Fatal("a rejected request took stock")
 	}
 }

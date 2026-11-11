@@ -32,6 +32,11 @@ type Company struct {
 	Balance     int64     `json:"balance"` // what the company owes
 	Overdue     int64     `json:"overdue"` // charges past their due date, not yet covered by payments
 	Buyers      int       `json:"buyers"`
+	// PriceGroup links the company to the price lists of that customer group
+	// (price per product). ApprovalThreshold: credit orders above it by a buyer
+	// who is not an approver wait for an approver of the company (0 = off).
+	PriceGroup        string `json:"priceGroup"`
+	ApprovalThreshold int64  `json:"approvalThreshold"`
 }
 
 // CompanyEntry is one movement of a company's account.
@@ -48,11 +53,14 @@ type CompanyEntry struct {
 
 // CompanyAccess is what a signed-in buyer of a company gets at checkout.
 type CompanyAccess struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Terms       string `json:"terms"`
-	DiscountBps int64  `json:"discountBps"`
-	Available   int64  `json:"available"` // credit left; 0 when the company pays in advance
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	Terms             string `json:"terms"`
+	DiscountBps       int64  `json:"discountBps"`
+	Available         int64  `json:"available"` // credit left; 0 when the company pays in advance
+	PriceGroup        string `json:"-"`
+	ApprovalThreshold int64  `json:"approvalThreshold"`
+	Approver          bool   `json:"approver"`
 }
 
 var termDays = map[string]int{"prepaid": 0, "net15": 15, "net30": 30, "net60": 60}
@@ -83,6 +91,10 @@ func (c *Company) clean() error {
 		return FieldError{"discountBps", "El descuento debe estar entre 0% y 90%"}
 	case len(c.Note) > 500:
 		return FieldError{"note", "Nota de hasta 500 caracteres"}
+	case len(c.PriceGroup) > 60 || strings.ContainsAny(c.PriceGroup, " \t\n"):
+		return FieldError{"priceGroup", "El grupo de precios es una sola palabra de hasta 60 caracteres"}
+	case c.ApprovalThreshold < 0:
+		return FieldError{"approvalThreshold", "El monto de aprobación no puede ser negativo"}
 	}
 	return nil
 }
@@ -90,7 +102,7 @@ func (c *Company) clean() error {
 const companySelect = `SELECT c.id, c.name, c.rfc, c.status, c.terms, c.credit_limit, c.discount_bps, c.note, c.created_at,
 	COALESCE(e.balance,0),
 	LEAST(GREATEST(COALESCE(e.balance,0),0), GREATEST(COALESCE(e.due,0) - COALESCE(e.paid,0), 0)),
-	(SELECT count(*) FROM company_buyers b WHERE b.tenant_id=c.tenant_id AND b.company_id=c.id)::int
+	(SELECT count(*) FROM company_buyers b WHERE b.tenant_id=c.tenant_id AND b.company_id=c.id)::int, c.price_group, c.approval_threshold
 	FROM companies c LEFT JOIN (SELECT company_id, sum(amount) AS balance,
 			sum(amount) FILTER (WHERE kind='charge' AND due_at < now()) AS due,
 			-sum(amount) FILTER (WHERE kind IN ('payment','refund','release') OR (kind='adjust' AND amount < 0)) AS paid
@@ -99,7 +111,7 @@ const companySelect = `SELECT c.id, c.name, c.rfc, c.status, c.terms, c.credit_l
 
 func scanCompany(r pgx.Row) (Company, error) {
 	var c Company
-	return c, r.Scan(&c.ID, &c.Name, &c.RFC, &c.Status, &c.Terms, &c.CreditLimit, &c.DiscountBps, &c.Note, &c.CreatedAt, &c.Balance, &c.Overdue, &c.Buyers)
+	return c, r.Scan(&c.ID, &c.Name, &c.RFC, &c.Status, &c.Terms, &c.CreditLimit, &c.DiscountBps, &c.Note, &c.CreatedAt, &c.Balance, &c.Overdue, &c.Buyers, &c.PriceGroup, &c.ApprovalThreshold)
 }
 
 // Companies lists the business customers of a store.
@@ -125,6 +137,13 @@ func (s *Service) Companies(ctx context.Context, tenant string) ([]Company, erro
 
 // Company returns a company with its buyers (emails) and its statement.
 func (s *Service) Company(ctx context.Context, tenant, id string, pii bool) (Company, []string, []CompanyEntry, error) {
+	c, buyers, _, entries, err := s.CompanyFull(ctx, tenant, id, pii)
+	return c, buyers, entries, err
+}
+
+// CompanyFull is Company plus the emails of the buyers who may approve purchases.
+func (s *Service) CompanyFull(ctx context.Context, tenant, id string, pii bool) (Company, []string, []string, []CompanyEntry, error) {
+	var approvers []string
 	var c Company
 	var buyers []string
 	var entries []CompanyEntry
@@ -138,20 +157,30 @@ func (s *Service) Company(ctx context.Context, tenant, id string, pii bool) (Com
 			return err
 		}
 		if pii {
-			rows, err := tx.Query(ctx, `SELECT email FROM company_buyers WHERE tenant_id=$1 AND company_id=$2`, tenant, id)
+			rows, err := tx.Query(ctx, `SELECT email, approver FROM company_buyers WHERE tenant_id=$1 AND company_id=$2`, tenant, id)
 			if err != nil {
 				return err
 			}
-			encs, err := pgx.CollectRows(rows, pgx.RowTo[[]byte])
-			if err != nil {
-				return err
-			}
-			for _, enc := range encs {
+			defer rows.Close()
+			for rows.Next() {
+				var enc []byte
+				var ap bool
+				if err := rows.Scan(&enc, &ap); err != nil {
+					return err
+				}
 				if plain, err := s.Keys.Decrypt(tenant, enc, "buyer:"+id); err == nil {
 					buyers = append(buyers, string(plain))
+					if ap {
+						approvers = append(approvers, string(plain))
+					}
 				}
 			}
+			if err := rows.Err(); err != nil {
+				return err
+			}
+			rows.Close()
 			sort.Strings(buyers)
+			sort.Strings(approvers)
 		}
 		rows, err := tx.Query(ctx, `SELECT e.id, e.kind, e.amount, COALESCE(e.order_id,''), COALESCE(o.number,0), e.due_at, e.note, e.created_at
 			FROM company_entries e LEFT JOIN orders o ON o.tenant_id=e.tenant_id AND o.id=e.order_id
@@ -165,12 +194,28 @@ func (s *Service) Company(ctx context.Context, tenant, id string, pii bool) (Com
 		})
 		return err
 	})
-	return c, buyers, entries, err
+	return c, buyers, approvers, entries, err
 }
 
 // SaveCompany creates (empty id) or updates a company. buyers, when not nil,
 // replaces the list of people who may buy for it.
 func (s *Service) SaveCompany(ctx context.Context, tenant, actor string, in Company, buyers []string) (Company, error) {
+	return s.SaveCompanyWith(ctx, tenant, actor, in, buyers, nil)
+}
+
+// SaveCompanyWith also marks which buyers may approve purchases of the others.
+func (s *Service) SaveCompanyWith(ctx context.Context, tenant, actor string, in Company, buyers, approvers []string) (Company, error) {
+	isApprover := map[string]bool{}
+	for _, a := range approvers {
+		a = strings.ToLower(strings.TrimSpace(a))
+		if a != "" {
+			isApprover[a] = true
+			buyers = append(buyers, a) // an approver is also a buyer
+		}
+	}
+	if in.ApprovalThreshold > 0 && buyers != nil && len(isApprover) == 0 {
+		return Company{}, FieldError{"approvers", "Para pedir aprobación agrega al menos una persona que apruebe"}
+	}
 	if err := in.clean(); err != nil {
 		return Company{}, err
 	}
@@ -193,13 +238,13 @@ func (s *Service) SaveCompany(ctx context.Context, tenant, actor string, in Comp
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		if in.ID == "" {
 			in.ID = newID("com_")
-			if _, err := tx.Exec(ctx, `INSERT INTO companies (tenant_id, id, name, rfc, status, terms, credit_limit, discount_bps, note) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note); err != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO companies (tenant_id, id, name, rfc, status, terms, credit_limit, discount_bps, note, price_group, approval_threshold) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold); err != nil {
 				return err
 			}
 		} else {
-			ct, err := tx.Exec(ctx, `UPDATE companies SET name=$3, rfc=$4, status=$5, terms=$6, credit_limit=$7, discount_bps=$8, note=$9, updated_at=now() WHERE tenant_id=$1 AND id=$2`,
-				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note)
+			ct, err := tx.Exec(ctx, `UPDATE companies SET name=$3, rfc=$4, status=$5, terms=$6, credit_limit=$7, discount_bps=$8, note=$9, price_group=$10, approval_threshold=$11, updated_at=now() WHERE tenant_id=$1 AND id=$2`,
+				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold)
 			if err != nil {
 				return err
 			}
@@ -220,7 +265,7 @@ func (s *Service) SaveCompany(ctx context.Context, tenant, actor string, in Comp
 				if err != nil {
 					return err
 				}
-				if _, err := tx.Exec(ctx, `INSERT INTO company_buyers (tenant_id, company_id, email_hash, email) VALUES ($1,$2,$3,$4)`, tenant, in.ID, hash, enc); err != nil {
+				if _, err := tx.Exec(ctx, `INSERT INTO company_buyers (tenant_id, company_id, email_hash, email, approver) VALUES ($1,$2,$3,$4,$5)`, tenant, in.ID, hash, enc, isApprover[e]); err != nil {
 					if strings.Contains(err.Error(), "23505") || strings.Contains(err.Error(), "duplicate") {
 						return FieldError{"buyers", e + " ya compra para otra empresa"}
 					}
@@ -286,9 +331,9 @@ func (s *Service) CompanyForEmail(ctx context.Context, tenant, email string) (*C
 	var limit, balance int64
 	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		return tx.QueryRow(ctx, `SELECT c.id, c.name, c.terms, c.discount_bps, c.credit_limit,
-				COALESCE((SELECT sum(amount) FROM company_entries e WHERE e.tenant_id=c.tenant_id AND e.company_id=c.id),0)
+				COALESCE((SELECT sum(amount) FROM company_entries e WHERE e.tenant_id=c.tenant_id AND e.company_id=c.id),0), c.price_group, c.approval_threshold, b.approver
 			FROM company_buyers b JOIN companies c ON c.tenant_id=b.tenant_id AND c.id=b.company_id
-			WHERE b.tenant_id=$1 AND b.email_hash=$2 AND c.status='active'`, tenant, hash).Scan(&a.ID, &a.Name, &a.Terms, &a.DiscountBps, &limit, &balance)
+			WHERE b.tenant_id=$1 AND b.email_hash=$2 AND c.status='active'`, tenant, hash).Scan(&a.ID, &a.Name, &a.Terms, &a.DiscountBps, &limit, &balance, &a.PriceGroup, &a.ApprovalThreshold, &a.Approver)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -312,7 +357,8 @@ func (s *Service) CompanyAccessByID(ctx context.Context, tenant, id string) (*Co
 	if c.Status != "active" {
 		return nil, &CreditError{"company_suspended", "La empresa está suspendida"}
 	}
-	a := &CompanyAccess{ID: c.ID, Name: c.Name, Terms: c.Terms, DiscountBps: c.DiscountBps}
+	// A server-side integration acts for the company itself: it needs no approval.
+	a := &CompanyAccess{ID: c.ID, Name: c.Name, Terms: c.Terms, DiscountBps: c.DiscountBps, PriceGroup: c.PriceGroup, ApprovalThreshold: c.ApprovalThreshold, Approver: true}
 	if c.Terms != "prepaid" {
 		a.Available = max(c.CreditLimit-c.Balance, 0)
 	}
@@ -392,4 +438,12 @@ func (s *Service) creditRefundPart(ctx context.Context, tenant, refundID string,
 			ON CONFLICT (tenant_id, id) DO NOTHING`, tenant, "cen_"+refundID+"_"+p.PaymentID, p.Ref, -p.Amount, orderID)
 		return err
 	})
+}
+
+// CompanyGroup is the price list group of the company ("" = store prices).
+func CompanyGroup(c *CompanyAccess) string {
+	if c == nil {
+		return ""
+	}
+	return c.PriceGroup
 }

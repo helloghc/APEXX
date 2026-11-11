@@ -19,6 +19,7 @@ const (
 	TplAbandonedCart       = "abandoned_cart"
 	TplPaymentLink         = "payment_link"
 	TplGiftCard            = "gift_card"
+	TplPurchaseApproval    = "purchase_approval"
 	TplTeamInvite          = "team_invite"
 	TplSubscriptionCreated = "subscription_created"
 	TplSubscriptionFailed  = "subscription_failed"
@@ -170,6 +171,12 @@ var Definitions = []Definition{
 			Body: "{{equipo.invita}} te invitó a administrar la tienda en Apexx.\n\nCrea tu contraseña con el botón de abajo. La invitación vence en 7 días y solo funciona una vez.",
 			CTA:  "Aceptar invitación", Footer: "Si no esperabas esta invitación, ignora este correo."},
 		Variables: append(append([]Variable{}, common...), Variable{"equipo.invita", "Quién invita", "Ana Torres"})},
+	{Key: TplPurchaseApproval, Name: "Compra de empresa por aprobar", Description: "Se envía a quien aprueba las compras de una empresa cuando un comprador supera su monto autorizado.",
+		Subject: "{{solicitud.quien}} pide aprobar una compra de {{solicitud.total}}",
+		Blocks: Blocks{Heading: "Compra por aprobar en {{tienda.nombre}}",
+			Body: "{{solicitud.quien}} quiere comprar a crédito de {{empresa.nombre}} por {{solicitud.total}}.\n\nRevisa los productos y aprueba o rechaza. El pedido solo se coloca si lo apruebas.",
+			CTA:  "Revisar la compra", Footer: "Recibes este correo porque apruebas las compras de tu empresa en esta tienda."},
+		Variables: append(append([]Variable{}, common...), Variable{"empresa.nombre", "Empresa", "ACME Industrial"}, Variable{"solicitud.total", "Total", "$12,400.00 MXN"}, Variable{"solicitud.quien", "Quién compra", "Luis Pérez"})},
 	{Key: TplPaymentLink, Name: "Enlace de pago", Description: "Se envía al mandar un pedido borrador o un saldo pendiente para que el cliente pague.",
 		Subject: "Completa el pago de tu pedido en {{tienda.nombre}}",
 		Blocks: Blocks{Heading: "Tu pedido está listo para pagar",

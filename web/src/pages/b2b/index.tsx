@@ -20,7 +20,7 @@ import { dateTime, ErrorBox, Notice, Page } from "../common";
 import { EmptyState, SkeletonRows } from "../promotions/shared";
 
 const enc = encodeURIComponent;
-interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number }
+interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; approvalThreshold: number }
 interface CEntry { id: string; kind: string; amount: number; orderId?: string; orderNumber?: number; dueAt?: string; note?: string; at: string }
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[] }
 interface Entity { id: string; name: string; description: string; public: boolean; success: string; fields: Field[]; records: number }
@@ -28,8 +28,8 @@ interface Rec { id: string; data: Record<string, string>; source: string; create
 
 const api = {
   companies: () => request<{ items: Company[] }>("GET", "/v1/companies").then((r) => r.items),
-  company: (id: string) => request<{ company: Company; buyers: string[]; statement: CEntry[] }>("GET", `/v1/companies/${enc(id)}`),
-  saveCompany: (c: Partial<Company> & { buyerEmails?: string[] }) => (c.id ? request<Company>("PUT", `/v1/companies/${enc(c.id)}`, c) : request<Company>("POST", "/v1/companies", c)),
+  company: (id: string) => request<{ company: Company; buyers: string[]; approvers: string[]; statement: CEntry[] }>("GET", `/v1/companies/${enc(id)}`),
+  saveCompany: (c: Partial<Company> & { buyerEmails?: string[]; approverEmails?: string[] }) => (c.id ? request<Company>("PUT", `/v1/companies/${enc(c.id)}`, c) : request<Company>("POST", "/v1/companies", c)),
   entry: (id: string, b: { kind: string; amount: number; note: string }) => request<void>("POST", `/v1/companies/${enc(id)}/entries`, b, { as: "none" }),
   entities: () => request<{ items: Entity[]; formBase: string }>("GET", "/v1/entities"),
   saveEntity: (e: Entity) => request<Entity>("PUT", `/v1/entities/${enc(e.id)}`, e),
@@ -81,14 +81,17 @@ function CompanyList({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
-function CompanyDialog({ company, buyers, onClose, onDone }: { company?: Company; buyers?: string[]; onClose: () => void; onDone: () => void }) {
+function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { company?: Company; buyers?: string[]; approvers?: string[]; onClose: () => void; onDone: () => void }) {
+  const [approverEmails, setApproverEmails] = useState((approvers ?? []).join("\n"));
+  const [threshold, setThreshold] = useState(company?.approvalThreshold ? centsToPesos(company.approvalThreshold) : "");
   const [c, setC] = useState<Partial<Company>>(company ?? { name: "", rfc: "", terms: "prepaid", status: "active", note: "" });
   const [limit, setLimit] = useState(centsToPesos(company?.creditLimit ?? 0));
   const [pct, setPct] = useState(String((company?.discountBps ?? 0) / 100));
-  const [emails, setEmails] = useState((buyers ?? []).join("\n"));
+  const [emails, setEmails] = useState((buyers ?? []).filter((b) => !(approvers ?? []).includes(b)).join("\n"));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const save = useMutation({
-    mutationFn: () => api.saveCompany({ ...c, creditLimit: c.terms === "prepaid" ? 0 : parsePesos(limit) ?? 0, discountBps: Math.round((Number(pct.replace(",", ".")) || 0) * 100), buyerEmails: emails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean) }),
+    mutationFn: () => api.saveCompany({ ...c, creditLimit: c.terms === "prepaid" ? 0 : parsePesos(limit) ?? 0, discountBps: Math.round((Number(pct.replace(",", ".")) || 0) * 100), buyerEmails: emails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean),
+      approverEmails: approverEmails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean), approvalThreshold: parsePesos(threshold) ?? 0 }),
     onSuccess: () => { toast.success("Empresa guardada."); onDone(); onClose(); },
     onError: (e) => { setErrors(fieldErrors(e)); toast.error(errorMessage(e)); },
   });
@@ -105,6 +108,9 @@ function CompanyDialog({ company, buyers, onClose, onDone }: { company?: Company
           {c.terms !== "prepaid" && <div className="grid gap-1.5"><Label htmlFor="co-limit">Límite de crédito (MXN)</Label><Input id="co-limit" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />{err("creditLimit")}</div>}
           {company && <div className="grid gap-1.5"><span className="text-sm font-medium">Estado</span><Select value={c.status ?? "active"} onValueChange={(v) => setC({ ...c, status: v })}><SelectTrigger aria-label="Estado"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Activa</SelectItem><SelectItem value="suspended">Suspendida (compra como cliente normal)</SelectItem></SelectContent></Select></div>}
           <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="co-buyers">Correos de sus compradores (uno por línea)</Label><Textarea id="co-buyers" rows={4} className="font-mono" value={emails} onChange={(e) => setEmails(e.target.value)} placeholder={"compras@empresa.com\ndirector@empresa.com"} />{err("buyers")}<p className="text-xs text-muted-foreground">Cada persona entra a “Mi cuenta” en tu tienda con su correo (le llega un código). Así nadie más puede usar el crédito.</p></div>
+          <div className="grid gap-1.5"><Label htmlFor="co-group">Grupo de precios (precio por producto)</Label><Input id="co-group" className="font-mono" value={c.priceGroup ?? ""} onChange={(e) => setC({ ...c, priceGroup: e.target.value.trim() })} placeholder="acme" />{err("priceGroup")}<p className="text-xs text-muted-foreground">Escribe el mismo “grupo de clientes” de una lista de precios (Promociones › Listas de precios). Esa lista fija el precio de cada producto para esta empresa.</p></div>
+          <div className="grid gap-1.5"><Label htmlFor="co-thr">Pedir aprobación desde (MXN)</Label><Input id="co-thr" inputMode="decimal" value={threshold} onChange={(e) => setThreshold(e.target.value)} placeholder="Sin aprobación" />{err("approvalThreshold")}<p className="text-xs text-muted-foreground">Las compras a crédito por encima de este total esperan a que alguien de la empresa las apruebe.</p></div>
+          <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="co-appr">Correos de quienes aprueban (uno por línea)</Label><Textarea id="co-appr" rows={2} className="font-mono" value={approverEmails} onChange={(e) => setApproverEmails(e.target.value)} placeholder="direccion@empresa.com" />{err("approvers")}<p className="text-xs text-muted-foreground">También pueden comprar, sin límite de aprobación.</p></div>
           <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="co-note">Nota interna</Label><Input id="co-note" value={c.note ?? ""} onChange={(e) => setC({ ...c, note: e.target.value })} /></div>
         </form>
         <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" form="co-form" disabled={save.isPending}>{save.isPending ? "Guardando…" : "Guardar"}</Button></DialogFooter>
@@ -120,7 +126,7 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
   const [pay, setPay] = useState<"payment" | "adjust" | null>(null);
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["company", id] }); void qc.invalidateQueries({ queryKey: ["companies"] }); };
   if (q.error || !q.data) return <Page title="Empresa"><ErrorBox error={q.error} onRetry={() => void q.refetch()} />{!q.error && <p className="text-sm text-muted-foreground">Cargando…</p>}</Page>;
-  const { company: c, buyers, statement } = q.data;
+  const { company: c, buyers, approvers, statement } = q.data;
   return (
     <Page title={c.name} sub={<><a className="hover:underline" href={href("empresas")}>← Empresas</a> · {TERMS[c.terms]}{c.discountBps ? ` · ${c.discountBps / 100}% de descuento` : ""}{c.status !== "active" ? " · suspendida" : ""}</>}
       actions={isAdmin && <><Button variant="outline" onClick={() => setEdit(true)}>Editar</Button></>}>
@@ -145,8 +151,8 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
         </CardContent>
       </Card>
       <Card><CardHeader><CardTitle className="text-base">Compradores ({buyers.length || c.buyers})</CardTitle><CardDescription>Personas que compran a nombre de la empresa.</CardDescription></CardHeader>
-        <CardContent>{buyers.length === 0 ? <p className="text-sm text-muted-foreground">{c.buyers ? "Tu acceso no incluye ver los correos." : "Agrega al menos un comprador para que la empresa pueda usar su precio."}</p> : <ul className="grid gap-1 font-mono text-sm">{buyers.map((b) => <li key={b}>{b}</li>)}</ul>}</CardContent></Card>
-      {edit && <CompanyDialog company={c} buyers={buyers} onClose={() => setEdit(false)} onDone={refresh} />}
+        <CardContent>{buyers.length === 0 ? <p className="text-sm text-muted-foreground">{c.buyers ? "Tu acceso no incluye ver los correos." : "Agrega al menos un comprador para que la empresa pueda usar su precio."}</p> : <ul className="grid gap-1 font-mono text-sm">{buyers.map((b) => <li key={b}>{b}{approvers.includes(b) && <Badge variant="secondary" className="ml-2 font-sans">Aprueba compras</Badge>}</li>)}</ul>}</CardContent></Card>
+      {edit && <CompanyDialog company={c} buyers={buyers} approvers={approvers} onClose={() => setEdit(false)} onDone={refresh} />}
       {pay && <PayDialog id={id} kind={pay} balance={c.balance} onClose={() => setPay(null)} onDone={refresh} />}
     </Page>
   );

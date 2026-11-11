@@ -396,7 +396,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 		return Result{}, err
 	}
 	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items, ShippingOption: req.ShippingOption,
-		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup, Extra: CompanyPromo(req.Company)})
+		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup, Extra: CompanyPromo(req.Company), Group: CompanyGroup(req.Company)})
 	if err != nil {
 		return problem(400, "invalid_request", err.Error(), nil), nil
 	}
@@ -481,6 +481,12 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	}
 	if !instRules.Allows(req.Installments, tot.Grand.Amount) {
 		return problem(409, "installments_unavailable", "Ese plazo de meses sin intereses no está disponible para este pedido", nil), nil
+	}
+	if needsApproval(req, tot.Grand.Amount) {
+		if err := s.requestApproval(ctx, tenant, req, sim.Lines, tot.Grand.Amount, string(tot.Grand.Currency)); err != nil {
+			return Result{}, err
+		}
+		return problem(202, "approval_required", "Tu compra supera el monto que puedes autorizar. Enviamos la solicitud a quien aprueba en tu empresa; te avisaremos por correo cuando se confirme el pedido.", nil), nil
 	}
 	risk, ipHash, blocked, err := s.evaluateRisk(ctx, tenant, riskRules, req, tot.Grand.Amount)
 	if err != nil {

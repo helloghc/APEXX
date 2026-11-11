@@ -46,7 +46,7 @@ var shopFuncs = template.FuncMap{
 
 var shopPages = func() map[string]*template.Template {
 	m := map[string]*template.Template{}
-	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form"} {
+	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval"} {
 		m[p] = template.Must(template.New(p).Funcs(shopFuncs).ParseFS(shopFS, "shop/layout.tmpl", "shop/"+p+".tmpl"))
 	}
 	return m
@@ -292,6 +292,7 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 	}
 	if c, _ := s.shopperCompany(r); c != nil {
 		req.Extra = append(req.Extra, orders.CompanyPromo(c)...)
+		req.Group = orders.CompanyGroup(c)
 	}
 	res, err := t.Simulate(req)
 	if err != nil {

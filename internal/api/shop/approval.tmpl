@@ -1,0 +1,20 @@
+{{define "content"}}
+<div class="policy">
+{{if .Req}}
+<h1>Compra por aprobar</h1>
+<div class="acct-box" data-approval="{{.Token}}">
+<p><strong>{{.Req.Requester}}</strong> quiere comprar a crédito de <strong>{{.Req.Company}}</strong>.</p>
+<table><thead><tr><th>Producto</th><th>Cantidad</th><th class="num">Total</th></tr></thead><tbody>{{range .Req.Lines}}<tr><td>{{.Title}}</td><td>{{.Qty}}</td><td class="num">{{cents .Total}}</td></tr>{{end}}</tbody></table>
+<p>Total con envío e impuestos: <strong>{{cents .Req.Total}}</strong></p>
+{{if eq .Req.Status "pending"}}
+<p class="note" role="status" data-approval-status></p>
+<div class="subactions"><button class="btn" type="button" data-approval-act="approve">Aprobar y colocar el pedido</button><button class="btn ghost" type="button" data-approval-act="reject" data-confirm="¿Rechazar esta compra?">Rechazar</button></div>
+{{else if eq .Req.Status "approved"}}<p class="acct-ok">Aprobada. El pedido ya se colocó.</p>
+{{else}}<p class="muted">Esta compra fue rechazada.</p>{{end}}
+</div>
+{{else}}
+<h1>Solicitud no encontrada</h1>
+<p class="muted">Este enlace no es válido. Usa el botón del correo que recibiste.</p>
+{{end}}
+</div>
+{{end}}

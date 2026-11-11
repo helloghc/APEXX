@@ -492,3 +492,17 @@
     const first = r.body.errors && r.body.errors[0] && f.elements[r.body.errors[0].field]; if (first && first.focus) first.focus();
   });
 })();
+
+/* ==== purchase approvals (B2B) ==== */
+(() => {
+  const box = document.querySelector("[data-approval]"); if (!box) return;
+  const tenant = document.body.dataset.tenant, out = box.querySelector("[data-approval-status]");
+  box.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-approval-act]"); if (!b) return;
+    if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
+    box.querySelectorAll("[data-approval-act]").forEach((x) => (x.disabled = true)); out.textContent = "Un momento…";
+    const r = await fetch("/s/" + tenant + "/api/approval/" + encodeURIComponent(box.dataset.approval) + "/" + b.dataset.approvalAct, { method: "POST" }).then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    if (r.ok) location.reload();
+    else { out.textContent = r.body.detail || "No pudimos registrar tu decisión. Intenta de nuevo."; box.querySelectorAll("[data-approval-act]").forEach((x) => (x.disabled = false)); }
+  });
+})();
