@@ -1,0 +1,39 @@
+## Frases con un número variable (#).
+@ es || en || fr || pt || id || ja
+# de 5 estrellas || # out of 5 stars || # sur 5 étoiles || # de 5 estrelas || # dari 5 bintang || 5つ星中#
+# estrellas || # stars || # étoiles || # estrelas || # bintang || #つ星
+# disponibles || # available || # disponibles || # disponíveis || # tersedia || 在庫#点
+Página # de # || Page # of # || Page # sur # || Página # de # || Halaman # dari # || #/# ページ
+cada semana || every week || chaque semaine || toda semana || setiap minggu || 毎週
+cada 2 semanas || every 2 weeks || toutes les 2 semaines || a cada 2 semanas || setiap 2 minggu || 2週間ごと
+cada mes || every month || chaque mois || todo mês || setiap bulan || 毎月
+cada 2 meses || every 2 months || tous les 2 mois || a cada 2 meses || setiap 2 bulan || 2か月ごと
+cada 3 meses || every 3 months || tous les 3 mois || a cada 3 meses || setiap 3 bulan || 3か月ごと
+cada 6 meses || every 6 months || tous les 6 mois || a cada 6 meses || setiap 6 bulan || 6か月ごと
+Gratis || Free || Gratuit || Grátis || Gratis || 無料
+· Te faltan || · You are || · Il vous manque || · Faltam || · Kurang || · あと
+Opciones no disponibles ( || Unavailable options ( || Options indisponibles ( || Opções indisponíveis ( || Opsi tidak tersedia ( || 利用できないオプション (
+IVA || VAT || TVA || IVA || PPN || 消費税
+intenta de nuevo || try again || réessayez || tente de novo || coba lagi || もう一度お試しください
+Quitar || Remove || Retirer || Remover || Hapus || 削除
+Acciones || Actions || Actions || Ações || Tindakan || 操作
+· saldo || · balance || · solde || · saldo || · saldo || · 残高
+pagos de || payments of || paiements de || parcelas de || kali bayar || 回払い：
+sin intereses || interest-free || sans frais || sem juros || tanpa bunga || 無利息
+% de precio de empresa || % company price || % prix entreprise || % preço de empresa || % harga perusahaan || %法人価格
+Pagar a crédito de la empresa ( || Pay on company credit ( || Payer à crédit de l'entreprise ( || Pagar no crédito da empresa ( || Bayar dengan kredit perusahaan ( || 法人の掛け払いで支払う (
+) · disponible || ) · available || ) · disponible || ) · disponível || ) · tersedia || ) · 利用可能額
+Nota para la tienda (opcional) || Note for the store (optional) || Note pour la boutique (facultatif) || Nota para a loja (opcional) || Catatan untuk toko (opsional) || ショップへのメモ（任意）
+tu correo || your email || votre e-mail || seu e-mail || email Anda || メールアドレス
+tu nombre || your name || votre nom || seu nome || nama Anda || お名前
+Falta || Missing: || Il manque || Falta || Belum diisi: || 未入力：
+Procesando… || Processing… || Traitement… || Processando… || Memproses… || 処理中…
+en favoritos || in favorites || dans les favoris || nos favoritos || di favorit || （お気に入り）
+En || In || Dans || Em || Di || カテゴリー：
+”. Prueba con otra palabra. || ”. Try another word. || ». Essayez un autre mot. || ”. Tente outra palavra. || ”. Coba kata lain. || ”。別の言葉でお試しください。
+Enviando… || Sending… || Envoi… || Enviando… || Mengirim… || 送信中…
+Ingresa un código postal para calcular el envío || Enter a ZIP code to estimate shipping || Saisissez un code postal pour calculer la livraison || Digite um CEP para calcular o envio || Masukkan kode pos untuk menghitung ongkos kirim || 送料を計算するには郵便番号を入力してください
+Carrito || Cart || Panier || Carrinho || Keranjang || カート
+Gracias || Thank you || Merci || Obrigado || Terima kasih || ありがとうございます
+IVA #% incluido || VAT #% included || TVA #% incluse || IVA #% incluído || Termasuk PPN #% || 消費税#%込み
+Envío gratis || Free shipping || Livraison gratuite || Frete grátis || Gratis ongkir || 送料無料

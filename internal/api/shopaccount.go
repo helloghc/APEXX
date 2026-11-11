@@ -2,7 +2,6 @@ package api
 
 import (
 	"errors"
-	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -20,10 +19,7 @@ import (
 // addresses and profile. Pages are server-rendered forms that work without
 // JavaScript; the same actions exist as JSON for headless storefronts.
 
-var accountPages = map[string]*template.Template{
-	"account": template.Must(template.ParseFS(shopFS, "shop/layout.tmpl", "shop/account.tmpl")),
-	"pay":     template.Must(template.ParseFS(shopFS, "shop/layout.tmpl", "shop/pay.tmpl")),
-}
+var accountPages = localizedPages("account", "pay")
 
 var (
 	codeLimiter       = &shopLimiter{n: 8}   // code requests per IP per minute
@@ -423,7 +419,7 @@ func (s *Server) renderAccount(w http.ResponseWriter, page string, status int, d
 	h.Set("Cache-Control", "no-store")
 	h.Set("Referrer-Policy", "same-origin") // payment and reminder links carry tokens in the URL
 	w.WriteHeader(status)
-	if err := accountPages[page].ExecuteTemplate(w, "layout", data); err != nil {
+	if err := accountPages[pageLang(w)][page].ExecuteTemplate(w, "layout", data); err != nil {
 		s.Log.Error("render account page", "page", page, "err", err)
 	}
 }

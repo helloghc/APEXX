@@ -21,6 +21,8 @@ func (s *Server) routesSubscriptions(handle func(string, http.HandlerFunc)) {
 	handle("POST /v1/subscriptions/{id}/{action}", s.authed("orders", auth.Edit, s.actSubscription))
 	handle("GET /v1/subscription-config", s.authed("orders", auth.Read, s.getSubConfig))
 	handle("PUT /v1/subscription-config", s.authed("orders", auth.Admin, s.putSubConfig))
+	handle("GET /v1/settings/languages", s.staff("settings", auth.Read, s.getLanguages))
+	handle("PUT /v1/settings/languages", s.authed("settings", auth.Admin, s.putLanguages))
 
 	handle("GET /s/{tenant}/{site}/suscripcion/{token}", s.shopSubscription)
 	handle("POST /s/{tenant}/api/subscription/{token}/{action}", s.shopSubscriptionAct)

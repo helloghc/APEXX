@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/helloghc/apexx/internal/i18n"
 	"sync/atomic"
 
 	"github.com/helloghc/apexx/internal/engage"
@@ -34,6 +35,7 @@ type siteState struct {
 	search atomic.Pointer[engage.SearchConfig]
 	subs   atomic.Pointer[subs.Config]
 	sold   atomic.Pointer[map[string]string]
+	langs  atomic.Pointer[i18n.Config]
 }
 
 // SoldBy returns the marketplace seller of a product ("" = the store itself).
@@ -45,6 +47,14 @@ func (t *Tenant) SoldBy(productID string) string {
 }
 
 // Subscriptions returns how the store offers recurring purchases (never nil).
+// Languages returns the storefront languages of the store (never nil).
+func (t *Tenant) Languages() *i18n.Config {
+	if v := t.langs.Load(); v != nil {
+		return v
+	}
+	return &i18n.Config{}
+}
+
 func (t *Tenant) Subscriptions() *subs.Config {
 	if v := t.subs.Load(); v != nil {
 		return v
@@ -108,6 +118,14 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 			return err
 		}
 		t.sold.Store(&m)
+	}
+	if key == "" || key == store.KeyLanguages {
+		var cfg i18n.Config
+		if _, err := p.db.GetDoc(ctx, t.ID, "i18n", "config", &cfg); err != nil {
+			return err
+		}
+		cfg.Normalize()
+		t.langs.Store(&cfg)
 	}
 	if key == "" || key == store.KeySubscriptions {
 		var cfg subs.Config

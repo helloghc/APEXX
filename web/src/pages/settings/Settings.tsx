@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Languages as LanguagesIcon } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -15,6 +15,7 @@ const Navigation = lazy(() => import("./Navigation").then((m) => ({ default: m.N
 const Redirects = lazy(() => import("./Redirects").then((m) => ({ default: m.Redirects })));
 const Domains = lazy(() => import("./Domains").then((m) => ({ default: m.Domains })));
 const Feeds = lazy(() => import("./Feeds").then((m) => ({ default: m.Feeds })));
+const Languages = lazy(() => import("./Languages").then((m) => ({ default: m.Languages })));
 const Checkout = lazy(() => import("./Checkout").then((m) => ({ default: m.Checkout })));
 
 export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group: string }[] = [
@@ -28,6 +29,7 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
   { id: "navegacion", label: "Navegación", icon: ListTree, group: "Tienda en línea" },
   { id: "redirecciones", label: "Redirecciones", icon: CornerUpRight, group: "Tienda en línea" },
   { id: "dominios", label: "Dominios", icon: Globe, group: "Tienda en línea" },
+  { id: "idiomas", label: "Idiomas", icon: LanguagesIcon, group: "Tienda en línea" },
   { id: "anuncios", label: "Anuncios y catálogos", icon: Megaphone, group: "Tienda en línea" },
 ];
 
@@ -63,6 +65,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "anuncios":
       body = <Feeds me={me} />;
+      break;
+    case "idiomas":
+      body = <Languages me={me} />;
       break;
     case "checkout":
       body = <Checkout me={me} />;

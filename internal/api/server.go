@@ -195,7 +195,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		apierr.NotFound(w, "No existe la ruta "+r.Method+" "+r.URL.Path)
 	})
-	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(s.siteRouting(mux))))
+	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(s.siteRouting(s.localized(mux)))))
 }
 
 // metricsGuard exposes /metrics only to the monitoring agent: a bearer token

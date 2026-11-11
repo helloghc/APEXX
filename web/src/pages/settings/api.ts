@@ -395,6 +395,10 @@ export const sapi = {
   saveMenu: (m: Menu) => request<Menu>("PUT", `/v1/menus/${enc(m.id)}`, { name: m.name, items: m.items }),
   deleteMenu: (id: string) => request<void>("DELETE", `/v1/menus/${enc(id)}`, undefined, noBody),
 
+  // storefront languages
+  languages: () => request<LanguagesResponse>("GET", "/v1/settings/languages"),
+  saveLanguages: (config: LanguageConfig) => request<{ config: LanguageConfig }>("PUT", "/v1/settings/languages", config),
+
   // redirects
   redirects: (q: string, cursor = "") =>
     request<{ items: Redirect[]; nextCursor: string; total: number }>("GET", `/v1/redirects?q=${enc(q)}&cursor=${enc(cursor)}&limit=50`),
@@ -417,3 +421,14 @@ export const sapi = {
   primaryDomain: (id: string) => request<unknown>("POST", `/v1/domains/${enc(id)}/primary`),
   deleteDomain: (id: string) => request<void>("DELETE", `/v1/domains/${enc(id)}`, undefined, noBody),
 };
+
+/** Storefront languages: which ones are on and the store's own translations. */
+export interface LanguageConfig {
+  enabled: string[];
+  own: Record<string, Record<string, string>>;
+}
+export interface LanguagesResponse {
+  available: { code: string; name: string; tag: string }[];
+  default: string;
+  config: LanguageConfig;
+}

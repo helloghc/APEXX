@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"github.com/helloghc/apexx/internal/i18n"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -44,13 +45,7 @@ var shopFuncs = template.FuncMap{
 	"cents":  func(n int64) string { return pesos(money.New(n, "MXN")) },
 }
 
-var shopPages = func() map[string]*template.Template {
-	m := map[string]*template.Template{}
-	for _, p := range []string{"catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval"} {
-		m[p] = template.Must(template.New(p).Funcs(shopFuncs).ParseFS(shopFS, "shop/layout.tmpl", "shop/"+p+".tmpl"))
-	}
-	return m
-}()
+var shopPages = localizedPages("catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval")
 
 // shopCSP allows only our own assets plus Stripe for the payment form.
 const shopCSP = "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://js.stripe.com; " +
@@ -123,7 +118,7 @@ func (s *Server) renderShop(w http.ResponseWriter, page string, data any, cache 
 	} else {
 		h.Set("Cache-Control", "no-store")
 	}
-	if err := shopPages[page].ExecuteTemplate(w, "layout", data); err != nil {
+	if err := shopPages[pageLang(w)][page].ExecuteTemplate(w, "layout", data); err != nil {
 		s.Log.Error("render shop page", "page", page, "err", err)
 	}
 }
@@ -185,6 +180,11 @@ func shopAssets(w http.ResponseWriter, r *http.Request) {
 		ctype = "text/javascript; charset=utf-8"
 	}
 	b, err := shopFS.ReadFile("shop/" + name)
+	if name == "shop.js" && err == nil {
+		if hl := r.URL.Query().Get("hl"); i18n.Known(hl) {
+			b = shopScript(hl)
+		}
+	}
 	if ctype == "" || err != nil || strings.Contains(name, "/") {
 		http.NotFound(w, r)
 		return

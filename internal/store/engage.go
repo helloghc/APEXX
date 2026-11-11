@@ -396,3 +396,6 @@ func (d *DB) SellerNames(ctx context.Context, tenant string) (map[string]string,
 	})
 	return out, err
 }
+
+// KeyLanguages is the TopicSettings key of the storefront languages.
+const KeyLanguages = "languages"

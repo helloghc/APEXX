@@ -403,3 +403,10 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
   .hdr-tools{gap:0;flex:none}
   .hdr-wish{width:36px}
 }
+
+/* language switcher */
+.langs{border-top:1px solid var(--line,rgba(0,0,0,.12));padding:14px 16px;font-size:.85rem}
+.langs ul{list-style:none;margin:0 auto;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;max-width:1200px}
+.langs a{color:inherit;opacity:.75;text-decoration:none;padding:6px 2px;display:inline-block}
+.langs a:hover{opacity:1;text-decoration:underline}
+.langs a[aria-current]{opacity:1;font-weight:600}

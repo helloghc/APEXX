@@ -1,0 +1,341 @@
+@ es || fr || id || ja
+Código de acceso || Code d'accès || Kode akses || アクセスコード
+Lo enviamos a || Nous l'avons envoyé à || Kami mengirimkannya ke || 送信先：
+Código de 6 dígitos || Code à 6 chiffres || Kode 6 digit || 6桁のコード
+Entrar || Se connecter || Masuk || ログイン
+Enviar otro código || Envoyer un autre code || Kirim kode lain || コードを再送信
+Usar otro correo || Utiliser une autre adresse || Gunakan email lain || 別のメールアドレスを使う
+Entra o crea tu cuenta || Connectez-vous ou créez votre compte || Masuk atau buat akun Anda || ログインまたはアカウント作成
+Escribe tu correo y te enviamos un código. No necesitas contraseña. || Saisissez votre e-mail et nous vous envoyons un code. Pas besoin de mot de passe. || Tulis email Anda dan kami akan mengirimkan kode. Tidak perlu kata sandi. || メールアドレスを入力するとコードをお送りします。パスワードは不要です。
+Correo || E-mail || Email || メールアドレス
+Enviarme un código || M'envoyer un code || Kirimi saya kode || コードを送信
+Entrar con contraseña || Se connecter avec un mot de passe || Masuk dengan kata sandi || パスワードでログイン
+Contraseña || Mot de passe || Kata sandi || パスワード
+Tu cuenta || Votre compte || Akun Anda || アカウント
+Con tu cuenta puedes || Avec votre compte, vous pouvez || Dengan akun Anda, Anda dapat || アカウントでできること
+Ver tus pedidos y rastrear cada envío. || Voir vos commandes et suivre chaque envoi. || Melihat pesanan dan melacak setiap pengiriman. || 注文の確認と配送状況の追跡。
+Descargar tus facturas. || Télécharger vos factures. || Mengunduh faktur Anda. || 請求書のダウンロード。
+Guardar tus direcciones para comprar más rápido. || Enregistrer vos adresses pour acheter plus vite. || Menyimpan alamat agar belanja lebih cepat. || 住所を保存してすばやく購入。
+Si ya compraste como invitado, entra con el mismo correo y verás esos pedidos. || Si vous avez déjà acheté en tant qu'invité, connectez-vous avec le même e-mail pour voir ces commandes. || Jika Anda pernah membeli sebagai tamu, masuk dengan email yang sama untuk melihat pesanan itu. || ゲストとして購入済みの場合は、同じメールアドレスでログインするとその注文が表示されます。
+Inicio || Accueil || Beranda || ホーム
+Mi cuenta || Mon compte || Akun saya || マイアカウント
+Pedidos || Commandes || Pesanan || 注文
+Direcciones || Adresses || Alamat || 住所
+Mis direcciones || Mes adresses || Alamat saya || 住所一覧
+Mis datos || Mes informations || Data saya || 登録情報
+Cerrar sesión || Se déconnecter || Keluar || ログアウト
+Hola, || Bonjour, || Halo, || こんにちは、
+Sesión iniciada como || Connecté en tant que || Masuk sebagai || ログイン中：
+Pedido || Commande || Pesanan || 注文
+Pedido # || Commande # || Pesanan # || 注文 #
+Fecha || Date || Tanggal || 日付
+Estado || État || Status || 状態
+Total || Total || Total || 合計
+pieza || article || barang || 点
+piezas || articles || barang || 点
+Ver pedidos anteriores || Voir les commandes précédentes || Lihat pesanan sebelumnya || 以前の注文を見る
+Todavía no tienes pedidos con este correo. || Vous n'avez pas encore de commande avec cet e-mail. || Anda belum memiliki pesanan dengan email ini. || このメールアドレスでの注文はまだありません。
+Ver productos || Voir les produits || Lihat produk || 商品を見る
+Producto || Produit || Produk || 商品
+Cant. || Qté || Jml || 数量
+Envío || Livraison || Pengiriman || 配送
+Guía || N° de suivi || Nomor resi || 追跡番号
+Rastrear envío || Suivre l'envoi || Lacak pengiriman || 配送を追跡
+Mensajes de la tienda || Messages de la boutique || Pesan dari toko || ショップからのメッセージ
+Devoluciones || Retours || Pengembalian || 返品
+Resumen del pedido || Récapitulatif de la commande || Ringkasan pesanan || 注文内容
+Resumen || Récapitulatif || Ringkasan || 概要
+Productos || Produits || Produk || 商品
+Descuentos || Remises || Diskon || 割引
+Reembolsado || Remboursé || Dikembalikan || 返金済み
+Saldo por pagar || Solde à payer || Sisa pembayaran || 未払い残高
+Se envía a: || Livré à : || Dikirim ke: || お届け先：
+Descargar factura || Télécharger la facture || Unduh faktur || 請求書をダウンロード
+La factura aparecerá aquí cuando esté lista. || La facture apparaîtra ici dès qu'elle sera prête. || Faktur akan muncul di sini setelah siap. || 請求書は準備ができ次第ここに表示されます。
+Dirección || Adresse || Alamat || 住所
+· principal || · principale || · utama || · 既定
+C.P. || Code postal || Kode pos || 郵便番号
+Eliminar || Supprimer || Hapus || 削除
+No tienes direcciones guardadas. || Vous n'avez aucune adresse enregistrée. || Anda belum menyimpan alamat. || 保存された住所はありません。
+Agregar dirección || Ajouter une adresse || Tambah alamat || 住所を追加
+Quién recibe || Destinataire || Penerima || 受取人
+Calle y número || Rue et numéro || Jalan dan nomor || 番地
+Interior, colonia o referencias (opcional) || Appartement, quartier ou indications (facultatif) || Unit, lingkungan, atau patokan (opsional) || 建物名・部屋番号など（任意）
+Código postal || Code postal || Kode pos || 郵便番号
+Ciudad o alcaldía || Ville || Kota || 市区町村
+Teléfono (opcional) || Téléphone (facultatif) || Telepon (opsional) || 電話番号（任意）
+Usar como dirección principal || Utiliser comme adresse principale || Jadikan alamat utama || 既定の住所にする
+Guardar dirección || Enregistrer l'adresse || Simpan alamat || 住所を保存
+Tus datos || Vos informations || Data Anda || お客様情報
+Correo: || E-mail : || Email: || メールアドレス：
+Nombre completo || Nom complet || Nama lengkap || 氏名
+Teléfono || Téléphone || Telepon || 電話番号
+Quiero recibir novedades y ofertas por correo || Je souhaite recevoir les nouveautés et les offres par e-mail || Saya ingin menerima kabar dan penawaran lewat email || 新着情報やお得な情報をメールで受け取る
+Guardar || Enregistrer || Simpan || 保存
+Contraseña (opcional) || Mot de passe (facultatif) || Kata sandi (opsional) || パスワード（任意）
+Ya tienes contraseña. Escribe una nueva para cambiarla, o deja el campo vacío y guarda para quitarla. || Vous avez déjà un mot de passe. Saisissez-en un nouveau pour le changer, ou laissez le champ vide et enregistrez pour le supprimer. || Anda sudah punya kata sandi. Tulis yang baru untuk menggantinya, atau kosongkan dan simpan untuk menghapusnya. || パスワードは設定済みです。変更するには新しいパスワードを入力し、削除するには空欄のまま保存してください。
+Siempre puedes entrar con un código por correo. Si prefieres, crea una contraseña. || Vous pouvez toujours vous connecter avec un code reçu par e-mail. Si vous préférez, créez un mot de passe. || Anda selalu bisa masuk dengan kode lewat email. Jika mau, buat kata sandi. || メールで届くコードでいつでもログインできます。ご希望ならパスワードも作成できます。
+Nueva contraseña (mínimo 10 caracteres) || Nouveau mot de passe (10 caractères minimum) || Kata sandi baru (minimal 10 karakter) || 新しいパスワード（10文字以上）
+Guardar contraseña || Enregistrer le mot de passe || Simpan kata sandi || パスワードを保存
+Compra por aprobar || Achat à approuver || Pembelian menunggu persetujuan || 承認待ちの購入
+quiere comprar a crédito de || souhaite acheter à crédit au nom de || ingin membeli dengan kredit atas nama || さんが次の会社の掛け払いで購入を希望しています：
+Cantidad || Quantité || Jumlah || 数量
+Total con envío e impuestos: || Total avec livraison et taxes : || Total dengan pengiriman dan pajak: || 送料・税込み合計：
+Aprobar y colocar el pedido || Approuver et passer la commande || Setujui dan buat pesanan || 承認して注文する
+Rechazar || Refuser || Tolak || 却下
+Aprobada. El pedido ya se colocó. || Approuvé. La commande a été passée. || Disetujui. Pesanan sudah dibuat. || 承認されました。注文が確定しました。
+Esta compra fue rechazada. || Cet achat a été refusé. || Pembelian ini ditolak. || この購入は却下されました。
+Solicitud no encontrada || Demande introuvable || Permintaan tidak ditemukan || 申請が見つかりません
+Este enlace no es válido. Usa el botón del correo que recibiste. || Ce lien n'est pas valide. Utilisez le bouton de l'e-mail que vous avez reçu. || Tautan ini tidak valid. Gunakan tombol di email yang Anda terima. || このリンクは無効です。届いたメールのボタンをご利用ください。
+Tu carrito || Votre panier || Keranjang Anda || カート
+Carrito || Panier || Keranjang || カート
+Cargando tu carrito… || Chargement de votre panier… || Memuat keranjang Anda… || カートを読み込み中…
+Código postal para calcular el envío || Code postal pour calculer la livraison || Kode pos untuk menghitung ongkos kirim || 送料計算用の郵便番号
+Calcular || Calculer || Hitung || 計算
+¿Tienes un cupón? || Vous avez un code promo ? || Punya kupon? || クーポンをお持ちですか？
+Código || Code || Kode || コード
+Aplicar || Appliquer || Terapkan || 適用
+Continuar al pago || Passer au paiement || Lanjut ke pembayaran || お支払いへ進む
+Ruta || Fil d'Ariane || Jalur || パンくずリスト
+Filtros || Filtres || Filter || 絞り込み
+Filtrar || Filtrer || Filter || 絞り込む
+Filtros activos || Filtres actifs || Filter aktif || 適用中の絞り込み
+Quitar filtro || Retirer le filtre || Hapus filter || 絞り込みを解除
+Quitar todos || Tout retirer || Hapus semua || すべて解除
+Precio || Prix || Harga || 価格
+Mínimo || Minimum || Minimum || 下限
+Máximo || Maximum || Maksimum || 上限
+Aplicar precio || Appliquer le prix || Terapkan harga || 価格を適用
+producto || produit || produk || 件の商品
+productos || produits || produk || 件の商品
+Ordenar || Trier || Urutkan || 並べ替え
+Ordenar: || Trier : || Urutkan: || 並べ替え：
+No encontramos productos || Aucun produit trouvé || Kami tidak menemukan produk || 商品が見つかりません
+para “ || pour « || untuk “ || 検索語：“
+”. Revisa la ortografía o prueba con otra palabra || ». Vérifiez l'orthographe ou essayez un autre mot || ”. Periksa ejaan atau coba kata lain || ”。つづりを確認するか、別の言葉でお試しください
+con estos filtros. || avec ces filtres. || dengan filter ini. || （この絞り込み条件）
+Quita los filtros || Retirez les filtres || Hapus filter || 絞り込みを解除
+para ver más || pour en voir plus || untuk melihat lebih banyak || するとさらに表示されます
+Páginas || Pages || Halaman || ページ
+Anterior || Précédent || Sebelumnya || 前へ
+Página || Page || Halaman || ページ
+de || sur || dari || /
+Siguiente || Suivant || Berikutnya || 次へ
+Pago || Paiement || Pembayaran || お支払い
+Tarjeta de regalo o saldo a favor || Carte cadeau ou avoir || Kartu hadiah atau saldo toko || ギフトカードまたはストアクレジット
+Código de la tarjeta || Code de la carte || Kode kartu || カードコード
+Cargando métodos de pago… || Chargement des moyens de paiement… || Memuat metode pembayaran… || 支払い方法を読み込み中…
+Pagar || Payer || Bayar || 支払う
+Calculando… || Calcul en cours… || Menghitung… || 計算中…
+/ Favoritos || / Favoris || / Favorit || / お気に入り
+Favoritos || Favoris || Favorit || お気に入り
+Cargando tus favoritos… || Chargement de vos favoris… || Memuat favorit Anda… || お気に入りを読み込み中…
+(opcional) || (facultatif) || (opsional) || （任意）
+Elige… || Choisir… || Pilih… || 選択…
+No llenes este campo || Ne remplissez pas ce champ || Jangan isi kolom ini || この欄には入力しないでください
+Enviar || Envoyer || Kirim || 送信
+Formulario no encontrado || Formulaire introuvable || Formulir tidak ditemukan || フォームが見つかりません
+Este formulario no existe o ya no está disponible. || Ce formulaire n'existe pas ou n'est plus disponible. || Formulir ini tidak ada atau sudah tidak tersedia. || このフォームは存在しないか、利用できなくなりました。
+Volver al inicio || Retour à l'accueil || Kembali ke beranda || ホームに戻る
+Saltar al contenido || Aller au contenu || Lompat ke konten || 本文へスキップ
+Agotado || Épuisé || Habis || 売り切れ
+Oferta || Promo || Promo || セール
+Agregar || Ajouter || Tambah || 追加
+Este enlace ya no está disponible || Ce lien n'est plus disponible || Tautan ini sudah tidak tersedia || このリンクは利用できなくなりました
+El enlace de pago venció o fue reemplazado. Escribe a la tienda para que te envíen uno nuevo. || Le lien de paiement a expiré ou a été remplacé. Écrivez à la boutique pour en recevoir un nouveau. || Tautan pembayaran kedaluwarsa atau sudah diganti. Hubungi toko untuk mendapatkan yang baru. || お支払いリンクの期限が切れたか、置き換えられました。新しいリンクはショップにお問い合わせください。
+Ir a la tienda || Aller à la boutique || Ke toko || ショップへ
+Pago recibido || Paiement reçu || Pembayaran diterima || お支払いを受け付けました
+Tu pedido quedó pagado. || Votre commande est payée. || Pesanan Anda sudah dibayar. || ご注文のお支払いが完了しました。
+El saldo de tu pedido # || Le solde de votre commande # || Sisa pembayaran pesanan Anda # || ご注文 #
+quedó pagado. || est payé. || sudah dibayar. || の残高のお支払いが完了しました。
+Te enviamos la confirmación por correo. || Nous vous avons envoyé la confirmation par e-mail. || Kami mengirimkan konfirmasi lewat email. || 確認メールをお送りしました。
+Ver mis pedidos || Voir mes commandes || Lihat pesanan saya || 注文を見る
+Paga tu pedido || Payez votre commande || Bayar pesanan Anda || ご注文のお支払い
+Paga el saldo de tu pedido # || Payez le solde de votre commande # || Bayar sisa pesanan Anda # || 残高のお支払い：ご注文 #
+Activa JavaScript para pagar de forma segura con Stripe. || Activez JavaScript pour payer en toute sécurité avec Stripe. || Aktifkan JavaScript untuk membayar dengan aman lewat Stripe. || Stripeで安全にお支払いいただくにはJavaScriptを有効にしてください。
+Total a pagar || Total à payer || Total yang harus dibayar || お支払い合計
+Última actualización: || Dernière mise à jour : || Terakhir diperbarui: || 最終更新：
+Otras políticas || Autres politiques || Kebijakan lain || その他のポリシー
+Página no encontrada || Page introuvable || Halaman tidak ditemukan || ページが見つかりません
+Esta página no existe o todavía no se publica. || Cette page n'existe pas ou n'est pas encore publiée. || Halaman ini tidak ada atau belum diterbitkan. || このページは存在しないか、まだ公開されていません。
+Vendido y enviado por || Vendu et expédié par || Dijual dan dikirim oleh || 販売・発送：
+Elige una opción || Choisissez une option || Pilih salah satu || オプションを選択
+disponibles || disponibles || tersedia || 点の在庫
+¿Cómo lo quieres? || Comment le voulez-vous ? || Bagaimana Anda menginginkannya? || 購入方法
+Compra única || Achat unique || Beli sekali || 1回のみ購入
+Suscríbete || Abonnez-vous || Berlangganan || 定期購入
+y ahorra || et économisez || dan hemat || でお得：
+Entrega automática. Pausa, salta o cancela cuando quieras. || Livraison automatique. Mettez en pause, sautez ou annulez quand vous voulez. || Pengiriman otomatis. Jeda, lewati, atau batalkan kapan saja. || 自動でお届け。一時停止・スキップ・解約はいつでも可能です。
+Entrega || Livraison || Pengiriman || お届け
+Agregar al carrito || Ajouter au panier || Tambah ke keranjang || カートに入れる
+Guardar en favoritos || Ajouter aux favoris || Simpan ke favorit || お気に入りに保存
+Envío gratis desde $1,499 || Livraison gratuite dès $1,499 || Gratis ongkir mulai $1,499 || $1,499以上で送料無料
+Cambios sin costo durante 30 días || Échanges gratuits pendant 30 jours || Tukar gratis selama 30 hari || 30日間交換無料
+Pago seguro con Stripe || Paiement sécurisé avec Stripe || Pembayaran aman dengan Stripe || Stripeによる安全なお支払い
+Descripción || Description || Deskripsi || 商品説明
+Especificaciones || Caractéristiques || Spesifikasi || 仕様
+Opiniones || Avis || Ulasan || レビュー
+de 5 estrellas || sur 5 étoiles || dari 5 bintang || （5つ星中）
+opinión || avis || ulasan || 件のレビュー
+opiniones || avis || ulasan || 件のレビュー
+· Compra verificada || · Achat vérifié || · Pembelian terverifikasi || · 購入確認済み
+Respuesta de la tienda: || Réponse de la boutique : || Balasan dari toko: || ショップからの返信：
+Todavía no hay opiniones de este producto. Sé la primera persona en opinar. || Ce produit n'a pas encore d'avis. Soyez la première personne à en donner un. || Belum ada ulasan untuk produk ini. Jadilah yang pertama mengulas. || この商品のレビューはまだありません。最初のレビューを書いてみませんか。
+Escribir una opinión || Écrire un avis || Tulis ulasan || レビューを書く
+Tu calificación || Votre note || Penilaian Anda || 評価
+estrellas || étoiles || bintang || つ星
+Título (opcional) || Titre (facultatif) || Judul (opsional) || タイトル（任意）
+Tu opinión || Votre avis || Ulasan Anda || レビュー内容
+Tu nombre || Votre nom || Nama Anda || お名前
+Tu correo (no se publica) || Votre e-mail (non publié) || Email Anda (tidak ditampilkan) || メールアドレス（公開されません）
+Enviar opinión || Envoyer l'avis || Kirim ulasan || レビューを送信
+Combínalo con || À associer avec || Padukan dengan || 一緒におすすめ
+Productos similares || Produits similaires || Produk serupa || 似ている商品
+/ Mi suscripción || / Mon abonnement || / Langganan saya || / 定期購入
+Mi suscripción || Mon abonnement || Langganan saya || 定期購入
+Activa || Actif || Aktif || 有効
+En pausa || En pause || Dijeda || 一時停止中
+Detenida: no pudimos cobrar tu tarjeta || Arrêté : nous n'avons pas pu débiter votre carte || Dihentikan: kami tidak dapat menagih kartu Anda || 停止中：カードに請求できませんでした
+Cancelada || Annulé || Dibatalkan || 解約済み
+· entrega || · livraison || · pengiriman || · お届け
+% de descuento en cada entrega || % de remise sur chaque livraison || % diskon setiap pengiriman || %割引（毎回のお届け）
+Próxima entrega: || Prochaine livraison : || Pengiriman berikutnya: || 次回のお届け：
+. Ese día cobramos a tu tarjeta guardada. || . Ce jour-là, nous débitons votre carte enregistrée. || . Pada hari itu kami menagih kartu tersimpan Anda. || 。当日、保存済みのカードに請求します。
+No se hizo ningún cargo. Reactívala para intentar de nuevo o cancélala. || Aucun débit n'a été effectué. Réactivez-le pour réessayer ou annulez-le. || Tidak ada tagihan yang dilakukan. Aktifkan kembali untuk mencoba lagi atau batalkan. || 請求は行われていません。再開してもう一度試すか、解約してください。
+Saltar la próxima entrega || Sauter la prochaine livraison || Lewati pengiriman berikutnya || 次回のお届けをスキップ
+Pausar || Mettre en pause || Jeda || 一時停止
+Reactivar || Réactiver || Aktifkan kembali || 再開
+Cancelar suscripción || Annuler l'abonnement || Batalkan langganan || 定期購入を解約
+Entregas || Livraisons || Pengiriman || お届け履歴
+Suscripción no encontrada || Abonnement introuvable || Langganan tidak ditemukan || 定期購入が見つかりません
+Este enlace no es válido o ya cambió. Usa el botón del correo más reciente de tu suscripción. || Ce lien n'est pas valide ou a changé. Utilisez le bouton du dernier e-mail de votre abonnement. || Tautan ini tidak valid atau sudah berubah. Gunakan tombol di email langganan terbaru Anda. || このリンクは無効か、変更されています。定期購入に関する最新のメールのボタンをご利用ください。
+¡Gracias por tu compra! || Merci pour votre achat ! || Terima kasih atas pembelian Anda! || ご購入ありがとうございます！
+Cargando tu pedido… || Chargement de votre commande… || Memuat pesanan Anda… || ご注文を読み込み中…
+Seguir comprando || Continuer mes achats || Lanjut belanja || 買い物を続ける
+Suscripción: entrega || Abonnement : livraison || Langganan: pengiriman || 定期購入：お届け
+para envío gratis || pour la livraison gratuite || lagi untuk gratis ongkir || で送料無料
+Agregado ✓ || Ajouté ✓ || Ditambahkan ✓ || 追加しました ✓
+¡Listo! Te escribiremos pronto. || C'est fait ! Nous vous écrirons bientôt. || Selesai! Kami akan segera menghubungi Anda. || 完了しました。近日中にご連絡します。
+Revisa tu correo e intenta de nuevo. || Vérifiez votre e-mail et réessayez. || Periksa email Anda dan coba lagi. || メールアドレスを確認して、もう一度お試しください。
+No pudimos guardar tu correo. Intenta más tarde. || Nous n'avons pas pu enregistrer votre e-mail. Réessayez plus tard. || Kami tidak dapat menyimpan email Anda. Coba lagi nanti. || メールアドレスを保存できませんでした。後でもう一度お試しください。
+Elige una opción. || Choisissez une option. || Pilih salah satu. || オプションを選択してください。
+Agregado al carrito. || Ajouté au panier. || Ditambahkan ke keranjang. || カートに追加しました。
+Ver carrito || Voir le panier || Lihat keranjang || カートを見る
+Quitar cupón || Retirer le code promo || Hapus kupon || クーポンを外す
+Recolección || Retrait en magasin || Ambil sendiri || 店舗受け取り
+días || jours || hari || 日
+Ingresa tu código postal || Saisissez votre code postal || Masukkan kode pos Anda || 郵便番号を入力
+Tu carrito está vacío. || Votre panier est vide. || Keranjang Anda kosong. || カートは空です。
+No pudimos calcular tu carrito: || Nous n'avons pas pu calculer votre panier : || Kami tidak dapat menghitung keranjang Anda: || カートを計算できませんでした：
+Quitar uno de || Retirer un exemplaire de || Kurangi satu || 1つ減らす：
+Agregar uno de || Ajouter un exemplaire de || Tambah satu || 1つ増やす：
+Quitamos el cupón || Code promo retiré || Kupon dihapus || クーポンを外しました
+Escribe el código de tu cupón. || Saisissez votre code promo. || Tulis kode kupon Anda. || クーポンコードを入力してください。
+Agrega productos antes de usar un cupón. || Ajoutez des produits avant d'utiliser un code promo. || Tambahkan produk sebelum memakai kupon. || クーポンを使う前に商品を追加してください。
+No pudimos validar el cupón. Intenta de nuevo. || Nous n'avons pas pu valider le code promo. Réessayez. || Kami tidak dapat memvalidasi kupon. Coba lagi. || クーポンを確認できませんでした。もう一度お試しください。
+Tarjeta •••• || Carte •••• || Kartu •••• || カード ••••
+Tarjeta de regalo o saldo || Carte cadeau ou avoir || Kartu hadiah atau saldo || ギフトカードまたはクレジット
+A pagar || À payer || Yang dibayar || お支払い額
+Confirmar pedido || Confirmer la commande || Konfirmasi pesanan || 注文を確定
+Meses sin intereses || Paiement en plusieurs fois sans frais || Cicilan tanpa bunga || 分割払い（無利息）
+Un solo pago de || Un seul paiement de || Satu kali bayar || 一括払い：
+Disponible con tarjetas de crédito participantes. || Disponible avec les cartes de crédit participantes. || Tersedia dengan kartu kredit yang berpartisipasi. || 対象のクレジットカードでご利用いただけます。
+15 días || 15 jours || 15 hari || 15日
+30 días || 30 jours || 30 hari || 30日
+60 días || 60 jours || 60 hari || 60日
+Compras para || Achat pour || Membeli untuk || 購入元：
+Pagar con tarjeta || Payer par carte || Bayar dengan kartu || カードで支払う
+Confirmar pedido a crédito || Confirmer la commande à crédit || Konfirmasi pesanan dengan kredit || 掛け払いで注文を確定
+Escribe el código de tu tarjeta. || Saisissez le code de votre carte. || Tulis kode kartu Anda. || カードコードを入力してください。
+Esa tarjeta ya está aplicada. || Cette carte est déjà appliquée. || Kartu itu sudah diterapkan. || そのカードは適用済みです。
+Tarjeta aplicada. || Carte appliquée. || Kartu diterapkan. || カードを適用しました。
+Demasiados intentos. Espera un minuto. || Trop de tentatives. Attendez une minute. || Terlalu banyak percobaan. Tunggu satu menit. || 試行回数が多すぎます。1分ほどお待ちください。
+No pudimos validar la tarjeta. Intenta de nuevo. || Nous n'avons pas pu valider la carte. Réessayez. || Kami tidak dapat memvalidasi kartu. Coba lagi. || カードを確認できませんでした。もう一度お試しください。
+Tarjeta quitada. || Carte retirée. || Kartu dihapus. || カードを外しました。
+Acepto los || J'accepte les || Saya menyetujui || 同意します：
+términos y condiciones || conditions générales || syarat dan ketentuan || 利用規約
+Modo de prueba: no se hace ningún cargo real. || Mode test : aucun débit réel n'est effectué. || Mode uji: tidak ada tagihan nyata. || テストモード：実際の請求は行われません。
+Tarjeta de prueba que se aprueba || Carte de test acceptée || Kartu uji yang disetujui || 承認されるテストカード
+Tarjeta de prueba que se rechaza || Carte de test refusée || Kartu uji yang ditolak || 拒否されるテストカード
+tu teléfono || votre téléphone || telepon Anda || 電話番号
+tu dirección || votre adresse || alamat Anda || 住所
+tu código postal || votre code postal || kode pos Anda || 郵便番号
+Acepta los términos y condiciones para continuar. || Acceptez les conditions générales pour continuer. || Setujui syarat dan ketentuan untuk melanjutkan. || 続行するには利用規約に同意してください。
+El código postal debe tener 5 dígitos. || Le code postal doit comporter 5 chiffres. || Kode pos harus 5 digit. || 郵便番号は5桁で入力してください。
+Tu pago fue rechazado. Prueba con otra tarjeta. || Votre paiement a été refusé. Essayez une autre carte. || Pembayaran Anda ditolak. Coba kartu lain. || お支払いが拒否されました。別のカードをお試しください。
+Algunos productos cambiaron de precio o disponibilidad. Revisa el resumen. || Certains produits ont changé de prix ou de disponibilité. Vérifiez le récapitulatif. || Beberapa produk berubah harga atau ketersediaannya. Periksa ringkasan. || 一部の商品の価格または在庫が変わりました。概要をご確認ください。
+Ya no hay suficientes unidades de un producto. Ajusta tu carrito. || Il ne reste plus assez d'unités d'un produit. Ajustez votre panier. || Stok salah satu produk tidak lagi mencukupi. Sesuaikan keranjang Anda. || 商品の在庫が不足しています。カートを調整してください。
+No pudimos confirmar el pago todavía. No vuelvas a pagar: te avisaremos por correo. || Nous n'avons pas encore pu confirmer le paiement. Ne payez pas de nouveau : nous vous préviendrons par e-mail. || Kami belum dapat mengonfirmasi pembayaran. Jangan bayar lagi: kami akan memberi tahu lewat email. || まだお支払いを確認できていません。再度お支払いにならないでください。メールでお知らせします。
+Revisa tu código postal. || Vérifiez votre code postal. || Periksa kode pos Anda. || 郵便番号をご確認ください。
+No hay entregas disponibles para tu código postal. || Aucune livraison disponible pour votre code postal. || Tidak ada pengiriman untuk kode pos Anda. || この郵便番号への配送はありません。
+La opción de entrega cambió. Revisa las opciones y vuelve a intentar. || L'option de livraison a changé. Vérifiez les options et réessayez. || Opsi pengiriman berubah. Periksa pilihan dan coba lagi. || 配送オプションが変更されました。オプションを確認して、もう一度お試しください。
+Esta tienda solo vende a clientes con cuenta. || Cette boutique ne vend qu'aux clients ayant un compte. || Toko ini hanya menjual kepada pelanggan yang punya akun. || このショップはアカウントをお持ちのお客様のみご利用いただけます。
+La tienda todavía no puede recibir pagos. || La boutique ne peut pas encore recevoir de paiements. || Toko belum dapat menerima pembayaran. || このショップはまだお支払いを受け付けられません。
+No pudimos completar la compra. Intenta de nuevo. || Nous n'avons pas pu finaliser l'achat. Réessayez. || Kami tidak dapat menyelesaikan pembelian. Coba lagi. || 購入を完了できませんでした。もう一度お試しください。
+No pudimos procesar el pago. Intenta de nuevo. || Nous n'avons pas pu traiter le paiement. Réessayez. || Kami tidak dapat memproses pembayaran. Coba lagi. || お支払いを処理できませんでした。もう一度お試しください。
+¡Gracias! || Merci ! || Terima kasih! || ありがとうございます！
+No encontramos un pedido reciente en este navegador. || Aucune commande récente trouvée dans ce navigateur. || Kami tidak menemukan pesanan terbaru di peramban ini. || このブラウザには最近の注文が見つかりません。
+Tu pedido || Votre commande || Pesanan Anda || ご注文
+está confirmado y pagado. || est confirmée et payée. || sudah dikonfirmasi dan dibayar. || は確定し、お支払いも完了しました。
+Total pagado || Total payé || Total dibayar || お支払い済み合計
+Te enviaremos la factura por correo en unos minutos. || Nous vous enverrons la facture par e-mail dans quelques minutes. || Kami akan mengirim faktur lewat email dalam beberapa menit. || 数分以内に請求書をメールでお送りします。
+Guardado en favoritos || Ajouté aux favoris || Disimpan ke favorit || お気に入りに保存済み
+Todavía no guardas productos. Toca el corazón de un producto para tenerlo aquí. || Vous n'avez encore enregistré aucun produit. Touchez le cœur d'un produit pour le retrouver ici. || Anda belum menyimpan produk. Ketuk ikon hati pada produk agar tersimpan di sini. || まだ商品を保存していません。商品のハートをタップするとここに表示されます。
+Ver los || Voir les || Lihat semua || すべて見る：
+Sin resultados para “ || Aucun résultat pour « || Tidak ada hasil untuk “ || 該当なし：“
+Elige cuántas estrellas le das. || Choisissez le nombre d'étoiles. || Pilih jumlah bintang yang Anda berikan. || 星の数を選んでください。
+¡Gracias! Tu opinión se publicará cuando la tienda la revise. || Merci ! Votre avis sera publié après vérification par la boutique. || Terima kasih! Ulasan Anda akan tampil setelah diperiksa toko. || ありがとうございます！レビューはショップの確認後に公開されます。
+No pudimos enviar tu opinión. Intenta de nuevo. || Nous n'avons pas pu envoyer votre avis. Réessayez. || Kami tidak dapat mengirim ulasan Anda. Coba lagi. || レビューを送信できませんでした。もう一度お試しください。
+Un momento… || Un instant… || Sebentar… || 少々お待ちください…
+No pudimos hacer el cambio. Intenta de nuevo. || Nous n'avons pas pu effectuer le changement. Réessayez. || Kami tidak dapat melakukan perubahan. Coba lagi. || 変更できませんでした。もう一度お試しください。
+¡Gracias! Recibimos tu información. || Merci ! Nous avons bien reçu vos informations. || Terima kasih! Kami telah menerima informasi Anda. || ありがとうございます！情報を受け取りました。
+Enviaste varios formularios seguidos. Espera un minuto. || Vous avez envoyé plusieurs formulaires à la suite. Attendez une minute. || Anda mengirim beberapa formulir berturut-turut. Tunggu satu menit. || フォームを続けて送信しました。1分ほどお待ちください。
+No pudimos enviar el formulario. Intenta de nuevo. || Nous n'avons pas pu envoyer le formulaire. Réessayez. || Kami tidak dapat mengirim formulir. Coba lagi. || フォームを送信できませんでした。もう一度お試しください。
+No pudimos registrar tu decisión. Intenta de nuevo. || Nous n'avons pas pu enregistrer votre décision. Réessayez. || Kami tidak dapat mencatat keputusan Anda. Coba lagi. || 決定を記録できませんでした。もう一度お試しください。
+Buscar productos || Rechercher des produits || Cari produk || 商品を検索
+Buscar || Rechercher || Cari || 検索
+Abrir menú || Ouvrir le menu || Buka menu || メニューを開く
+Menú móvil || Menu mobile || Menu seluler || モバイルメニュー
+Principal || Principal || Utama || メイン
+Ver todo || Tout voir || Lihat semua || すべて見る
+Pagos seguros con Stripe · Visa · Mastercard · American Express || Paiements sécurisés avec Stripe · Visa · Mastercard · American Express || Pembayaran aman dengan Stripe · Visa · Mastercard · American Express || Stripeによる安全なお支払い · Visa · Mastercard · American Express
+Categoría || Catégorie || Kategori || カテゴリー
+Marca || Marque || Merek || ブランド
+Búsqueda || Recherche || Pencarian || 検索
+Resultados para “ || Résultats pour « || Hasil untuk “ || 検索結果：“
+Catálogo de || Catalogue de || Katalog || カタログ：
+Catálogo || Catalogue || Katalog || カタログ
+Todos los productos || Tous les produits || Semua produk || すべての商品
+Relevancia || Pertinence || Relevansi || 関連度順
+Novedades || Nouveautés || Terbaru || 新着順
+Más vendidos || Meilleures ventes || Terlaris || 売れ筋順
+Precio: menor a mayor || Prix croissant || Harga: rendah ke tinggi || 価格の安い順
+Precio: mayor a menor || Prix décroissant || Harga: tinggi ke rendah || 価格の高い順
+Producto no encontrado || Produit introuvable || Produk tidak ditemukan || 商品が見つかりません
+Sí || Oui || Ya || はい
+No || Non || Tidak || いいえ
+Pago pendiente || Paiement en attente || Menunggu pembayaran || お支払い待ち
+Pagado || Payée || Dibayar || 支払い済み
+Enviado || Expédiée || Dikirim || 発送済み
+Enviado en parte || Expédiée en partie || Dikirim sebagian || 一部発送済み
+Entregado || Livrée || Diterima || 配達済み
+Cancelado || Annulée || Dibatalkan || キャンセル済み
+En preparación || En préparation || Sedang disiapkan || 準備中
+En camino || En route || Dalam perjalanan || 配送中
+Esperando tus productos || En attente de vos produits || Menunggu produk Anda || 商品の到着待ち
+No encontramos ese pedido en tu cuenta. || Nous n'avons pas trouvé cette commande dans votre compte. || Kami tidak menemukan pesanan itu di akun Anda. || アカウントにその注文が見つかりません。
+Dirección guardada. || Adresse enregistrée. || Alamat disimpan. || 住所を保存しました。
+Dirección eliminada. || Adresse supprimée. || Alamat dihapus. || 住所を削除しました。
+Tus datos se guardaron. || Vos informations ont été enregistrées. || Data Anda telah disimpan. || 登録情報を保存しました。
+Contraseña guardada. Ya puedes entrar con ella. || Mot de passe enregistré. Vous pouvez maintenant l'utiliser pour vous connecter. || Kata sandi disimpan. Anda sekarang bisa masuk dengannya. || パスワードを保存しました。これでログインできます。
+Cerraste sesión. || Vous êtes déconnecté. || Anda telah keluar. || ログアウトしました。
+¡Listo! Ya estás en tu cuenta. || C'est fait ! Vous êtes dans votre compte. || Selesai! Anda sudah masuk ke akun. || ログインしました。
+Entrar a mi cuenta || Accéder à mon compte || Masuk ke akun saya || マイアカウントにログイン
+Inicia sesión en tu cuenta || Connectez-vous à votre compte || Masuk ke akun Anda || アカウントにログイン
+Ya te enviamos varios códigos. Usa el más reciente o espera 10 minutos para pedir otro. || Nous vous avons déjà envoyé plusieurs codes. Utilisez le plus récent ou attendez 10 minutes pour en demander un autre. || Kami sudah mengirim beberapa kode. Gunakan yang terbaru atau tunggu 10 menit untuk meminta lagi. || すでに複数のコードをお送りしました。最新のものを使うか、10分待ってから再度お申し込みください。
+Escribe tu código || Saisissez votre code || Tulis kode Anda || コードを入力
+Te enviamos un código de 6 dígitos. Vence en 10 minutos. || Nous vous avons envoyé un code à 6 chiffres. Il expire dans 10 minutes. || Kami mengirimkan kode 6 digit. Berlaku 10 menit. || 6桁のコードをお送りしました。有効期限は10分です。
+El código no es correcto o ya venció. Revisa tu correo o pide uno nuevo. || Le code est incorrect ou a expiré. Vérifiez votre e-mail ou demandez-en un nouveau. || Kode salah atau sudah kedaluwarsa. Periksa email Anda atau minta yang baru. || コードが正しくないか、期限切れです。メールを確認するか、新しいコードをお申し込みください。
+Correo o contraseña incorrectos. También puedes entrar con un código por correo. || E-mail ou mot de passe incorrect. Vous pouvez aussi vous connecter avec un code reçu par e-mail. || Email atau kata sandi salah. Anda juga bisa masuk dengan kode lewat email. || メールアドレスまたはパスワードが正しくありません。メールで届くコードでもログインできます。
+Esta cuenta está desactivada. Escribe a la tienda. || Ce compte est désactivé. Écrivez à la boutique. || Akun ini dinonaktifkan. Hubungi toko. || このアカウントは無効です。ショップにお問い合わせください。
+Idioma || Langue || Bahasa || 言語

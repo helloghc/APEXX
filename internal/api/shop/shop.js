@@ -5,6 +5,22 @@
   const parts = location.pathname.split("/");
   const tenant = body.dataset.tenant || parts[2], base = body.dataset.base || "/s/" + parts[2] + "/" + parts[3], channel = body.dataset.channel || "mx";
   const api = "/s/" + tenant + "/api";
+  // The language travels in the URL; links built here keep it.
+  const HL = document.documentElement.getAttribute("data-hl") || "";
+  const withLang = (u) => {
+    if (!HL || !u || u.charAt(0) !== "/" || /[?&]hl=/.test(u)) return u;
+    const h = u.indexOf("#"), tail = h < 0 ? "" : u.slice(h);
+    if (h >= 0) u = u.slice(0, h);
+    return u + (u.indexOf("?") < 0 ? "?" : "&") + "hl=" + HL + tail;
+  };
+  if (HL) {
+    const plain = window.fetch.bind(window);
+    window.fetch = (u, o = {}) => (typeof u === "string" && u.indexOf(api) === 0 ? plain(u, Object.assign({}, o, { headers: Object.assign({ "X-Apexx-Lang": HL }, o.headers || {}) })) : plain(u, o));
+  }
+  if (HL) document.addEventListener("click", (e) => {
+    const a = e.target.closest && e.target.closest("a[href]");
+    if (a && !a.closest(".langs")) a.setAttribute("href", withLang(a.getAttribute("href")));
+  }, true);
   const KEY = "apexx_cart_" + tenant, ZIP = "apexx_zip_" + tenant, CPN = "apexx_coupons_" + tenant, SHIP = "apexx_ship_" + tenant;
   const $ = (s, el = document) => el.querySelector(s);
   const store = {
@@ -163,7 +179,7 @@
     $("#postal").value = store.get(ZIP, "");
     let cfg = { mode: "sandbox" }, stripe = null, elements = null, last = null;
     async function refresh() {
-      if (!cart().length) { location.href = base + "/cart"; return; }
+      if (!cart().length) { location.href = withLang(base + "/cart"); return; }
       const r = await simulate($("#postal").value.trim(), { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
       if (r.status === 200 && shipBox) shipBox.innerHTML = renderOptions(r.body);
       if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + planNote(l.sku) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); paintWallet(); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
@@ -269,7 +285,7 @@
       }, { "Idempotency-Key": key });
       if (res.status === 201) {
         sessionStorage.removeItem("apexx_idem"); sessionStorage.setItem("apexx_last_order", JSON.stringify(res.body));
-        store.set(KEY, []); store.set(CPN, []); location.href = base + "/gracias"; return;
+        store.set(KEY, []); store.set(CPN, []); location.href = withLang(base + "/gracias"); return;
       }
       sessionStorage.removeItem("apexx_idem");
       const msg = { payment_declined: "Tu pago fue rechazado. Prueba con otra tarjeta.", cart_changed: "Algunos productos cambiaron de precio o disponibilidad. Revisa el resumen.",
@@ -441,7 +457,7 @@
       if (box.hidden || !list.length) return;
       if (e.key === "ArrowDown") { e.preventDefault(); active = (active + 1) % list.length; mark(); }
       else if (e.key === "ArrowUp") { e.preventDefault(); active = (active - 1 + list.length) % list.length; mark(); }
-      else if (e.key === "Enter" && active >= 0) { e.preventDefault(); location.href = list[active].href; }
+      else if (e.key === "Enter" && active >= 0) { e.preventDefault(); location.href = withLang(list[active].getAttribute("href")); }
     });
     d.addEventListener("click", (e) => { if (!form.contains(e.target)) close(); });
   });

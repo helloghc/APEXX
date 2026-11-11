@@ -1,0 +1,342 @@
+## Frases fijas de la tienda. Una frase por línea; los números variables se escriben como #.
+@ es || en || pt
+Código de acceso || Access code || Código de acesso
+Lo enviamos a || We sent it to || Enviamos para
+Código de 6 dígitos || 6-digit code || Código de 6 dígitos
+Entrar || Sign in || Entrar
+Enviar otro código || Send another code || Enviar outro código
+Usar otro correo || Use a different email || Usar outro e-mail
+Entra o crea tu cuenta || Sign in or create your account || Entre ou crie sua conta
+Escribe tu correo y te enviamos un código. No necesitas contraseña. || Enter your email and we'll send you a code. No password needed. || Digite seu e-mail e enviaremos um código. Você não precisa de senha.
+Correo || Email || E-mail
+Enviarme un código || Send me a code || Enviar um código
+Entrar con contraseña || Sign in with password || Entrar com senha
+Contraseña || Password || Senha
+Tu cuenta || Your account || Sua conta
+Con tu cuenta puedes || With your account you can || Com sua conta você pode
+Ver tus pedidos y rastrear cada envío. || See your orders and track every shipment. || Ver seus pedidos e rastrear cada envio.
+Descargar tus facturas. || Download your invoices. || Baixar suas notas fiscais.
+Guardar tus direcciones para comprar más rápido. || Save your addresses to check out faster. || Salvar seus endereços para comprar mais rápido.
+Si ya compraste como invitado, entra con el mismo correo y verás esos pedidos. || If you already bought as a guest, sign in with the same email to see those orders. || Se você já comprou como convidado, entre com o mesmo e-mail e verá esses pedidos.
+Inicio || Home || Início
+Mi cuenta || My account || Minha conta
+Pedidos || Orders || Pedidos
+Direcciones || Addresses || Endereços
+Mis direcciones || My addresses || Meus endereços
+Mis datos || My details || Meus dados
+Cerrar sesión || Sign out || Sair
+Hola, || Hi, || Olá,
+Sesión iniciada como || Signed in as || Conectado como
+Pedido || Order || Pedido
+Pedido # || Order # || Pedido #
+Fecha || Date || Data
+Estado || Status || Status
+Total || Total || Total
+pieza || item || item
+piezas || items || itens
+Ver pedidos anteriores || See earlier orders || Ver pedidos anteriores
+Todavía no tienes pedidos con este correo. || You have no orders with this email yet. || Você ainda não tem pedidos com este e-mail.
+Ver productos || Browse products || Ver produtos
+Producto || Product || Produto
+Cant. || Qty || Qtd.
+Envío || Shipping || Envio
+Guía || Tracking number || Código de rastreio
+Rastrear envío || Track shipment || Rastrear envio
+Mensajes de la tienda || Messages from the store || Mensagens da loja
+Devoluciones || Returns || Devoluções
+Resumen del pedido || Order summary || Resumo do pedido
+Resumen || Summary || Resumo
+Productos || Products || Produtos
+Descuentos || Discounts || Descontos
+Reembolsado || Refunded || Reembolsado
+Saldo por pagar || Balance due || Saldo a pagar
+Se envía a: || Ships to: || Enviado para:
+Descargar factura || Download invoice || Baixar nota fiscal
+La factura aparecerá aquí cuando esté lista. || The invoice will appear here when it is ready. || A nota fiscal aparecerá aqui quando estiver pronta.
+Dirección || Address || Endereço
+· principal || · default || · principal
+C.P. || ZIP || CEP
+Eliminar || Delete || Excluir
+No tienes direcciones guardadas. || You have no saved addresses. || Você não tem endereços salvos.
+Agregar dirección || Add address || Adicionar endereço
+Quién recibe || Recipient || Quem recebe
+Calle y número || Street and number || Rua e número
+Interior, colonia o referencias (opcional) || Apartment, neighborhood or notes (optional) || Complemento, bairro ou referências (opcional)
+Código postal || ZIP code || CEP
+Ciudad o alcaldía || City || Cidade
+Teléfono (opcional) || Phone (optional) || Telefone (opcional)
+Usar como dirección principal || Use as default address || Usar como endereço principal
+Guardar dirección || Save address || Salvar endereço
+Tus datos || Your details || Seus dados
+Correo: || Email: || E-mail:
+Nombre completo || Full name || Nome completo
+Teléfono || Phone || Telefone
+Quiero recibir novedades y ofertas por correo || I want to receive news and offers by email || Quero receber novidades e ofertas por e-mail
+Guardar || Save || Salvar
+Contraseña (opcional) || Password (optional) || Senha (opcional)
+Ya tienes contraseña. Escribe una nueva para cambiarla, o deja el campo vacío y guarda para quitarla. || You already have a password. Enter a new one to change it, or leave the field empty and save to remove it. || Você já tem senha. Digite uma nova para alterá-la, ou deixe o campo vazio e salve para removê-la.
+Siempre puedes entrar con un código por correo. Si prefieres, crea una contraseña. || You can always sign in with an emailed code. If you prefer, create a password. || Você sempre pode entrar com um código por e-mail. Se preferir, crie uma senha.
+Nueva contraseña (mínimo 10 caracteres) || New password (at least 10 characters) || Nova senha (mínimo 10 caracteres)
+Guardar contraseña || Save password || Salvar senha
+Compra por aprobar || Purchase awaiting approval || Compra para aprovar
+quiere comprar a crédito de || wants to buy on the credit of || quer comprar no crédito de
+Cantidad || Quantity || Quantidade
+Total con envío e impuestos: || Total with shipping and taxes: || Total com envio e impostos:
+Aprobar y colocar el pedido || Approve and place the order || Aprovar e fazer o pedido
+Rechazar || Reject || Recusar
+Aprobada. El pedido ya se colocó. || Approved. The order has been placed. || Aprovada. O pedido já foi feito.
+Esta compra fue rechazada. || This purchase was rejected. || Esta compra foi recusada.
+Solicitud no encontrada || Request not found || Solicitação não encontrada
+Este enlace no es válido. Usa el botón del correo que recibiste. || This link is not valid. Use the button in the email you received. || Este link não é válido. Use o botão do e-mail que você recebeu.
+Tu carrito || Your cart || Seu carrinho
+Carrito || Cart || Carrinho
+Cargando tu carrito… || Loading your cart… || Carregando seu carrinho…
+Código postal para calcular el envío || ZIP code to estimate shipping || CEP para calcular o envio
+Calcular || Estimate || Calcular
+¿Tienes un cupón? || Have a coupon? || Tem um cupom?
+Código || Code || Código
+Aplicar || Apply || Aplicar
+Continuar al pago || Continue to checkout || Continuar para o pagamento
+Ruta || Breadcrumb || Caminho
+Filtros || Filters || Filtros
+Filtrar || Filter || Filtrar
+Filtros activos || Active filters || Filtros ativos
+Quitar filtro || Remove filter || Remover filtro
+Quitar todos || Clear all || Remover todos
+Precio || Price || Preço
+Mínimo || Minimum || Mínimo
+Máximo || Maximum || Máximo
+Aplicar precio || Apply price || Aplicar preço
+producto || product || produto
+productos || products || produtos
+Ordenar || Sort || Ordenar
+Ordenar: || Sort: || Ordenar:
+No encontramos productos || We found no products || Não encontramos produtos
+para “ || for “ || para “
+”. Revisa la ortografía o prueba con otra palabra || ”. Check the spelling or try another word || ”. Verifique a ortografia ou tente outra palavra
+con estos filtros. || with these filters. || com estes filtros.
+Quita los filtros || Clear the filters || Remova os filtros
+para ver más || to see more || para ver mais
+Páginas || Pages || Páginas
+Anterior || Previous || Anterior
+Página || Page || Página
+de || of || de
+Siguiente || Next || Próxima
+Pago || Payment || Pagamento
+Tarjeta de regalo o saldo a favor || Gift card or store credit || Cartão-presente ou crédito da loja
+Código de la tarjeta || Card code || Código do cartão
+Cargando métodos de pago… || Loading payment methods… || Carregando formas de pagamento…
+Pagar || Pay || Pagar
+Calculando… || Calculating… || Calculando…
+/ Favoritos || / Favorites || / Favoritos
+Favoritos || Favorites || Favoritos
+Cargando tus favoritos… || Loading your favorites… || Carregando seus favoritos…
+(opcional) || (optional) || (opcional)
+Elige… || Choose… || Escolha…
+No llenes este campo || Do not fill in this field || Não preencha este campo
+Enviar || Send || Enviar
+Formulario no encontrado || Form not found || Formulário não encontrado
+Este formulario no existe o ya no está disponible. || This form does not exist or is no longer available. || Este formulário não existe ou não está mais disponível.
+Volver al inicio || Back to home || Voltar ao início
+Saltar al contenido || Skip to content || Pular para o conteúdo
+Agotado || Sold out || Esgotado
+Oferta || Sale || Oferta
+Agregar || Add || Adicionar
+Este enlace ya no está disponible || This link is no longer available || Este link não está mais disponível
+El enlace de pago venció o fue reemplazado. Escribe a la tienda para que te envíen uno nuevo. || The payment link expired or was replaced. Contact the store to get a new one. || O link de pagamento venceu ou foi substituído. Escreva para a loja para receber um novo.
+Ir a la tienda || Go to the store || Ir para a loja
+Pago recibido || Payment received || Pagamento recebido
+Tu pedido quedó pagado. || Your order is paid. || Seu pedido foi pago.
+El saldo de tu pedido # || The balance of your order # || O saldo do seu pedido #
+quedó pagado. || is paid. || foi pago.
+Te enviamos la confirmación por correo. || We sent you the confirmation by email. || Enviamos a confirmação por e-mail.
+Ver mis pedidos || See my orders || Ver meus pedidos
+Paga tu pedido || Pay for your order || Pague seu pedido
+Paga el saldo de tu pedido # || Pay the balance of your order # || Pague o saldo do seu pedido #
+Activa JavaScript para pagar de forma segura con Stripe. || Turn on JavaScript to pay securely with Stripe. || Ative o JavaScript para pagar com segurança pela Stripe.
+Total a pagar || Total due || Total a pagar
+Última actualización: || Last updated: || Última atualização:
+Otras políticas || Other policies || Outras políticas
+Página no encontrada || Page not found || Página não encontrada
+Esta página no existe o todavía no se publica. || This page does not exist or is not published yet. || Esta página não existe ou ainda não foi publicada.
+Vendido y enviado por || Sold and shipped by || Vendido e enviado por
+Elige una opción || Choose an option || Escolha uma opção
+disponibles || available || disponíveis
+¿Cómo lo quieres? || How do you want it? || Como você quer?
+Compra única || One-time purchase || Compra única
+Suscríbete || Subscribe || Assine
+y ahorra || and save || e economize
+Entrega automática. Pausa, salta o cancela cuando quieras. || Automatic delivery. Pause, skip or cancel anytime. || Entrega automática. Pause, pule ou cancele quando quiser.
+Entrega || Delivery || Entrega
+Agregar al carrito || Add to cart || Adicionar ao carrinho
+Guardar en favoritos || Save to favorites || Salvar nos favoritos
+Envío gratis desde $1,499 || Free shipping from $1,499 || Frete grátis a partir de $1,499
+Cambios sin costo durante 30 días || Free exchanges for 30 days || Trocas grátis por 30 dias
+Pago seguro con Stripe || Secure payment with Stripe || Pagamento seguro com Stripe
+Descripción || Description || Descrição
+Especificaciones || Specifications || Especificações
+Opiniones || Reviews || Avaliações
+de 5 estrellas || out of 5 stars || de 5 estrelas
+opinión || review || avaliação
+opiniones || reviews || avaliações
+· Compra verificada || · Verified purchase || · Compra verificada
+Respuesta de la tienda: || Reply from the store: || Resposta da loja:
+Todavía no hay opiniones de este producto. Sé la primera persona en opinar. || There are no reviews for this product yet. Be the first to write one. || Ainda não há avaliações deste produto. Seja a primeira pessoa a avaliar.
+Escribir una opinión || Write a review || Escrever uma avaliação
+Tu calificación || Your rating || Sua nota
+estrellas || stars || estrelas
+Título (opcional) || Title (optional) || Título (opcional)
+Tu opinión || Your review || Sua avaliação
+Tu nombre || Your name || Seu nome
+Tu correo (no se publica) || Your email (not published) || Seu e-mail (não é publicado)
+Enviar opinión || Submit review || Enviar avaliação
+Combínalo con || Goes well with || Combine com
+Productos similares || Similar products || Produtos semelhantes
+/ Mi suscripción || / My subscription || / Minha assinatura
+Mi suscripción || My subscription || Minha assinatura
+Activa || Active || Ativa
+En pausa || Paused || Em pausa
+Detenida: no pudimos cobrar tu tarjeta || Stopped: we could not charge your card || Interrompida: não conseguimos cobrar seu cartão
+Cancelada || Canceled || Cancelada
+· entrega || · delivery || · entrega
+% de descuento en cada entrega || % off every delivery || % de desconto em cada entrega
+Próxima entrega: || Next delivery: || Próxima entrega:
+. Ese día cobramos a tu tarjeta guardada. || . That day we charge your saved card. || . Nesse dia cobramos no seu cartão salvo.
+No se hizo ningún cargo. Reactívala para intentar de nuevo o cancélala. || No charge was made. Reactivate it to try again or cancel it. || Nenhuma cobrança foi feita. Reative para tentar de novo ou cancele.
+Saltar la próxima entrega || Skip the next delivery || Pular a próxima entrega
+Pausar || Pause || Pausar
+Reactivar || Reactivate || Reativar
+Cancelar suscripción || Cancel subscription || Cancelar assinatura
+Entregas || Deliveries || Entregas
+Suscripción no encontrada || Subscription not found || Assinatura não encontrada
+Este enlace no es válido o ya cambió. Usa el botón del correo más reciente de tu suscripción. || This link is not valid or has changed. Use the button in the latest email about your subscription. || Este link não é válido ou mudou. Use o botão do e-mail mais recente da sua assinatura.
+¡Gracias por tu compra! || Thank you for your purchase! || Obrigado pela sua compra!
+Cargando tu pedido… || Loading your order… || Carregando seu pedido…
+Seguir comprando || Keep shopping || Continuar comprando
+Suscripción: entrega || Subscription: delivery || Assinatura: entrega
+para envío gratis || away from free shipping || para frete grátis
+Agregado ✓ || Added ✓ || Adicionado ✓
+¡Listo! Te escribiremos pronto. || Done! We will write to you soon. || Pronto! Escreveremos em breve.
+Revisa tu correo e intenta de nuevo. || Check your email and try again. || Verifique seu e-mail e tente de novo.
+No pudimos guardar tu correo. Intenta más tarde. || We could not save your email. Try again later. || Não conseguimos salvar seu e-mail. Tente mais tarde.
+Elige una opción. || Choose an option. || Escolha uma opção.
+Agregado al carrito. || Added to cart. || Adicionado ao carrinho.
+Ver carrito || View cart || Ver carrinho
+Quitar cupón || Remove coupon || Remover cupom
+Recolección || Pickup || Retirada
+días || days || dias
+Ingresa tu código postal || Enter your ZIP code || Digite seu CEP
+Tu carrito está vacío. || Your cart is empty. || Seu carrinho está vazio.
+No pudimos calcular tu carrito: || We could not calculate your cart: || Não conseguimos calcular seu carrinho:
+Quitar uno de || Remove one of || Remover um de
+Agregar uno de || Add one of || Adicionar um de
+Quitamos el cupón || We removed the coupon || Removemos o cupom
+Escribe el código de tu cupón. || Enter your coupon code. || Digite o código do seu cupom.
+Agrega productos antes de usar un cupón. || Add products before using a coupon. || Adicione produtos antes de usar um cupom.
+No pudimos validar el cupón. Intenta de nuevo. || We could not validate the coupon. Try again. || Não conseguimos validar o cupom. Tente de novo.
+Tarjeta •••• || Card •••• || Cartão ••••
+Tarjeta de regalo o saldo || Gift card or credit || Cartão-presente ou crédito
+A pagar || To pay || A pagar
+Confirmar pedido || Place order || Confirmar pedido
+Meses sin intereses || Interest-free installments || Parcelas sem juros
+Un solo pago de || A single payment of || Um único pagamento de
+Disponible con tarjetas de crédito participantes. || Available with participating credit cards. || Disponível com cartões de crédito participantes.
+15 días || 15 days || 15 dias
+30 días || 30 days || 30 dias
+60 días || 60 days || 60 dias
+Compras para || Buying for || Comprando para
+Pagar con tarjeta || Pay by card || Pagar com cartão
+Confirmar pedido a crédito || Place order on credit || Confirmar pedido a crédito
+Escribe el código de tu tarjeta. || Enter your card code. || Digite o código do seu cartão.
+Esa tarjeta ya está aplicada. || That card is already applied. || Esse cartão já foi aplicado.
+Tarjeta aplicada. || Card applied. || Cartão aplicado.
+Demasiados intentos. Espera un minuto. || Too many attempts. Wait a minute. || Muitas tentativas. Espere um minuto.
+No pudimos validar la tarjeta. Intenta de nuevo. || We could not validate the card. Try again. || Não conseguimos validar o cartão. Tente de novo.
+Tarjeta quitada. || Card removed. || Cartão removido.
+Acepto los || I accept the || Aceito os
+términos y condiciones || terms and conditions || termos e condições
+Modo de prueba: no se hace ningún cargo real. || Test mode: no real charge is made. || Modo de teste: nenhuma cobrança real é feita.
+Tarjeta de prueba que se aprueba || Test card that is approved || Cartão de teste aprovado
+Tarjeta de prueba que se rechaza || Test card that is declined || Cartão de teste recusado
+tu teléfono || your phone || seu telefone
+tu dirección || your address || seu endereço
+tu código postal || your ZIP code || seu CEP
+Acepta los términos y condiciones para continuar. || Accept the terms and conditions to continue. || Aceite os termos e condições para continuar.
+El código postal debe tener 5 dígitos. || The ZIP code must have 5 digits. || O CEP deve ter 5 dígitos.
+Tu pago fue rechazado. Prueba con otra tarjeta. || Your payment was declined. Try another card. || Seu pagamento foi recusado. Tente outro cartão.
+Algunos productos cambiaron de precio o disponibilidad. Revisa el resumen. || Some products changed price or availability. Check the summary. || Alguns produtos mudaram de preço ou disponibilidade. Confira o resumo.
+Ya no hay suficientes unidades de un producto. Ajusta tu carrito. || There are not enough units of a product left. Adjust your cart. || Não há mais unidades suficientes de um produto. Ajuste seu carrinho.
+No pudimos confirmar el pago todavía. No vuelvas a pagar: te avisaremos por correo. || We could not confirm the payment yet. Do not pay again: we will let you know by email. || Ainda não conseguimos confirmar o pagamento. Não pague de novo: avisaremos por e-mail.
+Revisa tu código postal. || Check your ZIP code. || Verifique seu CEP.
+No hay entregas disponibles para tu código postal. || No delivery is available for your ZIP code. || Não há entregas disponíveis para o seu CEP.
+La opción de entrega cambió. Revisa las opciones y vuelve a intentar. || The delivery option changed. Check the options and try again. || A opção de entrega mudou. Confira as opções e tente de novo.
+Esta tienda solo vende a clientes con cuenta. || This store only sells to customers with an account. || Esta loja só vende para clientes com conta.
+La tienda todavía no puede recibir pagos. || The store cannot take payments yet. || A loja ainda não pode receber pagamentos.
+No pudimos completar la compra. Intenta de nuevo. || We could not complete the purchase. Try again. || Não conseguimos concluir a compra. Tente de novo.
+No pudimos procesar el pago. Intenta de nuevo. || We could not process the payment. Try again. || Não conseguimos processar o pagamento. Tente de novo.
+¡Gracias! || Thank you! || Obrigado!
+No encontramos un pedido reciente en este navegador. || We found no recent order in this browser. || Não encontramos um pedido recente neste navegador.
+Tu pedido || Your order || Seu pedido
+está confirmado y pagado. || is confirmed and paid. || está confirmado e pago.
+Total pagado || Total paid || Total pago
+Te enviaremos la factura por correo en unos minutos. || We will email you the invoice in a few minutes. || Enviaremos a nota fiscal por e-mail em alguns minutos.
+Guardado en favoritos || Saved to favorites || Salvo nos favoritos
+Todavía no guardas productos. Toca el corazón de un producto para tenerlo aquí. || You have not saved any products yet. Tap the heart on a product to keep it here. || Você ainda não salvou produtos. Toque no coração de um produto para tê-lo aqui.
+Ver los || See all || Ver os
+Sin resultados para “ || No results for “ || Sem resultados para “
+Elige cuántas estrellas le das. || Choose how many stars you give it. || Escolha quantas estrelas você dá.
+¡Gracias! Tu opinión se publicará cuando la tienda la revise. || Thank you! Your review will be published once the store checks it. || Obrigado! Sua avaliação será publicada quando a loja revisar.
+No pudimos enviar tu opinión. Intenta de nuevo. || We could not send your review. Try again. || Não conseguimos enviar sua avaliação. Tente de novo.
+Un momento… || One moment… || Um momento…
+No pudimos hacer el cambio. Intenta de nuevo. || We could not make the change. Try again. || Não conseguimos fazer a alteração. Tente de novo.
+¡Gracias! Recibimos tu información. || Thank you! We received your information. || Obrigado! Recebemos suas informações.
+Enviaste varios formularios seguidos. Espera un minuto. || You sent several forms in a row. Wait a minute. || Você enviou vários formulários seguidos. Espere um minuto.
+No pudimos enviar el formulario. Intenta de nuevo. || We could not send the form. Try again. || Não conseguimos enviar o formulário. Tente de novo.
+No pudimos registrar tu decisión. Intenta de nuevo. || We could not record your decision. Try again. || Não conseguimos registrar sua decisão. Tente de novo.
+Buscar productos || Search products || Buscar produtos
+Buscar || Search || Buscar
+Abrir menú || Open menu || Abrir menu
+Menú móvil || Mobile menu || Menu móvel
+Principal || Main || Principal
+Ver todo || View all || Ver tudo
+Pagos seguros con Stripe · Visa · Mastercard · American Express || Secure payments with Stripe · Visa · Mastercard · American Express || Pagamentos seguros com Stripe · Visa · Mastercard · American Express
+Categoría || Category || Categoria
+Marca || Brand || Marca
+Búsqueda || Search || Busca
+Resultados para “ || Results for “ || Resultados para “
+Catálogo de || Catalog of || Catálogo de
+Catálogo || Catalog || Catálogo
+Todos los productos || All products || Todos os produtos
+Relevancia || Relevance || Relevância
+Novedades || Newest || Novidades
+Más vendidos || Best sellers || Mais vendidos
+Precio: menor a mayor || Price: low to high || Preço: menor para maior
+Precio: mayor a menor || Price: high to low || Preço: maior para menor
+Producto no encontrado || Product not found || Produto não encontrado
+Sí || Yes || Sim
+No || No || Não
+Pago pendiente || Payment pending || Pagamento pendente
+Pagado || Paid || Pago
+Enviado || Shipped || Enviado
+Enviado en parte || Partially shipped || Enviado em parte
+Entregado || Delivered || Entregue
+Cancelado || Canceled || Cancelado
+En preparación || Being prepared || Em preparação
+En camino || On the way || A caminho
+Esperando tus productos || Waiting for your products || Aguardando seus produtos
+No encontramos ese pedido en tu cuenta. || We could not find that order in your account. || Não encontramos esse pedido na sua conta.
+Dirección guardada. || Address saved. || Endereço salvo.
+Dirección eliminada. || Address deleted. || Endereço excluído.
+Tus datos se guardaron. || Your details were saved. || Seus dados foram salvos.
+Contraseña guardada. Ya puedes entrar con ella. || Password saved. You can now sign in with it. || Senha salva. Você já pode entrar com ela.
+Cerraste sesión. || You signed out. || Você saiu.
+¡Listo! Ya estás en tu cuenta. || Done! You are in your account. || Pronto! Você está na sua conta.
+Entrar a mi cuenta || Sign in to my account || Entrar na minha conta
+Inicia sesión en tu cuenta || Sign in to your account || Entre na sua conta
+Ya te enviamos varios códigos. Usa el más reciente o espera 10 minutos para pedir otro. || We already sent you several codes. Use the latest one or wait 10 minutes to ask for another. || Já enviamos vários códigos. Use o mais recente ou espere 10 minutos para pedir outro.
+Escribe tu código || Enter your code || Digite seu código
+Te enviamos un código de 6 dígitos. Vence en 10 minutos. || We sent you a 6-digit code. It expires in 10 minutes. || Enviamos um código de 6 dígitos. Ele vence em 10 minutos.
+El código no es correcto o ya venció. Revisa tu correo o pide uno nuevo. || The code is wrong or has expired. Check your email or ask for a new one. || O código está incorreto ou venceu. Verifique seu e-mail ou peça um novo.
+Correo o contraseña incorrectos. También puedes entrar con un código por correo. || Wrong email or password. You can also sign in with an emailed code. || E-mail ou senha incorretos. Você também pode entrar com um código por e-mail.
+Esta cuenta está desactivada. Escribe a la tienda. || This account is disabled. Contact the store. || Esta conta está desativada. Escreva para a loja.
+Idioma || Language || Idioma
