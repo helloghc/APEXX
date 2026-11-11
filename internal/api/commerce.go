@@ -105,8 +105,13 @@ func (s *Server) putChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.ID = r.PathValue("id")
-	if len(c.Currency) != 3 || c.TaxBps < 0 || c.MaxQtyPerItem < 0 {
-		apierr.BadRequest(w, "Moneda ISO de 3 letras, impuesto y máximo no negativos")
+	errs, err := s.validateChannel(r, &c)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	if len(errs) > 0 {
+		apierr.BadRequest(w, "Moneda ISO de 3 letras, impuesto y máximo no negativos", errs...)
 		return
 	}
 	p := principal(r)

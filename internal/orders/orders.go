@@ -28,6 +28,7 @@ import (
 
 	"github.com/helloghc/apexx/internal/cart"
 	"github.com/helloghc/apexx/internal/crypto"
+	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/notify"
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/projection"
@@ -61,6 +62,7 @@ type Customer struct {
 	Name    string `json:"name"`
 	Phone   string `json:"phone,omitempty"`
 	Address string `json:"address,omitempty"`
+	Notes   string `json:"notes,omitempty"` // note for the store, when the checkout offers the field
 }
 
 // CheckoutRequest places an order.
@@ -74,6 +76,29 @@ type CheckoutRequest struct {
 	// ExpectedTotal is the grand total the shopper saw (minor units). When sent,
 	// the order is only placed if the total is still the same.
 	ExpectedTotal *int64 `json:"expectedTotal,omitempty"`
+	// ShippingOption is the delivery option chosen by the shopper (empty = cheapest).
+	ShippingOption string `json:"shippingOption,omitempty"`
+	// AcceptedTerms must be true when the store asks to accept its terms.
+	AcceptedTerms bool `json:"acceptedTerms,omitempty"`
+}
+
+// ShippingMethod is the delivery option stored with the order.
+type ShippingMethod struct {
+	ID            string              `json:"id"`
+	Name          string              `json:"name"`
+	Kind          string              `json:"kind"`
+	Carrier       string              `json:"carrier,omitempty"`
+	CarrierID     string              `json:"carrierId,omitempty"`
+	Zone          string              `json:"zone,omitempty"`
+	LocationID    string              `json:"locationId,omitempty"`
+	LocationName  string              `json:"locationName,omitempty"`
+	PickupAddress string              `json:"pickupAddress,omitempty"`
+	Instructions  string              `json:"instructions,omitempty"`
+	Price         int64               `json:"price"`
+	PriceReason   string              `json:"priceReason,omitempty"`
+	Reason        string              `json:"reason,omitempty"`
+	Estimate      *logistics.Estimate `json:"estimate,omitempty"`
+	WeightGrams   int64               `json:"weightGrams"`
 }
 
 // Line is an order line. Fulfillable units = Qty - FulfilledQty - CancelledQty.
@@ -140,6 +165,10 @@ type Order struct {
 	Returns           []Return      `json:"returns,omitempty"`
 	Notes             []Note        `json:"notes,omitempty"`
 	Edits             []Edit        `json:"edits,omitempty"`
+	// DisplayNumber is what the shopper sees: store prefix + number.
+	DisplayNumber  string               `json:"displayNumber"`
+	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
+	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`
 }
 
 // Payment is the API view of a payment.
@@ -269,6 +298,24 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 	if err != nil {
 		return problem(409, "payment_account_missing", ErrNoPaymentAccount.Error(), nil), nil
 	}
+	// Checkout rules of the store (Configuración → Checkout).
+	rules := t.Site().Settings
+	var fieldErrs []map[string]string
+	if rules.Checkout.PhoneRequired && len(strings.TrimSpace(req.Customer.Phone)) < 7 {
+		fieldErrs = append(fieldErrs, map[string]string{"field": "customer.phone", "code": "required", "message": "Escribe un teléfono de contacto"})
+	}
+	if rules.Checkout.TermsCheckbox && !req.AcceptedTerms {
+		fieldErrs = append(fieldErrs, map[string]string{"field": "acceptedTerms", "code": "required", "message": "Acepta los términos y condiciones para continuar"})
+	}
+	if len(req.Customer.Notes) > 500 {
+		fieldErrs = append(fieldErrs, map[string]string{"field": "customer.notes", "code": "too_long", "message": "La nota admite hasta 500 caracteres"})
+	}
+	if len(fieldErrs) > 0 {
+		return problem(400, "validation_failed", fieldErrs[0]["message"], map[string]any{"errors": fieldErrs}), nil
+	}
+	if !rules.Checkout.NotesField {
+		req.Customer.Notes = ""
+	}
 	// The customer is identified by a keyed digest of the email, so per-customer
 	// limits work without storing the address in clear.
 	custHash, err := s.Keys.BlindIndex(tenant, strings.ToLower(strings.TrimSpace(req.Customer.Email)))
@@ -280,7 +327,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 	if err != nil {
 		return Result{}, err
 	}
-	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items,
+	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items, ShippingOption: req.ShippingOption,
 		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup})
 	if err != nil {
 		return problem(400, "invalid_request", err.Error(), nil), nil
@@ -314,7 +361,26 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 			map[string]any{"simulation": sim}), nil
 	}
 	if sim.Shipping == nil {
+		for _, m := range sim.Messages {
+			if m.Code == "no_shipping_option" {
+				return problem(409, "no_shipping_option", m.Text, map[string]any{"simulation": sim}), nil
+			}
+		}
 		return problem(400, "postal_code_required", "Se necesita un código postal válido para calcular el envío", nil), nil
+	}
+	if req.ShippingOption != "" && sim.Shipping.ID != req.ShippingOption {
+		return problem(409, "shipping_option_unavailable", "La opción de entrega que elegiste ya no está disponible; revisa las opciones", map[string]any{"simulation": sim}), nil
+	}
+	method := ShippingMethod{ID: sim.Shipping.ID, Name: sim.Shipping.Name, Kind: sim.Shipping.Kind, Carrier: sim.Shipping.Carrier,
+		Price: sim.Shipping.Price.Amount, PriceReason: sim.Shipping.PriceReason, Estimate: sim.Shipping.Estimate, WeightGrams: sim.Shipping.WeightGrams}
+	if q := sim.Shipping.Quote; q != nil {
+		method.CarrierID, method.Zone, method.Reason = q.CarrierID, q.Zone, q.Reason
+		method.LocationID, method.LocationName, method.PickupAddress, method.Instructions = q.LocationID, q.LocationName, q.PickupAddress, q.Instructions
+	}
+	methodJSON, _ := json.Marshal(method)
+	taxJSON := []byte("{}")
+	if sim.Tax != nil {
+		taxJSON, _ = json.Marshal(sim.Tax)
 	}
 	cust, _ := json.Marshal(req.Customer)
 	id := newID("ord_")
@@ -330,10 +396,11 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		if err := tx.QueryRow(ctx, `SELECT nextval('order_numbers')`).Scan(&number); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code,
+				shipping_method, tax_detail, display_number)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
 			tenant, id, number, req.Channel, StatusPendingPayment, string(tot.Grand.Currency), tot.Items.Amount, tot.Discounts.Amount,
-			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode); err != nil {
+			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number)); err != nil {
 			return err
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
@@ -353,7 +420,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		if err := promostore.ReserveTx(ctx, tx, tenant, id, custHash, string(tot.Grand.Currency), redemptions); err != nil {
 			return err
 		}
-		return s.event(ctx, tx, tenant, id, actor, "order.created", nil, StatusPendingPayment, map[string]any{"promotions": sim.Promotions, "coupons": sim.Coupons})
+		return s.event(ctx, tx, tenant, id, actor, "order.created", nil, StatusPendingPayment, map[string]any{"promotions": sim.Promotions, "coupons": sim.Coupons, "shippingOption": method.ID, "acceptedTerms": req.AcceptedTerms})
 	})
 	if errors.Is(err, store.ErrInsufficient) {
 		return problem(409, "insufficient_stock", err.Error(), nil), nil
@@ -524,14 +591,14 @@ func (s *Service) transition(ctx context.Context, tenant, actor, id, from, to, t
 func (s *Service) List(ctx context.Context, tenant string, limit int, before int64, status string) ([]Order, error) {
 	var out []Order
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id, number, channel, status, currency, grand_total, created_at FROM orders
+		rows, err := tx.Query(ctx, `SELECT id, number, channel, status, currency, grand_total, created_at, COALESCE(NULLIF(display_number, ''), number::text) FROM orders
 			WHERE tenant_id=$1 AND ($3 = 0 OR number < $3) AND ($4 = '' OR status = $4) ORDER BY number DESC LIMIT $2`, tenant, limit, before, status)
 		if err != nil {
 			return err
 		}
 		out, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (Order, error) {
 			var o Order
-			return o, r.Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.GrandTotal, &o.CreatedAt)
+			return o, r.Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.GrandTotal, &o.CreatedAt, &o.DisplayNumber)
 		})
 		return err
 	})

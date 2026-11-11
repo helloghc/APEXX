@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails } from "lucide-react";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2 } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -32,6 +32,7 @@ const Customers = lazy(() => import("@/pages/customers/index").then((m) => ({ de
 const Notifications = lazy(() => import("@/pages/notifications/index").then((m) => ({ default: m.Notifications })));
 const Team = lazy(() => import("@/pages/Team").then((m) => ({ default: m.Team })));
 const Payments = lazy(() => import("@/pages/Payments").then((m) => ({ default: m.Payments })));
+const Settings = lazy(() => import("@/pages/settings/Settings").then((m) => ({ default: m.Settings })));
 const Connectors = lazy(() => import("@/pages/Connectors").then((m) => ({ default: m.Connectors })));
 import { visibleNav } from "@/perms";
 import { href, navigate, useRoute } from "@/router";
@@ -187,6 +188,7 @@ const ICONS: Record<string, typeof HomeIcon> = {
   correos: Mails,
   equipo: Users,
   pagos: CreditCard,
+  configuracion: Settings2,
   conectores: Cable,
 };
 
@@ -240,6 +242,9 @@ function Shell({ me }: { me: Me }) {
       break;
     case "pagos":
       body = <Payments me={me} />;
+      break;
+    case "configuracion":
+      body = <Settings me={me} sub={route[1]} rest={route.slice(2)} />;
       break;
     case "conectores":
       body = <Connectors me={me} />;

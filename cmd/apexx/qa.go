@@ -8,13 +8,16 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/helloghc/apexx/internal/api"
 	"github.com/helloghc/apexx/internal/auth"
 	"github.com/helloghc/apexx/internal/builder"
 	"github.com/helloghc/apexx/internal/catalog"
+	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/pricing"
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/seed"
+	"github.com/helloghc/apexx/internal/sitecfg"
 	"github.com/helloghc/apexx/internal/store"
 )
 
@@ -81,6 +84,8 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 	}
 	must(log, loadKeys(ctx, db, keys, *tenant), "tenant key")
 	must(log, db.SetChannel(ctx, *tenant, "qa-setup", "mx", seed.Channels()["mx"]), "channel")
+
+	must(log, qaSettings(ctx, db, *tenant), "settings")
 
 	a := &auth.Service{DB: db}
 	type acct struct {
@@ -184,4 +189,85 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 		fmt.Printf("  %-34s %s@%s\n", x.who, x.email, *domain)
 	}
 	fmt.Printf("\nLlave storefront para pruebas de API: %s\n", sf)
+}
+
+// qaSettings gives the QA store a complete configuration: a warehouse with
+// pickup, shipping zones and options, IVA regions, identity, policies and menus.
+func qaSettings(ctx context.Context, db *store.DB, tenant string) error {
+	const actor = "qa-setup"
+	loc := logistics.Location{Name: "Bodega CDMX", Kind: "warehouse", Active: true, PickupEnabled: true,
+		Address:            logistics.Address{Line1: "Av. Insurgentes Sur 1602", City: "Benito Juárez", State: "CMX", PostalCode: "03940", Country: "MX"},
+		Phone:              "55 5555 0100",
+		PickupInstructions: "Presenta tu número de pedido y una identificación.",
+		Hours: map[string]logistics.Hours{"mon": {Open: "09:00", Close: "18:00"}, "tue": {Open: "09:00", Close: "18:00"}, "wed": {Open: "09:00", Close: "18:00"},
+			"thu": {Open: "09:00", Close: "18:00"}, "fri": {Open: "09:00", Close: "18:00"}, "sat": {Open: "10:00", Close: "14:00"}, "sun": {Closed: true}}}
+	if err := db.PutDoc(ctx, tenant, actor, "locations", "cdmx-1", loc); err != nil {
+		return err
+	}
+	if _, err := api.InstallShippingDefaults(ctx, db, tenant, actor); err != nil {
+		return err
+	}
+	if _, err := api.InstallTaxDefaults(ctx, db, tenant, actor); err != nil {
+		return err
+	}
+	pickup := logistics.Option{Name: "Recoger en Bodega CDMX", Kind: logistics.KindPickup, LocationID: "cdmx-1", Active: true, Position: 9,
+		Rate: logistics.Rate{Type: logistics.RateFlat, Brackets: []logistics.Bracket{}}, Estimate: logistics.EstimateRule{MinDays: 1, MaxDays: 1, Cutoff: "16:00", Weekend: "saturday"}}
+	if err := db.PutDoc(ctx, tenant, actor, "options", "recoger-cdmx", pickup); err != nil {
+		return err
+	}
+	if _, err := db.UpdateSettings(ctx, tenant, actor, func(s *sitecfg.Settings) error {
+		if s.LegalName != "" {
+			return nil
+		}
+		s.Name, s.LegalName, s.RFC = "Tienda QA", "Comercializadora QA S.A. de C.V.", "CQA200101AB1"
+		s.Email, s.Phone = "hola@qa.apexx.test", "55 5555 0100"
+		s.Address = loc.Address
+		s.Social = map[string]string{"instagram": "https://instagram.com/apexx", "facebook": "https://facebook.com/apexx"}
+		return nil
+	}); err != nil {
+		return err
+	}
+	have, err := db.Policies(ctx, tenant)
+	if err != nil {
+		return err
+	}
+	if len(have) == 0 {
+		for _, p := range []sitecfg.Policy{
+			{Slug: "devoluciones", Title: "Cambios y devoluciones", Published: true, Body: "<p>Tienes <strong>30 días naturales</strong> a partir de la entrega para devolver tu compra.</p><h2>Cómo devolver</h2><ol><li>Escríbenos con tu número de pedido.</li><li>Te enviamos una guía prepagada.</li><li>Reembolsamos al mismo método de pago en 5 días hábiles.</li></ol>"},
+			{Slug: "privacidad", Title: "Aviso de privacidad", Published: true, Body: "<p>Usamos tus datos personales solo para procesar y entregar tus pedidos, conforme a la LFPDPPP.</p><h2>Derechos ARCO</h2><p>Puedes acceder, rectificar, cancelar u oponerte al uso de tus datos escribiendo a nuestro correo de contacto.</p>"},
+			{Slug: "terminos", Title: "Términos y condiciones", Published: true, Body: "<p>Al comprar en esta tienda aceptas estos términos.</p><h2>Precios</h2><p>Todos los precios están en pesos mexicanos e incluyen IVA.</p>"},
+		} {
+			if errs := p.Validate(); len(errs) > 0 {
+				return fmt.Errorf("policy %s: %s", p.Slug, errs[0].Message)
+			}
+			if _, err := db.PutPolicy(ctx, tenant, actor, p); err != nil {
+				return err
+			}
+		}
+	}
+	menus, err := db.Menus(ctx, tenant)
+	if err != nil || len(menus) > 0 {
+		return err
+	}
+	header := sitecfg.Menu{ID: "header", Name: "Menú principal", Items: []sitecfg.MenuItem{
+		{Label: "Novedades", Type: "catalog"},
+		{Label: "Tenis", Type: "category", Ref: "tenis"},
+		{Label: "Ropa", Type: "url", URL: "/c?q=playera", Children: []sitecfg.MenuItem{{Label: "Playeras", Type: "url", URL: "/c?q=playera"}, {Label: "Sudaderas", Type: "url", URL: "/c?q=sudadera"}}},
+		{Label: "Accesorios", Type: "url", URL: "/c?q=gorra"},
+	}}
+	footer := sitecfg.Menu{ID: "footer", Name: "Ayuda", Items: []sitecfg.MenuItem{
+		{Label: "Legal", Type: "policy", Ref: "terminos", Children: []sitecfg.MenuItem{
+			{Label: "Cambios y devoluciones", Type: "policy", Ref: "devoluciones"},
+			{Label: "Aviso de privacidad", Type: "policy", Ref: "privacidad"},
+			{Label: "Términos y condiciones", Type: "policy", Ref: "terminos"}}},
+	}}
+	for _, m := range []sitecfg.Menu{header, footer} {
+		if errs := m.Validate(); len(errs) > 0 {
+			return fmt.Errorf("menu %s: %s", m.ID, errs[0].Message)
+		}
+		if err := db.PutDoc(ctx, tenant, actor, "menus", m.ID, map[string]any{"name": m.Name, "items": m.Items}); err != nil {
+			return err
+		}
+	}
+	return nil
 }

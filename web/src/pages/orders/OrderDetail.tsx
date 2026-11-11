@@ -76,7 +76,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
         <div className="grid gap-1">
           <a href={href("pedidos")} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" /> Pedidos</a>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">Pedido #{o.number}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Pedido #{o.displayNumber || o.number}</h1>
             <StatusPill status={o.paymentStatus || o.status} />
             {open && <StatusPill status={o.fulfillmentStatus} />}
             {(o.status === "cancelled" || o.status === "refunded") && <StatusPill status={o.status} />}
@@ -226,6 +226,18 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
               )}
             </CardContent>
           </Card>
+          {o.shippingMethod && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Entrega</CardTitle></CardHeader>
+              <CardContent className="grid gap-1 text-sm">
+                <span className="font-medium">{o.shippingMethod.kind === "pickup" ? "Recolección: " : ""}{o.shippingMethod.name}{o.shippingMethod.carrier ? ` · ${o.shippingMethod.carrier}` : ""}</span>
+                {o.shippingMethod.estimate?.text && <span>{o.shippingMethod.estimate.text}</span>}
+                {o.shippingMethod.pickupAddress && <span className="text-muted-foreground">{o.shippingMethod.pickupAddress}</span>}
+                {o.shippingMethod.priceReason && <span className="text-muted-foreground">{o.shippingMethod.priceReason}</span>}
+                {o.customer?.notes && <span className="mt-1 rounded-md bg-muted p-2">Nota del cliente: {o.customer.notes}</span>}
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader><CardTitle className="text-base">Pago y factura</CardTitle></CardHeader>
             <CardContent className="grid gap-2 text-sm">

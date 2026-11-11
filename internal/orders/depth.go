@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/promostore"
 	"io"
 	"strconv"
@@ -397,16 +398,29 @@ func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Ord
 	var o Order
 	var enc []byte
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		var methodJSON, taxJSON []byte
 		err := tx.QueryRow(ctx, `SELECT id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, created_at,
-				COALESCE(customer_id,''), payment_status, fulfillment_status, refunded_total, source
+				COALESCE(customer_id,''), payment_status, fulfillment_status, refunded_total, source,
+				shipping_method, tax_detail, display_number
 			FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, id).
 			Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.ItemsTotal, &o.Discounts, &o.Shipping, &o.TaxIncluded, &o.GrandTotal, &enc, &o.CreatedAt,
-				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source)
+				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		if err != nil {
 			return err
+		}
+		var m ShippingMethod
+		if json.Unmarshal(methodJSON, &m) == nil && m.Name != "" {
+			o.ShippingMethod = &m
+		}
+		var td logistics.TaxResult
+		if json.Unmarshal(taxJSON, &td) == nil && td.Lines != nil {
+			o.TaxDetail = &td
+		}
+		if o.DisplayNumber == "" {
+			o.DisplayNumber = fmt.Sprint(o.Number)
 		}
 		if o.Lines, err = linesTx(ctx, tx, tenant, id); err != nil {
 			return err

@@ -103,7 +103,7 @@ function OrderList() {
             <TableBody>
               {list.isLoading ? <SkeletonRows cols={7} /> : items.map((o) => (
                 <TableRow key={o.id} className="cursor-pointer" onClick={() => navigate("pedidos", o.id)}>
-                  <TableCell><a className="font-medium text-primary hover:underline" href={href("pedidos", o.id)} onClick={(e) => e.stopPropagation()}>#{o.number}</a></TableCell>
+                  <TableCell><a className="font-medium text-primary hover:underline" href={href("pedidos", o.id)} onClick={(e) => e.stopPropagation()}>#{o.displayNumber || o.number}</a></TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{dateTime(o.createdAt)}</TableCell>
                   <TableCell>{o.customerName || o.customerEmail || <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell><StatusPill status={o.status === "cancelled" ? "cancelled" : o.paymentStatus || o.status} /></TableCell>

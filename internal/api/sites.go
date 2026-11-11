@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net/http"
@@ -358,8 +359,19 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 	}
 	etag := `"` + rev + `"`
 	h := w.Header()
+	cache := "public, max-age=0, s-maxage=31536000, stale-while-revalidate=60"
+	// Navigation menus are store configuration, not part of the revision:
+	// they are placed at serve time so a menu change shows without publishing.
+	if t, ok := s.Proj.Tenant(tenant); ok && bytes.Contains(html, []byte(`data-menu="`)) {
+		site := t.Site()
+		if len(site.Menus) > 0 {
+			html = applyMenus(html, site, siteBase(r))
+			etag = `"` + rev + "-" + site.Version + `"`
+			cache = "public, max-age=0, s-maxage=60, stale-while-revalidate=60"
+		}
+	}
 	h.Set("ETag", etag)
-	h.Set("Cache-Control", "public, max-age=0, s-maxage=31536000, stale-while-revalidate=60")
+	h.Set("Cache-Control", cache)
 	h.Set("Surrogate-Key", "site-"+tenant+" "+rev)
 	h.Set("Content-Security-Policy", shopCSP)
 	if r.Header.Get("If-None-Match") == etag {

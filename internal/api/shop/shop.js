@@ -5,7 +5,7 @@
   const parts = location.pathname.split("/");
   const tenant = body.dataset.tenant || parts[2], base = body.dataset.base || "/s/" + parts[2] + "/" + parts[3], channel = body.dataset.channel || "mx";
   const api = "/s/" + tenant + "/api";
-  const KEY = "apexx_cart_" + tenant, ZIP = "apexx_zip_" + tenant, CPN = "apexx_coupons_" + tenant;
+  const KEY = "apexx_cart_" + tenant, ZIP = "apexx_zip_" + tenant, CPN = "apexx_coupons_" + tenant, SHIP = "apexx_ship_" + tenant;
   const $ = (s, el = document) => el.querySelector(s);
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -23,13 +23,28 @@
   }
   // Only coupons the store confirmed as applied are kept; an invalid code is never stored or shown as applied.
   const coupons = () => store.get(CPN, []);
-  const simulate = (zip, extra = {}) => post("/simulate", { channel, postalCode: zip || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty })), coupons: coupons(), ...extra });
+  const simulate = (zip, extra = {}) => post("/simulate", { channel, postalCode: zip || undefined, shippingOption: store.get(SHIP, "") || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty })), coupons: coupons(), ...extra });
   // Drops stored codes that stopped applying and returns the reasons to show.
   const syncCoupons = (r) => {
     const res = r.coupons || [], lost = res.filter((c) => !c.applied && coupons().includes(c.code));
     if (lost.length) store.set(CPN, coupons().filter((c) => !lost.some((l) => l.code === c)));
     return lost.map((c) => c.reason);
   };
+  // Delivery options: the shopper chooses; options that do not apply say why.
+  function renderOptions(r) {
+    const all = r.shippingOptions || [];
+    if (all.length < 2 && !all.some((o) => !o.available || o.kind === "pickup")) return "";
+    const sel = r.shipping ? r.shipping.id : "";
+    const row = (o) => o.available
+      ? "<label class='shipopt'><input type='radio' name='shipopt' value='" + esc(o.id) + "'" + (o.id === sel ? " checked" : "") + "> <span><strong>" + esc(o.name) + "</strong>" + (o.carrier ? " · " + esc(o.carrier) : "") +
+        " — " + (o.price ? money({ amount: o.price, currency: r.totals.grand.currency }) : "Gratis") + "<br><span class='muted'>" + esc(o.estimate ? o.estimate.text : "") +
+        (o.kind === "pickup" && o.pickupAddress ? " · " + esc(o.pickupAddress) : "") + (o.freeMissing ? " · Te faltan " + money({ amount: o.freeMissing, currency: r.totals.grand.currency }) + " para envío gratis" : "") + "</span></span></label>"
+      : "<p class='muted'>" + esc(o.name) + ": " + esc(o.reason) + "</p>";
+    const on = all.filter((o) => o.available), off = all.filter((o) => !o.available);
+    return "<fieldset class='shipopts' data-shipopts><legend>Entrega</legend>" + on.map(row).join("") +
+      (off.length ? "<details><summary class='muted'>Opciones no disponibles (" + off.length + ")</summary>" + off.map(row).join("") + "</details>" : "") + "</fieldset>";
+  }
+  const onShipChange = (root, again) => root.addEventListener("change", (e) => { if (e.target.name === "shipopt") { store.set(SHIP, e.target.value); again(); } });
   count();
 
   // Quick add buttons on product cards (shown by themes that want them).
@@ -82,9 +97,10 @@
     return (msgs ? "<ul class='msgs'>" + msgs + "</ul>" : "") + promos +
       "<table class='totals'><tr><td>Productos</td><td class='num'>" + money(t.items) + "</td></tr>" +
       (t.discounts.amount ? "<tr><td>Descuentos</td><td class='num'>−" + money(t.discounts) + "</td></tr>" : "") +
-      "<tr><td>Envío" + (r.shipping ? " (" + esc(r.shipping.name) + ", " + r.shipping.estimateDays + " días)" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : "Ingresa tu código postal") + "</td></tr>" +
+      "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + (r.shipping.estimate ? ". " + esc(r.shipping.estimate.text) : ", " + r.shipping.estimateDays + " días") + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : "Ingresa tu código postal") + "</td></tr>" +
       "<tr class='grand'><td>Total</td><td class='num'>" + money(t.grand) + "</td></tr>" +
-      "<tr><td class='muted'>IVA incluido</td><td class='num muted'>" + money(t.taxIncluded) + "</td></tr></table>";
+      ((r.tax && r.tax.lines && r.tax.lines.length ? r.tax.lines : [{ label: "IVA", tax: t.taxIncluded.amount }]).map((x) =>
+        "<tr><td class='muted'>" + esc(x.label) + (x.rateBps === 0 ? "" : " incluido") + "</td><td class='num muted'>" + money({ amount: x.tax, currency: t.grand.currency }) + "</td></tr>").join("")) + "</table>";
   }
 
   // Cart page.
@@ -109,7 +125,7 @@
         "<td><span class='qty'><button type='button' data-dec='" + esc(l.sku) + "' aria-label='Quitar uno de " + esc(l.title) + "'>−</button><span>" + l.qty + "</span>" +
         "<button type='button' data-inc='" + esc(l.sku) + "' aria-label='Agregar uno de " + esc(l.title) + "'>+</button></span></td>" +
         "<td class='num'>" + money(l.total) + "</td><td><button type='button' class='linkbtn' data-del='" + esc(l.sku) + "'>Quitar</button></td></tr>").join("");
-      view.innerHTML = "<table><thead><tr><th>Producto</th><th>Cantidad</th><th class='num'>Total</th><th><span class='sr'>Acciones</span></th></tr></thead><tbody>" + rows + "</tbody></table>" + renderTotals(r.body);
+      view.innerHTML = "<table><thead><tr><th>Producto</th><th>Cantidad</th><th class='num'>Total</th><th><span class='sr'>Acciones</span></th></tr></thead><tbody>" + rows + "</tbody></table>" + renderOptions(r.body) + renderTotals(r.body);
       // Keep local quantities in sync with what the store can actually sell.
       const fixed = c.map((x) => { const l = r.body.lines.find((y) => y.sku === x.sku && !y.gift); return l ? { ...x, qty: l.qty } : x; });
       store.set(KEY, fixed.filter((l) => l.qty > 0)); count();
@@ -132,18 +148,21 @@
       if (res && res.applied) { store.set(CPN, [...coupons().filter((x) => x !== code), code]); $("#coupon").value = ""; couponStatus.textContent = res.reason + "."; render(); }
       else couponStatus.textContent = res ? res.reason : (r.body.detail || "No pudimos validar el cupón. Intenta de nuevo.");
     });
+    onShipChange(view, render);
     restored.then(render);
   }
 
   // Checkout page.
   const form = $("[data-checkout]");
   if (form) {
-    const summary = $("[data-summary]"), errBox = $("[data-error]"), payBox = $("[data-payment]"), payBtn = $("[data-pay]");
+    const summary = $("[data-summary]"), errBox = $("[data-error]"), payBox = $("[data-payment]"), payBtn = $("[data-pay]"), shipBox = $("[data-ship-options]"), extras = $("[data-checkout-extras]");
+    const pickup = () => !!(last && last.shipping && last.shipping.kind === "pickup");
     $("#postal").value = store.get(ZIP, "");
     let cfg = { mode: "sandbox" }, stripe = null, elements = null, last = null;
     async function refresh() {
       if (!cart().length) { location.href = base + "/cart"; return; }
       const r = await simulate($("#postal").value.trim(), { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
+      if (r.status === 200 && shipBox) shipBox.innerHTML = renderOptions(r.body);
       if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
     }
     $("#postal").addEventListener("change", () => { store.set(ZIP, $("#postal").value.trim()); refresh(); });
@@ -151,8 +170,14 @@
     // Remember the cart of a shopper who typed an email (abandoned cart recovery).
     const track = () => { const em = $("#email").value.trim(); if (/^\S+@\S+\.\S+$/.test(em) && cart().length) post("/cart/track", { email: em, name: $("#name").value.trim(), channel, site: base.split("/").pop(), items: cart().map((l) => ({ sku: l.sku, qty: l.qty })) }).catch(() => {}); };
     $("#email").addEventListener("change", track); $("#name").addEventListener("change", track);
+    if (shipBox) onShipChange(shipBox, refresh);
     (async () => {
       try { cfg = await (await fetch(api + "/config")).json(); } catch {}
+      // Checkout rules of the store: required phone, note for the store, terms.
+      const co = cfg.checkout || {};
+      if (co.phoneRequired) { const l = $("label[for=phone]"); if (l) l.textContent = "Teléfono"; $("#phone").required = true; }
+      if (extras) extras.innerHTML = (co.notesField ? "<div class='field'><label for='notes'>Nota para la tienda (opcional)</label><textarea id='notes' name='notes' maxlength='500' rows='2'></textarea></div>" : "") +
+        (co.termsCheckbox ? "<label class='shipopt'><input type='checkbox' name='terms' id='terms' required> <span>Acepto los " + (co.termsPolicy ? "<a href='" + base + "/politicas/" + esc(co.termsPolicy) + "' target='_blank' rel='noopener'>" + esc((co.termsTitle || "términos y condiciones").toLowerCase()) + "</a>" : "términos y condiciones") + "</span></label>" : "");
       await refresh();
       if (cfg.mode === "stripe" && cfg.publishableKey) {
         await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
@@ -168,10 +193,12 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault(); errBox.textContent = "";
       const f = new FormData(form);
-      for (const [k, label] of [["email", "tu correo"], ["name", "tu nombre"], ["address", "tu dirección"], ["postal", "tu código postal"]]) {
+      const co = cfg.checkout || {};
+      for (const [k, label] of [["email", "tu correo"], ["name", "tu nombre"]].concat(co.phoneRequired ? [["phone", "tu teléfono"]] : [], pickup() ? [] : [["address", "tu dirección"], ["postal", "tu código postal"]])) {
         if (!String(f.get(k) || "").trim()) { errBox.textContent = "Falta " + label + "."; form.elements[k].focus(); return; }
       }
-      if (!/^[0-9]{5}$/.test(String(f.get("postal")))) { errBox.textContent = "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
+      if (co.termsCheckbox && !f.get("terms")) { errBox.textContent = "Acepta los términos y condiciones para continuar."; $("#terms").focus(); return; }
+      if (!(pickup() && !String(f.get("postal"))) && !/^[0-9]{5}$/.test(String(f.get("postal")))) { errBox.textContent = "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
       let pm = String(f.get("pm") || "");
       if (stripe) {
@@ -186,7 +213,8 @@
       if (!key) { key = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9-]/gi, ""); sessionStorage.setItem("apexx_idem", key); }
       const res = await post("/checkout", {
         channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty })),
-        customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address") }, paymentMethod: pm,
+        shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined,
+        customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, paymentMethod: pm,
         coupons: coupons(), expectedTotal: last ? last.totals.grand.amount : undefined,
       }, { "Idempotency-Key": key });
       if (res.status === 201) {
@@ -196,7 +224,8 @@
       sessionStorage.removeItem("apexx_idem");
       const msg = { payment_declined: "Tu pago fue rechazado. Prueba con otra tarjeta.", cart_changed: "Algunos productos cambiaron de precio o disponibilidad. Revisa el resumen.",
         insufficient_stock: "Ya no hay suficientes unidades de un producto. Ajusta tu carrito.", payment_pending: "No pudimos confirmar el pago todavía. No vuelvas a pagar: te avisaremos por correo.",
-        postal_code_required: "Revisa tu código postal.", payment_account_missing: "La tienda todavía no puede recibir pagos." }[res.body.code];
+        postal_code_required: "Revisa tu código postal.", no_shipping_option: "No hay entregas disponibles para tu código postal.", shipping_option_unavailable: "La opción de entrega cambió. Revisa las opciones y vuelve a intentar.",
+        account_required: "Esta tienda solo vende a clientes con cuenta.", payment_account_missing: "La tienda todavía no puede recibir pagos." }[res.body.code];
       payBtn.disabled = false; await refresh();
       errBox.textContent = msg || res.body.detail || "No pudimos completar la compra. Intenta de nuevo.";
     });
@@ -244,7 +273,8 @@
     let o = null; try { o = JSON.parse(sessionStorage.getItem("apexx_last_order") || "null"); } catch {}
     if (!o) { thanks.innerHTML = "<h1>¡Gracias!</h1><p>No encontramos un pedido reciente en este navegador.</p>"; return; }
     const m = (v) => money({ amount: v, currency: o.currency });
-    thanks.innerHTML = "<h1>¡Gracias por tu compra!</h1><p>Tu pedido <strong>#" + o.number + "</strong> está confirmado y pagado.</p>" +
+    thanks.innerHTML = "<h1>¡Gracias por tu compra!</h1><p>Tu pedido <strong>#" + esc(o.displayNumber || o.number) + "</strong> está confirmado y pagado.</p>" +
+      (o.shippingMethod ? "<p>" + esc(o.shippingMethod.name) + (o.shippingMethod.estimate ? ": " + esc(o.shippingMethod.estimate.text.toLowerCase()) : "") + (o.shippingMethod.pickupAddress ? " · " + esc(o.shippingMethod.pickupAddress) : "") + ".</p>" : "") +
       "<table><tbody>" + o.lines.map((l) => "<tr><td>" + l.qty + " × " + esc(l.title) + "</td><td class='num'>" + m(l.total) + "</td></tr>").join("") +
       "<tr><td>Envío</td><td class='num'>" + m(o.shipping) + "</td></tr>" + (o.discounts ? "<tr><td>Descuentos</td><td class='num'>−" + m(o.discounts) + "</td></tr>" : "") +
       "<tr class='grand'><td><strong>Total pagado</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +

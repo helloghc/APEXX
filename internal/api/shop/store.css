@@ -321,3 +321,26 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .specs td,.specs th{padding:10px 8px 10px 0}
 .pdp-related{margin-top:var(--space)}
 .pdp-related h2{font-family:var(--f-display);font-size:clamp(1.4rem,1.1rem + 1.2vw,2rem);font-weight:500;margin-bottom:20px}
+/* Entrega, políticas y submenús (configuración de la tienda) */
+.shipopts{border:0;padding:0;margin:18px 0;display:grid;gap:8px}
+.shipopts legend{font-weight:600;margin-bottom:8px;padding:0}
+.shipopt{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-surface);cursor:pointer;font-size:.95rem;line-height:1.45}
+.shipopt input{margin-top:4px;accent-color:var(--c-text);flex:none}
+.shipopt:has(input:checked){border-color:var(--c-text);box-shadow:inset 0 0 0 1px var(--c-text)}
+.shipopts details p{margin:6px 0;font-size:.88rem}
+.shipopts summary{cursor:pointer;font-size:.88rem}
+.policy{max-width:72ch;margin-inline:auto}
+.policy-body{line-height:1.7}
+.policy-body h2,.policy-body h3,.policy-body h4{margin:1.6em 0 .5em}
+.policy-body p,.policy-body ul,.policy-body ol,.policy-body blockquote{margin:0 0 1em}
+.policy-body ul,.policy-body ol{padding-left:1.4em;list-style:revert}
+.policy-body blockquote{border-left:3px solid var(--c-border);padding-left:1em;color:var(--c-muted)}
+.policy-more{margin-top:48px;padding-top:24px;border-top:1px solid var(--c-border)}
+.policy-more h2{font-size:1rem}
+.policy-more li{margin:6px 0}
+.hdr-nav li{position:relative}
+.hdr-nav .hdr-sub{display:none;position:absolute;left:-14px;top:100%;z-index:30;min-width:200px;flex-direction:column;gap:0;padding:8px 0;background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius);box-shadow:0 12px 32px rgba(0,0,0,.08)}
+.hdr-nav li:hover>.hdr-sub,.hdr-nav li:focus-within>.hdr-sub{display:flex}
+.hdr-nav .hdr-sub a{display:block;padding:8px 14px;white-space:nowrap}
+.hdr-nav .hdr-sub .hdr-sub{left:100%;top:0}
+.hdr-menu-m .hdr-sub{padding-left:16px}

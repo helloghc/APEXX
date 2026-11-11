@@ -71,6 +71,7 @@ export const NAV: { route: string; label: string; module?: string }[] = [
   { route: "correos", label: "Correos", module: "settings" },
   { route: "equipo", label: "Equipo", module: "team" },
   { route: "pagos", label: "Pagos", module: "payments" },
+  { route: "configuracion", label: "Configuración", module: "settings" },
   { route: "conectores", label: "Conectores", module: "settings" },
 ];
 

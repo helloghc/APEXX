@@ -16,10 +16,14 @@ export interface Refund { id: string; kind: string; status: string; amount: numb
 export interface ReturnItem { line: number; sku: string; title: string; qty: number; reason: string; receivedQty: number; restock?: boolean }
 export interface Return { id: string; orderId: string; orderNumber?: number; currency?: string; number: number; kind: string; status: "requested" | "received" | "completed" | "cancelled"; note?: string; refundAmount: number; credit: number; items: ReturnItem[]; createdAt: string; receivedAt?: string }
 export interface ONote { id: string; visibility: "internal" | "customer"; body: string; author: string; authorName: string; createdAt: string }
+export interface ShippingMethod { id: string; name: string; kind: string; carrier?: string; zone?: string; locationName?: string; pickupAddress?: string; instructions?: string; price: number; priceReason?: string; estimate?: { text: string } }
 export interface Order {
+  displayNumber?: string;
+  shippingMethod?: ShippingMethod;
+  taxDetail?: { regionName: string; lines: { label: string; rateBps: number; tax: number }[] };
   id: string; number: number; channel: string; status: string; currency: string;
   itemsTotal: number; discounts: number; shipping: number; taxIncluded: number; grandTotal: number;
-  customer?: { email: string; name: string; phone?: string; address?: string };
+  customer?: { email: string; name: string; phone?: string; address?: string; notes?: string };
   customerId?: string; customerName?: string; customerEmail?: string;
   paymentStatus: string; fulfillmentStatus: string; refundedTotal: number; paidTotal: number; balance: number; itemsCount?: number;
   lines: OLine[] | null; events?: OEvent[]; payment?: OPayment; invoice?: { status: string; url?: string; attempts: number; lastError?: string };

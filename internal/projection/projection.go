@@ -38,7 +38,8 @@ type Tenant struct {
 	Cart      *cart.Service
 	Taxo      *catalog.Taxonomy // categories, brands, collections, attributes, media
 
-	mu sync.RWMutex // guards Cart.Channels swaps
+	mu sync.RWMutex // guards Cart.Channels, Cart.Promos and Cart.Logistics swaps
+	siteState
 }
 
 // Promos returns the promotion engine of the tenant. The engine is safe for
@@ -103,6 +104,8 @@ type Projector struct {
 	wake     chan struct{}
 	drainMu  sync.Mutex // one drain at a time: Run and Drain callers share the cursor
 
+	hostIdx hostIndex
+
 	hooksMu sync.RWMutex
 	hooks   map[string][]func(tenant, key string)
 }
@@ -164,6 +167,9 @@ func (p *Projector) Load(ctx context.Context) error {
 			return fmt.Errorf("load tenant %s: %w", id, err)
 		}
 	}
+	if err := p.loadHosts(ctx); err != nil {
+		return err
+	}
 	p.cursor.Store(start)
 	p.loadedAt = time.Now()
 	return nil
@@ -206,6 +212,9 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 		return err
 	}
 	if err := p.loadPromotions(ctx, t); err != nil {
+		return err
+	}
+	if err := p.applySettings(ctx, t, ""); err != nil {
 		return err
 	}
 	p.mu.Lock()
@@ -476,6 +485,10 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 		return p.applyPriceList(ctx, t, e.Key)
 	case store.TopicCategory, store.TopicBrand, store.TopicCollection, store.TopicAttribute, store.TopicMedia:
 		return p.applyTaxonomy(ctx, t, e.Topic, e.Key)
+	case store.TopicSettings:
+		if err := p.applySettings(ctx, t, e.Key); err != nil {
+			return err
+		}
 	}
 	p.hooksMu.RLock()
 	hs := p.hooks[e.Topic]
