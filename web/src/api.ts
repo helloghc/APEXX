@@ -42,7 +42,7 @@ export class ApiError extends Error {
 /** Fired on any 401 so the app can show the login screen. */
 export const UNAUTHORIZED_EVENT = "apexx:unauthorized";
 
-async function request<T>(
+export async function request<T>(
   method: string,
   path: string,
   body?: unknown,
