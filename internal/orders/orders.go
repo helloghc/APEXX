@@ -70,6 +70,9 @@ type CheckoutRequest struct {
 	Customer      Customer    `json:"customer"`
 	PaymentMethod string      `json:"paymentMethod"` // pm_... from Stripe.js
 	Coupons       []string    `json:"coupons,omitempty"`
+	// ExpectedTotal is the grand total the shopper saw (minor units). When sent,
+	// the order is only placed if the total is still the same.
+	ExpectedTotal *int64 `json:"expectedTotal,omitempty"`
 }
 
 // Line is an order line.
@@ -277,6 +280,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 		if i >= len(sim.Lines) || sim.Lines[i].SKU != it.SKU || sim.Lines[i].Qty != it.Qty {
 			return problem(409, "cart_changed", ErrCartChanged.Error(), map[string]any{"simulation": sim}), nil
 		}
+	}
+	if req.ExpectedTotal != nil && sim.Shipping != nil && *req.ExpectedTotal != sim.Totals.Grand.Amount {
+		return problem(409, "total_changed", "El total de tu compra cambió (una promoción o un precio se actualizó); revisa el resumen antes de pagar",
+			map[string]any{"simulation": sim}), nil
 	}
 	if sim.Shipping == nil {
 		return problem(400, "postal_code_required", "Se necesita un código postal válido para calcular el envío", nil), nil
