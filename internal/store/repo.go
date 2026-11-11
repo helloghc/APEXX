@@ -185,34 +185,7 @@ func nonNilMap(m map[string]string) map[string]string {
 
 // LoadProduct reads a product with the system pool (projector use).
 func (d *DB) LoadProduct(ctx context.Context, tenant, id string) (catalog.Product, error) {
-	var p catalog.Product
-	var attrs []byte
-	err := d.System.QueryRow(ctx, `SELECT id, handle, title, description, brand, categories, attributes, status, updated_at, version
-		FROM products WHERE tenant_id=$1 AND id=$2`, tenant, id).
-		Scan(&p.ID, &p.Handle, &p.Title, &p.Description, &p.Brand, &p.Categories, &attrs, &p.Status, &p.UpdatedAt, &p.Version)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return p, ErrNotFound
-	}
-	if err != nil {
-		return p, err
-	}
-	_ = json.Unmarshal(attrs, &p.Attributes)
-	rows, err := d.System.Query(ctx, `SELECT sku, title, options, barcode, weight_grams FROM variants
-		WHERE tenant_id=$1 AND product_id=$2 ORDER BY position`, tenant, id)
-	if err != nil {
-		return p, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var v catalog.Variant
-		var opts []byte
-		if err := rows.Scan(&v.SKU, &v.Title, &opts, &v.Barcode, &v.WeightGrams); err != nil {
-			return p, err
-		}
-		_ = json.Unmarshal(opts, &v.Options)
-		p.Variants = append(p.Variants, v)
-	}
-	return p, rows.Err()
+	return loadProduct(ctx, d.System, tenant, id)
 }
 
 // ProductIDs lists all product ids of a tenant (system pool).

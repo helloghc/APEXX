@@ -123,7 +123,8 @@ func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		w.Header().Set("Vary", "Accept-Encoding")
-		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		// Images are already compressed and are served with ranges and exact lengths.
+		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && !strings.HasPrefix(r.URL.Path, "/media/") {
 			gz := gzPool.Get().(*gzip.Writer)
 			gz.Reset(w)
 			w.Header().Set("Content-Encoding", "gzip")

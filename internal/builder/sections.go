@@ -46,7 +46,7 @@ var sectionFuncs = template.FuncMap{
 }
 
 // partials are shared by every section template.
-const partials = `{{define "card"}}<li class="pcard"><a class="pcard-link" href="{{.URL}}"><div class="pcard-media ph ph-{{.Tone}}" aria-hidden="true"><span>{{.Initial}}</span></div><div class="pcard-body">{{with .Brand}}<p class="pcard-brand">{{.}}</p>{{end}}<h3 class="pcard-title">{{.Title}}</h3><p class="pcard-price">{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p></div></a>{{if .SoldOut}}<p class="pcard-badge">Agotado</p>{{else if .CompareAt}}<p class="pcard-badge is-sale">Oferta</p>{{end}}{{if and .SKU (not .SoldOut)}}<button class="pcard-add" type="button" data-quick-add="{{.SKU}}" data-title="{{.Title}}">Agregar</button>{{end}}</li>{{end}}` +
+const partials = `{{define "card"}}<li class="pcard"><a class="pcard-link" href="{{.URL}}">{{if .Image}}{{.Image}}{{else}}<div class="pcard-media ph ph-{{.Tone}}" aria-hidden="true"><span>{{.Initial}}</span></div>{{end}}<div class="pcard-body">{{with .Brand}}<p class="pcard-brand">{{.}}</p>{{end}}<h3 class="pcard-title">{{.Title}}</h3><p class="pcard-price">{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p></div></a>{{if .SoldOut}}<p class="pcard-badge">Agotado</p>{{else if .CompareAt}}<p class="pcard-badge is-sale">Oferta</p>{{end}}{{if and .SKU (not .SoldOut)}}<button class="pcard-add" type="button" data-quick-add="{{.SKU}}" data-title="{{.Title}}">Agregar</button>{{end}}</li>{{end}}` +
 	`{{define "heading"}}{{if .H1}}<h1 class="display">{{.Text}}</h1>{{else}}<h2 class="display">{{.Text}}</h2>{{end}}{{end}}`
 
 // DefaultSections is the section catalog available to every theme.

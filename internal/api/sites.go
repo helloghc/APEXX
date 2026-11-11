@@ -8,6 +8,7 @@ import (
 
 	"github.com/helloghc/apexx/internal/apierr"
 	"github.com/helloghc/apexx/internal/builder"
+	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/httpx"
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/projection"
@@ -39,12 +40,12 @@ func (d tenantData) Query(q builder.ProductQuery) []builder.Card {
 			if q.Brand != "" && !strings.EqualFold(p.Brand, q.Brand) {
 				continue
 			}
-			if q.Category != "" && !containsFold(p.Categories, q.Category) {
+			if q.Category != "" && !containsFold(p.Categories, q.Category) && !inCategory(t, &p, q.Category) {
 				continue
 			}
 			c := cardOf(t, "mx", p)
 			out = append(out, builder.Card{Title: p.Title, URL: "p/" + p.Handle, Price: c.Price, CompareAt: c.CompareAt,
-				Brand: p.Brand, Initial: c.Initial, Tone: c.Tone, SKU: c.SKU, SoldOut: c.SoldOut})
+				Brand: p.Brand, Initial: c.Initial, Tone: c.Tone, SKU: c.SKU, SoldOut: c.SoldOut, Image: coverHTML(t, &p, true)})
 			if len(out) == q.Limit {
 				break
 			}
@@ -55,6 +56,13 @@ func (d tenantData) Query(q builder.ProductQuery) []builder.Card {
 		after = next
 	}
 	return out
+}
+
+// inCategory reports whether p is in the category named by ref (id, handle or
+// name) or in one of its subcategories.
+func inCategory(t *projection.Tenant, p *catalog.Product, ref string) bool {
+	id, ok := t.Taxo.ResolveCategory(ref)
+	return ok && t.Taxo.ProductCategories(p)[id]
 }
 
 func containsFold(xs []string, x string) bool {

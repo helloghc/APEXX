@@ -27,6 +27,7 @@ import (
 	"github.com/helloghc/apexx/internal/builder"
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/crypto"
+	"github.com/helloghc/apexx/internal/media"
 	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/payments"
@@ -233,12 +234,26 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		return db.PruneOutbox(ctx, proj.Stats().LastID, 30*24*time.Hour)
 	})
 
+	// Media library files. Local disk is right for one node or a shared
+	// volume; see internal/media/gcs.go for the Cloud Storage back end.
+	if kind := env("APEXX_MEDIA_STORAGE", "local"); kind != "local" {
+		must(log, fmt.Errorf("APEXX_MEDIA_STORAGE=%s is not available in this build; use local", kind), "media storage")
+	}
+	mediaStore, err := media.NewLocal(env("APEXX_MEDIA_DIR", "data/media"))
+	must(log, err, "media directory")
+	// Drafts with a publication date go live on time.
+	resilience.Every(ctx, log, "scheduled-publish", 20*time.Second, func(ctx context.Context) error {
+		_, err := db.PublishDue(ctx)
+		return err
+	})
+
 	srv := &api.Server{
 		DB: db, Proj: proj, Auth: &auth.Service{DB: db}, Orders: ord, Keys: keys, Library: lib, Log: log,
 		Admin: webui.Handler(), Payments: pa, Webhooks: wh, Bulkhead: resilience.NewBulkhead(256),
 		SecureCookies: env("APEXX_SECURE_COOKIES", "true") == "true",
 		TrustProxy:    env("APEXX_TRUST_PROXY", "false") == "true",
 		MetricsToken:  os.Getenv("APEXX_METRICS_TOKEN"),
+		Media:         mediaStore,
 	}
 	hs := &http.Server{
 		Addr: env("APEXX_ADDR", ":8080"), Handler: srv.Routes(),

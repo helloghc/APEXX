@@ -1,9 +1,28 @@
 {{define "content"}}
 <div>
-<p class="eyebrow">{{if .Query}}Búsqueda{{else}}Catálogo{{end}}</p>
-<h1>{{if .Query}}Resultados para “{{.Query}}”{{else}}Todos los productos{{end}}</h1>
-{{if not .Products}}<p class="empty">No encontramos productos{{if .Query}} para “{{.Query}}”. Revisa la ortografía o prueba con otra palabra{{end}}.</p>{{end}}
-<ul class="pgrid cols-4">{{range .Products}}{{template "pcard" .}}{{end}}</ul>
-{{with .Next}}<p class="more"><a class="btn btn-ghost" href="{{$.Base}}/c?q={{$.Query}}&amp;cursor={{.}}">Ver más productos</a></p>{{end}}
+<nav class="crumbs" aria-label="Ruta">{{range .Crumbs}}<a href="{{.URL}}">{{.Label}}</a> / {{end}}{{.Heading}}</nav>
+<p class="eyebrow">{{.Eyebrow}}</p>
+<h1>{{.Heading}}</h1>
+{{with .Intro}}<p class="browse-intro">{{.}}</p>{{end}}
+<div class="browse{{if .ShowFilters}} has-facets{{end}}">
+{{if .ShowFilters}}<aside class="facets" aria-label="Filtros">
+<input type="checkbox" id="facets-toggle" class="facets-check">
+<label for="facets-toggle" class="btn btn-ghost facets-toggle">Filtrar{{with .Active}} ({{len .}}){{end}}</label>
+<div class="facets-body">
+{{if .Active}}<div class="facet-group"><h2>Filtros activos</h2><ul class="facet-active">{{range .Active}}<li><a href="{{.URL}}" rel="nofollow" aria-label="Quitar filtro {{.Label}}">{{.Label}} <span aria-hidden="true">×</span></a></li>{{end}}</ul><p><a href="{{.ClearURL}}" rel="nofollow">Quitar todos</a></p></div>{{end}}
+{{range .Groups}}<div class="facet-group"><h2>{{.Label}}</h2><ul>{{range .Links}}<li><a class="facet{{if .Selected}} is-on{{end}}" href="{{.URL}}" rel="nofollow"{{if .Selected}} aria-current="true"{{end}}><span>{{.Label}}</span> <span class="facet-count">{{.Count}}</span></a></li>{{end}}</ul></div>{{end}}
+{{if .PriceHint}}<form class="facet-group facet-price" action="{{.PriceAction}}" method="get"><h2>Precio</h2>
+{{range .PriceKeep}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">{{end}}
+<div class="facet-price-row"><label>Mínimo <input type="number" name="min" min="0" step="1" inputmode="numeric" value="{{.PriceMin}}" placeholder="$"></label>
+<label>Máximo <input type="number" name="max" min="0" step="1" inputmode="numeric" value="{{.PriceMax}}" placeholder="$"></label></div>
+<p class="muted">{{.PriceHint}}</p><button class="btn btn-ghost" type="submit">Aplicar precio</button></form>{{end}}
+</div></aside>{{end}}
+<div class="browse-main">
+{{if .Products}}<div class="sortbar"><p class="muted" data-total="{{.Total}}">{{.Total}} {{if eq .Total 1}}producto{{else}}productos{{end}}</p>
+<nav aria-label="Ordenar"><span class="muted">Ordenar:</span> {{range .Sorts}}<a href="{{.URL}}" rel="nofollow"{{if .Selected}} aria-current="true"{{end}}>{{.Label}}</a> {{end}}</nav></div>{{end}}
+{{if not .Products}}<p class="empty">No encontramos productos{{if .Query}} para “{{.Query}}”. Revisa la ortografía o prueba con otra palabra{{else if .Active}} con estos filtros. <a href="{{.ClearURL}}" rel="nofollow">Quita los filtros</a> para ver más{{end}}.</p>{{end}}
+<ul class="pgrid {{if .ShowFilters}}cols-3{{else}}cols-4{{end}}">{{range .Products}}{{template "pcard" .}}{{end}}</ul>
+{{if or .Prev .Next}}<nav class="more pager" aria-label="Páginas">{{with .Prev}}<a class="btn btn-ghost" href="{{.}}" rel="prev">Anterior</a>{{end}} <span class="muted">Página {{.Page}} de {{.Pages}}</span> {{with .Next}}<a class="btn btn-ghost" href="{{.}}" rel="next">Siguiente</a>{{end}}</nav>{{end}}
+</div></div>
 </div>
 {{end}}

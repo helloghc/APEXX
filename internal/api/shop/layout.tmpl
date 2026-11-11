@@ -1,8 +1,8 @@
 {{define "layout"}}<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{.Title}} · {{.Store}}</title><meta name="description" content="{{.Description}}">
+<title>{{.Title}} · {{.Store}}</title><meta name="description" content="{{.Description}}">{{with .Canonical}}<link rel="canonical" href="{{.}}">{{end}}{{if .NoIndex}}<meta name="robots" content="noindex,follow">{{end}}
 {{.Chrome.Head}}
-<script src="/s/assets/shop.js?v=3" defer></script>
+<script src="/s/assets/shop.js?v=4" defer></script>
 </head>
 <body class="{{.Chrome.BodyClass}}" data-tenant="{{.Tenant}}" data-base="{{.Base}}" data-channel="{{.Channel}}">
 <a class="skip" href="#main">Saltar al contenido</a>
@@ -10,4 +10,4 @@
 <main id="main" class="shop">{{template "content" .}}</main>
 {{.Chrome.Footer}}
 </body></html>{{end}}
-{{define "pcard"}}<li class="pcard"><a class="pcard-link" href="{{.Base}}/p/{{.Handle}}"><div class="pcard-media ph ph-{{.Tone}}" aria-hidden="true"><span>{{.Initial}}</span></div><div class="pcard-body">{{with .Brand}}<p class="pcard-brand">{{.}}</p>{{end}}<h3 class="pcard-title">{{.Title}}</h3><p class="pcard-price">{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p></div></a>{{if .SoldOut}}<p class="pcard-badge">Agotado</p>{{else if .CompareAt}}<p class="pcard-badge is-sale">Oferta</p>{{end}}{{if and .SKU (not .SoldOut)}}<button class="pcard-add" type="button" data-quick-add="{{.SKU}}" data-title="{{.Title}}">Agregar</button>{{end}}</li>{{end}}
+{{define "pcard"}}<li class="pcard"><a class="pcard-link" href="{{.Base}}/p/{{.Handle}}">{{if .Img}}{{.Img}}{{else}}<div class="pcard-media ph ph-{{.Tone}}" aria-hidden="true"><span>{{.Initial}}</span></div>{{end}}<div class="pcard-body">{{with .Brand}}<p class="pcard-brand">{{.}}</p>{{end}}<h3 class="pcard-title">{{.Title}}</h3><p class="pcard-price">{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p></div></a>{{if .SoldOut}}<p class="pcard-badge">Agotado</p>{{else if .CompareAt}}<p class="pcard-badge is-sale">Oferta</p>{{end}}{{if and .SKU (not .SoldOut)}}<button class="pcard-add" type="button" data-quick-add="{{.SKU}}" data-title="{{.Title}}">Agregar</button>{{end}}</li>{{end}}

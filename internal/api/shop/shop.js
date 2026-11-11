@@ -46,7 +46,10 @@
     const status = $("[data-buy-status]", buy), out = $("[data-price-out]", buy);
     const sel = () => $("input[name=sku]:checked", buy);
     const show = () => { const s = sel(); if (s) out.innerHTML = s.dataset.compare ? "<span class='sale'>" + esc(s.dataset.price) + "</span> <s>" + esc(s.dataset.compare) + "</s>" : esc(s.dataset.price); };
-    buy.addEventListener("change", show);
+    // A variant with its own image shows it in the gallery when chosen.
+    const pic = $("[data-pdp-img]");
+    const showImg = () => { const s = sel(); if (!pic || !s || !s.dataset.img) return; pic.closest("picture")?.querySelectorAll("source").forEach((x) => x.remove()); pic.srcset = s.dataset.imgset; pic.src = s.dataset.img; };
+    buy.addEventListener("change", () => { show(); showImg(); });
     buy.addEventListener("submit", (e) => {
       e.preventDefault();
       const s = sel(); if (!s) { status.textContent = "Elige una opción."; return; }

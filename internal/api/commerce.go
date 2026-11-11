@@ -9,7 +9,6 @@ import (
 
 	"github.com/helloghc/apexx/internal/apierr"
 	"github.com/helloghc/apexx/internal/cart"
-	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/httpx"
 	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/orders"
@@ -17,107 +16,6 @@ import (
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/store"
 )
-
-// productView adds live availability to a product.
-type productView struct {
-	catalog.Product
-	Available map[string]int64 `json:"available"`
-}
-
-func view(t *projection.Tenant, p catalog.Product) productView {
-	av := make(map[string]int64, len(p.Variants))
-	for _, v := range p.Variants {
-		av[v.SKU] = t.Inventory.Available(v.SKU)
-	}
-	return productView{Product: p, Available: av}
-}
-
-func (s *Server) listProducts(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenantView(w, r)
-	if !ok {
-		return
-	}
-	limit := 50
-	if l := r.URL.Query().Get("limit"); l != "" {
-		n, err := strconv.Atoi(l)
-		if err != nil || n < 1 || n > 250 {
-			apierr.BadRequest(w, "", apierr.FieldError{Field: "limit", Code: "out_of_range", Message: "limit debe estar entre 1 y 250"})
-			return
-		}
-		limit = n
-	}
-	after, err := httpx.DecodeCursor(r.URL.Query().Get("cursor"))
-	if err != nil {
-		apierr.BadRequest(w, "", apierr.FieldError{Field: "cursor", Code: "invalid", Message: "cursor inválido"})
-		return
-	}
-	items, next := t.Catalog.List(after, limit)
-	fields := httpx.Fields(r)
-	out := make([]any, len(items))
-	for i, p := range items {
-		out[i] = httpx.Project(view(t, p), fields)
-	}
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": out, "nextCursor": httpx.EncodeCursor(next), "total": t.Catalog.Count()})
-}
-
-func (s *Server) getProduct(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenantView(w, r)
-	if !ok {
-		return
-	}
-	p, err := t.Catalog.Get(r.PathValue("id"))
-	if err != nil {
-		apierr.NotFound(w, "Producto "+r.PathValue("id")+" no encontrado")
-		return
-	}
-	httpx.JSON(w, r, http.StatusOK, httpx.Project(view(t, p), httpx.Fields(r)))
-}
-
-func (s *Server) putProduct(w http.ResponseWriter, r *http.Request) {
-	var p catalog.Product
-	if !decode(w, r, &p) {
-		return
-	}
-	p.ID = r.PathValue("id")
-	var errs []apierr.FieldError
-	if strings.TrimSpace(p.Title) == "" {
-		errs = append(errs, apierr.FieldError{Field: "title", Code: "required", Message: "title es obligatorio"})
-	}
-	if strings.TrimSpace(p.Handle) == "" {
-		errs = append(errs, apierr.FieldError{Field: "handle", Code: "required", Message: "handle es obligatorio"})
-	}
-	seen := map[string]bool{}
-	for i, v := range p.Variants {
-		if v.SKU == "" || seen[v.SKU] {
-			errs = append(errs, apierr.FieldError{Field: "variants[" + strconv.Itoa(i) + "].sku", Code: "invalid", Message: "SKU vacío o repetido"})
-		}
-		seen[v.SKU] = true
-	}
-	if len(errs) > 0 {
-		apierr.BadRequest(w, "El producto tiene errores", errs...)
-		return
-	}
-	var expected int64
-	if m := strings.Trim(r.Header.Get("If-Match"), `"`); m != "" {
-		expected, _ = strconv.ParseInt(m, 10, 64)
-	}
-	pr := principal(r)
-	ver, err := s.DB.UpsertProduct(r.Context(), pr.Tenant, pr.Actor(), p, expected)
-	if errors.Is(err, store.ErrVersion) {
-		apierr.Write(w, apierr.Problem{Status: http.StatusPreconditionFailed, Code: "version_conflict", Detail: "El producto cambió desde que lo leíste"})
-		return
-	}
-	if err != nil {
-		if strings.Contains(err.Error(), "duplicate key") {
-			apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: apierr.CodeConflict, Detail: "El handle o un SKU ya existe en otro producto"})
-			return
-		}
-		internalError(w, s.Log, err)
-		return
-	}
-	w.Header().Set("ETag", `"`+strconv.FormatInt(ver, 10)+`"`)
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"id": p.ID, "version": ver})
-}
 
 func (s *Server) getInventory(w http.ResponseWriter, r *http.Request) {
 	t, ok := s.tenantView(w, r)

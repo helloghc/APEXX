@@ -34,6 +34,7 @@ type Card struct {
 	Tone      int    // 1..6, picks a placeholder art variation
 	SKU       string // first sellable variant, for quick add
 	SoldOut   bool
+	Image     template.HTML // cover image markup (srcset, width, height, alt); empty shows the placeholder
 }
 
 // Data gives sections access to commerce data at render time.

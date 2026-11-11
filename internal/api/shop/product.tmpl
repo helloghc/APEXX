@@ -1,15 +1,15 @@
 {{define "content"}}
 <div>
-<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/index">Inicio</a> / <a href="{{.Base}}/c">Productos</a> / {{.P.Title}}</nav>
+<nav class="crumbs" aria-label="Ruta">{{range .Crumbs}}<a href="{{.URL}}">{{.Label}}</a> / {{end}}{{.P.Title}}</nav>
 <div class="pdp">
-<div class="ph ph-{{.P.Tone}}" aria-hidden="true"><span>{{.P.Initial}}</span></div>
+{{if .Cover}}<div class="pdp-gallery">{{.Cover}}{{if .Gallery}}<div class="pdp-thumbs">{{range .Gallery}}{{.}}{{end}}</div>{{end}}</div>{{else}}<div class="ph ph-{{.P.Tone}}" aria-hidden="true"><span>{{.P.Initial}}</span></div>{{end}}
 <div class="pdp-info">
-{{with .P.Brand}}<p class="eyebrow">{{.}}</p>{{end}}
+{{with .P.Brand}}<p class="eyebrow">{{if $.P.BrandURL}}<a href="{{$.P.BrandURL}}">{{.}}</a>{{else}}{{.}}{{end}}</p>{{end}}
 <h1>{{.P.Title}}</h1>
 <form class="buy" data-buy>
 <p class="price big" data-price-out>{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p>
 <fieldset><legend>Elige una opción</legend><div class="opts">
-{{range $i, $v := .P.Variants}}<label class="opt"><input type="radio" name="sku" value="{{$v.SKU}}" data-title="{{$.P.Title}} · {{$v.Title}}" data-price="{{$v.Price}}" data-compare="{{$v.CompareAt}}" data-available="{{$v.Available}}" {{if eq $i $.FirstAvailable}}checked{{end}} {{if eq $v.Available 0}}disabled{{end}}>
+{{range $i, $v := .P.Variants}}<label class="opt"><input type="radio" name="sku" value="{{$v.SKU}}" data-title="{{$.P.Title}} · {{$v.Title}}" data-price="{{$v.Price}}" data-compare="{{$v.CompareAt}}" data-available="{{$v.Available}}"{{if $v.Img}} data-img="{{$v.Img}}" data-imgset="{{$v.ImgSet}}"{{end}} {{if eq $i $.FirstAvailable}}checked{{end}} {{if eq $v.Available 0}}disabled{{end}}>
 <span>{{$v.Title}}<small>{{if eq $v.Available 0}}Agotado{{else}}{{$v.Available}} disponibles{{end}}</small></span></label>{{end}}
 </div></fieldset>
 <div class="qtyrow"><label for="qty">Cantidad <input id="qty" name="qty" type="number" min="1" max="50" value="1" inputmode="numeric"></label>
@@ -18,7 +18,10 @@
 </form>
 <ul class="perks"><li>Envío gratis desde $1,499</li><li>Cambios sin costo durante 30 días</li><li>Pago seguro con Stripe</li></ul>
 {{with .P.Description}}<div class="desc"><h2>Descripción</h2><p>{{.}}</p></div>{{end}}
+{{if .Specs}}<div class="desc"><h2>Especificaciones</h2><table class="specs"><tbody>{{range .Specs}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}
 </div></div>
+{{if .Accessories}}<section class="pdp-related" aria-labelledby="rel-acc"><h2 id="rel-acc">Combínalo con</h2><ul class="pgrid cols-4">{{range .Accessories}}{{template "pcard" .}}{{end}}</ul></section>{{end}}
+{{if .Similar}}<section class="pdp-related" aria-labelledby="rel-sim"><h2 id="rel-sim">Productos similares</h2><ul class="pgrid cols-4">{{range .Similar}}{{template "pcard" .}}{{end}}</ul></section>{{end}}
 </div>
 <script type="application/ld+json">{{.JSONLD}}</script>
 {{end}}

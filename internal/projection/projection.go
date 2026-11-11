@@ -34,6 +34,7 @@ type Tenant struct {
 	Inventory *inventory.Service
 	Pricing   *pricing.Service
 	Cart      *cart.Service
+	Taxo      *catalog.Taxonomy // categories, brands, collections, attributes, media
 
 	mu sync.RWMutex // guards Cart.Channels and Cart.Promos swaps
 }
@@ -81,6 +82,7 @@ type Projector struct {
 	maxLag   atomic.Int64
 	loadedAt time.Time
 	wake     chan struct{}
+	drainMu  sync.Mutex // one drain at a time: Run and Drain callers share the cursor
 
 	hooksMu sync.RWMutex
 	hooks   map[string][]func(tenant, key string)
@@ -149,7 +151,10 @@ func (p *Projector) Load(ctx context.Context) error {
 }
 
 func (p *Projector) loadTenant(ctx context.Context, id string) error {
-	t := &Tenant{ID: id, Catalog: catalog.New(nil), Inventory: inventory.New(nil), Pricing: pricing.New()}
+	t := &Tenant{ID: id, Catalog: catalog.New(nil), Inventory: inventory.New(nil), Pricing: pricing.New(), Taxo: catalog.NewTaxonomy()}
+	if err := p.loadTaxonomy(ctx, t); err != nil {
+		return err
+	}
 	t.Cart = &cart.Service{Catalog: t.Catalog, Inventory: t.Inventory, Pricing: t.Pricing, Channels: map[string]cart.Channel{}, Promos: &promo.Engine{}}
 	pids, err := p.db.ProductIDs(ctx, id)
 	if err != nil {
@@ -193,12 +198,86 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 func (p *Projector) applyProduct(ctx context.Context, t *Tenant, id string) error {
 	prod, err := p.db.LoadProduct(ctx, t.ID, id)
 	if err == store.ErrNotFound {
+		t.Catalog.Delete(id) // deleted: drop it from the read model
 		return nil
 	}
 	if err != nil {
 		return err
 	}
 	t.Catalog.Upsert(prod)
+	return nil
+}
+
+// loadTaxonomy fills the taxonomy of a tenant at start-up.
+func (p *Projector) loadTaxonomy(ctx context.Context, t *Tenant) error {
+	for _, topic := range []string{store.TopicCategory, store.TopicBrand, store.TopicCollection, store.TopicAttribute, store.TopicMedia} {
+		if err := p.applyTaxonomy(ctx, t, topic, ""); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// applyTaxonomy reloads one entity (or all of a kind when id is empty) and
+// removes it from memory when it no longer exists in the database.
+func (p *Projector) applyTaxonomy(ctx context.Context, t *Tenant, topic, id string) error {
+	switch topic {
+	case store.TopicCategory:
+		rows, err := p.db.Categories(ctx, t.ID, id)
+		if err != nil {
+			return err
+		}
+		if id != "" && len(rows) == 0 {
+			t.Taxo.DeleteCategory(id)
+		}
+		for _, r := range rows {
+			t.Taxo.SetCategory(r)
+		}
+	case store.TopicBrand:
+		rows, err := p.db.Brands(ctx, t.ID, id)
+		if err != nil {
+			return err
+		}
+		if id != "" && len(rows) == 0 {
+			t.Taxo.DeleteBrand(id)
+		}
+		for _, r := range rows {
+			t.Taxo.SetBrand(r)
+		}
+	case store.TopicCollection:
+		rows, err := p.db.Collections(ctx, t.ID, id)
+		if err != nil {
+			return err
+		}
+		if id != "" && len(rows) == 0 {
+			t.Taxo.DeleteCollection(id)
+		}
+		for _, r := range rows {
+			t.Taxo.SetCollection(r)
+		}
+	case store.TopicAttribute:
+		rows, err := p.db.Attributes(ctx, t.ID, id)
+		if err != nil {
+			return err
+		}
+		if id != "" && len(rows) == 0 {
+			t.Taxo.DeleteAttribute(id)
+		}
+		for _, r := range rows {
+			t.Taxo.SetAttribute(r)
+		}
+	case store.TopicMedia:
+		rows, err := p.db.Media(ctx, t.ID, id)
+		if err != nil {
+			return err
+		}
+		if id != "" && len(rows) == 0 {
+			t.Taxo.DeleteMedia(id)
+		}
+		for _, r := range rows {
+			t.Taxo.SetMedia(r)
+		}
+	}
 	return nil
 }
 
@@ -303,6 +382,8 @@ func (p *Projector) Run(ctx context.Context) {
 func (p *Projector) Drain(ctx context.Context) error { return p.drain(ctx) }
 
 func (p *Projector) drain(ctx context.Context) error {
+	p.drainMu.Lock()
+	defer p.drainMu.Unlock()
 	for {
 		evs, err := p.db.OutboxAfter(ctx, p.cursor.Load(), 500)
 		if err != nil {
@@ -349,6 +430,8 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 		return p.applyChannels(ctx, t)
 	case store.TopicPromotion:
 		return p.applyPromotions(ctx, t)
+	case store.TopicCategory, store.TopicBrand, store.TopicCollection, store.TopicAttribute, store.TopicMedia:
+		return p.applyTaxonomy(ctx, t, e.Topic, e.Key)
 	}
 	p.hooksMu.RLock()
 	hs := p.hooks[e.Topic]

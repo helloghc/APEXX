@@ -39,6 +39,8 @@ const shopCSP = "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-i
 
 type pageData struct {
 	Title, Description, Store, Tenant, Base, Channel, Query string
+	Canonical                                               string // path of the page without filters, for search engines
+	NoIndex                                                 bool   // filtered or paginated views are not indexed
 	Chrome                                                  builder.Chrome
 }
 
@@ -46,6 +48,7 @@ type cardView struct {
 	Handle, Title, Brand, Initial, Price, CompareAt, SKU, Base string
 	Tone                                                       int
 	SoldOut                                                    bool
+	Img                                                        template.HTML // cover image; empty shows the placeholder
 }
 
 func initial(s string) string {
@@ -123,101 +126,6 @@ func cardOf(t *projection.Tenant, ch string, p catalog.Product) cardView {
 		}
 	}
 	return c
-}
-
-func (s *Server) shopCatalog(w http.ResponseWriter, r *http.Request) {
-	t, pd, ok := s.shopContext(w, r)
-	if !ok {
-		return
-	}
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if len(q) > 100 {
-		q = q[:100]
-	}
-	ps, next := t.Catalog.Search(q, r.URL.Query().Get("cursor"), 24)
-	cards := make([]cardView, 0, len(ps))
-	for _, p := range ps {
-		c := cardOf(t, pd.Channel, p)
-		c.Base = pd.Base
-		cards = append(cards, c)
-	}
-	pd.Title, pd.Query, pd.Description = "Productos", q, "Catálogo de "+pd.Store
-	if q != "" {
-		pd.Title = "Buscar: " + q
-	}
-	s.renderShop(w, "catalog", struct {
-		pageData
-		Products []cardView
-		Next     string
-	}{pd, cards, next}, q == "")
-}
-
-type variantView struct {
-	SKU, Title, Price, CompareAt string
-	Available                    int64
-}
-
-func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
-	t, pd, ok := s.shopContext(w, r)
-	if !ok {
-		return
-	}
-	p, found := t.Catalog.ByHandle(r.PathValue("handle"))
-	if !found {
-		w.WriteHeader(http.StatusNotFound)
-		pd.Title = "Producto no encontrado"
-		s.renderShop(w, "catalog", struct {
-			pageData
-			Products []cardView
-			Next     string
-		}{pd, nil, ""}, false)
-		return
-	}
-	first, sold := -1, true
-	var vs []variantView
-	for i, v := range p.Variants {
-		vv := variantView{SKU: v.SKU, Title: v.Title, Available: t.Inventory.Available(v.SKU)}
-		if q, ok := t.Pricing.Resolve(pd.Channel, v.SKU, 1); ok {
-			vv.Price = pesos(q.Unit)
-			if q.CompareAt != nil && q.CompareAt.Amount > q.Unit.Amount {
-				vv.CompareAt = pesos(*q.CompareAt)
-			}
-		} else {
-			vv.Available = 0 // no price, not sellable
-		}
-		if vv.Available > 0 && first < 0 {
-			first, sold = i, false
-		}
-		vs = append(vs, vv)
-	}
-	price, cmp := "", ""
-	if first >= 0 {
-		price, cmp = vs[first].Price, vs[first].CompareAt
-	} else if len(vs) > 0 {
-		price = vs[0].Price
-	}
-	ld, _ := json.Marshal(map[string]any{
-		"@context": "https://schema.org", "@type": "Product", "name": p.Title, "brand": map[string]any{"@type": "Brand", "name": p.Brand},
-		"sku": firstSKU(p), "offers": map[string]any{"@type": "Offer", "priceCurrency": "MXN", "price": priceNumber(t, pd.Channel, p),
-			"availability": map[bool]string{true: "https://schema.org/OutOfStock", false: "https://schema.org/InStock"}[sold]},
-	})
-	pd.Title, pd.Description = p.Title, strings.TrimSpace(p.Brand+" "+p.Title)
-	s.renderShop(w, "product", struct {
-		pageData
-		P struct {
-			Title, Brand, Description, Initial string
-			Tone                               int
-			Variants                           []variantView
-		}
-		Price, CompareAt string
-		FirstAvailable   int
-		SoldOut          bool
-		JSONLD           template.JS
-	}{pageData: pd, P: struct {
-		Title, Brand, Description, Initial string
-		Tone                               int
-		Variants                           []variantView
-	}{p.Title, p.Brand, p.Description, initial(p.Title), builder.ToneOf(p.Title), vs}, Price: price, CompareAt: cmp, FirstAvailable: first, SoldOut: sold, JSONLD: template.JS(ld)}, true)
 }
 
 func firstSKU(p catalog.Product) string {

@@ -21,6 +21,7 @@ import (
 	"github.com/helloghc/apexx/internal/builder"
 	"github.com/helloghc/apexx/internal/crypto"
 	"github.com/helloghc/apexx/internal/httpx"
+	"github.com/helloghc/apexx/internal/media"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/resilience"
@@ -42,8 +43,9 @@ type Server struct {
 	Payments      *PaymentAccounts
 	Webhooks      *webhooks.Service
 	SecureCookies bool
-	TrustProxy    bool   // honour X-Forwarded-For (only behind our own proxy)
-	MetricsToken  string // bearer token for /metrics; empty = loopback/private callers only
+	TrustProxy    bool          // honour X-Forwarded-For (only behind our own proxy)
+	MetricsToken  string        // bearer token for /metrics; empty = loopback/private callers only
+	Media         media.Storage // media library files; nil = local disk under the system temp dir
 
 	sitesMu sync.Mutex
 	sites   map[string]*builder.Site // tenant/site -> site
@@ -52,6 +54,8 @@ type Server struct {
 	loginHits map[string][]time.Time
 
 	metrics *metrics
+
+	uploadSlots chan struct{} // bounds concurrent image processing
 }
 
 // Routes builds the HTTP handler.
@@ -96,9 +100,7 @@ func (s *Server) Routes() http.Handler {
 	handle("POST /v1/me/password", s.authed("", "", s.changePassword))
 
 	// Catalog, inventory, pricing, channels, promotions.
-	handle("GET /v1/products", s.authed("catalog", auth.Read, s.listProducts))
-	handle("GET /v1/products/{id}", s.authed("catalog", auth.Read, s.getProduct))
-	handle("PUT /v1/products/{id}", s.authed("catalog", auth.Edit, s.putProduct))
+	s.routesCatalog(handle) // products, categories, brands, collections, attributes, media, import/export
 	handle("GET /v1/inventory/{sku}", s.authed("inventory", auth.Read, s.getInventory))
 	handle("PUT /v1/inventory/{sku}/{location}", s.authed("inventory", auth.Edit, s.putInventory))
 	handle("PUT /v1/prices/{channel}/{sku}", s.authed("pricing", auth.Edit, s.putPrices))
