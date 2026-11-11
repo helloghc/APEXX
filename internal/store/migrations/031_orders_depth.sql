@@ -13,12 +13,14 @@ ALTER TABLE orders ADD COLUMN source text NOT NULL DEFAULT 'checkout' CHECK (sou
 ALTER TABLE order_lines ADD COLUMN fulfilled_qty bigint NOT NULL DEFAULT 0 CHECK (fulfilled_qty >= 0);
 ALTER TABLE order_lines ADD COLUMN returned_qty bigint NOT NULL DEFAULT 0 CHECK (returned_qty >= 0);
 ALTER TABLE order_lines ADD COLUMN refunded_qty bigint NOT NULL DEFAULT 0 CHECK (refunded_qty >= 0);
+-- Units refunded before shipping and taken out of the order (restocked).
+ALTER TABLE order_lines ADD COLUMN cancelled_qty bigint NOT NULL DEFAULT 0 CHECK (cancelled_qty >= 0);
 ALTER TABLE order_lines ADD COLUMN origin text NOT NULL DEFAULT 'checkout' CHECK (origin IN ('checkout','edit','exchange','draft'));
 
 -- Existing orders: derive the new columns from the old single status.
 UPDATE order_lines l SET fulfilled_qty = l.qty FROM orders o
     WHERE o.tenant_id = l.tenant_id AND o.id = l.order_id AND o.status = 'fulfilled';
-ALTER TABLE order_lines ADD CONSTRAINT order_lines_qty_bounds CHECK (fulfilled_qty <= qty AND returned_qty <= fulfilled_qty);
+ALTER TABLE order_lines ADD CONSTRAINT order_lines_qty_bounds CHECK (fulfilled_qty + cancelled_qty <= qty AND returned_qty <= fulfilled_qty);
 UPDATE orders SET
     fulfillment_status = CASE WHEN status = 'fulfilled' THEN 'fulfilled' ELSE 'unfulfilled' END,
     payment_status = CASE status WHEN 'pending_payment' THEN 'pending' WHEN 'cancelled' THEN 'voided'

@@ -22,7 +22,7 @@ import (
 	"github.com/helloghc/apexx/internal/store"
 )
 
-//go:embed shop/*.tmpl shop/*.css shop/shop.js shop/fonts/*.woff2
+//go:embed shop/*.tmpl shop/*.css shop/*.js shop/fonts/*.woff2
 var shopFS embed.FS
 
 var shopPages = func() map[string]*template.Template {

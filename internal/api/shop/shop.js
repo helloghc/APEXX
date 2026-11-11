@@ -33,11 +33,16 @@
     setTimeout(() => { b.classList.remove("added"); b.textContent = "Agregar"; }, 1600);
   });
 
-  // Newsletter: confirmation on the page (sending to an email tool arrives with connectors).
-  document.querySelectorAll("[data-newsletter]").forEach((f) => f.addEventListener("submit", (e) => {
-    e.preventDefault(); const i = f.querySelector("input[type=email]");
+  // Newsletter: saves the email as a customer with marketing consent.
+  document.querySelectorAll("[data-newsletter]").forEach((f) => f.addEventListener("submit", async (e) => {
+    e.preventDefault(); const i = f.querySelector("input[type=email]"), btn = f.querySelector("button");
     if (!i.value.includes("@")) { i.focus(); return; }
-    f.hidden = true; const ok = f.parentElement.querySelector("[data-newsletter-ok]"); if (ok) ok.hidden = false;
+    btn.disabled = true;
+    const r = await post("/newsletter", { email: i.value.trim() }).catch(() => ({ status: 0 }));
+    btn.disabled = false;
+    const ok = f.parentElement.querySelector("[data-newsletter-ok]");
+    if (r.status === 204) { f.hidden = true; if (ok) { ok.textContent = "¡Listo! Te escribiremos pronto."; ok.hidden = false; } return; }
+    if (ok) { ok.textContent = r.status === 400 ? "Revisa tu correo e intenta de nuevo." : "No pudimos guardar tu correo. Intenta más tarde."; ok.hidden = false; }
   }));
 
   // Product page: add to cart.
@@ -72,6 +77,12 @@
 
   // Cart page.
   const view = $("[data-cart-view]");
+  // Reminder email link: ?recuperar=<token> brings the saved cart back.
+  const recover = new URLSearchParams(location.search).get("recuperar");
+  const restored = view && recover ? fetch(api + "/cart/restore?token=" + encodeURIComponent(recover)).then((r) => r.ok ? r.json() : null).then((j) => {
+    if (j && j.items && j.items.length) saveCart(j.items.map((l) => ({ sku: l.sku, qty: l.qty, title: l.title })));
+    history.replaceState(null, "", location.pathname);
+  }).catch(() => {}) : Promise.resolve();
   if (view) {
     const zipForm = $("[data-zip]"), zipIn = $("#zip");
     zipIn.value = store.get(ZIP, "");
@@ -96,7 +107,7 @@
       saveCart(c); render();
     });
     zipForm.addEventListener("submit", (e) => { e.preventDefault(); store.set(ZIP, zipIn.value.trim()); render(); });
-    render();
+    restored.then(render);
   }
 
   // Checkout page.
@@ -111,6 +122,9 @@
       if (r.status === 200) { last = r.body; summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
     }
     $("#postal").addEventListener("change", () => { store.set(ZIP, $("#postal").value.trim()); refresh(); });
+    // Remember the cart of a shopper who typed an email (abandoned cart recovery).
+    const track = () => { const em = $("#email").value.trim(); if (/^\S+@\S+\.\S+$/.test(em) && cart().length) post("/cart/track", { email: em, name: $("#name").value.trim(), channel, site: base.split("/").pop(), items: cart().map((l) => ({ sku: l.sku, qty: l.qty })) }).catch(() => {}); };
+    $("#email").addEventListener("change", track); $("#name").addEventListener("change", track);
     (async () => {
       try { cfg = await (await fetch(api + "/config")).json(); } catch {}
       await refresh();
@@ -158,6 +172,42 @@
         postal_code_required: "Revisa tu código postal.", payment_account_missing: "La tienda todavía no puede recibir pagos." }[res.body.code];
       errBox.textContent = msg || res.body.detail || "No pudimos completar la compra. Intenta de nuevo.";
       payBtn.disabled = false; refresh();
+    });
+  }
+
+  // Payment link page (draft orders and order balances).
+  const payForm = $("[data-pay-link]");
+  if (payForm) {
+    const errBox = $("[data-error]", payForm), payBox = $("[data-payment]", payForm), payBtn = $("[data-pay]", payForm), label = payBtn.textContent;
+    let stripe = null, elements = null;
+    (async () => {
+      let cfg = { mode: "sandbox" }; try { cfg = await (await fetch(api + "/config")).json(); } catch {}
+      if (cfg.mode === "stripe" && cfg.publishableKey) {
+        await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+        stripe = window.Stripe(cfg.publishableKey, cfg.stripeAccount ? { stripeAccount: cfg.stripeAccount } : {});
+        elements = stripe.elements({ mode: "setup", currency: (cfg.currency || "mxn").toLowerCase(), paymentMethodCreation: "manual" });
+        payBox.innerHTML = "<div id='pe'></div>"; elements.create("payment").mount("#pe");
+      } else if (cfg.mode === "unavailable") {
+        payBox.innerHTML = "<p class='error'>La tienda todavía no puede recibir pagos.</p>"; payBtn.disabled = true;
+      } else {
+        payBox.innerHTML = "<p class='testnote'>Modo de prueba: no se hace ningún cargo real.</p><div class='testcards'>" +
+          "<label><input type='radio' name='pm' value='pm_card_visa' checked> Tarjeta de prueba que se aprueba</label>" +
+          "<label><input type='radio' name='pm' value='pm_card_chargeDeclined'> Tarjeta de prueba que se rechaza</label></div>";
+      }
+    })();
+    payForm.addEventListener("submit", async (e) => {
+      e.preventDefault(); errBox.textContent = ""; payBtn.disabled = true; payBtn.textContent = "Procesando…";
+      let pm = String(new FormData(payForm).get("pm") || "");
+      if (stripe) {
+        const sub = await elements.submit();
+        const r = sub.error ? sub : await stripe.createPaymentMethod({ elements });
+        if (r.error) { errBox.textContent = r.error.message; payBtn.disabled = false; payBtn.textContent = label; return; }
+        pm = r.paymentMethod.id;
+      }
+      const res = await post("/pay", { token: payForm.dataset.payLink, paymentMethod: pm }).catch(() => ({ status: 0, body: {} }));
+      if (res.status === 200 && res.body.paid) { location.reload(); return; }
+      errBox.textContent = res.body.code === "payment_declined" ? "Tu pago fue rechazado. Prueba con otra tarjeta." : (res.body.detail || "No pudimos procesar el pago. Intenta de nuevo.");
+      payBtn.disabled = false; payBtn.textContent = label;
     });
   }
 

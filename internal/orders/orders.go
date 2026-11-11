@@ -27,6 +27,7 @@ import (
 
 	"github.com/helloghc/apexx/internal/cart"
 	"github.com/helloghc/apexx/internal/crypto"
+	"github.com/helloghc/apexx/internal/notify"
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/store"
@@ -69,13 +70,19 @@ type CheckoutRequest struct {
 	PaymentMethod string      `json:"paymentMethod"` // pm_... from Stripe.js
 }
 
-// Line is an order line.
+// Line is an order line. Fulfillable units = Qty - FulfilledQty - CancelledQty.
 type Line struct {
-	SKU   string `json:"sku"`
-	Title string `json:"title"`
-	Qty   int64  `json:"qty"`
-	Unit  int64  `json:"unit"`
-	Total int64  `json:"total"`
+	Line         int    `json:"line"`
+	SKU          string `json:"sku"`
+	Title        string `json:"title"`
+	Qty          int64  `json:"qty"`
+	Unit         int64  `json:"unit"`
+	Total        int64  `json:"total"`
+	FulfilledQty int64  `json:"fulfilledQty"`
+	ReturnedQty  int64  `json:"returnedQty"`
+	RefundedQty  int64  `json:"refundedQty"`
+	CancelledQty int64  `json:"cancelledQty"`
+	Origin       string `json:"origin,omitempty"`
 }
 
 // Event is one entry in the order history.
@@ -107,10 +114,29 @@ type Order struct {
 	Payment     *Payment  `json:"payment,omitempty"`
 	Invoice     *Invoice  `json:"invoice,omitempty"`
 	CreatedAt   time.Time `json:"createdAt"`
+
+	// After-sale state (see depth.go).
+	CustomerID        string        `json:"customerId,omitempty"`
+	CustomerName      string        `json:"customerName,omitempty"`
+	CustomerEmail     string        `json:"customerEmail,omitempty"`
+	PaymentStatus     string        `json:"paymentStatus"`
+	FulfillmentStatus string        `json:"fulfillmentStatus"`
+	RefundedTotal     int64         `json:"refundedTotal"`
+	PaidTotal         int64         `json:"paidTotal"` // money collected minus money refunded
+	Balance           int64         `json:"balance"`   // > 0: the customer owes; < 0: the store owes
+	Source            string        `json:"source,omitempty"`
+	ItemsCount        int64         `json:"itemsCount,omitempty"`
+	Payments          []Payment     `json:"payments,omitempty"`
+	Fulfillments      []Fulfillment `json:"fulfillments,omitempty"`
+	Refunds           []Refund      `json:"refunds,omitempty"`
+	Returns           []Return      `json:"returns,omitempty"`
+	Notes             []Note        `json:"notes,omitempty"`
+	Edits             []Edit        `json:"edits,omitempty"`
 }
 
 // Payment is the API view of a payment.
 type Payment struct {
+	ID       string `json:"id,omitempty"`
 	Provider string `json:"provider"`
 	Ref      string `json:"ref"`
 	Status   string `json:"status"`
@@ -139,6 +165,8 @@ type Service struct {
 	Keys       *crypto.Keyring
 	Projector  *projection.Projector
 	Accounts   func(ctx context.Context, tenant string) (Account, error)
+	Notify     *notify.Service // optional: transactional emails
+	PublicURL  string          // origin for links in emails
 	ReserveTTL time.Duration
 	Now        func() time.Time
 }
@@ -266,6 +294,9 @@ func (s *Service) checkout(ctx context.Context, tenant, actor string, req Checko
 			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode); err != nil {
 			return err
 		}
+		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
+			return err
+		}
 		for i, l := range sim.Lines {
 			if _, err := tx.Exec(ctx, `INSERT INTO order_lines (tenant_id, order_id, line, sku, title, qty, unit, total) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
 				tenant, id, i+1, l.SKU, l.Title, l.Qty, l.Unit.Amount, l.Total.Amount); err != nil {
@@ -353,8 +384,11 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		// Double entry: cash at Stripe vs sales and tax payable.
 		txID := "pay-" + id
 		if err := ledger(ctx, tx, tenant, txID, id, cur, map[string]int64{
-			"psp_clearing": grand, "sales": -(grand - tax), "tax_payable": -tax,
+			clearing(acct.Provider.Name()): grand, "sales": -(grand - tax), "tax_payable": -tax,
 		}); err != nil {
+			return err
+		}
+		if err := s.afterPaidTx(ctx, tx, tenant, id); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO invoices (tenant_id, order_id, provider, status) VALUES ($1,$2,$3,'pending')`, tenant, id, acct.Provider.Name()); err != nil {
@@ -394,12 +428,17 @@ func (s *Service) event(ctx context.Context, tx pgx.Tx, tenant, id, actor, typ s
 	if err := store.Emit(ctx, tx, tenant, store.TopicOrder, id, map[string]any{"type": typ, "status": to}); err != nil {
 		return err
 	}
-	return store.Audit(ctx, tx, tenant, actor, typ, id, map[string]any{"to": to})
+	if err := store.Audit(ctx, tx, tenant, actor, typ, id, map[string]any{"to": to}); err != nil {
+		return err
+	}
+	return deriveTx(ctx, tx, tenant, id)
 }
 
-// Fulfill marks a paid order as shipped.
+// Fulfill ships every unit still pending in one shipment without tracking
+// (kept for the simple "mark as shipped" action and API compatibility).
 func (s *Service) Fulfill(ctx context.Context, tenant, actor, id string) error {
-	return s.transition(ctx, tenant, actor, id, StatusPaid, StatusFulfilled, "order.fulfilled", nil)
+	_, err := s.CreateFulfillment(ctx, tenant, actor, id, FulfillmentInput{})
+	return err
 }
 
 func (s *Service) transition(ctx context.Context, tenant, actor, id, from, to, typ string, data any) error {
@@ -420,169 +459,6 @@ func (s *Service) transition(ctx context.Context, tenant, actor, id, from, to, t
 		}
 		return s.event(ctx, tx, tenant, id, actor, typ, &status, to, data)
 	})
-}
-
-// Cancel reverts an order completely: refund at Stripe (if paid), restock the
-// exact locations, reverse the ledger and void the invoice.
-func (s *Service) Cancel(ctx context.Context, tenant, actor, id, reason string) error {
-	var status, ref, cur string
-	var amount, refunded, grand, tax int64
-	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		err := tx.QueryRow(ctx, `SELECT o.status, o.currency, o.grand_total, o.tax_included, COALESCE(p.provider_ref,''), COALESCE(p.amount,0), COALESCE(p.refunded,0)
-			FROM orders o LEFT JOIN payments p ON p.tenant_id=o.tenant_id AND p.order_id=o.id AND p.status IN ('captured','refunded')
-			WHERE o.tenant_id=$1 AND o.id=$2`, tenant, id).Scan(&status, &cur, &grand, &tax, &ref, &amount, &refunded)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
-		return err
-	})
-	if err != nil {
-		return err
-	}
-	switch status {
-	case StatusPendingPayment:
-		return s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-			if err := store.ReleaseTx(ctx, tx, tenant, id); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(ctx, `UPDATE orders SET status=$3, version=version+1, updated_at=now() WHERE tenant_id=$1 AND id=$2 AND status=$4`, tenant, id, StatusCancelled, StatusPendingPayment); err != nil {
-				return err
-			}
-			return s.event(ctx, tx, tenant, id, actor, "order.cancelled", &status, StatusCancelled, map[string]any{"reason": reason})
-		})
-	case StatusPaid, StatusFulfilled:
-	default:
-		return fmt.Errorf("%w: %s", ErrInvalidState, status)
-	}
-	acct, err := s.Accounts(ctx, tenant)
-	if err != nil {
-		return err
-	}
-	toRefund := amount - refunded
-	if toRefund > 0 {
-		if err := acct.Provider.Refund(ctx, acct.Account, ref, toRefund, "refund-"+id); err != nil {
-			return fmt.Errorf("orders: refund failed, order unchanged: %w", err)
-		}
-	}
-	return s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		var cur2 string
-		if err := tx.QueryRow(ctx, `SELECT status FROM orders WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, id).Scan(&cur2); err != nil {
-			return err
-		}
-		if cur2 == StatusRefunded {
-			return nil // a concurrent cancel already finished
-		}
-		rows, err := tx.Query(ctx, `SELECT sku, location_id, qty FROM order_allocations WHERE tenant_id=$1 AND order_id=$2`, tenant, id)
-		if err != nil {
-			return err
-		}
-		type alloc struct {
-			sku, loc string
-			qty      int64
-		}
-		var as []alloc
-		for rows.Next() {
-			var a alloc
-			if err := rows.Scan(&a.sku, &a.loc, &a.qty); err != nil {
-				rows.Close()
-				return err
-			}
-			as = append(as, a)
-		}
-		rows.Close()
-		for _, a := range as {
-			if err := store.RestockTx(ctx, tx, tenant, a.sku, a.loc, a.qty); err != nil {
-				return err
-			}
-		}
-		if _, err := tx.Exec(ctx, `UPDATE payments SET refunded=amount, status='refunded', updated_at=now() WHERE tenant_id=$1 AND order_id=$2 AND status='captured'`, tenant, id); err != nil {
-			return err
-		}
-		if err := ledger(ctx, tx, tenant, "refund-"+id, id, cur, map[string]int64{
-			"psp_clearing": -toRefund, "sales": toRefund - tax, "tax_payable": tax,
-		}); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE invoices SET status='voided', updated_at=now() WHERE tenant_id=$1 AND order_id=$2 AND status IN ('pending','failed')`, tenant, id); err != nil {
-			return err
-		}
-		if _, err := tx.Exec(ctx, `UPDATE orders SET status=$3, version=version+1, updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, id, StatusRefunded); err != nil {
-			return err
-		}
-		return s.event(ctx, tx, tenant, id, actor, "order.refunded", &cur2, StatusRefunded, map[string]any{"reason": reason, "amount": toRefund})
-	})
-}
-
-// Get loads an order. withPII decrypts the customer.
-func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Order, error) {
-	var o Order
-	var enc []byte
-	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		err := tx.QueryRow(ctx, `SELECT id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, created_at
-			FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, id).
-			Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.ItemsTotal, &o.Discounts, &o.Shipping, &o.TaxIncluded, &o.GrandTotal, &enc, &o.CreatedAt)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
-		if err != nil {
-			return err
-		}
-		rows, err := tx.Query(ctx, `SELECT sku, title, qty, unit, total FROM order_lines WHERE tenant_id=$1 AND order_id=$2 ORDER BY line`, tenant, id)
-		if err != nil {
-			return err
-		}
-		o.Lines, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (Line, error) {
-			var l Line
-			return l, r.Scan(&l.SKU, &l.Title, &l.Qty, &l.Unit, &l.Total)
-		})
-		if err != nil {
-			return err
-		}
-		rows, err = tx.Query(ctx, `SELECT seq, at, actor, type, from_status, to_status, data FROM order_events WHERE tenant_id=$1 AND order_id=$2 ORDER BY seq`, tenant, id)
-		if err != nil {
-			return err
-		}
-		o.Events, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (Event, error) {
-			var e Event
-			var d []byte
-			err := r.Scan(&e.Seq, &e.At, &e.Actor, &e.Type, &e.From, &e.To, &d)
-			e.Data = d
-			return e, err
-		})
-		if err != nil {
-			return err
-		}
-		var p Payment
-		err = tx.QueryRow(ctx, `SELECT provider, provider_ref, status, amount, refunded FROM payments WHERE tenant_id=$1 AND order_id=$2 ORDER BY created_at DESC LIMIT 1`, tenant, id).
-			Scan(&p.Provider, &p.Ref, &p.Status, &p.Amount, &p.Refunded)
-		if err == nil {
-			o.Payment = &p
-		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
-		var inv Invoice
-		err = tx.QueryRow(ctx, `SELECT status, url, attempts, last_error FROM invoices WHERE tenant_id=$1 AND order_id=$2 LIMIT 1`, tenant, id).
-			Scan(&inv.Status, &inv.URL, &inv.Attempts, &inv.Error)
-		if err == nil {
-			o.Invoice = &inv
-		} else if !errors.Is(err, pgx.ErrNoRows) {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return o, err
-	}
-	if withPII {
-		plain, err := s.Keys.Decrypt(tenant, enc, id)
-		if err != nil {
-			return o, err
-		}
-		var c Customer
-		_ = json.Unmarshal(plain, &c)
-		o.Customer = &c
-	}
-	return o, nil
 }
 
 // List returns orders without personal data, newest first. before (order
@@ -696,6 +572,9 @@ func (s *Service) IssueInvoices(ctx context.Context) (int, error) {
 				return e
 			}
 			n++
+			if e := s.notifyTx(ctx, tx, x.t, x.id, notify.TplInvoiceReady, map[string]string{"factura.url": inv.URL}, inv.URL, "invoice:"+x.id); e != nil {
+				return e
+			}
 			return s.event(ctx, tx, x.t, x.id, "invoicer", "invoice.issued", &status, status, map[string]any{"ref": inv.Ref, "url": inv.URL})
 		})
 	}

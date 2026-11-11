@@ -323,31 +323,6 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) listOrders(w http.ResponseWriter, r *http.Request) {
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit < 1 || limit > 200 {
-		limit = 50
-	}
-	before, _ := strconv.ParseInt(r.URL.Query().Get("before"), 10, 64)
-	status := r.URL.Query().Get("status")
-	switch status {
-	case "", orders.StatusPendingPayment, orders.StatusPaid, orders.StatusFulfilled, orders.StatusCancelled, orders.StatusRefunded:
-	default:
-		apierr.BadRequest(w, "", apierr.FieldError{Field: "status", Code: "invalid", Message: "status no válido"})
-		return
-	}
-	list, err := s.Orders.List(r.Context(), principal(r).Tenant, limit, before, status)
-	if err != nil {
-		internalError(w, s.Log, err)
-		return
-	}
-	next := int64(0)
-	if len(list) == limit {
-		next = list[len(list)-1].Number
-	}
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": list, "nextBefore": next})
-}
-
 func (s *Server) getOrder(w http.ResponseWriter, r *http.Request) {
 	p := principal(r)
 	withPII := p.Permissions.Allows("orders", "edit") // readers see orders without personal data

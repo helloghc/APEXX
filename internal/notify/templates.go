@@ -354,6 +354,27 @@ func escapeVars(vars map[string]string) map[string]string {
 	return out
 }
 
+// Money formats minor units for people: 159800, "MXN" → "$1,598.00 MXN".
+func Money(amount int64, currency string) string {
+	neg := amount < 0
+	if neg {
+		amount = -amount
+	}
+	whole := itoa(amount / 100)
+	for i := len(whole) - 3; i > 0; i -= 3 {
+		whole = whole[:i] + "," + whole[i:]
+	}
+	cents := itoa(amount % 100)
+	if len(cents) < 2 {
+		cents = "0" + cents
+	}
+	out := "$" + whole + "." + cents + " " + strings.TrimSpace(currency)
+	if neg {
+		return "-" + out
+	}
+	return out
+}
+
 func itoa(n int64) string {
 	if n == 0 {
 		return "0"

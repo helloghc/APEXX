@@ -267,4 +267,17 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .testcards{display:grid;gap:8px}
 .testcards label{display:flex;gap:10px;align-items:center}
 .thanks{max-width:720px}
+/* Shopper account and payment link pages */
+.acct{max-width:var(--wrap);margin:0 auto;padding-inline:var(--gutter)}
+.acct-nav{display:flex;flex-wrap:wrap;gap:8px 22px;align-items:center;margin:0 0 24px;padding-bottom:14px;border-bottom:1px solid var(--c-border)}
+.acct-nav a{text-decoration:none;font-weight:600;padding:6px 0}
+.acct-nav a[aria-current=page]{box-shadow:inset 0 -2px 0 var(--c-text)}
+.acct-nav form{margin-left:auto}
+.acct-ok{background:color-mix(in srgb,var(--c-accent) 18%,var(--c-surface));padding:10px 14px;border-radius:var(--radius);margin:0 0 16px;font-weight:600}
+.acct-box{border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-surface);padding:18px 20px;margin:18px 0}
+.acct-box h2{font-family:var(--f-body);font-size:1rem;font-weight:700;margin-bottom:6px}
+.acct-box .btn{width:auto;margin-top:10px}
+.acct-alt{margin:8px 0 0}.acct-alt summary{cursor:pointer;color:var(--c-muted);padding:10px 0}
+.acct-inline{margin-top:4px;color:var(--c-muted)}
+.acct input[type=checkbox]{width:auto;min-height:0;margin-right:8px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
