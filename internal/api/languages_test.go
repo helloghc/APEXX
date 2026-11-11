@@ -117,3 +117,41 @@ func TestStorefrontLanguages(t *testing.T) {
 		t.Error("el guion en japonés no llegó traducido")
 	}
 }
+
+// A product translated on its own screen shows translated in the store, and
+// the panel flags the translation once the original changes.
+func TestProductTranslations(t *testing.T) {
+	e := setup(t)
+	e.must(200, "POST", "/v1/sites/main/publish", e.adminA, nil)
+	e.must(200, "PUT", "/v1/settings/languages", e.adminA, m{"enabled": []string{"en"}})
+	if st, _ := e.do("PUT", "/v1/products/P1/translations", e.adminA, m{"xx": m{"title": "X"}}); st != 400 {
+		t.Fatalf("unknown language accepted: %d", st)
+	}
+	p := e.must(200, "GET", "/v1/products/P1", e.adminA, nil)
+	title := p["title"].(string)
+	e.must(204, "PUT", "/v1/products/P1/translations", e.adminA, m{"en": m{"title": "Translated product"}})
+	e.drain()
+	_, b, _ := e.raw(http.MethodGet, "/s/store-a/main/p/"+p["handle"].(string)+"?hl=en", "", nil, "")
+	if !strings.Contains(string(b), "Translated product") {
+		t.Fatal("the product title was not translated in the store")
+	}
+	got := e.must(200, "GET", "/v1/products/P1/translations", e.adminA, nil)
+	en := got["texts"].(map[string]any)["en"].(map[string]any)["title"].(map[string]any)
+	if en["text"] != "Translated product" || en["outdated"] != false {
+		t.Fatalf("translation read back: %v", en)
+	}
+	// The original changes: the translation is marked outdated.
+	e.must(200, "PUT", "/v1/products/P1", e.adminA, m{"handle": p["handle"], "title": title + " nuevo", "variants": []m{{"sku": "S1", "title": "Única"}}})
+	e.drain()
+	got = e.must(200, "GET", "/v1/products/P1/translations", e.adminA, nil)
+	if got["texts"].(map[string]any)["en"].(map[string]any)["title"].(map[string]any)["outdated"] != true {
+		t.Fatal("a translation of a changed title is not flagged")
+	}
+	// The storefront key cannot read or write translations; another store sees nothing.
+	if st, _ := e.do("GET", "/v1/products/P1/translations", e.sfA, nil); st != 403 && st != 401 {
+		t.Fatalf("storefront key read translations: %d", st)
+	}
+	if st, _ := e.do("PUT", "/v1/products/P1/translations", e.adminB, m{"en": m{"title": "Hack"}}); st != 404 {
+		t.Fatalf("another store wrote translations: %d", st)
+	}
+}

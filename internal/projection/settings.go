@@ -125,6 +125,18 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 			return err
 		}
 		cfg.Normalize()
+		docs, err := p.db.ListDocs(ctx, t.ID, "product_i18n")
+		if err != nil {
+			return err
+		}
+		texts := make([]i18n.ProductTexts, 0, len(docs))
+		for _, d := range docs {
+			var pt i18n.ProductTexts
+			if json.Unmarshal(d.Data, &pt) == nil {
+				texts = append(texts, pt)
+			}
+		}
+		cfg.Merge(texts)
 		t.langs.Store(&cfg)
 	}
 	if key == "" || key == store.KeySubscriptions {

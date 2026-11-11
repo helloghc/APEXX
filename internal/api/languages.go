@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/helloghc/apexx/internal/cart"
+	"github.com/helloghc/apexx/internal/catalog"
 	"html"
 	"html/template"
 	"net/http"
@@ -423,4 +424,95 @@ func countryName(code string) string {
 		return "Perú"
 	}
 	return code
+}
+
+// Product translations: written on the product's own screen. Each text keeps
+// the Spanish original it translates; when the original changes the panel
+// shows the translation as outdated until someone reviews it.
+
+var productFields = []string{"title", "description", "seoTitle", "seoDescription"}
+
+func productSource(p catalog.Product) map[string]string {
+	return map[string]string{"title": p.Title, "description": p.Description, "seoTitle": p.SEOTitle, "seoDescription": p.SEODescription}
+}
+
+func (s *Server) getProductTexts(w http.ResponseWriter, r *http.Request) {
+	tenant := principal(r).Tenant
+	t, ok := s.Proj.Tenant(tenant)
+	if !ok {
+		apierr.NotFound(w, "Tienda no encontrada")
+		return
+	}
+	p, err := t.Catalog.Get(r.PathValue("id"))
+	if err != nil {
+		apierr.NotFound(w, "Producto no encontrado")
+		return
+	}
+	var pt i18n.ProductTexts
+	if _, err := s.DB.GetDoc(r.Context(), tenant, "product_i18n", p.ID, &pt); err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	src := productSource(p)
+	type field struct {
+		Text     string `json:"text"`
+		Outdated bool   `json:"outdated"`
+	}
+	out := map[string]map[string]field{}
+	for _, lang := range t.Languages().Enabled {
+		out[lang] = map[string]field{}
+		for _, f := range productFields {
+			x := pt[lang][f]
+			out[lang][f] = field{Text: x.Text, Outdated: x.Text != "" && x.Source != src[f]}
+		}
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"languages": t.Languages().Enabled, "source": src, "texts": out})
+}
+
+func (s *Server) putProductTexts(w http.ResponseWriter, r *http.Request) {
+	pr := principal(r)
+	t, ok := s.Proj.Tenant(pr.Tenant)
+	if !ok {
+		apierr.NotFound(w, "Tienda no encontrada")
+		return
+	}
+	p, err := t.Catalog.Get(r.PathValue("id"))
+	if err != nil {
+		apierr.NotFound(w, "Producto no encontrado")
+		return
+	}
+	var body map[string]map[string]string
+	if !decode(w, r, &body) {
+		return
+	}
+	src := productSource(p)
+	pt := i18n.ProductTexts{}
+	for lang, fields := range body {
+		if !i18n.Known(lang) || lang == i18n.Default {
+			apierr.BadRequest(w, "Idioma no disponible: "+lang)
+			return
+		}
+		for f, text := range fields {
+			if _, known := src[f]; !known {
+				continue
+			}
+			text = strings.TrimSpace(text)
+			if len(text) > 20000 {
+				apierr.BadRequest(w, "Texto demasiado largo", apierr.FieldError{Field: lang + "." + f, Code: "too_long", Message: "Hasta 20,000 caracteres"})
+				return
+			}
+			if text == "" || src[f] == "" {
+				continue
+			}
+			if pt[lang] == nil {
+				pt[lang] = map[string]i18n.Text{}
+			}
+			pt[lang][f] = i18n.Text{Source: src[f], Text: text}
+		}
+	}
+	if err := s.DB.SetDoc(r.Context(), pr.Tenant, pr.Actor(), "product_i18n", p.ID, store.KeyLanguages, pt); err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

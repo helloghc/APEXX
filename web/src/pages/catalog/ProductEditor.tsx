@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink, ImagePlus, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
-import { ApiError, errorMessage, fieldErrors, type Me } from "@/api";
+import { ApiError, errorMessage, fieldErrors, request, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -579,6 +579,7 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
               <div className="line-clamp-2 text-muted-foreground">{d.seoDescription || d.description || "Descripción del producto."}</div>
             </div>
           </Section>
+          {!isNew && <Translations id={id} canEdit={canEdit} />}
         </div>
 
         <div className="grid min-w-0 content-start gap-5">
@@ -662,5 +663,58 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
         onClose={() => setConfirmDelete(false)}
       />
     </main>
+  );
+}
+
+const LANG_NAMES: Record<string, string> = { en: "English", fr: "Français", pt: "Português", id: "Bahasa Indonesia", ja: "日本語" };
+const TEXT_FIELDS: [string, string][] = [["title", "Nombre"], ["description", "Descripción"], ["seoTitle", "Título para buscadores"], ["seoDescription", "Descripción para buscadores"]];
+
+/** Translations of the product, written next to it. Each one remembers the
+ *  original it translates, so a change of the original is pointed out. */
+function Translations({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["product", id, "translations"], queryFn: () => request<{ languages: string[]; source: Record<string, string>; texts: Record<string, Record<string, { text: string; outdated: boolean }>> }>("GET", `/v1/products/${encodeURIComponent(id)}/translations`) });
+  const [lang, setLang] = useState("");
+  const [draft, setDraft] = useState<Record<string, Record<string, string>>>({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!q.data) return;
+    setLang((l) => l || q.data.languages[0] || "");
+    setDraft(Object.fromEntries(Object.entries(q.data.texts).map(([l, f]) => [l, Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.text]))])));
+  }, [q.data]);
+  if (!q.data) return null;
+  const { languages, source, texts } = q.data;
+  if (languages.length === 0) {
+    return <Section title="Traducciones" description="Tu tienda solo está en español."><p className="text-sm text-muted-foreground">Activa otros idiomas en <a className="text-primary hover:underline" href={href("configuracion", "idiomas")}>Configuración → Idiomas</a> para traducir este producto.</p></Section>;
+  }
+  async function save() {
+    setBusy(true);
+    try {
+      await request<void>("PUT", `/v1/products/${encodeURIComponent(id)}/translations`, draft, { as: "none" });
+      toast.success("Traducciones guardadas. Ya se ven en la tienda.");
+      void qc.invalidateQueries({ queryKey: ["product", id, "translations"] });
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Section title="Traducciones" description="Cómo se ve este producto en los otros idiomas de tu tienda." actions={canEdit && <Button size="sm" onClick={() => void save()} disabled={busy}>{busy ? "Guardando…" : "Guardar traducciones"}</Button>}>
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Idioma">
+        {languages.map((l) => {
+          const missing = TEXT_FIELDS.some(([f]) => source[f] && !(draft[l]?.[f] ?? "").trim());
+          const old = TEXT_FIELDS.some(([f]) => texts[l]?.[f]?.outdated);
+          return <Button key={l} type="button" size="sm" role="tab" aria-selected={lang === l} variant={lang === l ? "default" : "outline"} onClick={() => setLang(l)}>{LANG_NAMES[l] ?? l}{old ? " · revisar" : missing ? " · incompleto" : ""}</Button>;
+        })}
+      </div>
+      {TEXT_FIELDS.filter(([f]) => source[f]).map(([f, label]) => (
+        <Field key={f} label={label} htmlFor={`tr-${lang}-${f}`} hint={texts[lang]?.[f]?.outdated ? "El original cambió desde que se tradujo; revísalo." : undefined}>
+          {f === "description"
+            ? <Textarea id={`tr-${lang}-${f}`} rows={3} value={draft[lang]?.[f] ?? ""} placeholder={source[f]} disabled={!canEdit} onChange={(e) => setDraft((d) => ({ ...d, [lang]: { ...d[lang], [f]: e.target.value } }))} />
+            : <Input id={`tr-${lang}-${f}`} value={draft[lang]?.[f] ?? ""} placeholder={source[f]} disabled={!canEdit} onChange={(e) => setDraft((d) => ({ ...d, [lang]: { ...d[lang], [f]: e.target.value } }))} />}
+        </Field>
+      ))}
+    </Section>
   );
 }

@@ -160,3 +160,40 @@ func (c *Config) Has(lang string) bool {
 	}
 	return false
 }
+
+// Text is one translated piece of a product, with the Spanish text it was
+// written for, so a later change of the original can be pointed out.
+type Text struct {
+	Source string `json:"source"`
+	Text   string `json:"text"`
+}
+
+// ProductTexts are the translations of one product: language -> field -> text.
+type ProductTexts map[string]map[string]Text
+
+// Merge adds product translations to the store's own phrases. Phrases the
+// merchant wrote by hand win over the ones written on a product.
+func (c *Config) Merge(products []ProductTexts) {
+	if c.Own == nil {
+		c.Own = map[string]map[string]string{}
+	}
+	for _, p := range products {
+		for lang, fields := range p {
+			if !Known(lang) || lang == Default {
+				continue
+			}
+			if c.Own[lang] == nil {
+				c.Own[lang] = map[string]string{}
+			}
+			for _, t := range fields {
+				src := strings.Join(strings.Fields(t.Source), " ")
+				if src == "" || strings.TrimSpace(t.Text) == "" {
+					continue
+				}
+				if _, set := c.Own[lang][src]; !set {
+					c.Own[lang][src] = strings.TrimSpace(t.Text)
+				}
+			}
+		}
+	}
+}
