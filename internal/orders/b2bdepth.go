@@ -426,13 +426,15 @@ type Location struct {
 	MonthlyLimit int64             `json:"monthlyLimit"`
 	Address      map[string]string `json:"address"`
 	MonthSpent   int64             `json:"monthSpent"`
+	// AllowedPayments narrows how the branch pays (empty = the company's).
+	AllowedPayments []string `json:"allowedPayments"`
 }
 
 // Locations lists the branches of a company.
 func (s *Service) Locations(ctx context.Context, tenant, company string) ([]Location, error) {
 	var out []Location
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT l.id, l.name, l.price_group, l.monthly_limit, l.address,
+		rows, err := tx.Query(ctx, `SELECT l.id, l.name, l.price_group, l.monthly_limit, l.address, l.allowed_payments,
 				COALESCE((SELECT sum(amount) FROM company_entries e WHERE e.tenant_id=l.tenant_id AND e.company_id=l.company_id AND e.location_id=l.id
 					AND e.kind IN ('charge','release') AND e.created_at >= date_trunc('month', now())),0)
 			FROM company_locations l WHERE l.tenant_id=$1 AND l.company_id=$2 ORDER BY l.name`, tenant, company)
@@ -441,7 +443,7 @@ func (s *Service) Locations(ctx context.Context, tenant, company string) ([]Loca
 		}
 		out, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (Location, error) {
 			var l Location
-			return l, r.Scan(&l.ID, &l.Name, &l.PriceGroup, &l.MonthlyLimit, &l.Address, &l.MonthSpent)
+			return l, r.Scan(&l.ID, &l.Name, &l.PriceGroup, &l.MonthlyLimit, &l.Address, &l.AllowedPayments, &l.MonthSpent)
 		})
 		return err
 	})
@@ -507,9 +509,13 @@ func (s *Service) SaveLocations(ctx context.Context, tenant, actor, company stri
 			return err
 		}
 		for _, l := range in {
-			ct, err := tx.Exec(ctx, `INSERT INTO company_locations (tenant_id, id, company_id, name, price_group, monthly_limit, address) VALUES ($1,$2,$3,$4,$5,$6,$7)
-				ON CONFLICT (tenant_id, id) DO UPDATE SET name=EXCLUDED.name, price_group=EXCLUDED.price_group, monthly_limit=EXCLUDED.monthly_limit, address=EXCLUDED.address
-				WHERE company_locations.company_id=EXCLUDED.company_id`, tenant, l.ID, company, l.Name, l.PriceGroup, l.MonthlyLimit, l.Address)
+			ap, err := cleanPayments(l.AllowedPayments)
+			if err != nil {
+				return err
+			}
+			ct, err := tx.Exec(ctx, `INSERT INTO company_locations (tenant_id, id, company_id, name, price_group, monthly_limit, address, allowed_payments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+				ON CONFLICT (tenant_id, id) DO UPDATE SET name=EXCLUDED.name, price_group=EXCLUDED.price_group, monthly_limit=EXCLUDED.monthly_limit, address=EXCLUDED.address, allowed_payments=EXCLUDED.allowed_payments
+				WHERE company_locations.company_id=EXCLUDED.company_id`, tenant, l.ID, company, l.Name, l.PriceGroup, l.MonthlyLimit, l.Address, ap)
 			if err != nil {
 				return err
 			}

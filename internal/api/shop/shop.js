@@ -268,7 +268,7 @@ function downloadsBox(ds) {
       if (!last) return;
       const later = voucherKind() || onCredit() ? 0 : (last.totals.dueLater && last.totals.dueLater.amount) || 0;
       const cur = last.totals.grand.currency, g = last.totals.grand.amount - later, w = Math.min(walletOf(), g), due = g - w;
-      const kk = cur + "|" + (last.hiddenPayments || []).join(",");
+      const kk = cur + "|" + (last.hiddenPayments || []).join(",") + "|" + (company ? (company.creditOnly ? "co" : "c") : "");
       if (kindBox.dataset.cur !== kk) { kindBox.dataset.cur = kk; paintKinds(); }
       if (gcList) gcList.innerHTML = cards.map((c, i) => "<li>Tarjeta ••••" + esc(c.last4) + " · saldo " + money({ amount: c.balance, currency: cur }) + " <button type='button' class='linkbtn' data-gc-del='" + i + "'>Quitar</button></li>").join("");
       const old = $("[data-wallet-rows]", summary); if (old) old.remove();
@@ -302,8 +302,8 @@ function downloadsBox(ds) {
       if ((keep === "card" && !cardOk) || (keep !== "card" && !opts.some((o) => o[0] === keep))) keep = cardOk ? "card" : (opts[0] ? opts[0][0] : "");
       kindBox.innerHTML = (opts.length || !cardOk ? "<div class='testcards' role='radiogroup' aria-label='Forma de pago'>" + (cardOk ? "<label><input type='radio' name='paykind' value='card'" + (keep === "card" ? " checked" : "") + "> Tarjeta</label>" : "") +
         opts.map((o) => "<label><input type='radio' name='paykind' value='" + o[0] + "'" + (keep === o[0] ? " checked" : "") + "> " + o[1] + " <span class='muted'>" + o[2] + "</span></label>").join("") + "</div>" : "") +
-        (hidden.length ? "<p class='muted' data-hidden-pay>Algunas formas de pago no están disponibles para este pedido.</p>" : "") +
-        (!cardOk && !opts.length ? "<p class='error' role='alert'>Este pedido no se puede pagar en línea. Escríbenos para completarlo.</p>" : "");
+        (hidden.length && !(company && company.creditOnly) ? "<p class='muted' data-hidden-pay>Algunas formas de pago no están disponibles para este pedido.</p>" : "") +
+        (!cardOk && !opts.length && !(company && company.terms !== "prepaid" && company.canCredit !== false) ? "<p class='error' role='alert'>Este pedido no se puede pagar en línea. Escríbenos para completarlo.</p>" : "");
     };
     kindBox.addEventListener("change", () => { paintWallet(); });
     // Signed-in customers: pay with a kept card, or keep the new one.
@@ -326,6 +326,8 @@ function downloadsBox(ds) {
     fetch(api + "/company").then((x) => (x.status === 200 ? x.json() : null)).then((c) => {
       if (!c || !coBox) return;
       company = c; $("#email").value = c.email; $("#email").readOnly = true;
+      // A company limited to its credit pays only that way.
+      if (c.allowedPayments && c.allowedPayments.length && c.allowedPayments.every((k) => k === "credit")) c.creditOnly = true;
       coBox.innerHTML = "<p class='testnote'>Compras para <strong>" + esc(c.name) + "</strong>" + (c.discountBps ? " con " + c.discountBps / 100 + "% de precio de empresa" : "") + ".</p>" +
         (c.terms !== "prepaid" && c.canCredit !== false ? "<div class='testcards'>" + (c.creditOnly ? "" : "<label><input type='radio' name='paymode' value='card' checked> Pagar con tarjeta</label>") + "<label><input type='radio' name='paymode' id='paycredit' value='credit'" + (c.creditOnly ? " checked" : "") + "> Pagar a crédito de la empresa (" + (TERMS[c.terms] || "") + ")" + (c.available >= 0 ? " · disponible " + money({ amount: c.available, currency: "MXN" }) : "") + "</label></div>" : "") +
         "<div class='field'><label for='po'>Orden de compra" + (c.requirePO ? "" : " (opcional)") + "</label><input id='po' name='po' maxlength='60' autocomplete='off'" + (c.requirePO ? " required" : "") + "></div>";

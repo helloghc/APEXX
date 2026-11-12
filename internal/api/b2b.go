@@ -79,7 +79,7 @@ func (s *Server) shopCompany(w http.ResponseWriter, r *http.Request) {
 	if !c.CanViewCredit {
 		avail = -1 // the role does not show the credit
 	}
-	out := map[string]any{"name": c.Name, "terms": c.Terms, "discountBps": c.DiscountBps, "available": avail, "canCredit": c.CanCredit, "canQuote": c.CanQuote, "email": email, "approvalThreshold": c.ApprovalThreshold, "approver": c.Approver, "requirePO": c.RequirePO, "creditOnly": c.CreditOnly, "admin": c.Admin, "group": c.PriceGroup != ""}
+	out := map[string]any{"name": c.Name, "terms": c.Terms, "discountBps": c.DiscountBps, "available": avail, "canCredit": c.CanCredit && c.AllowsPayment("credit"), "canQuote": c.CanQuote, "allowedPayments": c.AllowedPayments, "email": email, "approvalThreshold": c.ApprovalThreshold, "approver": c.Approver, "requirePO": c.RequirePO, "creditOnly": c.CreditOnly, "admin": c.Admin, "group": c.PriceGroup != ""}
 	if c.CatalogRestricted {
 		// The pages stay the same for everyone (cacheable); the script hides
 		// what is not in the company's catalog, and the cart refuses it.

@@ -17,7 +17,8 @@ const enc = encodeURIComponent;
 export interface Member { email: string; approver: boolean; level: number; monthlyLimit: number; location: string; admin: boolean; substitute: string; awayUntil: string; monthSpent?: number; role?: string }
 export interface RolePerms { buyCredit: boolean; viewCredit: boolean; quote: boolean; approve: boolean; level: number; manage: boolean }
 export interface CRole { id: string; name: string; perms: RolePerms; members: number }
-export interface Branch { id: string; name: string; priceGroup: string; monthlyLimit: number; address: Record<string, string>; monthSpent?: number }
+export interface Branch { id: string; name: string; priceGroup: string; monthlyLimit: number; address: Record<string, string>; monthSpent?: number; allowedPayments?: string[] }
+const BRANCH_PAY: Record<string, string> = { card: "Tarjeta", oxxo: "OXXO", spei: "SPEI", credit: "Crédito" };
 export interface Rule { minTotal: number; level: number; category?: string; location?: string }
 interface Step { level: number; action: string; at: string }
 interface Req { id: string; status: string; total: number; currency: string; level: number; requiredLevel: number; reason: string; requester: string; location?: string; orderId?: string; createdAt: string; expiresAt: string; decisions: Step[] }
@@ -165,6 +166,8 @@ function BranchesDialog({ id, branches, onClose, onDone }: { id: string; branche
               <div className="grid gap-1 sm:col-span-2"><Label htmlFor={`b-name-${i}`}>Nombre</Label><Input id={`b-name-${i}`} value={r.name} onChange={(e) => set(i, { name: e.target.value })} /></div>
               <div className="grid gap-1"><Label htmlFor={`b-group-${i}`}>Grupo de precios</Label><Input id={`b-group-${i}`} className="font-mono" value={r.priceGroup} onChange={(e) => set(i, { priceGroup: e.target.value.trim() })} /></div>
               <div className="grid gap-1"><Label htmlFor={`b-cap-${i}`}>Tope al mes (MXN)</Label><Input id={`b-cap-${i}`} inputMode="decimal" placeholder="Sin tope" value={r.cap} onChange={(e) => set(i, { cap: e.target.value })} /></div>
+              <fieldset className="grid gap-1 sm:col-span-4"><legend className="text-xs font-medium">Medios de pago (sin marcar: los de la empresa)</legend>
+                <div className="flex flex-wrap gap-x-3">{Object.entries(BRANCH_PAY).map(([k, l]) => <label key={k} className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={(r.allowedPayments ?? []).includes(k)} onChange={(e) => set(i, { allowedPayments: e.target.checked ? [...(r.allowedPayments ?? []), k] : (r.allowedPayments ?? []).filter((x) => x !== k) })} />{l}</label>)}</div></fieldset>
               <div className="grid gap-1 sm:col-span-2"><Label htmlFor={`b-street-${i}`}>Calle y número</Label><Input id={`b-street-${i}`} value={r.address.street ?? ""} onChange={(e) => set(i, { address: { ...r.address, street: e.target.value } })} /></div>
               <div className="grid gap-1"><Label htmlFor={`b-city-${i}`}>Ciudad</Label><Input id={`b-city-${i}`} value={r.address.city ?? ""} onChange={(e) => set(i, { address: { ...r.address, city: e.target.value } })} /></div>
               <div className="flex items-end gap-2"><div className="grid flex-1 gap-1"><Label htmlFor={`b-cp-${i}`}>C.P.</Label><Input id={`b-cp-${i}`} value={r.address.postalCode ?? ""} onChange={(e) => set(i, { address: { ...r.address, postalCode: e.target.value } })} /></div>

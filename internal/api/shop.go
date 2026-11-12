@@ -7,6 +7,7 @@ import (
 	"github.com/helloghc/apexx/internal/i18n"
 	"html/template"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -313,7 +314,8 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 		internalError(w, s.Log, err)
 		return
 	}
-	if c, _ := s.shopperCompany(r); c != nil {
+	comp, _ := s.shopperCompany(r)
+	if c := comp; c != nil {
 		req.Extra = append(req.Extra, orders.CompanyPromo(c)...)
 		req.Group = orders.CompanyGroup(c)
 		req.RestrictGroup = c.CatalogRestricted
@@ -331,6 +333,14 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		apierr.BadRequest(w, "Canal de venta no disponible")
 		return
+	}
+	// The buyer's company may pay only some ways: the page hides the rest.
+	if c := comp; c != nil && len(c.AllowedPayments) > 0 {
+		for _, k := range []string{"card", "oxxo", "spei"} {
+			if !c.AllowsPayment(k) && !slices.Contains(res.HiddenPayments, k) {
+				res.HiddenPayments = append(res.HiddenPayments, k)
+			}
+		}
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, res)

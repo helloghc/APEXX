@@ -23,8 +23,9 @@ import { dateTime, ErrorBox, Notice, Page } from "../common";
 import { EmptyState, SkeletonRows } from "../promotions/shared";
 
 const enc = encodeURIComponent;
+export const PAY_KINDS: Record<string, string> = { card: "Tarjeta", oxxo: "Efectivo en OXXO", spei: "Transferencia SPEI", credit: "Crédito de la empresa" };
 interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; requirePO?: boolean; creditOnly?: boolean; approvalThreshold: number; approvalRules?: Rule[]; approvalDays?: number; catalogRestricted?: boolean;
-  parentId?: string; parentName?: string; sharedCredit?: boolean; inheritTerms?: boolean; salesRep?: string; repAccess?: boolean;
+  parentId?: string; parentName?: string; sharedCredit?: boolean; inheritTerms?: boolean; salesRep?: string; repAccess?: boolean; allowedPayments?: string[];
   children?: { id: string; name: string; status: string; balance: number; sharedCredit: boolean; inheritTerms: boolean; children: number }[];
   pool?: { rootId: string; rootName: string; limit: number; balance: number; available: number; members: string[] } }
 interface CEntry { id: string; kind: string; amount: number; orderId?: string; orderNumber?: number; dueAt?: string; note?: string; at: string }
@@ -126,6 +127,11 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
               <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.sharedCredit} onChange={(e) => setC({ ...c, sharedCredit: e.target.checked })} /><span>Compra con el crédito de la matriz<span className="block text-muted-foreground">La matriz y sus filiales comparten un solo límite; ninguna puede gastar el crédito de otra a la vez.</span></span></label>
               <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.inheritTerms} onChange={(e) => setC({ ...c, inheritTerms: e.target.checked })} /><span>Usa las condiciones de la matriz<span className="block text-muted-foreground">Plazo, descuento, lista de precios, catálogo, exención y orden de compra se toman de la matriz.</span></span></label>
             </>}
+          </fieldset>
+          <fieldset className="grid gap-2 rounded-md border p-3 sm:col-span-2"><legend className="px-1 text-sm font-medium">Medios de pago de la empresa</legend>
+            <p className="text-xs text-muted-foreground">Sin marcar ninguno, la empresa usa todos los que ofrece tu tienda. Cada sucursal puede tener los suyos.</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1">{Object.entries(PAY_KINDS).map(([k, l]) => <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={(c.allowedPayments ?? []).includes(k)} onChange={(e) => setC({ ...c, allowedPayments: e.target.checked ? [...(c.allowedPayments ?? []), k] : (c.allowedPayments ?? []).filter((x) => x !== k) })} />{l}</label>)}</div>
+            {err("allowedPayments")}
           </fieldset>
           <fieldset className="grid gap-2 rounded-md border p-3 sm:col-span-2"><legend className="px-1 text-sm font-medium">Representante de ventas</legend>
             {team.data ? <div className="grid gap-1.5"><Label htmlFor="co-rep">Quién atiende a la empresa</Label>

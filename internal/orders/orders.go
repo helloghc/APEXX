@@ -449,6 +449,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	if !rules.Checkout.NotesField {
 		req.Customer.Notes = ""
 	}
+	// A company may be limited to some payment methods (or its branch).
+	if !req.Company.AllowsPayment(PaymentKind(req.PaymentMethod)) {
+		return problem(409, "payment_not_allowed", "Tu empresa no paga con ese medio. Elige otro: "+allowedNames(req.Company.AllowedPayments), nil), nil
+	}
 	// The customer is identified by a keyed digest of the email, so per-customer
 	// limits work without storing the address in clear.
 	custHash, err := s.Keys.BlindIndex(tenant, strings.ToLower(strings.TrimSpace(req.Customer.Email)))
@@ -1123,4 +1127,12 @@ func feeJSON(f []cart.Fee) []byte {
 	}
 	b, _ := json.Marshal(f)
 	return b
+}
+
+func allowedNames(kinds []string) string {
+	out := make([]string, 0, len(kinds))
+	for _, k := range kinds {
+		out = append(out, strings.ToLower(PaymentKinds[k]))
+	}
+	return strings.Join(out, ", ")
 }
