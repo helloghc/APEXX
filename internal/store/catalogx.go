@@ -212,20 +212,30 @@ func saveProductTx(ctx context.Context, tx pgx.Tx, tenant, actor string, w Produ
 	if err != nil {
 		return 0, err
 	}
-	if _, err := tx.Exec(ctx, `DELETE FROM variants WHERE tenant_id=$1 AND product_id=$2`, tenant, p.ID); err != nil {
-		return 0, err
-	}
+	// The writes go to the database in two pipelined batches instead of one
+	// round trip each (about 15 for a product with two variants), in the
+	// same order as before: variants first, then the SKUs that left, then
+	// prices, stock and events.
 	keep := map[string]bool{}
+	first := &pgx.Batch{}
+	first.Queue(`DELETE FROM variants WHERE tenant_id=$1 AND product_id=$2`, tenant, p.ID)
 	for i, v := range p.Variants {
 		keep[v.SKU] = true
 		o, _ := json.Marshal(nonNilMap(v.Options))
-		if _, err := tx.Exec(ctx, `INSERT INTO variants (tenant_id, sku, product_id, title, options, barcode, weight_grams, position)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, tenant, v.SKU, p.ID, v.Title, o, v.Barcode, v.WeightGrams, i); err != nil {
-			if isUnique(err) {
-				return 0, fmt.Errorf("%w: sku %s", ErrConflict, v.SKU)
-			}
-			return 0, fmt.Errorf("variant %s: %w", v.SKU, err)
+		first.Queue(`INSERT INTO variants (tenant_id, sku, product_id, title, options, barcode, weight_grams, position)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, tenant, v.SKU, p.ID, v.Title, o, v.Barcode, v.WeightGrams, i)
+	}
+	if err := sendBatch(ctx, tx, first, func(i int, err error) error {
+		if i == 0 {
+			return err
 		}
+		sku := p.Variants[i-1].SKU
+		if isUnique(err) {
+			return fmt.Errorf("%w: sku %s", ErrConflict, sku)
+		}
+		return fmt.Errorf("variant %s: %w", sku, err)
+	}); err != nil {
+		return 0, err
 	}
 	// A SKU that left the product takes its prices and idle stock with it.
 	for _, sku := range oldSKUs {
@@ -236,17 +246,24 @@ func saveProductTx(ctx context.Context, tx pgx.Tx, tenant, actor string, w Produ
 			return 0, err
 		}
 	}
+	second := &pgx.Batch{}
+	emit := func(topic, key string, payload any) error {
+		bs, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		second.Queue(`INSERT INTO outbox (tenant_id, topic, key, payload) VALUES ($1,$2,$3,$4)`, tenant, topic, key, bs)
+		return nil
+	}
 	for sku, pr := range w.Prices {
 		if !keep[sku] {
 			continue
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO prices (tenant_id, channel, sku, min_qty, amount, currency, compare_at)
+		second.Queue(`INSERT INTO prices (tenant_id, channel, sku, min_qty, amount, currency, compare_at)
 			VALUES ($1,$2,$3,1,$4,$5,$6)
 			ON CONFLICT (tenant_id, channel, sku, min_qty) DO UPDATE SET amount=EXCLUDED.amount, currency=EXCLUDED.currency, compare_at=EXCLUDED.compare_at`,
-			tenant, w.Channel, sku, pr.Amount, pr.Currency, pr.CompareAt); err != nil {
-			return 0, err
-		}
-		if err := Emit(ctx, tx, tenant, TopicPrice, w.Channel+"|"+sku, nil); err != nil {
+			tenant, w.Channel, sku, pr.Amount, pr.Currency, pr.CompareAt)
+		if err := emit(TopicPrice, w.Channel+"|"+sku, nil); err != nil {
 			return 0, err
 		}
 	}
@@ -255,17 +272,18 @@ func saveProductTx(ctx context.Context, tx pgx.Tx, tenant, actor string, w Produ
 			continue
 		}
 		for loc, onHand := range locs {
-			if _, err := tx.Exec(ctx, `INSERT INTO stock_levels (tenant_id, sku, location_id, on_hand) VALUES ($1,$2,$3,$4)
+			second.Queue(`INSERT INTO stock_levels (tenant_id, sku, location_id, on_hand) VALUES ($1,$2,$3,$4)
 				ON CONFLICT (tenant_id, sku, location_id) DO UPDATE SET on_hand=EXCLUDED.on_hand, updated_at=now()`,
-				tenant, sku, loc, onHand); err != nil {
-				return 0, err
-			}
+				tenant, sku, loc, onHand)
 		}
-		if err := Emit(ctx, tx, tenant, TopicStock, sku, nil); err != nil {
+		if err := emit(TopicStock, sku, nil); err != nil {
 			return 0, err
 		}
 	}
-	if err := Emit(ctx, tx, tenant, TopicProduct, p.ID, map[string]any{"version": version}); err != nil {
+	if err := emit(TopicProduct, p.ID, map[string]any{"version": version}); err != nil {
+		return 0, err
+	}
+	if err := sendBatch(ctx, tx, second, func(_ int, err error) error { return err }); err != nil {
 		return 0, err
 	}
 	return version, Audit(ctx, tx, tenant, actor, "product.save", p.ID, map[string]any{
@@ -308,24 +326,85 @@ func (d *DB) DeleteProduct(ctx context.Context, tenant, actor, id string) error 
 	return d.Tx(ctx, tenant, func(tx pgx.Tx) error { return deleteProductTx(ctx, tx, tenant, actor, id) })
 }
 
-// DeleteProducts deletes up to 500 products in one transaction, each exactly
-// as DeleteProduct does (with its own audit entry). Ids that no longer exist
-// are skipped; it returns how many were deleted.
+// DeleteProducts deletes up to 500 products in one transaction with the
+// same effects as DeleteProduct on each (variants, prices, idle stock,
+// manual collections, events and one audit entry per product), but with a
+// handful of set statements instead of a dozen round trips per product. Ids
+// that no longer exist are skipped; it returns how many were deleted.
 func (d *DB) DeleteProducts(ctx context.Context, tenant, actor string, ids []string) (int, error) {
 	n := 0
 	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		n = 0
-		for _, id := range ids {
-			err := deleteProductTx(ctx, tx, tenant, actor, id)
-			if errors.Is(err, ErrNotFound) {
-				continue
-			}
-			if err != nil {
+		// SKUs of each product, before the cascade removes the variants.
+		rows, err := tx.Query(ctx, `SELECT product_id, sku FROM variants WHERE tenant_id=$1 AND product_id = ANY($2)`, tenant, ids)
+		if err != nil {
+			return err
+		}
+		skusOf := map[string][]string{}
+		for rows.Next() {
+			var pid, sku string
+			if err := rows.Scan(&pid, &sku); err != nil {
+				rows.Close()
 				return err
 			}
-			n++
+			skusOf[pid] = append(skusOf[pid], sku)
 		}
-		return nil
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		del, err := tx.Query(ctx, `DELETE FROM products WHERE tenant_id=$1 AND id = ANY($2) RETURNING id, title`, tenant, ids)
+		if err != nil {
+			return err
+		}
+		type gone struct{ id, title string }
+		var deleted []gone
+		for del.Next() {
+			var g gone
+			if err := del.Scan(&g.id, &g.title); err != nil {
+				del.Close()
+				return err
+			}
+			deleted = append(deleted, g)
+		}
+		del.Close()
+		if err := del.Err(); err != nil {
+			return err
+		}
+		n = len(deleted)
+		if n == 0 {
+			return nil
+		}
+		// Only the SKUs of products that were really deleted.
+		var skus []string
+		for _, g := range deleted {
+			skus = append(skus, skusOf[g.id]...)
+		}
+		b := &pgx.Batch{}
+		// Prices and idle stock of those SKUs, one event per channel|sku and
+		// per sku, as dropSKUTx emits them.
+		b.Queue(`WITH p AS (DELETE FROM prices WHERE tenant_id=$1 AND sku = ANY($2) RETURNING channel, sku)
+			INSERT INTO outbox (tenant_id, topic, key, payload)
+			SELECT DISTINCT $1, $3, channel || '|' || sku, 'null'::jsonb FROM p`, tenant, skus, TopicPrice)
+		b.Queue(`WITH s AS (DELETE FROM stock_levels WHERE tenant_id=$1 AND sku = ANY($2) AND reserved=0 RETURNING sku)
+			INSERT INTO outbox (tenant_id, topic, key, payload)
+			SELECT DISTINCT $1, $3, sku, 'null'::jsonb FROM s`, tenant, skus, TopicStock)
+		gids := make([]string, len(deleted))
+		for i, g := range deleted {
+			gids[i] = g.id
+		}
+		b.Queue(`WITH c AS (UPDATE collections SET product_ids = ARRAY(SELECT x FROM unnest(product_ids) WITH ORDINALITY AS u(x, o) WHERE NOT x = ANY($2) ORDER BY o), updated_at=now()
+				WHERE tenant_id=$1 AND product_ids && $2 RETURNING id)
+			INSERT INTO outbox (tenant_id, topic, key, payload) SELECT $1, $3, id, 'null'::jsonb FROM c`, tenant, gids, TopicCollection)
+		b.Queue(`INSERT INTO outbox (tenant_id, topic, key, payload) SELECT $1, $2, x, '{"deleted":true}'::jsonb FROM unnest($3::text[]) x`,
+			tenant, TopicProduct, gids)
+		if err := sendBatch(ctx, tx, b, func(_ int, err error) error { return err }); err != nil {
+			return err
+		}
+		entries := make([]auditEntry, len(deleted))
+		for i, g := range deleted {
+			entries[i] = auditEntry{action: "product.delete", target: g.id, data: map[string]any{"title": g.title, "skus": len(skusOf[g.id])}}
+		}
+		return auditMany(ctx, tx, tenant, actor, entries)
 	})
 	return n, err
 }
@@ -1573,4 +1652,20 @@ func ensureCategoryPathTx(ctx context.Context, tx pgx.Tx, tenant, actor, path st
 		parent = found
 	}
 	return parent, nil
+}
+
+// sendBatch runs a pipelined batch and returns the first failure, as wrap
+// describes it (wrap gets the index of the failed statement).
+func sendBatch(ctx context.Context, tx pgx.Tx, b *pgx.Batch, wrap func(i int, err error) error) error {
+	if b.Len() == 0 {
+		return nil
+	}
+	br := tx.SendBatch(ctx, b)
+	for i := 0; i < b.Len(); i++ {
+		if _, err := br.Exec(); err != nil {
+			_ = br.Close()
+			return wrap(i, err)
+		}
+	}
+	return br.Close()
 }

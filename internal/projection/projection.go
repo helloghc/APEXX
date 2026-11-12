@@ -114,14 +114,16 @@ type Stats struct {
 
 // Projector keeps every tenant's read models in sync with the database.
 type Projector struct {
-	pre     map[[2]string]*catalog.Product // products prefetched for the batch being drained (drain only)
-	db      *store.DB
-	ps      *promostore.Store
-	listen  string // connection string for LISTEN (system role)
-	log     *slog.Logger
-	mu      sync.RWMutex
-	tenants map[string]*Tenant
-	cursor  atomic.Int64
+	pre      map[[2]string]*catalog.Product // products prefetched for the batch being drained (drain only)
+	preStock map[[2]string]stockPre         // stock of SKUs prefetched for the batch (drain only)
+	prePrice map[[3]string][]pricing.Tier   // price tiers (tenant, channel, sku) prefetched for the batch
+	db       *store.DB
+	ps       *promostore.Store
+	listen   string // connection string for LISTEN (system role)
+	log      *slog.Logger
+	mu       sync.RWMutex
+	tenants  map[string]*Tenant
+	cursor   atomic.Int64
 
 	applied  atomic.Int64
 	errs     atomic.Int64
@@ -283,7 +285,16 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 // prefetchProducts loads, with one query per store, every product the
 // batch of events touches, so applying 500 product events does not read the
 // database 500 times. Only the drain goroutine uses p.pre.
+type stockPre struct {
+	levels []inventory.Level
+	kit    []inventory.Component
+	pre    []store.Preorder
+}
+
 func (p *Projector) prefetchProducts(ctx context.Context, evs []store.OutboxEvent) error {
+	if err := p.prefetchStockAndPrices(ctx, evs); err != nil {
+		return err
+	}
 	p.pre = nil
 	ids := map[string][]string{}
 	seen := map[[2]string]bool{}
@@ -306,6 +317,63 @@ func (p *Projector) prefetchProducts(ctx context.Context, evs []store.OutboxEven
 			p.pre[[2]string{tenant, prod.ID}] = &prod
 		}); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// prefetchStockAndPrices does for stock and price events what
+// prefetchProducts does for products: one query per kind and store.
+func (p *Projector) prefetchStockAndPrices(ctx context.Context, evs []store.OutboxEvent) error {
+	p.preStock, p.prePrice = nil, nil
+	skus := map[string][]string{}
+	prices := map[string][][2]string{}
+	seenS, seenP := map[[2]string]bool{}, map[[3]string]bool{}
+	for _, e := range evs {
+		switch e.Topic {
+		case store.TopicStock:
+			if k := [2]string{e.Tenant, e.Key}; !seenS[k] {
+				seenS[k] = true
+				skus[e.Tenant] = append(skus[e.Tenant], e.Key)
+			}
+		case store.TopicPrice:
+			ch, sku, _ := strings.Cut(e.Key, "|")
+			if k := [3]string{e.Tenant, ch, sku}; !seenP[k] {
+				seenP[k] = true
+				prices[e.Tenant] = append(prices[e.Tenant], [2]string{ch, sku})
+			}
+		}
+	}
+	if len(skus) > 0 {
+		p.preStock = map[[2]string]stockPre{}
+		for tenant, list := range skus {
+			levels, err := p.db.StockFor(ctx, tenant, list)
+			if err != nil {
+				return err
+			}
+			kits, err := p.db.BundlesFor(ctx, tenant, list)
+			if err != nil {
+				return err
+			}
+			pres, err := p.db.PreordersFor(ctx, tenant, list)
+			if err != nil {
+				return err
+			}
+			for _, sku := range list {
+				p.preStock[[2]string{tenant, sku}] = stockPre{levels[sku], kits[sku], pres[sku]}
+			}
+		}
+	}
+	if len(prices) > 0 {
+		p.prePrice = map[[3]string][]pricing.Tier{}
+		for tenant, keys := range prices {
+			got, err := p.db.PricesFor(ctx, tenant, keys)
+			if err != nil {
+				return err
+			}
+			for _, k := range keys {
+				p.prePrice[[3]string{tenant, k[0], k[1]}] = got[k] // nil: no tiers left
+			}
 		}
 	}
 	return nil
@@ -407,6 +475,13 @@ func (p *Projector) applyTaxonomy(ctx context.Context, t *Tenant, topic, id stri
 }
 
 func (p *Projector) applyStock(ctx context.Context, t *Tenant, sku string) error {
+	if pre, ok := p.preStock[[2]string{t.ID, sku}]; ok {
+		delete(p.preStock, [2]string{t.ID, sku}) // a later event of the batch reads fresh
+		t.Inventory.Load(sku, pre.levels)
+		t.Inventory.SetBundle(sku, pre.kit)
+		t.Inventory.SetPreorder(sku, preorderView(pre.pre))
+		return nil
+	}
 	levels, err := p.db.LoadStock(ctx, t.ID, sku)
 	if err != nil {
 		return err
@@ -438,6 +513,11 @@ func preorderView(ps []store.Preorder) *inventory.Preorder {
 }
 
 func (p *Projector) applyPrice(ctx context.Context, t *Tenant, channel, sku string) error {
+	if tiers, ok := p.prePrice[[3]string{t.ID, channel, sku}]; ok {
+		delete(p.prePrice, [3]string{t.ID, channel, sku})
+		t.Pricing.Set(channel, sku, tiers...)
+		return nil
+	}
 	tiers, err := p.db.LoadPrices(ctx, t.ID, channel, sku)
 	if err != nil {
 		return err

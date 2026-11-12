@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/inventory"
 	"github.com/helloghc/apexx/internal/money"
@@ -105,6 +107,95 @@ func (d *DB) AllStock(ctx context.Context, tenant string) (map[string][]inventor
 func (d *DB) AllPrices(ctx context.Context, tenant string) (map[[2]string][]pricing.Tier, error) {
 	rows, err := d.System.Query(ctx, `SELECT channel, sku, min_qty, amount, currency, compare_at FROM prices
 		WHERE tenant_id=$1 ORDER BY channel, sku, min_qty`, tenant)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[[2]string][]pricing.Tier{}
+	for rows.Next() {
+		var ch, sku, cur string
+		var t pricing.Tier
+		var cmp *int64
+		if err := rows.Scan(&ch, &sku, &t.MinQty, &t.Unit.Amount, &cur, &cmp); err != nil {
+			return nil, err
+		}
+		t.Unit.Currency = money.Currency(cur)
+		if cmp != nil {
+			c := money.New(*cmp, t.Unit.Currency)
+			t.CompareAt = &c
+		}
+		k := [2]string{ch, sku}
+		out[k] = append(out[k], t)
+	}
+	return out, rows.Err()
+}
+
+// StockFor returns the stock levels of the given SKUs (absent: no rows).
+func (d *DB) StockFor(ctx context.Context, tenant string, skus []string) (map[string][]inventory.Level, error) {
+	rows, err := d.System.Query(ctx, `SELECT sku, location_id, on_hand, reserved FROM stock_levels
+		WHERE tenant_id=$1 AND sku = ANY($2) ORDER BY sku, location_id`, tenant, skus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]inventory.Level{}
+	for rows.Next() {
+		var sku string
+		var l inventory.Level
+		if err := rows.Scan(&sku, &l.LocationID, &l.OnHand, &l.Reserved); err != nil {
+			return nil, err
+		}
+		out[sku] = append(out[sku], l)
+	}
+	return out, rows.Err()
+}
+
+// BundlesFor returns the components of the given kit SKUs.
+func (d *DB) BundlesFor(ctx context.Context, tenant string, skus []string) (map[string][]inventory.Component, error) {
+	rows, err := d.System.Query(ctx, `SELECT bundle_sku, component_sku, qty FROM bundle_components
+		WHERE tenant_id=$1 AND bundle_sku = ANY($2) ORDER BY bundle_sku, position, component_sku`, tenant, skus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]inventory.Component{}
+	for rows.Next() {
+		var b string
+		var c inventory.Component
+		if err := rows.Scan(&b, &c.SKU, &c.Qty); err != nil {
+			return nil, err
+		}
+		out[b] = append(out[b], c)
+	}
+	return out, rows.Err()
+}
+
+// PreordersFor returns the preorders of the given SKUs.
+func (d *DB) PreordersFor(ctx context.Context, tenant string, skus []string) (map[string][]Preorder, error) {
+	rows, err := d.System.Query(ctx, `SELECT `+preorderCols+` FROM preorders WHERE tenant_id=$1 AND sku = ANY($2) ORDER BY sku`, tenant, skus)
+	if err != nil {
+		return nil, err
+	}
+	ps, err := pgx.CollectRows(rows, scanPreorder)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]Preorder{}
+	for _, p := range ps {
+		out[p.SKU] = append(out[p.SKU], p)
+	}
+	return out, nil
+}
+
+// PricesFor returns the price tiers of the given (channel, SKU) pairs.
+func (d *DB) PricesFor(ctx context.Context, tenant string, keys [][2]string) (map[[2]string][]pricing.Tier, error) {
+	chs, skus := make([]string, len(keys)), make([]string, len(keys))
+	for i, k := range keys {
+		chs[i], skus[i] = k[0], k[1]
+	}
+	rows, err := d.System.Query(ctx, `SELECT p.channel, p.sku, p.min_qty, p.amount, p.currency, p.compare_at FROM prices p
+		JOIN unnest($2::text[], $3::text[]) AS k(channel, sku) ON p.channel=k.channel AND p.sku=k.sku
+		WHERE p.tenant_id=$1 ORDER BY p.channel, p.sku, p.min_qty`, tenant, chs, skus)
 	if err != nil {
 		return nil, err
 	}

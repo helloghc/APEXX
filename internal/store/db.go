@@ -107,6 +107,47 @@ func Audit(ctx context.Context, tx pgx.Tx, tenant, actor, action, target string,
 	return err
 }
 
+type auditEntry struct {
+	action, target string
+	data           any
+}
+
+// auditMany appends several entries to the hash chain with one lock, one
+// read and one insert, computing each hash exactly as Audit does.
+func auditMany(ctx context.Context, tx pgx.Tx, tenant, actor string, es []auditEntry) error {
+	if len(es) == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext('audit:' || $1))`, tenant); err != nil {
+		return err
+	}
+	var seq int64
+	prev := make([]byte, 32)
+	err := tx.QueryRow(ctx, `SELECT seq, hash FROM audit_log WHERE tenant_id=$1 ORDER BY seq DESC LIMIT 1`, tenant).Scan(&seq, &prev)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	seqs := make([]int64, len(es))
+	actions, targets, datas := make([]string, len(es)), make([]string, len(es)), make([]string, len(es))
+	prevs, hashes := make([][]byte, len(es)), make([][]byte, len(es))
+	for i, e := range es {
+		b, err := canonicalJSON(e.data)
+		if err != nil {
+			return err
+		}
+		seq++
+		h := sha256.New()
+		fmt.Fprintf(h, "%x|%d|%s|%s|%s|%s|%s", prev, seq, tenant, actor, e.action, e.target, b)
+		sum := h.Sum(nil)
+		seqs[i], actions[i], targets[i], datas[i], prevs[i], hashes[i] = seq, e.action, e.target, string(b), prev, sum
+		prev = sum
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO audit_log (tenant_id, seq, actor, action, target, data, prev_hash, hash)
+		SELECT $1, s, $2, a, t, d::jsonb, p, h FROM unnest($3::bigint[], $4::text[], $5::text[], $6::text[], $7::bytea[], $8::bytea[]) AS x(s, a, t, d, p, h)`,
+		tenant, actor, seqs, actions, targets, datas, prevs, hashes)
+	return err
+}
+
 // VerifyAudit recomputes the hash chain of a tenant and returns the first broken seq (0 = intact).
 func (d *DB) VerifyAudit(ctx context.Context, tenant string) (int64, error) {
 	rows, err := d.System.Query(ctx, `SELECT seq, actor, action, target, data::text, prev_hash, hash
