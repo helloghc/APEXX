@@ -35,7 +35,7 @@ Hecho y probado:
 
 Pendiente de lo pedido: pago automático a vendedores (hoy se registra la transferencia hecha por fuera).
 
-Siguiente etapa: ver `docs/audit/benchmark-shopify-magento-medusa.html`, que compara función por función
+Siguiente etapa: ver `docs/audit/benchmark-plataformas.html`, que compara función por función
 con Shopify, Magento y Medusa y ordena lo que falta en siete etapas.
 
 Plan de las etapas 0 a 7 con metas de velocidad y auditorías: `docs/PLAN-SUPERIORIDAD.html`.

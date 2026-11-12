@@ -1,0 +1,259 @@
+<title>Apexx frente a seis plataformas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: a working document. Summary first, then one filterable table that is the audit itself, then the build order. */
+:root{
+  --bg:#fff7fb; --surface:#ffffff; --line:#f0cfe0; --fg:#2a1020; --muted:#6d5361; --accent:#a81f6b; --accent-soft:#ffe3f1;
+  --ok:#17663a; --ok-bg:#e2f4e8; --mid:#8a5300; --mid-bg:#fdefd2; --no:#a3202a; --no-bg:#fde4e4; --ext:#3d4a8f; --ext-bg:#e6e9fb;
+  --display:"Space Grotesk","Inter",system-ui,sans-serif; --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1a0f15; --surface:#24161e; --line:#45293a; --fg:#f8e9f1; --muted:#c3a6b5; --accent:#ff8fc6; --accent-soft:#4a1f37;
+  --ok:#7fdca0; --ok-bg:#173524; --mid:#f2c56b; --mid-bg:#3d2f10; --no:#ff9aa0; --no-bg:#451a1e; --ext:#aab4ff; --ext-bg:#252b55; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1a0f15; --surface:#24161e; --line:#45293a; --fg:#f8e9f1; --muted:#c3a6b5; --accent:#ff8fc6; --accent-soft:#4a1f37;
+  --ok:#7fdca0; --ok-bg:#173524; --mid:#f2c56b; --mid-bg:#3d2f10; --no:#ff9aa0; --no-bg:#451a1e; --ext:#aab4ff; --ext-bg:#252b55; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:36px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(1.7rem,4vw,2.5rem)} h2{font-size:1.35rem} h3{font-size:1rem}
+p{margin:0;max-width:68ch} .muted{color:var(--muted)} .small{font-size:.85rem}
+header{display:grid;gap:12px}
+.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+section{display:grid;gap:14px}
+.tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tally div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:2px}
+.tally b{font-family:var(--display);font-size:1.9rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.tally span{color:var(--muted);font-size:.85rem}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.75rem;font-weight:600;white-space:nowrap}
+.si{color:var(--ok);background:var(--ok-bg)} .parcial{color:var(--mid);background:var(--mid-bg)} .no{color:var(--no);background:var(--no-bg)} .ext{color:var(--ext);background:var(--ext-bg)}
+.filters{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.group{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.group>span{font-size:.8rem;color:var(--muted);margin-right:2px}
+button.f{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+button.f[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+button.f:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input#q{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0;width:min(260px,100%)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:1560px;font-size:.86rem}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--surface)}
+tr:last-child td{border-bottom:0}
+td.cap{min-width:190px} td.cap b{display:block} td.cap small{color:var(--muted)}
+td.how{min-width:230px;color:var(--muted)} td.better{min-width:230px}
+td.plat small{display:block;color:var(--muted);margin-top:3px;max-width:22ch}
+.x{color:var(--muted);background:var(--line)}
+th.ap,td.ap{background:var(--accent-soft)}
+.stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.stages div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:6px;min-width:0}
+.stages b{font-family:var(--display)}
+.prio{font-family:var(--display);font-weight:600;font-variant-numeric:tabular-nums}
+ol.plan{margin:0;padding:0;list-style:none;display:grid;gap:12px;counter-reset:s}
+ol.plan li{counter-increment:s;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px 16px 58px;position:relative;display:grid;gap:4px}
+ol.plan li::before{content:counter(s);position:absolute;left:18px;top:14px;font-family:var(--display);font-size:1.5rem;font-weight:600;color:var(--accent)}
+ul.plain{margin:0;padding-left:18px;display:grid;gap:6px;max-width:75ch}
+a{color:var(--accent)}
+.note{background:var(--accent-soft);border-radius:10px;padding:14px 16px}
+#count{font-variant-numeric:tabular-nums}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">Auditoría comparativa · 12 de noviembre de 2026 · segunda edición</span>
+  <h1>Apexx frente a seis plataformas</h1>
+  <p>Shopify, Magento Open Source, Adobe Commerce como servicio en la nube, BigCommerce, Tiendanube y Medusa, en venta al público (B2C) y entre empresas (B2B). Qué tienen que a Apexx le falta, cómo lo resuelven y cómo hacerlo mejor. La columna de Apexx sale del código del repositorio a esta fecha (etapas 1, 2 y 3 ya terminadas); las demás, de la documentación oficial de cada plataforma.</p>
+</header>
+
+<section aria-labelledby="t-res">
+  <h2 id="t-res">Resultado en una mirada</h2>
+  <div class="tally" id="tally"></div>
+  <p class="muted small">Se compararon <span id="total"></span> funciones. «A medias» significa que Apexx cubre el caso común pero no todo lo que ofrece la plataforma más completa.</p>
+  <div class="note"><p><strong>Lectura corta.</strong> Con mercados, campos propios y B2B profundo terminados, Apexx ya iguala o supera a todas en operación de tienda y en B2B frente a Shopify, BigCommerce, Tiendanube y Medusa. Adobe Commerce sigue adelante en B2B avanzado (jerarquía de empresas, roles a la medida, representantes de ventas, plantillas de cotización). Lo que falta en general está en cinco frentes: logística y pagos conectados, tipos de producto, extensibilidad para terceros, canales y contenido, e inteligencia artificial con comercio por agentes.</p></div>
+</section>
+
+<section aria-labelledby="t-tab">
+  <h2 id="t-tab">Función por función</h2>
+  <div class="filters">
+    <div class="group" role="group" aria-label="Segmento"><span>Segmento</span>
+      <button class="f" data-k="seg" data-v="" aria-pressed="true">Todo</button>
+      <button class="f" data-k="seg" data-v="B2C" aria-pressed="false">B2C</button>
+      <button class="f" data-k="seg" data-v="B2B" aria-pressed="false">B2B</button>
+      <button class="f" data-k="seg" data-v="Plataforma" aria-pressed="false">Plataforma</button>
+    </div>
+    <div class="group" role="group" aria-label="Estado en Apexx"><span>En Apexx</span>
+      <button class="f" data-k="st" data-v="" aria-pressed="false">Todo</button>
+      <button class="f" data-k="st" data-v="falta" aria-pressed="true">Falta o a medias</button>
+      <button class="f" data-k="st" data-v="si" aria-pressed="false">Ya está</button>
+    </div>
+    <input id="q" type="search" placeholder="Buscar función" aria-label="Buscar función">
+    <span class="muted small"><span id="count"></span> filas</span>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Función</th><th>Shopify</th><th>Magento Open Source</th><th>Adobe Commerce</th><th>BigCommerce</th><th>Tiendanube</th><th>Medusa</th><th class="ap">Apexx</th><th>Cómo lo hacen</th><th>Cómo hacerlo mejor</th><th>Etapa</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="muted small">Etiquetas: <span class="pill si">sí</span> de fábrica · <span class="pill parcial">a medias</span> · <span class="pill ext">extra</span> requiere app, extensión o plan superior · <span class="pill no">no</span> · <span class="pill x">sin dato</span> su documentación no lo menciona. «Etapa» es la del plan de abajo; 1 a 3 ya están hechas.</p>
+</section>
+
+<section aria-labelledby="t-plan">
+  <h2 id="t-plan">Plan para cerrar lo que falta</h2>
+  <p>Las etapas 1 (mercados), 2 (campos propios y privacidad) y 3 (B2B profundo) ya están terminadas y probadas. Lo que sigue va ordenado por cuánto negocio destraba y por dependencia técnica. Cada etapa se cierra con las mismas ocho auditorías: funcional, seguridad y aislamiento, reversión, fallas, concurrencia, velocidad, uso humano y registro en git.</p>
+  <div class="stages">
+    <div><b>Etapa 4 · Logística y pagos conectados</b><p class="small">Tarifas en vivo y guías por una sola interfaz de paquetería (con Envía, Skydropx y Estafeta para México), devoluciones con guía y cambio de producto, surtido por terceros, edición de pedidos, pago exprés, tarjetas guardadas del comprador, OXXO, SPEI y Pix por Stripe, cargos extra por pedido, proveedor de impuestos externo y aranceles.</p></div>
+    <div><b>Etapa 5 · Tipos de producto</b><p class="small">Paquetes y kits con stock real por componente, digitales con descarga firmada, preventa con anticipo, opciones personalizables con precio y comparador.</p></div>
+    <div><b>Etapa 6 · Extensibilidad</b><p class="small">Reglas de negocio que consultan a una app para envío, pago y carrito (con respuesta de respaldo si la app tarda), automatizaciones, apps con permisos por alcance, zonas del panel y del pago para terceros, inicio de sesión con otro sistema, gestor de scripts con consentimiento, GraphQL de tienda, operaciones por lotes y SDK.</p></div>
+    <div><b>Etapa 7 · Canales y contenido</b><p class="small">Lealtad, blog, contenido programado con vista previa, contenido por segmento, lista de regalos y envoltura, punto de venta, Mercado Libre y Amazon, varios frentes por tienda, dominio por mercado, editor de imágenes, campañas, conversiones del servidor y reportes a la medida.</p></div>
+    <div><b>Etapa 8 · B2B avanzado</b><p class="small">Jerarquía de empresas, roles a la medida dentro de la empresa, representante de ventas que actúa como el comprador con registro, plantillas de cotización para compras recurrentes, PDF y comentarios por línea, facturas pagables en línea, adjuntos, alta masiva de empresas, medios de pago por empresa y punchout.</p></div>
+    <div><b>Etapa 9 · Inteligencia artificial y agentes</b><p class="small">Recomendaciones aprendidas de la navegación, búsqueda que aprende del clic, y una tienda que los asistentes de IA pueden consultar y comprar con permiso del cliente (catálogo, carrito y pago por un servidor MCP), todo con los mismos límites de seguridad.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="t-fue">
+  <h2 id="t-fue">Dónde Apexx ya va adelante</h2>
+  <ul class="plain">
+    <li><strong>Velocidad medida, no prometida.</strong> El 12 de noviembre, en el servidor de desarrollo: ficha de producto 4.5 ms, carrito con envío e impuestos 4.3 ms, búsqueda 5.5 ms, catálogo con filtros 9.5 ms (mediana), sin fallos. Un solo binario en Go con el catálogo en memoria; Magento depende de indexadores y caché, y en Adobe la búsqueda y el catálogo viven en servicios aparte.</li>
+    <li><strong>Cambios al instante, sin reindexar.</strong> Un cambio de precio, stock o catálogo de empresa se ve en segundos.</li>
+    <li><strong>B2B incluido en todos los planes.</strong> Aprobaciones de 5 niveles con suplentes, topes mensuales por persona y sucursal, catálogo negociado, cotizaciones y pago automático del crédito. En Adobe y BigCommerce es edición de pago; en Shopify, plan Plus; en Tiendanube y Medusa no existe de fábrica.</li>
+    <li><strong>Promociones que se explican solas</strong> con simulador de carrito; ninguna de las seis lo trae.</li>
+    <li><strong>Seguridad de fábrica.</strong> Datos personales cifrados con llave por tienda, aislamiento por tienda en la base de datos y registro de cambios encadenado.</li>
+    <li><strong>Reversión completa probada</strong>: pago, stock, cupones, saldo y crédito de empresa vuelven a su lugar.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="t-src">
+  <h2 id="t-src">Fuentes y límites de esta auditoría</h2>
+  <ul class="plain small">
+    <li>Adobe Commerce: <a href="https://experienceleague.adobe.com/en/docs/commerce-admin/b2b/introduction">guía B2B</a>, <a href="https://experienceleague.adobe.com/en/docs/commerce-admin/b2b/quotes/quotes">cotizaciones negociables</a>, <a href="https://experienceleague.adobe.com/en/docs/commerce-admin/b2b/quotes/quote-templates">plantillas de cotización</a>, <a href="https://experienceleague.adobe.com/en/docs/commerce/cloud-service/overview">Commerce como servicio en la nube</a>, <a href="https://experienceleague.adobe.com/en/docs/commerce/optimizer/overview">Commerce Optimizer</a>, <a href="https://developer.adobe.com/commerce/webapi/rest/">API REST</a>.</li>
+    <li>BigCommerce: <a href="https://docs.bigcommerce.com/docs/api">índice de API</a> (REST, GraphQL de tienda, B2B Edition, Multi-Storefront).</li>
+    <li>Tiendanube: <a href="https://tiendanube.github.io/api-documentation/intro">API 2025-03</a>, recursos de reglas de negocio, kits, SDK de pago, órdenes de surtido y descuentos.</li>
+    <li>Shopify, Magento y Medusa: las mismas fuentes de la primera edición (11 de noviembre).</li>
+    <li>Se leyeron índices y guías principales, no cada operación. Las celdas describen lo que cada documentación declara; no se probó ninguna en vivo. «Sin dato» marca lo que su documentación no menciona.</li>
+    <li>Magento Open Source no incluye B2B, puntos, RMA, contenido programado ni segmentos: son de Adobe Commerce, que ahora tiene columna propia.</li>
+    <li>Apexx se construye desde cero entendiendo cada función, sin copiar código de nadie.</li>
+  </ul>
+</section>
+</div>
+<script>
+// [segmento, área, función, shopify, magento OS, adobe commerce, bigcommerce, tiendanube, medusa, apexx, cómo lo hacen, cómo hacerlo mejor, etapa]
+// estado: s=sí p=a medias e=extra n=no x=sin dato; texto opcional tras "|"
+const D=[
+["B2C","Internacional","Varias monedas con precio por país","s|Markets","s|Moneda por sitio web","s|Sitios, vistas y monedas","s|Multi-Storefront y monedas por canal","p|Tienda por país","s|Regions","s|Mercados con conversión, redondeo o precio fijo","Un mercado agrupa países y lleva catálogo, precios, moneda y redondeo.","Hecho: mercado = canal + países, calculado al instante.",1],
+["B2C","Internacional","Impuestos por país, incluidos o no en el precio","s|Shopify Tax","s|Reglas de impuesto","s|Reglas de impuesto","s|Zonas, tasas y proveedores","p|Por país de la tienda","s|Tax regions","s|Por mercado, con exención por empresa","Tasas por región y tipo de producto.","Hecho; falta conectar un proveedor externo (etapa 4).",1],
+["B2C","Internacional","Traducción del contenido del comerciante","s|Traducciones por recurso","s|Valor por vista de tienda","s|Valor por vista de tienda","s|Locales del catálogo","s|Textos por idioma","p|Módulo en beta","s|Por producto en su pantalla, seis idiomas","Cada recurso guarda su texto por idioma.","Hecho.",1],
+["B2C","Internacional","Dominio o carpeta propia por país","s|Presencia web local","s|Sitio web por dominio","s|Sitio web por dominio","s|Dominio por canal","p|Dominio por tienda","p|Lo arma el frente","p|Mercado e idioma por dirección; sin dominio propio por mercado","Cada mercado tiene su dominio o subcarpeta.","Dominio o carpeta por mercado con redirección sugerida, nunca forzada.",7],
+["B2C","Internacional","Aranceles de importación en el pago","s|Cálculo de aranceles","e","e","e|Apps","n","n","n","Cobra aranceles según código arancelario y país.","Código arancelario y origen en el producto; proveedor de cálculo por la interfaz de impuestos.",4],
+["B2C","Catálogo","Campos propios en productos, clientes, pedidos y empresas","s|Metafields","s|Atributos","s|Atributos y catálogo componible","s|Metafields en todo","s|Custom fields y metafields","p|Con código","s|Tipados, cifrables, usables en segmentos, promociones y correos","Definiciones tipadas por recurso.","Hecho.",2],
+["B2C","Catálogo","Objetos propios relacionables","s|Metaobjects","p|Con módulo","p|Catálogo componible","p|Metafields","p|Metafields","s|Módulos y enlaces","s|Entidades enlazadas a productos y mostradas en la ficha","Tipos del comerciante con referencias.","Hecho.",2],
+["B2C","Catálogo","Paquetes y kits con stock por componente","s|Bundles","s|Productos bundle","s|Productos bundle","e|Apps","s|Kits: stock = el componente más escaso","p|Kits de inventario","p|Promoción de conjunto; sin producto paquete","Un producto descuenta el stock de cada componente.","Paquete fijo o a elegir, stock por componente al instante y precio propio.",5],
+["B2C","Catálogo","Productos digitales con descarga","e|App","s","s","s","e|Apps","e","n","Entrega enlaces tras el pago.","Enlace firmado que vence, límite de descargas y reenvío desde la cuenta.",5],
+["B2C","Catálogo","Opciones personalizables con precio","p|Propiedades de línea","s","s","s|Modificadores con precio e imagen","p|Personalizaciones","p|Metadatos","n","El comprador llena texto o archivo que puede sumar precio.","Opciones con precio, validación y archivo privado, visibles en pedido y hoja de surtido.",5],
+["B2C","Catálogo","Preventa y anticipo","s|Planes de venta","e","e","s|Preventa con fecha","x","p|Con flujos","n","Cobra una parte y el resto al surtir.","Fecha prometida, anticipo y cobro automático del saldo con la tarjeta guardada.",5],
+["B2C","Catálogo","Comparar productos","e|Tema o app","s","s","s","x","n","n","Comparación por atributos.","Comparador por atributos filtrables, en el navegador, sin costo de servidor.",5],
+["B2C","Catálogo","Imágenes: recorte, formatos y entrega rápida","s|CDN con transformaciones","p","s|Product Visuals con AEM Assets","s|CDN de imágenes","s|CDN","p","p|WebP adaptable con srcset; sin editor ni recorte","Biblioteca de imágenes con transformaciones al vuelo.","Editor de recorte y foco en el panel, variantes generadas una vez y servidas desde caché.",7],
+["B2C","Pago","Reglas de negocio a la medida en descuento, envío y pago","s|Functions","p|Plugins PHP","s|Webhooks síncronos y App Builder","p|Scripts y apps","s|Business Rules: la tienda consulta a la app","s|Ganchos en código","p|Reglas configurables; sin consulta a una app","Código o servicio externo que decide en cada cálculo.","Primero reglas declarativas; luego consulta firmada a una app con límite de tiempo y respuesta de respaldo para que el pago nunca caiga.",6],
+["B2C","Pago","Ampliar el pago con campos y bloques de terceros","s|Extensiones de checkout","p|Plantillas","s|Drop-ins","s|Checkout SDK","s|Checkout SDK","s|Todo es código","p|Campos propios por configuración; sin bloques de apps","Bloques de app dentro del pago.","Zonas fijas del pago con presupuesto de peso y sin acceso a la tarjeta.",6],
+["B2C","Pago","Pago exprés y monederos","s|Shop Pay, Apple Pay, Google Pay","p","p|Payment Services","s|PayPal, Apple Pay, Google Pay","p|Pago Nube","p","p|Lo que da Stripe; sin botón exprés en ficha","Pago en un toque desde ficha y carrito.","Botón exprés de Stripe con envío resuelto en la misma hoja.",4],
+["B2C","Pago","Tarjetas guardadas del comprador","s|Shop Pay","p|Según pasarela","s|Bóveda","s|Instrumentos de pago guardados","p","p","p|Solo en suscripciones y crédito de empresa","El comprador paga con una tarjeta ya guardada.","Tarjeta guardada en Stripe por cliente, con borrado desde la cuenta.",4],
+["B2C","Pago","Medios locales de LatAm (OXXO, SPEI, Pix, boleto)","p|Según pasarela","e","e","e","s|Pago Nube y pasarelas locales","e","p|Meses sin intereses con tarjeta; sin OXXO ni SPEI","Medios en efectivo y transferencia con confirmación posterior.","OXXO, SPEI y Pix por Stripe con pedido apartado hasta el pago y vencimiento claro.",4],
+["B2C","Pago","Varios proveedores de pago","s","s","s","s","s","s","n|Solo Stripe, por decisión","Interfaz de proveedor con varias implementaciones.","Mantener Stripe y sumar medios locales a través de Stripe.",4],
+["B2C","Pago","Cargos extra por pedido (manejo, empaque)","p|Con Functions","n","p","s|Order-level fees","x","p","n","Cargo con nombre que se suma al total.","Cargo por regla (método de envío, monto, zona), visible y reembolsable.",4],
+["B2C","Pago","Proveedor de impuestos externo","s","e","s","s|API de proveedores de impuesto","n","s","n|Cálculo propio","El cálculo se delega a un servicio fiscal.","Interfaz de impuestos con caché y cálculo propio de respaldo.",4],
+["B2C","Pedidos","Editar un pedido ya colocado","s","p","p","s|Editar en el panel","p","s|Order edits","n","Cambia líneas y cobra o devuelve la diferencia.","Vista previa del ajuste, stock apartado y registro encadenado.",4],
+["B2C","Logística","Tarifas en vivo de paqueterías","s","s","s","s","s|Envío Nube y transportistas","s","p|Tarifas propias por zona, peso y monto","Cotiza con el transportista al calcular.","Interfaz única con caché corta y tarifa de respaldo.",4],
+["B2C","Logística","Compra e impresión de guías","s|Shopify Shipping","s","s","s","s|Envío Nube","p","n|Se captura la guía a mano","Guía desde el pedido.","Guía con el mismo proveedor y rastreo que actualiza el estado solo.",4],
+["B2C","Logística","Cambio de producto en una devolución","s","p","p|RMA","p","x","s|Exchanges","p|Reembolso o saldo; sin cambio","Línea nueva y diferencia.","Cambio en un paso con stock apartado y diferencia cubierta.",4],
+["B2C","Logística","Devolución con guía prepagada","s","n","s|RMA","p","x","p","p|Motivos; sin guía","El cliente recibe su guía.","Autoservicio con elegibilidad y guía automática.",4],
+["B2C","Logística","Surtido por terceros (3PL) y varios envíos por pedido","s","p","p","e|Apps","s|Órdenes de surtido","s","p|Varias ubicaciones y envíos; sin enviar a un tercero","Orden de surtido por servicio.","Orden firmada al tercero con confirmación de vuelta.",4],
+["B2C","Marketing","Puntos y niveles de lealtad","e","n","s|Puntos de recompensa","e","e","e","n","Puntos por compra.","Puntos sobre el libro contable, niveles por segmento y canje como saldo.",7],
+["B2C","Marketing","Automatizaciones «cuando pase X, haz Y»","s|Flow","p","p|Eventos y App Builder","e","e","s","p|Correos y avisos; sin constructor","Disparador, condición y acción.","Constructor visual sobre los eventos de Apexx con historial y reintentos.",6],
+["B2C","Marketing","Campañas de correo","s|Shopify Email","p","p","e","p","p","p|Operación y carrito abandonado","Envíos a segmentos.","Campañas a segmentos con venta atribuida.",7],
+["B2C","Marketing","Conversiones para anuncios","s|Web pixels","p","e|Adobe Analytics","s","s|Scripts","p","p|Analítica sin cookies y catálogos; sin conversiones","Eventos a píxeles.","Conversiones desde el servidor con consentimiento.",7],
+["B2C","Marketing","Contenido distinto por segmento","p","n","s|Bloques dinámicos","p","n","n","p|Segmentos y precios por grupo; contenido igual","Secciones que cambian según el visitante.","Secciones del diseñador con condición de segmento, sin romper la caché.",7],
+["B2C","Contenido","Blog","s","p","p|Page Builder","s","s","n","n","Entradas con autor y etiquetas.","Blog como tipo de página del diseñador con datos estructurados.",7],
+["B2C","Contenido","Contenido programado con vista previa","p","n","s|Content Staging","p","x","n","p|Promociones y precios programados; diseño no","Campaña que entra y sale por fecha.","Versión del diseño programada con vista previa a fecha simulada.",7],
+["B2C","Canales","Punto de venta","s|POS","e","e","e","p|POS","e","p|Pedido borrador con enlace","Caja con inventario por tienda.","Caja web con lector de Stripe e inventario por ubicación.",7],
+["B2C","Canales","Lista de regalos y envoltura","e","n","s|Gift registry y envoltura","e","x","n","n","Lista compartible.","Lista sobre favoritos con dirección oculta y envoltura con precio.",7],
+["B2C","Canales","Vender en Mercado Libre y Amazon","s|Canales","e","e","s|Channel Manager","e|Apps","n","p|Catálogos para Google y Meta","Sincroniza catálogo, stock y pedidos.","Canal con stock apartado por canal y pedidos que entran como uno más.",7],
+["B2C","Canales","Varios frentes de tienda desde un panel","p|Expansión en Plus","s","s","s|Multi-Storefront","n","p","p|Varias tiendas por cuenta; un frente por tienda","Varios dominios y temas sobre un catálogo.","Frentes con su tema y dominio sobre el mismo catálogo y pedidos.",7],
+["B2C","Inteligencia","Recomendaciones con IA","s","n","s|Product Recommendations","e","e","n","p|Relacionados y accesorios elegidos a mano","Modelos sobre navegación y compras.","Recomendaciones calculadas en memoria con co-compra y vistas, explicables al comerciante.",9],
+["B2C","Inteligencia","Búsqueda que aprende y reglas de merchandising","s|Search & Discovery","p","s|Live Search","p","p","e","p|Sinónimos, fijados, ocultos y términos sin resultado","Ranking por relevancia y comportamiento.","Ranking que aprende del clic y la compra, con reglas del comerciante encima.",9],
+["B2C","Inteligencia","Comercio con asistentes de IA (agentes)","s|MCP de tienda","n","x","p|Sesiones para MCP","x","x","n","El asistente consulta catálogo, arma carrito y lleva al pago.","Servidor MCP por tienda con catálogo, carrito y pago confirmado por el cliente, con los mismos límites del checkout.",9],
+["B2B","Empresas","Sucursales con condiciones propias","s","n","s|Estructura con divisiones","p|Subsidiarias","n","e","s|Lista de precios, tope y dirección por sucursal","Cada sucursal con su catálogo y condiciones.","Hecho.",3],
+["B2B","Empresas","Jerarquía de empresas (matriz y filiales)","n","n","s|Company hierarchy","s|Matriz y subsidiarias","n","n","n|Empresa con sucursales; sin matriz","La matriz ve y administra sus filiales.","Matriz que hereda reglas y crédito a filiales, con reportes consolidados.",8],
+["B2B","Empresas","Roles y permisos a la medida dentro de la empresa","s","n","s|Roles con permisos finos","s|Roles y permisos propios","n","e","p|Comprador, aprobador por nivel y administrador","El administrador arma roles.","Roles a la medida (ver crédito, cotizar, aprobar) sobre los permisos de Apexx.",8],
+["B2B","Empresas","Portal de la empresa","s","n","s","s","n","e","s|Mi empresa: mes, solicitudes, compradores y tarjeta","El administrador gestiona su cuenta.","Hecho.",3],
+["B2B","Empresas","Representante de ventas que actúa como el comprador","p","n","s|Representante y entrar como cliente","s|Sales staff y masquerade","n","n","n","El vendedor arma pedidos por el cliente.","Representante asignado que entra como el comprador con permiso y todo queda registrado.",8],
+["B2B","Empresas","Adjuntos y alta masiva de empresas","s|Importación CSV","n","p","s|Adjuntos y alta masiva","n","n","n","Documentos y carga por archivo.","Alta por CSV con vista previa y adjuntos cifrados.",8],
+["B2B","Precios","Catálogo visible por empresa","s","n","s|Shared catalogs","s","n","p","s|Catálogo negociado","Qué ve cada empresa.","Hecho.",3],
+["B2B","Precios","Precios por volumen y tablas de precio","s","s|Tier prices","s","s|Bulk pricing","s|Tablas de precios","s","s|Tramos en la lista de precios","Tramos por cantidad.","Hecho.",3],
+["B2B","Precios","Mínimo, máximo y múltiplos","s","s","s","s","x","p","s|Por producto y grupo","Regla por variante.","Hecho.",3],
+["B2B","Compra","Cotización negociable","p","n","s|Negotiable quotes","s|Quotes","n","e","s|Pedir, ofertar, aceptar y vencer","Ida y vuelta hasta el pedido.","Hecho; faltan PDF y comentarios por línea (etapa 8).",3],
+["B2B","Compra","Plantillas de cotización para compras recurrentes","n","n","s|Quote templates con mínimos","n","n","n","n","Acuerdo con umbrales del que salen cotizaciones aprobadas.","Contrato con vigencia y mínimos que genera pedidos sin renegociar.",8],
+["B2B","Compra","Cotización en PDF y comentarios por línea","p","n","s|Historial por línea","s|PDF","n","p","p|Historial y mensajes","Documento formal y conversación por línea.","PDF firmado y comentarios por línea.",8],
+["B2B","Compra","Listas de recompra","e","n","s","s|Shopping lists","n","n","s|Compartidas por empresa","Listas guardadas.","Hecho.",3],
+["B2B","Compra","Pedido rápido por SKU o archivo","e","n","s","s","n","n","s|Por SKU y CSV","Captura rápida.","Hecho.",3],
+["B2B","Compra","Aprobaciones con reglas y varios niveles","p","n","s|Reglas con varios aprobadores","p","n","e","s|5 niveles, monto, categoría y sucursal, suplentes y vencimiento","Reglas y cadena de aprobadores.","Hecho.",3],
+["B2B","Compra","Tope de gasto mensual por persona","s","n","p","s","n","e","s|Por persona y por sucursal","Límite por comprador.","Hecho.",3],
+["B2B","Compra","Número de orden de compra","s","n","s","s","n","p","s|Obligatorio por empresa","Referencia del comprador.","Hecho.",3],
+["B2B","Pago","Medios de pago permitidos por empresa","p","n","s","s","n","n","p|Crédito o solo crédito","Medios por empresa.","Lista de medios permitidos por empresa y sucursal.",8],
+["B2B","Pago","Facturas de la empresa pagables en línea","p|Plazos de pago","n","p|Crédito de empresa","s|Portal de facturas y recibos","n","n","p|Estado de cuenta y pago automático; sin pagar una factura en línea","La empresa paga facturas abiertas.","Pagar una o varias facturas en línea desde Mi empresa, con recibo.",8],
+["B2B","Pago","Cobro automático al vencer el crédito","s","n","p","p","n","p","s|Tarjeta guardada, aviso previo y 3 intentos","Cobro al vencimiento.","Hecho.",3],
+["B2B","Pago","Exención de impuestos por empresa","s","n","s","s","n","p","s|Con vigencia","Exención al calcular.","Hecho.",1],
+["B2B","Integración","Punchout y EDI","e","n","e","e","n","n","n","Conexión con el sistema de compras.","Punchout sobre el carrito existente, solo si un cliente lo pide.",8],
+["Plataforma","API","GraphQL de tienda","s","s","s","s","n","n","n|REST","Un esquema tipado.","GraphQL solo para la tienda, sobre el mismo motor en memoria.",6],
+["Plataforma","API","Operaciones masivas","s","s","s","p","p","p","p|Importación y cambio masivo","Trabajos en segundo plano.","Trabajos por lotes con vista previa, progreso y reversión.",6],
+["Plataforma","API","SDK y tienda de ejemplo sin cabeza","s|Hydrogen","p","s|Drop-ins y Edge Delivery","s|Catalyst","p","s","n","Librería y plantilla.","SDK generado del contrato de la API y tienda de ejemplo.",6],
+["Plataforma","Extensión","Apps con permisos por alcance","s","s","s|App Builder","s","s","s","p|Llaves y avisos firmados","Una app pide permisos y se instala.","Alcances por módulo, revocables y con registro.",6],
+["Plataforma","Extensión","Pantallas de terceros en el panel","s","s","s|Admin UI SDK","s|App extensions","s|Nexo","s","n","Zonas del panel para apps.","Zonas aisladas en fichas de pedido, producto y cliente.",6],
+["Plataforma","Extensión","Inicio de sesión con otro sistema (SSO)","s","p","p","s|Customer Login con JWT","n","s","n","El cliente entra con su cuenta de otro sistema.","Inicio por token firmado con caducidad corta.",6],
+["Plataforma","Extensión","Gestor de scripts con consentimiento","s","p","p","s|Script Manager","s|Scripts","n","p|Sin scripts de terceros por diseño","Scripts por página y categoría de consentimiento.","Scripts solo fuera del pago, por categoría y con presupuesto de peso.",6],
+["Plataforma","Datos","Reportes a la medida","s","p","e","p","p","n","p|Reportes fijos y exportación","Consultas libres.","Explorador con dimensiones y medidas, programable por correo.",7],
+["Plataforma","Datos","Exportar y borrar datos de un cliente","s","s","s","p","s","p","s|Desde el panel y desde la cuenta","Solicitud que exporta o anonimiza.","Hecho.",2],
+["Plataforma","Operación","Catálogo maestro compartido entre tiendas","p","s","s","s","n","p","s|Catálogo maestro con ajustes por tienda","Herencia de valores.","Hecho.",1],
+["Plataforma","Operación","Actualizaciones sin migrar ni parchar","s","n|Se actualiza a mano","s|Servicio en la nube","s","s","p","s","El proveedor actualiza.","Hecho: un binario que migra solo.",0],
+["B2C","Catálogo","Variantes, categorías, colecciones y marcas","s","s","s","s","s","s","s","","",0],
+["B2C","Catálogo","Importar y exportar por CSV con vista previa","p","s","s","p","p","p","s","","",0],
+["B2C","Catálogo","Inventario en varias ubicaciones","s","s","s","s","s","s","s","","",0],
+["B2C","Promociones","Motor de promociones con cupones","s","s","s","s","s","s","s","","",0],
+["B2C","Promociones","Simulador de carrito que explica cada promoción","n","n","n","n","n","n","s","","",0],
+["B2C","Búsqueda","Buscador con sinónimos y redirecciones","s","p","s","p","p","p","s","","",0],
+["B2C","Clientes","Opiniones moderadas y favoritos","e","s","s","s","e","n","s","","",0],
+["B2C","Clientes","Segmentos y carritos abandonados","s","n","s","s","s","p","s","","",0],
+["B2C","Pedidos","Devoluciones, reembolsos y saldo a favor","s","p","s","s","p","s","s","","",0],
+["B2C","Pedidos","Pedidos borrador con enlace de pago","s","p","s","s","s","s","s","","",0],
+["B2C","Pedidos","Suscripciones con cobro automático","e","n","e","e","e","e","s","","",0],
+["B2C","Pago","Tarjetas de regalo y meses sin intereses","p","n","s","s","s","e","s","","",0],
+["B2C","Pago","Reglas antifraude propias","s","p","p","p","p","n","s","","",0],
+["B2C","Canales","Marketplace con vendedores y comisión","e","e","e","e","n","e","s","","",0],
+["B2C","Tienda","Diseñador visual con presupuesto de peso","p","s","s","s","s","n","s","","",0],
+["B2C","Tienda","SEO completo con hreflang","s","s","s","s","s","p","s","","",0],
+["Plataforma","Seguridad","Usuarios ilimitados con roles","p","s","s","p","p","e","s","","",0],
+["Plataforma","Seguridad","Registro de cambios a prueba de alteraciones","p","p","p","p","n","n","s","","",0],
+["Plataforma","Seguridad","Datos personales cifrados con llave por tienda","n","n","n","n","n","n","s","","",0],
+["Plataforma","Operación","Cambios al instante, sin reindexar","s","n","p|Servicios sincronizados","s","s","s","s","","",0],
+["Plataforma","Integración","Avisos firmados con reintentos","s","p","s","s","s","s","s","","",0],
+];
+const P=[3,4,5,6,7,8], A=9;
+const L={s:"sí",p:"a medias",e:"extra",n:"no",x:"sin dato"}, C={s:"si",p:"parcial",e:"ext",n:"no",x:"x"};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cell=v=>{const[a,n]=v.split("|");return `<span class="pill ${C[a]}">${L[a]}</span>${n?`<small>${esc(n)}</small>`:""}`};
+const state={seg:"",st:"falta",q:""};
+function draw(){
+  const q=state.q.toLowerCase();
+  const rows=D.filter(r=>(!state.seg||r[0]===state.seg)&&(!state.st||(state.st==="si"?r[A][0]==="s":r[A][0]!=="s"))&&(!q||(r[1]+" "+r[2]+" "+r[10]+" "+r[11]).toLowerCase().includes(q)))
+    .sort((a,b)=>(a[12]||99)-(b[12]||99));
+  document.getElementById("rows").innerHTML=rows.map(r=>`<tr><td class="cap"><b>${esc(r[2])}</b><small>${r[0]} · ${esc(r[1])}</small></td>${P.map(i=>`<td class="plat">${cell(r[i])}</td>`).join("")}<td class="plat ap">${cell(r[A])}</td><td class="how">${esc(r[10])||"—"}</td><td class="better">${esc(r[11])||"—"}</td><td class="prio">${r[12]||"—"}</td></tr>`).join("")||`<tr><td colspan="11" class="muted">Ninguna función coincide con estos filtros.</td></tr>`;
+  document.getElementById("count").textContent=rows.length;
+}
+function tally(){
+  const n=k=>D.filter(r=>r[A][0]===k).length, seg=s=>D.filter(r=>r[0]===s&&r[A][0]!=="s").length;
+  document.getElementById("total").textContent=D.length;
+  document.getElementById("tally").innerHTML=[[n("s"),"ya están en Apexx"],[n("p"),"están a medias"],[n("n"),"faltan por completo"],[seg("B2C"),"pendientes en B2C"],[seg("B2B"),"pendientes en B2B"],[seg("Plataforma"),"pendientes de plataforma"]].map(([v,t])=>`<div><b>${v}</b><span>${t}</span></div>`).join("");
+}
+document.querySelectorAll("button.f").forEach(b=>b.addEventListener("click",()=>{state[b.dataset.k]=b.dataset.v;document.querySelectorAll(`button.f[data-k="${b.dataset.k}"]`).forEach(x=>x.setAttribute("aria-pressed",String(x===b)));draw()}));
+document.getElementById("q").addEventListener("input",e=>{state.q=e.target.value;draw()});
+tally();draw();
+</script>
