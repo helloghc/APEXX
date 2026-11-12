@@ -66,6 +66,7 @@ type Server struct {
 	uploadSlots   chan struct{} // bounds concurrent image processing
 	rules         rulesCache    // checkout rules app: settings and answers
 	scripts       scriptsCache  // third-party scripts of each store
+	sso           ssoProviders  // identity providers already discovered
 	engage        engageState   // search terms and review cache
 	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
@@ -91,6 +92,9 @@ func (s *Server) Routes() http.Handler {
 		s.Proj.SetLiveRates(s.LiveRate)
 		s.Proj.SetExternalTax(s.ExternalTax)
 		s.Proj.SetExternalRules(s.ExternalRules)
+		if s.Auth != nil && s.Auth.SSORequired == nil {
+			s.Auth.SSORequired = s.SSORequired
+		}
 	}
 	mux := http.NewServeMux()
 	s.patterns = s.patterns[:0]
@@ -209,6 +213,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesScripts(handle)
 	s.routesBulk(handle)
 	handle("POST /s/{tenant}/api/graphql", s.shopGraphQL)
+	s.routesSSO(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 
@@ -435,6 +440,10 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, auth.ErrBadCredentials) {
 		s.loginFailed(limitKey)
 		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_credentials", Detail: "Correo o contraseña incorrectos"})
+		return
+	}
+	if errors.Is(err, auth.ErrSSORequired) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "sso_required", Detail: "Tu tienda usa el inicio de sesión de tu empresa. Entra con el botón «Entrar con mi empresa»."})
 		return
 	}
 	if errors.Is(err, auth.ErrTOTPRequired) {

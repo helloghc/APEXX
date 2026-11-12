@@ -257,6 +257,18 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
   const [needCode, setNeedCode] = useState(false);
   const [code, setCode] = useState("");
   const [choices, setChoices] = useState<{ id: string; name: string }[] | null>(null);
+  // Single sign-on: offered when the typed store has it; its result comes back in the hash.
+  const [sso, setSso] = useState<{ enabled: boolean; enforce: boolean; name?: string } | null>(null);
+  useEffect(() => {
+    const m = /[#&]sso=([^&]*)/.exec(window.location.hash);
+    if (m && m[1] !== undefined) { setErr(decodeURIComponent(m[1].replace(/\+/g, " "))); history.replaceState(null, "", window.location.pathname); }
+  }, []);
+  useEffect(() => {
+    const t = store.trim();
+    if (!/^[a-z0-9][a-z0-9-]{1,62}$/.test(t)) { setSso(null); return; }
+    const h = setTimeout(() => { fetch(`/v1/auth/sso/available?store=${encodeURIComponent(t)}`).then((r) => (r.ok ? r.json() : null)).then((x) => setSso(x && x.enabled ? x : null)).catch(() => setSso(null)); }, 300);
+    return () => clearTimeout(h);
+  }, [store]);
 
   async function submit(e: FormEvent | null, pick?: string) {
     e?.preventDefault();
@@ -294,6 +306,8 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
       setErr(
         e2 instanceof ApiError && e2.problem.code === "invalid_code"
           ? "El código no es correcto. Usa el código actual de tu app o un código de respaldo."
+          : e2 instanceof ApiError && e2.problem.code === "sso_required"
+          ? "Tu tienda usa el inicio de sesión de tu empresa. Usa el botón de abajo."
           : e2 instanceof ApiError && e2.status === 401
           ? "Correo, contraseña o tienda incorrectos."
           : e2 instanceof ApiError && e2.status === 429
@@ -344,6 +358,11 @@ function Login({ onDone, error }: { onDone: () => void; error: unknown }) {
             <Button type="submit" disabled={busy}>
               {busy ? "Entrando…" : "Entrar"}
             </Button>
+            {sso && (
+              <Button type="button" variant="outline" data-sso onClick={() => { try { window.localStorage.setItem(LAST_STORE, store.trim()); } catch { /* storage blocked */ } window.location.href = `/v1/auth/sso/start?store=${encodeURIComponent(store.trim())}`; }}>
+                Entrar con mi empresa{sso.name ? ` (${sso.name})` : ""}
+              </Button>
+            )}
             <details className="text-sm">
               <summary className="cursor-pointer text-muted-foreground">Entrar con una API key</summary>
               <div className="mt-3 grid gap-3">

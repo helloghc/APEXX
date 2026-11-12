@@ -16,6 +16,8 @@ func TestEveryRouteRequiresAccess(t *testing.T) {
 	public := map[string]bool{
 		"POST /v1/auth/login": true, "POST /v1/auth/stores": true, "GET /v1/invitations/{token}": true, "POST /v1/invitations/{token}/accept": true,
 		"POST /v1/stripe/webhook/{tenant}": true,
+		// Single sign-on: the login itself, before any session exists.
+		"GET /v1/auth/sso/available": true, "GET /v1/auth/sso/start": true, "GET /v1/auth/sso/callback": true,
 	}
 	// What a publishable key may do: read the catalogue, simulate and buy.
 	storefront := regexp.MustCompile(`^(GET /v1/(me|products|search|catalog|categories|brands|collections|channels|inventory|prices|facets)|POST /v1/(simulate|carts/simulate|checkout|auth/logout|me/))`)

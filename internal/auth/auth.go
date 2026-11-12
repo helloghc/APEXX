@@ -173,6 +173,9 @@ type Service struct {
 	SessionTTL time.Duration
 	Keys       Cipher           // encrypts two-step verification secrets; nil = 2FA unavailable
 	Now        func() time.Time // tests
+	// SSORequired tells whether a store's team must sign in with single
+	// sign-on (owners keep their password as a way back in).
+	SSORequired func(ctx context.Context, tenant string) bool
 }
 
 // Errors.
@@ -333,18 +336,51 @@ func (s *Service) Login(ctx context.Context, tenant, email, password, code, ip, 
 		}
 	}
 	_ = json.Unmarshal(pj, &m.Permissions)
+	if !m.Owner && s.SSORequired != nil && s.SSORequired(ctx, tenant) {
+		return "", Member{}, ErrSSORequired // the store signs its team in through its identity provider
+	}
+	token, err := s.startSession(ctx, tenant, m.ID, ip, ua)
+	if err != nil {
+		return "", Member{}, err
+	}
+	return token, m, nil
+}
+
+// ErrSSORequired means this store's team signs in with single sign-on.
+var ErrSSORequired = errors.New("auth: single sign-on required")
+
+func (s *Service) startSession(ctx context.Context, tenant, memberID, ip, ua string) (string, error) {
 	token := "aps_" + newID("", 32)
 	sum := sha256.Sum256([]byte(token))
 	ttl := s.SessionTTL
 	if ttl == 0 {
 		ttl = 12 * time.Hour
 	}
-	_, err = s.DB.System.Exec(ctx, `INSERT INTO sessions (token_hash, tenant_id, member_id, expires_at, ip, user_agent, id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		sum[:], tenant, m.ID, time.Now().Add(ttl), ip, truncate(ua, 200), newID("ses_", 8))
+	if _, err := s.DB.System.Exec(ctx, `INSERT INTO sessions (token_hash, tenant_id, member_id, expires_at, ip, user_agent, id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		sum[:], tenant, memberID, time.Now().Add(ttl), ip, truncate(ua, 200), newID("ses_", 8)); err != nil {
+		return "", err
+	}
+	_, _ = s.DB.System.Exec(ctx, `UPDATE members SET last_login_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, memberID)
+	return token, nil
+}
+
+// LoginVerifiedEmail starts a session for the active member with this email,
+// once an identity provider of the store has proved it (single sign-on). It
+// never creates members: people are invited first.
+func (s *Service) LoginVerifiedEmail(ctx context.Context, tenant, email, ip, ua string) (string, Member, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	var m Member
+	var pj []byte
+	err := s.DB.System.QueryRow(ctx, `SELECT id, email, name, is_owner, status, permissions FROM members WHERE tenant_id=$1 AND email=$2`, tenant, email).
+		Scan(&m.ID, &m.Email, &m.Name, &m.Owner, &m.Status, &pj)
+	if err != nil || m.Status != "active" {
+		return "", Member{}, ErrBadCredentials
+	}
+	_ = json.Unmarshal(pj, &m.Permissions)
+	token, err := s.startSession(ctx, tenant, m.ID, ip, ua)
 	if err != nil {
 		return "", Member{}, err
 	}
-	_, _ = s.DB.System.Exec(ctx, `UPDATE members SET last_login_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, m.ID)
 	return token, m, nil
 }
 
