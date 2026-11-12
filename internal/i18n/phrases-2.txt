@@ -357,3 +357,7 @@ Frases tal cual de las opiniones de clientes. || Phrases telles que les clients 
 ¿No es lo que buscabas? Pregúntale a la tienda || Ce n'est pas ce que vous cherchiez ? Demandez à la boutique || Bukan yang Anda cari? Tanya toko || お探しのものではありませんか？ストアに質問する
 Por ejemplo: busco algo para regalar a mi papá || Par exemple : un cadeau pour mon père || Misalnya: hadiah untuk ayah saya || 例：父へのプレゼントを探しています
 Agotado || Épuisé || Habis || 売り切れ
+Este producto está agotado. Alternativas disponibles || Ce produit est épuisé. Alternatives disponibles || Produk ini habis. Alternatif yang tersedia || この商品は売り切れです。代わりの商品
+Alternativas || Alternatives || Alternatif || 代わりの商品
+Compatible con || Compatible avec || Kompatibel dengan || 対応製品
+Ficha técnica || Fiche technique || Lembar spesifikasi || 仕様書

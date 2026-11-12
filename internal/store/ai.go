@@ -29,8 +29,18 @@ func dropAIOf(ctx context.Context, tx pgx.Tx, tenant, kind, id string) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM ai_chunks WHERE tenant_id=$1 AND source_kind=$2 AND source_id=$3`, tenant, kind, id); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `DELETE FROM kg_edges WHERE tenant_id=$1 AND ((src_kind=$2 AND src_id=$3) OR (dst_kind=$2 AND dst_id=$3))`, tenant, kind, id)
-	return err
+	if _, err := tx.Exec(ctx, `DELETE FROM kg_edges WHERE tenant_id=$1 AND ((src_kind=$2 AND src_id=$3) OR (dst_kind=$2 AND dst_id=$3))`, tenant, kind, id); err != nil {
+		return err
+	}
+	if kind == "product" {
+		// Its spec sheet and the chunks read from it.
+		if _, err := tx.Exec(ctx, `DELETE FROM tenant_docs WHERE tenant_id=$1 AND kind='datasheet' AND id=$2`, tenant, id); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM ai_chunks WHERE tenant_id=$1 AND source_kind='datasheet' AND source_id=$2`, tenant, id)
+		return err
+	}
+	return nil
 }
 
 // PutChunks writes chunks (replacing the ones of the same source and

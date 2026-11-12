@@ -616,6 +616,9 @@ type productPage struct {
 	PreShips         string       // first available variant on preorder: ship date
 	PreDeposit       string       // and the deposit paid now ("20"), empty when paid in full
 	Similar          []cardView
+	Compatible       []cardView // approved graph: products this one fits
+	Datasheet        []string   // lines of the spec sheet read from the manufacturer's PDF
+	Alternatives     []cardView // approved graph: substitutes, first when this one is sold out
 	AlsoBought       []cardView // learned from orders and visits
 	Accessories      []cardView
 	Price, CompareAt string
@@ -761,10 +764,20 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		}
 		return out
 	}
-	pg.Similar, pg.Accessories = related(p.Related.Similar), related(p.Related.Accessories)
+	// Manual relations first, then the approved knowledge graph.
+	g := s.graphOf(r.Context(), t.ID)
+	pg.Similar = related(p.Related.Similar)
+	pg.Accessories = related(liveIDs(t, append(append(append([]string{}, p.Related.Accessories...), g.accessories[p.ID]...), g.fits[p.ID]...), map[string]bool{p.ID: true}, 8))
+	pg.Compatible = related(liveIDs(t, g.compat[p.ID], map[string]bool{p.ID: true}, 8))
+	pg.Alternatives = related(liveIDs(t, g.substitutes[p.ID], map[string]bool{p.ID: true}, 8))
 	skip := map[string]bool{}
 	for _, id := range append(append([]string{}, p.Related.Similar...), p.Related.Accessories...) {
 		skip[id] = true
+	}
+	for _, ids := range [][]string{g.accessories[p.ID], g.fits[p.ID], g.compat[p.ID], g.substitutes[p.ID]} {
+		for _, id := range ids {
+			skip[id] = true
+		}
 	}
 	var learned []string
 	for _, rec := range s.recsFor(t.ID, []string{p.ID}, skip, 4) {
@@ -791,6 +804,9 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		if cfg.DiscountBps > 0 {
 			pg.Sub.Percent = strconv.FormatFloat(float64(cfg.DiscountBps)/100, 'f', -1, 64)
 		}
+	}
+	if ds := s.productDatasheet(r, t.ID, p.ID); ds != "" {
+		pg.Datasheet = strings.Split(ds, "\n")
 	}
 	pg.Reviews = s.productReviews(r.Context(), t.ID, p.ID)
 	if pg.Reviews.Count >= reviewSumMin {

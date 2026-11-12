@@ -316,6 +316,18 @@ func (s *Server) mcpCall(r *http.Request, t *projection.Tenant, name string, raw
 		}
 		out := map[string]any{"handle": p.Handle, "title": p.Title, "brand": p.Brand, "description": mcpText(p.Description, 1500),
 			"currency": cur, "variants": vars, "url": base + "/p/" + p.Handle}
+		g := s.graphOf(r.Context(), t.ID)
+		handles := func(ids []string) []string {
+			out := []string{}
+			for _, id := range liveIDs(t, ids, map[string]bool{p.ID: true}, 8) {
+				q, _ := t.Catalog.Get(id)
+				out = append(out, q.Handle)
+			}
+			return out
+		}
+		out["compatibleWith"] = handles(g.compat[p.ID])
+		out["accessories"] = handles(append(append(append([]string{}, p.Related.Accessories...), g.accessories[p.ID]...), g.fits[p.ID]...))
+		out["alternatives"] = handles(g.substitutes[p.ID])
 		if sum := s.reviewSummary(r.Context(), t.ID, p.ID); sum != nil {
 			out["reviewSummary"] = sum // customers' own sentences, with their author
 		}

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/components/ui/sonner";
 import { ProductPicker } from "../catalog/ProductPicker";
 import { dateTime, Notice } from "../common";
+import { GraphCard } from "./Graph";
 
 const enc = encodeURIComponent;
 interface Ref { id: string; title: string; handle: string }
@@ -66,6 +67,7 @@ export function AIPanel({ canEdit, canAdmin }: { canEdit: boolean; canAdmin: boo
           {recs.data?.off && <Notice tone="warn">Las recomendaciones están apagadas: la tienda no las muestra.</Notice>}
         </CardContent>
       </Card>
+      <GraphCard canEdit={canEdit} />
       {s.semantic && <SemanticCard sem={s.semantic} cur={cur} canAdmin={canAdmin} busy={save.isPending} put={put} />}
       <Card data-ai-mcp className="xl:col-span-2">
         <CardHeader><CardTitle className="text-base">Asistentes de IA (MCP)</CardTitle>

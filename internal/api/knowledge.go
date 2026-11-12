@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"html"
 	"sort"
 	"strings"
 	"sync"
@@ -95,7 +96,22 @@ func (s *Server) docSources(ctx context.Context, tenant string) ([]docSource, er
 	if err != nil {
 		return nil, err
 	}
-	if t, ok := s.Proj.Tenant(tenant); ok {
+	t, ok := s.Proj.Tenant(tenant)
+	if ok {
+		// Spec sheets read from the manufacturer's PDF.
+		docs, err := s.DB.ListDocs(ctx, tenant, datasheetKind)
+		if err != nil {
+			return nil, err
+		}
+		for _, d := range docs {
+			if p, err := t.Catalog.Get(d.ID); err == nil && p.Status == "active" {
+				text := datasheetsOf(d.Data)
+				body := "<p>" + strings.ReplaceAll(html.EscapeString(text), "\n", "</p><p>") + "</p>"
+				out = append(out, docSource{"datasheet", p.ID, "Ficha técnica de " + p.Title, "/p/" + p.Handle + "#ficha-tecnica", body})
+			}
+		}
+	}
+	if ok {
 		for _, p := range t.Catalog.Products() {
 			if p.Status == "active" && len(p.Description) >= docMinDescription {
 				out = append(out, docSource{"pdesc", p.ID, p.Title, "/p/" + p.Handle, p.Description})

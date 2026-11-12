@@ -15,6 +15,7 @@ import { href } from "@/router";
 import { dateTime, ErrorBox, StatusPill } from "../common";
 import { EmptyState, SkeletonRows } from "../promotions/shared";
 import { download } from "../reports/api";
+import { FromRequest } from "./FromRequest";
 
 interface Item { sku: string; qty: number; unit?: number }
 interface Event { at: string; who: string; kind: string; message?: string; total?: number }
@@ -27,7 +28,7 @@ const KIND: Record<string, string> = { requested: "pidió cotización", offered:
 /** Quotes: buyers ask for a price, the store answers with an offer. */
 export function Quotes({ me, id }: { me: Me; id?: string }) {
   if (id) return <QuoteDetail me={me} id={id} />;
-  return <QuoteList />;
+  return <div className="grid gap-5">{can(me, "orders", "edit") && <FromRequest />}<QuoteList /></div>;
 }
 
 function QuoteList() {

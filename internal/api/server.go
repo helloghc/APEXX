@@ -87,6 +87,7 @@ type Server struct {
 	qvec          qcache        // query vectors, reused across searches
 	know          knowState     // store documents in chunks (policies, blog, long descriptions)
 	revSum        revSumState   // review summaries, cached a few minutes
+	graph         graphState    // approved product relations (knowledge graph)
 	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
 }
@@ -110,6 +111,7 @@ func (s *Server) Routes() http.Handler {
 		s.Proj.On("site.draft", evict)
 		s.semHooks()
 		s.knowHooks()
+		s.graphHooks()
 		s.Proj.SetLiveRates(s.LiveRate)
 		s.Proj.SetExternalTax(s.ExternalTax)
 		s.Proj.SetExternalRules(s.ExternalRules)

@@ -9,6 +9,7 @@ require (
 	github.com/go-jose/go-jose/v4 v4.0.2
 	github.com/graph-gophers/graphql-go v1.5.0
 	github.com/jackc/pgx/v5 v5.7.2
+	github.com/ledongthuc/pdf v0.0.0-20261020125853-5e46805f718e
 	golang.org/x/crypto v0.58.0
 	golang.org/x/image v0.47.0
 	golang.org/x/oauth2 v0.30.0

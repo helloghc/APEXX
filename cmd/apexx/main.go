@@ -437,6 +437,10 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		srv.LLMFast = ai.NewClaude(key, base, env("APEXX_AI_MODEL_FAST", "claude-haiku-5-5"))
 		log.Info("language model", "answers", srv.LLM.Model(), "bulk", srv.LLMFast.Model())
 	}
+	every("ai-graph", time.Minute, func(ctx context.Context) error {
+		_, err := srv.RunGraph(ctx)
+		return err
+	})
 	every("ai-docs", 30*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunKnowledge(ctx)
 		return err

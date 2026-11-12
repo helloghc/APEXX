@@ -358,3 +358,7 @@ Frases tal cual de las opiniones de clientes. || Sentences exactly as customers 
 ¿No es lo que buscabas? Pregúntale a la tienda || Not what you were looking for? Ask the store || Não é o que procurava? Pergunte à loja
 Por ejemplo: busco algo para regalar a mi papá || For example: something to give my dad || Por exemplo: procuro algo para dar ao meu pai
 Agotado || Sold out || Esgotado
+Este producto está agotado. Alternativas disponibles || This product is sold out. Available alternatives || Este produto está esgotado. Alternativas disponíveis
+Alternativas || Alternatives || Alternativas
+Compatible con || Compatible with || Compatível com
+Ficha técnica || Spec sheet || Ficha técnica

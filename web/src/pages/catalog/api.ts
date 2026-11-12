@@ -262,11 +262,11 @@ export function productParams(f: ProductQuery): string {
 }
 
 /** send posts a FormData body (uploads); errors become ApiError like every other call. */
-async function send<T>(path: string, body: FormData | string, contentType?: string): Promise<T> {
+export async function send<T>(path: string, body: FormData | string, contentType?: string, method = "POST"): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (contentType) headers["Content-Type"] = contentType;
   if (credentials.key) headers.Authorization = `Bearer ${credentials.key}`;
-  const res = await fetch(path, { method: "POST", headers, credentials: "same-origin", body });
+  const res = await fetch(path, { method, headers, credentials: "same-origin", body });
   if (!res.ok) {
     let parsed: Problem = { status: res.status, code: "http_" + res.status, title: res.statusText };
     try {

@@ -81,6 +81,9 @@ func (s *Server) answerQuestion(ctx context.Context, t *projection.Tenant, base,
 		if a, ok := productFact(t, base, channel, fq, p); ok {
 			return a
 		}
+		if a, ok := s.graphFact(ctx, t, base, fq, p); ok {
+			return a
+		}
 		// The price and the stock of a product come only from the system:
 		// without them, no text (a review, a description) may answer.
 		if (rePrice.MatchString(fq) && !reVars.MatchString(fq)) || (reStock.MatchString(fq) && !reVars.MatchString(fq)) {
@@ -188,6 +191,15 @@ func (s *Server) passages(ctx context.Context, t *projection.Tenant, base, q str
 			}
 			out = append(out, passage{text: name + ": " + p.Attributes[k] + ".", ctxt: p.Title + " › Especificaciones", cite: c})
 		}
+		var ds datasheet
+		if ok, err := s.DB.GetDoc(ctx, t.ID, datasheetKind, p.ID, &ds); err == nil && ok {
+			cs := Citation{Title: "Ficha técnica de " + p.Title, URL: base + "/p/" + p.Handle + "#ficha-tecnica"}
+			for _, line := range strings.Split(ds.Text, "\n") {
+				if line = strings.TrimSpace(line); utf8.RuneCountInString(line) >= 4 && !reInjection.MatchString(foldQ(line)) {
+					out = append(out, passage{text: line, ctxt: p.Title + " › Ficha técnica", cite: cs})
+				}
+			}
+		}
 		if rv, err := s.DB.PublicReviews(ctx, t.ID, p.ID, 20); err == nil {
 			for _, r := range rv.Items {
 				add(r.Body, p.Title+" › Opinión de "+r.Author, Citation{Title: "Opinión de " + r.Author + " sobre " + p.Title, URL: base + "/p/" + p.Handle + "#opiniones"})
@@ -207,7 +219,7 @@ func (s *Server) passages(ctx context.Context, t *projection.Tenant, base, q str
 			d.mu.RLock()
 			for _, h := range hits {
 				ch, ok := d.meta[h.ID]
-				if !ok || (p != nil && ch.Kind == "pdesc" && ch.ID == p.ID) {
+				if !ok || (p != nil && (ch.Kind == "pdesc" || ch.Kind == "datasheet") && ch.ID == p.ID) {
 					continue // the product's own description is already there
 				}
 				add(ch.Body, ch.Context, Citation{Title: ch.Title, URL: base + ch.URL})
@@ -286,6 +298,8 @@ var answerTypes = []answerType{
 	{regexp.MustCompile(`\bcuanto (cuesta|cuestan|vale|cobran)|\bcosto\b|\bprecio\b`), regexp.MustCompile(`\$\s*\d|\bgratis\b`), nil, false},
 	{regexp.MustCompile(`\b(lluvia|mojar|mojarse|agua)\b`), regexp.MustCompile(`\b(impermeable|agua|lluvia|selladas?)\b`), nil, true},
 	{regexp.MustCompile(`\b(armar|arma|instalar|montar)\b`), regexp.MustCompile(`\b(arma|armar|minutos?|instala)\b`), nil, true},
+	// Speed: "¿a cuántas revoluciones?", "¿qué tan rápido?"
+	{regexp.MustCompile(`\b(revoluciones|rpm|velocidad|velocidades|que tan rapido|rapidez)\b`), regexp.MustCompile(`\b\d+\s*(rpm|km h|mbps|ppm|golpes)\b|\bvelocidad`), nil, true},
 	// Capability: "¿se puede…?", "¿sirve para…?", "¿aguanta…?"
 	{regexp.MustCompile(`\b(se puede|se pueden|sirve|sirven|apto|apta|aguanta|resiste|soporta|admite|compatible)\b`), regexp.MustCompile(`\b(apt[oa]s?|compatibles?|resistentes?|resiste|soporta|permite|se puede|sirve)\b`), nil, true},
 }
@@ -300,6 +314,9 @@ func typeBonus(fq, sentence, ctxt string) (float64, bool) {
 		applies = true
 		if t.a.MatchString(fs) {
 			bb := 0.3
+			if t.topic {
+				bb = 0.35 // the sentence is of the very kind the question asks about
+			}
 			if t.ctx != nil && t.ctx.MatchString(fc) {
 				bb += 0.1
 			}
@@ -463,4 +480,39 @@ func (s *Server) shopAsk(w http.ResponseWriter, r *http.Request) {
 	}
 	a := s.answerQuestion(r.Context(), t, base, "mx", body.Q, p)
 	httpx.JSON(w, r, http.StatusOK, a)
+}
+
+var (
+	reAskCompat = regexp.MustCompile(`\b(compatible|compatibles|le sirve|le queda|funciona con|sirve para)\b`)
+	reAskAcc    = regexp.MustCompile(`\b(accesorios?|complementos?|combina|combinar|que mas necesito|refacciones?|repuestos?)\b`)
+	reAskAlt    = regexp.MustCompile(`\b(parecido|parecidos|similar|similares|alternativas?|en vez de|en lugar de|otro igual|sustitutos?|reemplazo)\b`)
+)
+
+// graphFact answers relation questions from the approved graph: what a
+// product fits, its accessories and its alternatives, never guessed.
+func (s *Server) graphFact(ctx context.Context, t *projection.Tenant, base, fq string, p *catalog.Product) (Answer, bool) {
+	g := s.graphOf(ctx, t.ID)
+	var ids []string
+	var lead string
+	switch {
+	case reAskCompat.MatchString(fq):
+		ids, lead = liveIDs(t, append(append([]string{}, g.compat[p.ID]...), g.fits[p.ID]...), map[string]bool{p.ID: true}, 6), "Es compatible con: "
+	case reAskAcc.MatchString(fq):
+		ids, lead = liveIDs(t, append(append(append([]string{}, p.Related.Accessories...), g.accessories[p.ID]...), g.fits[p.ID]...), map[string]bool{p.ID: true}, 6), "Lo puedes combinar con: "
+	case reAskAlt.MatchString(fq):
+		ids, lead = liveIDs(t, append(append([]string{}, g.substitutes[p.ID]...), p.Related.Similar...), map[string]bool{p.ID: true}, 6), "Alternativas: "
+	default:
+		return Answer{}, false
+	}
+	if len(ids) == 0 {
+		return Answer{}, false // nothing approved: the text may still answer
+	}
+	var names []string
+	var src []Citation
+	for _, id := range ids {
+		q, _ := t.Catalog.Get(id)
+		names = append(names, q.Title)
+		src = append(src, Citation{Title: q.Title, URL: base + "/p/" + q.Handle})
+	}
+	return Answer{Kind: "fact", Text: lead + strings.Join(names, ", ") + ".", Sources: src, Score: 1}, true
 }

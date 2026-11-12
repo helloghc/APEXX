@@ -400,6 +400,8 @@ func (d *DB) DeleteProducts(ctx context.Context, tenant, actor string, ids []str
 		// Their vectors and graph edges go with them (no AI leftovers).
 		b.Queue(`DELETE FROM ai_chunks WHERE tenant_id=$1 AND source_kind='product' AND source_id = ANY($2)`, tenant, gids)
 		b.Queue(`DELETE FROM kg_edges WHERE tenant_id=$1 AND ((src_kind='product' AND src_id = ANY($2)) OR (dst_kind='product' AND dst_id = ANY($2)))`, tenant, gids)
+		b.Queue(`DELETE FROM tenant_docs WHERE tenant_id=$1 AND kind='datasheet' AND id = ANY($2)`, tenant, gids)
+		b.Queue(`DELETE FROM ai_chunks WHERE tenant_id=$1 AND source_kind='datasheet' AND source_id = ANY($2)`, tenant, gids)
 		if err := sendBatch(ctx, tx, b, func(_ int, err error) error { return err }); err != nil {
 			return err
 		}
