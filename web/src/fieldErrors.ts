@@ -11,6 +11,8 @@ function messageFor(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectEleme
   if (v.badInput || (v.stepMismatch && el.type === "number")) return "Escribe un número válido.";
   if (v.rangeUnderflow || v.rangeOverflow) return "El número está fuera del rango permitido.";
   if (v.tooLong || v.tooShort) return "Revisa el largo del texto.";
+  // A field with its own rule says it in data-error (e.g. "Sin espacios").
+  if (v.patternMismatch && el.dataset.error) return el.dataset.error;
   return "Revisa este dato.";
 }
 

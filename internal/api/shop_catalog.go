@@ -460,6 +460,7 @@ func (s *Server) shopCatalog(w http.ResponseWriter, r *http.Request) {
 
 // shopNotFound renders the catalog shell with a 404 and a way forward.
 func (s *Server) shopNotFound(w http.ResponseWriter, pd pageData, what string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 	pd.Title, pd.NoIndex = what+" no encontrada", true
 	s.renderShop(w, "catalog", browsePage{pageData: pd, Eyebrow: "Catálogo", Heading: what + " no encontrada",

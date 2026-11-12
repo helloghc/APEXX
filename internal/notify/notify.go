@@ -577,10 +577,12 @@ func (s *Service) sendOne(ctx context.Context, tenant, id string) (bool, error) 
 		}
 		return false, s.finish(ctx, tenant, id, status, provName, "", truncate(err.Error(), 300), attempts+1, nil)
 	}
-	// Keep the rendered copy for the log. A one-time code that really left the
-	// server is not kept; the development outbox keeps it so it can be read.
-	if tpl.Key == TplAccessCode && provName != "outbox" {
-		p.Data.Vars = map[string]string{"codigo": "••••••"}
+	// Keep the rendered copy for the log, without the secrets it carried: a
+	// sign-in code, a gift card code, or a link that acts as its holder
+	// (joining the team, approving a company purchase, accepting a quote,
+	// managing a subscription). Whoever reads the log must not be able to use
+	// them. The development outbox keeps them so they can be read in tests.
+	if provName != "outbox" && redactForLog(tpl.Key, &p.Data) {
 		r = RenderLang(tpl.Subject, tpl.Blocks, p.Data, st.Brand, tpl.ShowItems, p.Lang)
 	}
 	p.Rendered = &r
@@ -799,4 +801,30 @@ func (s *Service) Stats(ctx context.Context, tenant string) (map[string]int, err
 		return rows.Err()
 	})
 	return out, err
+}
+
+// secretVars and secretLinks name what a template's message carries that
+// works as a key in the recipient's hands.
+var (
+	secretVars  = map[string][]string{TplAccessCode: {"codigo"}, TplGiftCard: {"tarjeta.codigo"}}
+	secretLinks = map[string]bool{TplTeamInvite: true, TplPurchaseApproval: true, TplQuoteOffered: true, TplSubscriptionCreated: true, TplSubscriptionFailed: true}
+)
+
+// redactForLog hides the secrets of d in place and reports whether it hid any.
+func redactForLog(tpl string, d *Data) bool {
+	changed := false
+	for _, k := range secretVars[tpl] {
+		if _, ok := d.Vars[k]; ok {
+			vars := make(map[string]string, len(d.Vars))
+			for kk, v := range d.Vars {
+				vars[kk] = v
+			}
+			vars[k] = "••••••"
+			d.Vars, changed = vars, true
+		}
+	}
+	if secretLinks[tpl] && d.ActionURL != "" {
+		d.ActionURL, changed = "#enlace-oculto", true
+	}
+	return changed
 }

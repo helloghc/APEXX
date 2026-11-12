@@ -3629,5 +3629,12 @@
 "Carrito": "Cart",
 "Cuenta del cliente": "Customer account",
 "Pedido rápido (B2B)": "Quick order (B2B)",
-"Inicio de la página": "Top of the page"
+"Inicio de la página": "Top of the page",
+"Sin espacios, como aparece en la guía.": "No spaces, as printed on the label.",
+"Escribe el número de guía sin espacios.": "Enter the tracking number without spaces.",
+"Revisa los campos marcados antes de guardar: {}": "Check the marked fields before saving: {}",
+"Tu acceso no permite esto: necesitas permiso para {} en «{}». Pídelo a un administrador de la tienda.": "Your access does not allow this: you need permission to {} in “{}”. Ask a store administrator.",
+"ver": "view",
+"editar": "edit",
+"administrar": "manage"
 }

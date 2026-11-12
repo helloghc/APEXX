@@ -3629,5 +3629,12 @@
 "Carrito": "Panier",
 "Cuenta del cliente": "Compte client",
 "Pedido rápido (B2B)": "Commande rapide (B2B)",
-"Inicio de la página": "Haut de la page"
+"Inicio de la página": "Haut de la page",
+"Sin espacios, como aparece en la guía.": "Sans espaces, tel qu’il figure sur le bordereau.",
+"Escribe el número de guía sin espacios.": "Saisissez le numéro de suivi sans espaces.",
+"Revisa los campos marcados antes de guardar: {}": "Vérifiez les champs signalés avant d’enregistrer : {}",
+"Tu acceso no permite esto: necesitas permiso para {} en «{}». Pídelo a un administrador de la tienda.": "Votre accès ne le permet pas : il vous faut l’autorisation de {} dans « {} ». Demandez-la à un administrateur de la boutique.",
+"ver": "consulter",
+"editar": "modifier",
+"administrar": "administrer"
 }

@@ -278,6 +278,8 @@ No encontramos un pedido reciente en este navegador. || Aucune commande récente
 Tu pedido || Votre commande || Pesanan Anda || ご注文
 está confirmado y pagado. || est confirmée et payée. || sudah dikonfirmasi dan dibayar. || は確定し、お支払いも完了しました。
 Total pagado || Total payé || Total dibayar || お支払い済み合計
+está confirmado y se cargó al crédito de tu empresa. Lo verás en Mi cuenta › Mi empresa, con su fecha de pago. || est confirmée et a été imputée au crédit de votre entreprise. Vous la verrez dans Mon compte › Mon entreprise, avec sa date d'échéance. || telah dikonfirmasi dan dibebankan ke kredit perusahaan Anda. Anda akan melihatnya di Akun saya › Perusahaan saya, beserta tanggal jatuh temponya. || は確定し、会社の与信枠に計上されました。マイアカウント › 会社で支払期日とともに確認できます。
+Total a crédito || Total à crédit || Total secara kredit || 掛け払い合計
 Te enviaremos la factura por correo en unos minutos. || Nous vous enverrons la facture par e-mail dans quelques minutes. || Kami akan mengirim faktur lewat email dalam beberapa menit. || 数分以内に請求書をメールでお送りします。
 Guardado en favoritos || Ajouté aux favoris || Disimpan ke favorit || お気に入りに保存済み
 Todavía no guardas productos. Toca el corazón de un producto para tenerlo aquí. || Vous n'avez encore enregistré aucun produit. Touchez le cœur d'un produit pour le retrouver ici. || Anda belum menyimpan produk. Ketuk ikon hati pada produk agar tersimpan di sini. || まだ商品を保存していません。商品のハートをタップするとここに表示されます。

@@ -22,7 +22,7 @@ export function Domains({ me }: { me: Me }) {
   const canEdit = can(me, "settings", "admin");
   const [host, setHost] = useState("");
   const [site, setSite] = useState("main");
-  const fronts = useQuery({ queryKey: ["storefronts"], queryFn: () => request<{ items: { id: string; name: string }[] }>("GET", "/v1/storefronts").then((r) => r.items) });
+  const fronts = useQuery({ queryKey: ["storefronts", "list"], queryFn: () => request<{ items: { id: string; name: string }[] }>("GET", "/v1/storefronts").then((r) => r.items) });
   const [error, setError] = useState<string | null>(null);
   const [del, setDel] = useState<Domain | null>(null);
   const refresh = () => void qc.invalidateQueries({ queryKey: ["settings", "domains"] });

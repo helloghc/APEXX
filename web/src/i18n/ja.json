@@ -3629,5 +3629,12 @@
 "Carrito": "カート",
 "Cuenta del cliente": "顧客アカウント",
 "Pedido rápido (B2B)": "クイック注文（B2B）",
-"Inicio de la página": "ページの先頭"
+"Inicio de la página": "ページの先頭",
+"Sin espacios, como aparece en la guía.": "送り状の表記どおり、スペースなしで入力してください。",
+"Escribe el número de guía sin espacios.": "追跡番号をスペースなしで入力してください。",
+"Revisa los campos marcados antes de guardar: {}": "保存する前に、マークされた項目を確認してください: {}",
+"Tu acceso no permite esto: necesitas permiso para {} en «{}». Pídelo a un administrador de la tienda.": "この操作は許可されていません: {}の権限（「{}」）が必要です。ストアの管理者に依頼してください。",
+"ver": "閲覧",
+"editar": "編集",
+"administrar": "管理"
 }

@@ -357,7 +357,9 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 	defer release()
 	st, err := s.openSite(tenant, r.PathValue("site"))
 	if errors.Is(err, errNoSite) {
-		apierr.NotFound(w, "Sitio no encontrado")
+		if _, pd, ok := s.shopContext(w, r); ok {
+			s.shopNotFound(w, pd, "Página")
+		}
 		return
 	}
 	if err != nil {
@@ -370,7 +372,11 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 		html, rev, err = st.LiveAt(r.PathValue("handle"), previewAt)
 	}
 	if err != nil {
-		apierr.NotFound(w, "Página no publicada")
+		// A shopper who mistypes an address gets the store's own page with a
+		// way forward, not an API error.
+		if _, pd, ok := s.shopContext(w, r); ok {
+			s.shopNotFound(w, pd, "Página")
+		}
 		return
 	}
 	etag := `"` + rev + `"`

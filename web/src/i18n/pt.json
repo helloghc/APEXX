@@ -3629,5 +3629,12 @@
 "Carrito": "Carrinho",
 "Cuenta del cliente": "Conta do cliente",
 "Pedido rápido (B2B)": "Pedido rápido (B2B)",
-"Inicio de la página": "Topo da página"
+"Inicio de la página": "Topo da página",
+"Sin espacios, como aparece en la guía.": "Sem espaços, como aparece na etiqueta.",
+"Escribe el número de guía sin espacios.": "Digite o código de rastreio sem espaços.",
+"Revisa los campos marcados antes de guardar: {}": "Revise os campos marcados antes de salvar: {}",
+"Tu acceso no permite esto: necesitas permiso para {} en «{}». Pídelo a un administrador de la tienda.": "Seu acesso não permite isso: você precisa de permissão para {} em «{}». Peça a um administrador da loja.",
+"ver": "ver",
+"editar": "editar",
+"administrar": "administrar"
 }

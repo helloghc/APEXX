@@ -279,6 +279,8 @@ No encontramos un pedido reciente en este navegador. || We found no recent order
 Tu pedido || Your order || Seu pedido
 está confirmado y pagado. || is confirmed and paid. || está confirmado e pago.
 Total pagado || Total paid || Total pago
+está confirmado y se cargó al crédito de tu empresa. Lo verás en Mi cuenta › Mi empresa, con su fecha de pago. || is confirmed and was charged to your company's credit. You will see it in My account › My company, with its due date. || está confirmado e foi lançado no crédito da sua empresa. Você o verá em Minha conta › Minha empresa, com a data de pagamento.
+Total a crédito || Total on credit || Total a crédito
 Te enviaremos la factura por correo en unos minutos. || We will email you the invoice in a few minutes. || Enviaremos a nota fiscal por e-mail em alguns minutos.
 Guardado en favoritos || Saved to favorites || Salvo nos favoritos
 Todavía no guardas productos. Toca el corazón de un producto para tenerlo aquí. || You have not saved any products yet. Tap the heart on a product to keep it here. || Você ainda não salvou produtos. Toque no coração de um produto para tê-lo aqui.

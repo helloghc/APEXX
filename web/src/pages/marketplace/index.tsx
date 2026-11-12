@@ -300,9 +300,9 @@ function ShipDialog({ line, onClose, onDone }: { line: Line; onClose: () => void
         <DialogHeader><DialogTitle>Enviar pedido #{line.number}</DialogTitle><DialogDescription>Se marcan como enviados todos tus productos de este pedido.</DialogDescription></DialogHeader>
         <form id="sship-form" className="grid gap-4" onSubmit={(e: FormEvent) => { e.preventDefault(); send.mutate(); }}>
           <div className="grid gap-1.5"><span className="text-sm font-medium">Paquetería</span><Select value={carrier} onValueChange={setCarrier}><SelectTrigger aria-label="Paquetería"><SelectValue /></SelectTrigger><SelectContent>{["Estafeta", "DHL", "FedEx", "Paquetexpress", "Redpack", "Correos de México", "Otra"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-          <div className="grid gap-1.5"><Label htmlFor="ss-track">Número de guía</Label><Input id="ss-track" value={tracking} onChange={(e) => setTracking(e.target.value)} required /></div>
+          <div className="grid gap-1.5"><Label htmlFor="ss-track">Número de guía</Label><Input id="ss-track" value={tracking} onChange={(e) => setTracking(e.target.value)} required maxLength={80} pattern="\S+" data-error="Escribe el número de guía sin espacios." autoComplete="off" /><p className="text-xs text-muted-foreground">Sin espacios, como aparece en la guía.</p></div>
         </form>
-        <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" form="sship-form" disabled={send.isPending || !tracking.trim()}>Registrar envío</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" form="sship-form" disabled={send.isPending}>Registrar envío</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

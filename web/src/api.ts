@@ -366,8 +366,10 @@ export function errorMessage(e: unknown): string {
     const p = e.problem;
     if (p.status === 401) return "Tu sesión terminó. Vuelve a iniciar sesión.";
     if (p.status === 403) return p.detail || "Tu acceso no permite esta acción. Pide permiso a un administrador de la tienda.";
-    const fields = p.errors?.map((f) => f.message).join("; ");
-    return [p.detail || p.title || p.code, fields].filter(Boolean).join(" · ");
+    const head = p.detail || p.title || p.code;
+    // Skip field messages that only repeat the headline.
+    const fields = [...new Set((p.errors ?? []).map((f) => f.message))].filter((m) => m && m !== head).join("; ");
+    return [head, fields].filter(Boolean).join(" · ");
   }
   if (e instanceof TypeError) return "No hay conexión con el servidor. Revisa tu red e intenta de nuevo.";
   return e instanceof Error ? e.message : String(e);

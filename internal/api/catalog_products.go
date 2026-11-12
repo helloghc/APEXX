@@ -788,7 +788,7 @@ func (s *Server) bulkProducts(w http.ResponseWriter, r *http.Request) {
 		}
 	case "price_percent":
 		if !pr.Permissions.Allows("pricing", auth.Edit) {
-			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Tu acceso a precios no permite esta acción (necesitas edit)"})
+			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: forbiddenDetail("pricing", "edit")})
 			return
 		}
 		op.Bps = int64(body.Percent*100 + map[bool]float64{true: 0.5, false: -0.5}[body.Percent >= 0])

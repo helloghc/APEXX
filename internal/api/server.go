@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -181,6 +182,18 @@ func (s *Server) Routes() http.Handler {
 
 	// Public storefront pages (static HTML per published revision).
 	handle("GET /s/{tenant}/{site}/{handle}", s.storefront)
+	// Typed addresses without a page name land on the home page, not a 404.
+	toHome := func(w http.ResponseWriter, r *http.Request) {
+		site := r.PathValue("site")
+		if site == "" {
+			site = "main"
+		}
+		http.Redirect(w, r, "/s/"+url.PathEscape(r.PathValue("tenant"))+"/"+url.PathEscape(site)+"/index", http.StatusFound)
+	}
+	handle("GET /s/{tenant}/{site}", toHome)
+	handle("GET /s/{tenant}/{site}/{$}", toHome)
+	handle("GET /s/{tenant}", toHome)
+	handle("GET /s/{tenant}/{$}", toHome)
 	// Shopper flow: catalog, product, cart, checkout, confirmation.
 	handle("GET /s/{tenant}/{site}/c", s.shopCatalog)
 	handle("GET /s/{tenant}/{site}/p/{handle}", s.shopProduct)
@@ -326,7 +339,7 @@ func (s *Server) authed(module, level string, h http.HandlerFunc) http.HandlerFu
 		}
 		if module != "" && !p.Permissions.Allows(module, level) {
 			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden",
-				Detail: fmt.Sprintf("Tu acceso a %s no permite esta acción (necesitas %s)", module, level)})
+				Detail: forbiddenDetail(module, level)})
 			return
 		}
 		release, ok := s.Bulkhead.Acquire(p.Tenant)
@@ -698,4 +711,25 @@ func writeJSONRaw(w http.ResponseWriter, status int, b json.RawMessage, problem 
 	}
 	w.WriteHeader(status)
 	_, _ = w.Write(b)
+}
+
+// moduleNames and levelNames say a permission the way the team screen does.
+var (
+	moduleNames = map[string]string{"catalog": "Catálogo", "pricing": "Precios", "inventory": "Inventario", "promotions": "Promociones",
+		"orders": "Pedidos", "customers": "Clientes", "payments": "Pagos", "builder": "Diseño de la tienda", "team": "Equipo",
+		"settings": "Configuración", "reports": "Reportes", "marketplace": "Marketplace"}
+	levelNames = map[string]string{"read": "ver", "edit": "editar", "admin": "administrar"}
+)
+
+// forbiddenDetail explains a refusal in the merchant's words: which area and
+// what level they would need, and who can give it.
+func forbiddenDetail(module, level string) string {
+	m, l := moduleNames[module], levelNames[level]
+	if m == "" {
+		m = module
+	}
+	if l == "" {
+		l = level
+	}
+	return fmt.Sprintf("Tu acceso no permite esto: necesitas permiso para %s en «%s». Pídelo a un administrador de la tienda.", l, m)
 }

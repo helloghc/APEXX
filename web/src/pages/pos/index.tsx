@@ -29,7 +29,7 @@ export function PointOfSale({ me }: { me: Me }) {
   const canSell = can(me, "orders", "edit");
   const locs = useQuery({
     queryKey: ["pos", "locations"],
-    queryFn: () => request<{ items: { id: string; name: string; kind: string; active: boolean }[] }>("GET", "/v1/locations").then((r) => r.items.filter((l) => l.active)),
+    queryFn: () => request<{ items: { id: string; name: string; kind: string; active: boolean }[] }>("GET", "/v1/pos/locations").then((r) => r.items.filter((l) => l.active)),
     staleTime: 60_000,
   });
   const [loc, setLoc] = useState(read(LOC_KEY));

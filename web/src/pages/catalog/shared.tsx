@@ -633,6 +633,14 @@ export function MediaPicker({
 
 /** FieldRow is a labelled control for places where FormField's cloning does not fit (custom widgets). */
 export function Field({ label, htmlFor, hint, error, children, className }: { label: string; htmlFor?: string; hint?: ReactNode; error?: string; children: ReactNode; className?: string }) {
+  // The control itself says it is wrong, so screen readers and the save
+  // button's "go to the first error" find it.
+  useEffect(() => {
+    const el = htmlFor ? document.getElementById(htmlFor) : null;
+    if (!el) return;
+    if (error) el.setAttribute("aria-invalid", "true");
+    else el.removeAttribute("aria-invalid");
+  }, [htmlFor, error]);
   return (
     <div className={cn("grid gap-1.5", className)}>
       <Label htmlFor={htmlFor}>{label}</Label>

@@ -21,7 +21,7 @@ export function MailCampaigns({ me }: { me: Me }) {
   const qc = useQueryClient();
   const canEdit = can(me, "customers", "edit"), canSend = can(me, "customers", "admin");
   const q = useQuery({ queryKey: ["mail-campaigns"], queryFn: () => request<{ items: Camp[] }>("GET", "/v1/email-campaigns").then((r) => r.items), refetchInterval: (x) => ((x.state.data ?? []).some((c) => c.status === "sending" || c.status === "scheduled") ? 5000 : false) });
-  const groups = useQuery({ queryKey: ["customer-groups"], queryFn: () => request<{ items: { id: string; name: string; count: number }[] }>("GET", "/v1/customer-groups").then((r) => r.items) });
+  const groups = useQuery({ queryKey: ["customer-groups"], queryFn: () => request<{ items: { id: string; name: string; count: number }[] }>("GET", "/v1/customer-groups").then((r) => r.items ?? []) });
   const [edit, setEdit] = useState<Camp | null>(null);
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);

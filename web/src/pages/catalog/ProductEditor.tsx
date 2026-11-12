@@ -214,7 +214,14 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
     setErrors(errs);
     setFormError(null);
     if (Object.keys(errs).length) {
-      toast.error("Revisa los campos marcados antes de guardar.");
+      const first = Object.values(errs)[0];
+      toast.error(`Revisa los campos marcados antes de guardar: ${first}`);
+      // After React paints the marks, take the cursor to the first one.
+      requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>("main [aria-invalid=true]");
+        el?.scrollIntoView({ block: "center" });
+        el?.focus();
+      });
       return;
     }
     const body: ProductBody = {
@@ -326,6 +333,11 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
                   setD((p) => ({ ...p, title, handle: p.handleTouched ? p.handle : slug(title) }));
                   setDirty(true);
                 }}
+                onBlur={() => {
+                  // A simple product gets a SKU from its name; the merchant can change it.
+                  const only = d.variants.length === 1 ? d.variants[0] : undefined;
+                  if (only && !only.sku && d.title.trim()) setVariant(0, { sku: slug(d.title).toUpperCase().slice(0, 40) });
+                }}
               />
             </Field>
             <Field label="Descripción" htmlFor="p-desc" hint="Cuéntale al comprador qué es, para quién y de qué está hecho.">
@@ -426,26 +438,27 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
                 <TableBody>
                   {d.variants.map((v, i) => {
                     const cell = (key: string) => (errors[key] ? "border-destructive" : "");
+                    const bad = (key: string) => (errors[key] ? { "aria-invalid": true as const, "aria-description": errors[key] } : {});
                     return (
                       <TableRow key={i}>
                         <TableCell>
                           <Input aria-label="Nombre de la variante" value={v.title} onChange={(e) => setVariant(i, { title: e.target.value })} />
                         </TableCell>
                         <TableCell>
-                          <Input aria-label="SKU" className={`font-mono text-xs ${cell(`variants[${i}].sku`)}`} value={v.sku} title={errors[`variants[${i}].sku`]}
+                          <Input aria-label="SKU" {...bad(`variants[${i}].sku`)} className={`font-mono text-xs ${cell(`variants[${i}].sku`)}`} value={v.sku} title={errors[`variants[${i}].sku`]}
                             onChange={(e) => setVariant(i, { sku: e.target.value.trim() })} />
                         </TableCell>
                         <TableCell>
-                          <Input aria-label="Precio" inputMode="decimal" placeholder="0.00" className={cell(`price.${v.sku}`)} title={errors[`price.${v.sku}`]}
+                          <Input aria-label="Precio" {...bad(`price.${v.sku}`)} inputMode="decimal" placeholder="0.00" className={cell(`price.${v.sku}`)} title={errors[`price.${v.sku}`]}
                             value={d.price[v.sku] ?? ""} onChange={(e) => set("price", { ...d.price, [v.sku]: e.target.value })} />
                         </TableCell>
                         <TableCell>
-                          <Input aria-label="Precio antes" inputMode="decimal" placeholder="Opcional" className={cell(`compare.${v.sku}`)} title={errors[`compare.${v.sku}`]}
+                          <Input aria-label="Precio antes" {...bad(`compare.${v.sku}`)} inputMode="decimal" placeholder="Opcional" className={cell(`compare.${v.sku}`)} title={errors[`compare.${v.sku}`]}
                             value={d.compareAt[v.sku] ?? ""} onChange={(e) => set("compareAt", { ...d.compareAt, [v.sku]: e.target.value })} />
                         </TableCell>
                         {locations.map((l) => (
                           <TableCell key={l}>
-                            <Input aria-label={`Existencias en ${l}`} inputMode="numeric" placeholder={kitSkus.has(v.sku) ? "Kit" : "0"} className={cell(`stock.${v.sku}.${l}`)}
+                            <Input aria-label={`Existencias en ${l}`} inputMode="numeric" placeholder={kitSkus.has(v.sku) ? "Kit" : "0"} {...bad(`stock.${v.sku}.${l}`)} className={cell(`stock.${v.sku}.${l}`)}
                               disabled={kitSkus.has(v.sku)} title={kitSkus.has(v.sku) ? "Es un kit: sus existencias salen de sus componentes" : undefined}
                               value={kitSkus.has(v.sku) ? "" : d.stock[v.sku]?.[l] ?? ""}
                               onChange={(e) => set("stock", { ...d.stock, [v.sku]: { ...(d.stock[v.sku] ?? {}), [l]: e.target.value } })} />
@@ -1061,7 +1074,7 @@ interface CustomsData { hsCode?: string; origin?: string }
 /** Customs data for import duties: tariff code and country of origin. */
 function Customs({ id, canEdit }: { id: string; canEdit: boolean }) {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["product", id, "customs"], queryFn: () => request<CustomsData>("GET", `/v1/product-classes/${encodeURIComponent(id)}`) });
+  const q = useQuery({ queryKey: ["product", id, "trade-customs"], queryFn: () => request<CustomsData>("GET", `/v1/product-classes/${encodeURIComponent(id)}`) });
   const [v, setV] = useState<CustomsData>({});
   const [busy, setBusy] = useState(false);
   const [errs, setErrs] = useState<Record<string, string>>({});
@@ -1073,7 +1086,7 @@ function Customs({ id, canEdit }: { id: string; canEdit: boolean }) {
     try {
       await request("PUT", `/v1/product-classes/${encodeURIComponent(id)}`, { hsCode: v.hsCode ?? "", origin: (v.origin ?? "").toUpperCase() });
       toast.success("Datos aduanales guardados. Los aranceles ya se calculan con ellos.");
-      void qc.invalidateQueries({ queryKey: ["product", id, "customs"] });
+      void qc.invalidateQueries({ queryKey: ["product", id, "trade-customs"] });
     } catch (e) {
       setErrs(fieldErrors(e)); toast.error(errorMessage(e));
     } finally {

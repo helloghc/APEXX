@@ -300,9 +300,9 @@ function CampaignDetail({ me, id }: { me: Me; id: string }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
           {back}
-          <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight">
+          <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight">
             {c.name} <StatusBadge status={c.displayStatus} />
-          </h2>
+          </h1>
           {c.description && <p className="max-w-2xl text-sm text-muted-foreground">{c.description}</p>}
         </div>
         <div className="flex flex-wrap gap-2">

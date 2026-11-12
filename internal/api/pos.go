@@ -22,6 +22,30 @@ import (
 func (s *Server) routesPOS(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/pos/lookup", s.authed("orders", auth.Edit, noStorefront(s.posLookup)))
 	handle("POST /v1/pos/sales", s.authed("orders", auth.Edit, s.posSale))
+	handle("GET /v1/pos/locations", s.authed("orders", auth.Edit, noStorefront(s.posLocations)))
+}
+
+// posLocations lists the active locations a cashier can sell from: id, name
+// and kind only, so the counter does not need access to the store's settings.
+func (s *Server) posLocations(w http.ResponseWriter, r *http.Request) {
+	c, err := s.DB.LoadLogistics(r.Context(), principal(r).Tenant)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	type loc struct {
+		ID     string `json:"id"`
+		Name   string `json:"name"`
+		Kind   string `json:"kind"`
+		Active bool   `json:"active"`
+	}
+	out := []loc{}
+	for _, l := range c.Locations {
+		if l.Active {
+			out = append(out, loc{l.ID, l.Name, l.Kind, true})
+		}
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": out})
 }
 
 type posItem struct {

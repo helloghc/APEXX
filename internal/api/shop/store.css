@@ -62,6 +62,7 @@ h1.display{font-size:clamp(2.4rem,1.4rem + 4.4vw,5rem)}
 .hdr-tools{display:flex;align-items:center;gap:10px;justify-self:end}
 .hdr-search{display:none;align-items:center;border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-surface)}
 .hdr-search input{border:0;background:transparent;padding:9px 12px;width:180px;outline:0}
+.hdr-search:has(input:focus-visible){outline:2px solid var(--c-accent);outline-offset:2px}
 .hdr-search button,.hdr-cart{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:8px;cursor:pointer;text-decoration:none;color:inherit}
 .hdr-count{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--c-primary);color:var(--c-primaryText);font-size:.72rem;display:inline-grid;place-items:center;font-weight:700}
 .hdr-menu-m summary{list-style:none;cursor:pointer;display:grid;gap:5px;padding:8px}

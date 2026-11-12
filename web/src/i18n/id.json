@@ -3629,5 +3629,12 @@
 "Carrito": "Keranjang",
 "Cuenta del cliente": "Akun pelanggan",
 "Pedido rápido (B2B)": "Pesanan cepat (B2B)",
-"Inicio de la página": "Awal halaman"
+"Inicio de la página": "Awal halaman",
+"Sin espacios, como aparece en la guía.": "Tanpa spasi, seperti tertera di resi.",
+"Escribe el número de guía sin espacios.": "Masukkan nomor resi tanpa spasi.",
+"Revisa los campos marcados antes de guardar: {}": "Periksa kolom yang ditandai sebelum menyimpan: {}",
+"Tu acceso no permite esto: necesitas permiso para {} en «{}». Pídelo a un administrador de la tienda.": "Akses Anda tidak mengizinkan ini: Anda perlu izin untuk {} di «{}». Mintalah kepada administrator toko.",
+"ver": "melihat",
+"editar": "mengedit",
+"administrar": "mengelola"
 }

@@ -538,17 +538,20 @@ function downloadsBox(ds) {
     if (!o) { thanks.innerHTML = "<h1>¡Gracias!</h1><p>No encontramos un pedido reciente en este navegador.</p>"; return; }
     const m = (v) => money({ amount: v, currency: o.currency });
     const v = o.status === "pending_payment" && o.voucher;
+    // On company credit nothing was charged yet: the company pays the invoice later.
+    const credit = !v && o.payment && o.payment.provider === "company_credit";
     const until = v ? new Date(v.expiresAt).toLocaleString(document.documentElement.lang || "es-MX", { dateStyle: "long", timeStyle: "short" }) : "";
     const how = !v ? "" : v.kind === "oxxo"
       ? "<div class='acct-box' data-voucher><h2>Paga en OXXO</h2><p>Di en caja que vas a pagar un servicio <strong>OXXO Pay</strong> y da esta referencia:</p><p class='big'><strong>" + esc(v.reference) + "</strong></p><p>Monto: <strong>" + m(o.grandTotal) + "</strong>. Paga antes del " + esc(until) + "; después la referencia vence y el pedido se cancela.</p>" + (v.url && v.url.startsWith("https://") ? "<p><a class='btn btn-ghost' href='" + esc(v.url) + "' target='_blank' rel='noopener'>Ver ficha para imprimir</a></p>" : "") + "</div>"
       : "<div class='acct-box' data-voucher><h2>Paga por transferencia SPEI</h2><p>CLABE: <strong>" + esc(v.clabe) + "</strong>" + (v.bank ? " (" + esc(v.bank) + ")" : "") + "</p>" + (v.reference ? "<p>Referencia: <strong>" + esc(v.reference) + "</strong></p>" : "") + "<p>Monto exacto: <strong>" + m(o.grandTotal) + "</strong>, antes del " + esc(until) + ". Tu pedido se confirma en cuanto llegue el dinero.</p>" + (v.url && v.url.startsWith("https://") ? "<p><a class='btn btn-ghost' href='" + esc(v.url) + "' target='_blank' rel='noopener'>Ver instrucciones</a></p>" : "") + "</div>";
     thanks.innerHTML = (v ? "<h1>¡Pedido apartado!</h1><p>Tu pedido <strong>#" + esc(o.displayNumber || o.number) + "</strong> está apartado. Lo enviamos cuando recibamos tu pago.</p>" + how
+      : credit ? "<h1>¡Gracias por tu compra!</h1><p>Tu pedido <strong>#" + esc(o.displayNumber || o.number) + "</strong> está confirmado y se cargó al crédito de tu empresa. Lo verás en Mi cuenta › Mi empresa, con su fecha de pago.</p>"
       : "<h1>¡Gracias por tu compra!</h1><p>Tu pedido <strong>#" + esc(o.displayNumber || o.number) + "</strong> está confirmado y pagado.</p>") +
       (o.shippingMethod ? "<p>" + esc(o.shippingMethod.name) + (o.shippingMethod.estimate ? ": " + esc(o.shippingMethod.estimate.text.toLowerCase()) : "") + (o.shippingMethod.pickupAddress ? " · " + esc(o.shippingMethod.pickupAddress) : "") + ".</p>" : "") +
       "<table><tbody>" + o.lines.map((l) => "<tr><td>" + l.qty + " × " + esc(l.title) + "</td><td class='num'>" + m(l.total) + "</td></tr>").join("") +
       "<tr><td>Envío</td><td class='num'>" + m(o.shipping) + "</td></tr>" + (o.discounts ? "<tr><td>Descuentos</td><td class='num'>−" + m(o.discounts) + "</td></tr>" : "") +
       (o.feeLines || []).map((f) => "<tr><td>" + esc(f.name) + "</td><td class='num'>" + m(f.amount) + "</td></tr>").join("") +
-      "<tr class='grand'><td><strong>" + (v ? "Total a pagar" : o.deferred ? "Total" : "Total pagado") + "</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
+      "<tr class='grand'><td><strong>" + (v ? "Total a pagar" : credit ? "Total a crédito" : o.deferred ? "Total" : "Total pagado") + "</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
       (o.deferred ? "<div class='acct-box' data-deferred><h2>Preventa apartada</h2><p>Pagaste el anticipo. Quedan <strong>" + m(o.deferred) + "</strong> por pagar: te enviaremos un enlace por correo cuando tu pedido esté listo para enviarse.</p></div>" : "") +
       "<p class='muted'>Te enviaremos la factura por correo en unos minutos.</p>" + downloadsBox(o.downloads);
   }
