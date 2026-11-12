@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus, Award, Gift, Newspaper, CalendarClock, MailPlus, Target } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus, Award, Gift, Newspaper, ShoppingCart, CalendarClock, MailPlus, Target } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -24,6 +24,7 @@ const AdConversions = lazy(() => import("./AdConversions").then((m) => ({ defaul
 const MailCampaigns = lazy(() => import("./MailCampaigns").then((m) => ({ default: m.MailCampaigns })));
 const DesignSchedules = lazy(() => import("./DesignSchedules").then((m) => ({ default: m.DesignSchedules })));
 const Blog = lazy(() => import("./Blog").then((m) => ({ default: m.Blog })));
+const SalesChannels = lazy(() => import("./SalesChannels").then((m) => ({ default: m.SalesChannels })));
 const Gifts = lazy(() => import("./Gifts").then((m) => ({ default: m.Gifts })));
 const Loyalty = lazy(() => import("./Loyalty").then((m) => ({ default: m.Loyalty })));
 const CheckoutBlocks = lazy(() => import("./CheckoutBlocks").then((m) => ({ default: m.CheckoutBlocks })));
@@ -48,6 +49,7 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
   { id: "automatizaciones", label: "Automatizaciones", icon: Workflow, group: "General" },
   { id: "lealtad", label: "Puntos de lealtad", icon: Award, group: "General" },
   { id: "regalos", label: "Regalos y mesa de regalos", icon: Gift, group: "General" },
+  { id: "canales-externos", label: "Mercado Libre y Amazon", icon: ShoppingCart, group: "General" },
   { id: "campanas-correo", label: "Campañas de correo", icon: MailPlus, group: "General" },
   { id: "cambios-masivos", label: "Cambios masivos", icon: Layers, group: "General" },
   { id: "ubicaciones", label: "Ubicaciones", icon: MapPin, group: "Logística" },
@@ -123,6 +125,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "blog":
       body = <Blog me={me} />;
+      break;
+    case "canales-externos":
+      body = <SalesChannels me={me} />;
       break;
     case "regalos":
       body = <Gifts me={me} />;

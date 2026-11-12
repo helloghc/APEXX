@@ -41,6 +41,7 @@ import (
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/reports"
 	"github.com/helloghc/apexx/internal/resilience"
+	"github.com/helloghc/apexx/internal/saleschannels"
 	"github.com/helloghc/apexx/internal/seed"
 	"github.com/helloghc/apexx/internal/store"
 	"github.com/helloghc/apexx/internal/webhooks"
@@ -350,6 +351,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		Media:         mediaStore,
 	}
 	// Third-party warehouses get their paid orders, with retries.
+	// Operators can point Mercado Libre and Amazon at a local stand-in (QA only).
+	if h := os.Getenv("APEXX_SALESCHANNELS_TEST_HOST"); h != "" {
+		srv.ChannelEndpoints = saleschannels.Endpoints{MeliAPI: h, MeliAuth: h, AmazonAPI: h, AmazonAuth: h, AmazonMarketplace: saleschannels.Default.AmazonMarketplace}
+		log.Warn("sales channels point to a test host", "host", h)
+	}
 	resilience.Every(ctx, log, "warehouse-requests", 30*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunWarehouseRequests(ctx)
 		return err
@@ -357,6 +363,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	// Purchases reported to ad platforms from the server.
 	resilience.Every(ctx, log, "ad-conversions", 15*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunConversions(ctx)
+		return err
+	})
+	// Mercado Libre and Amazon: listings in step and orders imported.
+	resilience.Every(ctx, log, "sales-channels", 20*time.Second, func(ctx context.Context) error {
+		_, err := srv.RunSalesChannels(ctx)
 		return err
 	})
 	// Email campaigns due to go out.

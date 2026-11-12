@@ -30,30 +30,34 @@ import (
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/reports"
 	"github.com/helloghc/apexx/internal/resilience"
+	"github.com/helloghc/apexx/internal/saleschannels"
 	"github.com/helloghc/apexx/internal/store"
 	"github.com/helloghc/apexx/internal/webhooks"
 )
 
 // Server holds every dependency of the HTTP layer.
 type Server struct {
-	DB            *store.DB
-	Proj          *projection.Projector
-	Auth          *auth.Service
-	Orders        *orders.Service
-	Keys          *crypto.Keyring
-	Library       *builder.Library
-	Log           *slog.Logger
-	Admin         http.Handler // embedded builder editor (optional)
-	Bulkhead      *resilience.Bulkhead
-	Payments      *PaymentAccounts
-	Webhooks      *webhooks.Service
-	Customers     *customers.Service
-	Notify        *notify.Service
-	Reports       *reports.Service // analytics, reports and operations (built from DB and Keys when nil)
-	SecureCookies bool
-	TrustProxy    bool          // honour X-Forwarded-For (only behind our own proxy)
-	MetricsToken  string        // bearer token for /metrics; empty = loopback/private callers only
-	Media         media.Storage // media library files; nil = local disk under the system temp dir
+	// ChannelEndpoints and ChannelHTTP reach Mercado Libre and Amazon (zero: production hosts).
+	ChannelEndpoints saleschannels.Endpoints
+	ChannelHTTP      *http.Client
+	DB               *store.DB
+	Proj             *projection.Projector
+	Auth             *auth.Service
+	Orders           *orders.Service
+	Keys             *crypto.Keyring
+	Library          *builder.Library
+	Log              *slog.Logger
+	Admin            http.Handler // embedded builder editor (optional)
+	Bulkhead         *resilience.Bulkhead
+	Payments         *PaymentAccounts
+	Webhooks         *webhooks.Service
+	Customers        *customers.Service
+	Notify           *notify.Service
+	Reports          *reports.Service // analytics, reports and operations (built from DB and Keys when nil)
+	SecureCookies    bool
+	TrustProxy       bool          // honour X-Forwarded-For (only behind our own proxy)
+	MetricsToken     string        // bearer token for /metrics; empty = loopback/private callers only
+	Media            media.Storage // media library files; nil = local disk under the system temp dir
 
 	sitesMu sync.Mutex
 	sites   map[string]*builder.Site // tenant/site -> site
@@ -231,6 +235,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesPOS(handle)
 	s.routesGifts(handle)
 	s.routesCustomReports(handle)
+	s.routesSalesChannels(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 
