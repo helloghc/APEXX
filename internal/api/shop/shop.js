@@ -1403,3 +1403,24 @@ function downloadsBox(ds) {
   };
   paint();
 })();
+
+/* ==== company documents (administrators) ==== */
+(() => {
+  const box = document.querySelector("[data-company-docs]"); if (!box) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2], api = "/s/" + tenant + "/api/account/company/files";
+  const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const paint = async () => {
+    const r = await fetch(api, { credentials: "same-origin" }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+    if (!r) return; // only administrators see the documents
+    box.innerHTML = "<h2>Documentos de la empresa</h2><div class='acct-box'>" + (r.items.length ? "<ul class='history'>" + r.items.map((f) => "<li><a href='" + api + "/" + encodeURIComponent(f.id) + "' download>" + esc(f.name) + "</a> <span class='muted'>· " + Math.ceil(f.bytes / 1024) + " KB</span></li>").join("") + "</ul>" : "<p class='muted'>Aún no hay documentos.</p>") +
+      "<label class='btn ghost'>Subir documento<input type='file' data-doc-up accept='.pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt' hidden></label><p class='note' role='status' data-doc-status></p><p class='muted'>Constancia fiscal, contrato u otros. Se guardan cifrados.</p></div>";
+    box.querySelector("[data-doc-up]").addEventListener("change", async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const st = box.querySelector("[data-doc-status]"); st.textContent = "Subiendo…";
+      const fd = new FormData(); fd.append("file", f);
+      const res = await fetch(api, { method: "POST", body: fd, credentials: "same-origin" }).then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+      if (res.ok) paint(); else st.textContent = res.body.detail || "No se pudo subir.";
+    });
+  };
+  paint();
+})();

@@ -428,3 +428,84 @@ async function downloadPDF(path: string, name: string) {
     await download(path, name);
   } catch (e) { toast.error(errorMessage(e)); }
 }
+
+interface CFile { id: string; name: string; contentType: string; bytes: number; uploadedBy: string; createdAt: string }
+
+async function authedFetch(path: string, init: RequestInit = {}) {
+  const { credentials } = await import("@/api");
+  const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
+  if (credentials.key) headers.Authorization = `Bearer ${credentials.key}`;
+  return fetch(path, { ...init, headers, credentials: "same-origin" });
+}
+
+/** Documents: tax certificates, contracts and other files of the company, stored encrypted. */
+export function Documents({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["company-files", id], queryFn: () => request<{ items: CFile[] }>("GET", `/v1/companies/${enc(id)}/files`).then((r) => r.items) });
+  const [busy, setBusy] = useState(false);
+  async function upload(file: File) {
+    setBusy(true);
+    const fd = new FormData(); fd.append("file", file);
+    try {
+      const r = await authedFetch(`/v1/companies/${enc(id)}/files`, { method: "POST", body: fd });
+      if (!r.ok) throw new Error(((await r.json().catch(() => ({}))) as { detail?: string }).detail || "No se pudo subir");
+      toast.success("Documento guardado (cifrado)."); void qc.invalidateQueries({ queryKey: ["company-files", id] });
+    } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
+  }
+  async function get(f: CFile) {
+    const r = await authedFetch(`/v1/companies/${enc(id)}/files/${enc(f.id)}`);
+    if (!r.ok) { toast.error("No se pudo descargar"); return; }
+    const url = URL.createObjectURL(await r.blob()); const a = document.createElement("a"); a.href = url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  async function remove(f: CFile) {
+    if (!window.confirm(`¿Borrar «${f.name}»?`)) return;
+    try { await request("DELETE", `/v1/companies/${enc(id)}/files/${enc(f.id)}`, undefined, { as: "none" }); void qc.invalidateQueries({ queryKey: ["company-files", id] }); } catch (e) { toast.error(errorMessage(e)); }
+  }
+  return (
+    <Card data-company-files>
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Documentos</CardTitle><CardDescription>Constancia fiscal, contrato, solicitud de crédito. Se guardan cifrados; la empresa también los ve y sube desde «Mi empresa».</CardDescription></div>
+        {canEdit && <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm"><Plus className="size-4" />{busy ? "Subiendo…" : "Subir documento"}<input type="file" className="sr-only" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} /></label>}</CardHeader>
+      <CardContent>
+        {(q.data?.length ?? 0) === 0 ? <p className="text-sm text-muted-foreground">Sin documentos.</p> : (
+          <ul className="grid gap-1 text-sm">{q.data!.map((f) => <li key={f.id} className="flex flex-wrap items-center gap-2"><button type="button" className="text-primary underline" onClick={() => void get(f)}>{f.name}</button>
+            <span className="text-muted-foreground">{Math.ceil(f.bytes / 1024)} KB · {f.uploadedBy} · {dateTime(f.createdAt)}</span>{canEdit && <Button size="icon" variant="ghost" aria-label={`Borrar ${f.name}`} onClick={() => void remove(f)}><Trash2 className="size-4" /></Button>}</li>)}</ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+interface ImpRow { line: number; name: string; action: "create" | "update" | "error"; message?: string }
+
+/** ImportCompanies: preview a CSV of companies, then apply it. */
+export function ImportCompanies({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [csv, setCsv] = useState("");
+  const [res, setRes] = useState<{ rows: ImpRow[]; counts: Record<string, number>; applied: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function run(apply: boolean) {
+    setBusy(true);
+    try {
+      const r = await authedFetch(`/v1/companies/import${apply ? "?apply=1" : ""}`, { method: "POST", headers: { "Content-Type": "text/csv" }, body: csv });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.detail || (j.errors && j.errors[0]?.message) || "No se pudo leer el archivo");
+      setRes(j);
+      if (apply) { toast.success(`Listo: ${j.counts.create} creadas, ${j.counts.update} actualizadas.`); onDone(); }
+    } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
+  }
+  const ACTION: Record<string, string> = { create: "Se crea", update: "Se actualiza", error: "Error" };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader><DialogTitle>Importar empresas</DialogTitle><DialogDescription>Columnas: nombre, rfc, plazo (contado, 15, 30, 60), limite, descuento, grupo, compradores (separados por ;), matriz, medios (tarjeta; oxxo; spei; crédito). Una empresa se reconoce por RFC o por su nombre.</DialogDescription></DialogHeader>
+        <div className="grid gap-3">
+          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm">Elegir CSV<input type="file" accept=".csv,text/csv" className="sr-only" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setCsv(await f.text()); setRes(null); } }} /></label>
+          {csv && <p className="text-sm text-muted-foreground">{csv.split(/\r?\n/).filter(Boolean).length - 1} filas cargadas.</p>}
+          {res && <div className="max-h-72 overflow-auto rounded-md border"><Table><TableHeader><TableRow><TableHead>Línea</TableHead><TableHead>Empresa</TableHead><TableHead>Resultado</TableHead></TableRow></TableHeader>
+            <TableBody>{res.rows.map((r) => <TableRow key={r.line}><TableCell>{r.line}</TableCell><TableCell>{r.name}</TableCell><TableCell className={r.action === "error" ? "text-bad" : ""}>{ACTION[r.action]}{r.message ? `: ${r.message}` : ""}</TableCell></TableRow>)}</TableBody></Table></div>}
+          {res && <p className="text-sm">{res.counts.create} por crear · {res.counts.update} por actualizar · {res.counts.error} con error{res.applied ? " (aplicado)" : ""}</p>}
+        </div>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Cerrar</Button><Button variant="outline" disabled={!csv || busy} onClick={() => void run(false)}>Revisar</Button><Button disabled={!res || res.applied || busy || ((res.counts.create ?? 0) + (res.counts.update ?? 0) === 0)} onClick={() => void run(true)}>Importar</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -161,6 +161,9 @@ func (c *CompanyAccess) AllowsPayment(kind string) bool {
 
 var termDays = map[string]int{"prepaid": 0, "net15": 15, "net30": 30, "net60": 60}
 
+// ValidateCompany runs the checks a save runs (for previews).
+func ValidateCompany(c *Company) error { return c.clean() }
+
 func (c *Company) clean() error {
 	c.Name, c.RFC, c.Note = strings.TrimSpace(c.Name), strings.ToUpper(strings.TrimSpace(c.RFC)), strings.TrimSpace(c.Note)
 	if c.Status == "" {

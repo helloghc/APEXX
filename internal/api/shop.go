@@ -238,6 +238,13 @@ type shopLimiter struct {
 	n    int
 }
 
+// reset forgets every hit (tests start each run clean).
+func (l *shopLimiter) reset() {
+	l.mu.Lock()
+	l.hits = nil
+	l.mu.Unlock()
+}
+
 func (l *shopLimiter) allow(key string) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()

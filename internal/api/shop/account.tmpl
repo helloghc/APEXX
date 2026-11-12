@@ -82,6 +82,7 @@
 </div>
 <div data-agreements-portal></div>
 <div data-invoices-portal></div>
+<div data-company-docs></div>
 {{if .HasRep}}<form class="acct-box" data-rep-access><h2>Tu representante de ventas</h2><label class="shipopt"><input type="checkbox" name="on"{{if .RepAccess}} checked{{end}}> <span>Permitir que nuestro representante haga pedidos por nosotros. Cada pedido queda registrado con su nombre.</span></label><p class="note" role="status" data-rep-status></p></form>{{end}}
 {{if .PoolName}}<div class="acct-box" data-pool><h2>Crédito del grupo</h2><p>{{.PoolName}} y sus filiales comparten un crédito de <strong>{{.PoolLimit}}</strong>; hoy deben <strong>{{.PoolOwed}}</strong> en conjunto.</p></div>{{end}}
 {{if .Subsidiaries}}<h2>Filiales</h2>

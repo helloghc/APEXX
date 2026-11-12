@@ -60,6 +60,7 @@ func setup(t *testing.T) *env {
 	if admin == "" {
 		t.Skip("APEXX_TEST_ADMIN_URL not set")
 	}
+	resetLimiters()
 	ctx := context.Background()
 	b := make([]byte, 4)
 	_, _ = rand.Read(b)

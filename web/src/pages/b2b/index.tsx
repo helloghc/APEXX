@@ -1,6 +1,6 @@
 import { ProductPicker } from "../catalog/ProductPicker";
 import { CustomFields } from "@/components/CustomFields";
-import { Agreements, AutopayCard, Invoices, Branches, Members, Requests, Roles, RulesEditor, type Branch, type Rule } from "./CompanyDepth";
+import { Agreements, AutopayCard, Documents, ImportCompanies, Invoices, Branches, Members, Requests, Roles, RulesEditor, type Branch, type Rule } from "./CompanyDepth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Building2, Copy, Database, Download, Plus, Trash2 } from "lucide-react";
@@ -57,10 +57,12 @@ function CompanyList({ isAdmin }: { isAdmin: boolean }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["companies"], queryFn: api.companies });
   const [create, setCreate] = useState(false);
+  const [importing, setImporting] = useState(false);
   const items = q.data ?? [];
   return (
     <Page title="Empresas (B2B)" sub="Clientes de negocio con su propio precio y, si quieres, compra a crédito. Sus compradores entran a su cuenta en la tienda y ven el precio de empresa al pagar."
-      actions={isAdmin && <Button onClick={() => setCreate(true)}><Plus aria-hidden="true" /> Nueva empresa</Button>}>
+      actions={isAdmin && <><Button variant="outline" onClick={() => setImporting(true)}>Importar CSV</Button><Button onClick={() => setCreate(true)}><Plus aria-hidden="true" /> Nueva empresa</Button></>}>
+      {importing && <ImportCompanies onClose={() => setImporting(false)} onDone={() => void qc.invalidateQueries({ queryKey: ["companies"] })} />}
       <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
       {items.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-3">{[["Empresas", String(items.length)], ["Por cobrar", formatMoney(items.reduce((a, c) => a + Math.max(c.balance, 0), 0))], ["Vencido", formatMoney(items.reduce((a, c) => a + c.overdue, 0))]].map(([l, v]) => (
@@ -207,6 +209,7 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
       </Card>
       <CustomFields resource="company" id={id} canEdit={isAdmin} />
       <Invoices id={id} />
+      <Documents id={id} canEdit={isAdmin} />
       <Agreements id={id} canEdit={isAdmin} />
       <Roles id={id} canEdit={isAdmin} />
       <Members id={id} canEdit={isAdmin} onChanged={refresh} />
