@@ -112,6 +112,17 @@ type Persister interface {
 	SaveRelease(rel Release) error
 }
 
+// SiteSchedule puts a frozen version of the site live between two moments
+// (Black Friday, a seasonal look) and back to the regular one after.
+type SiteSchedule struct {
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	RevisionID string    `json:"revisionId"`
+	StartsAt   time.Time `json:"startsAt"`
+	EndsAt     time.Time `json:"endsAt"`
+	CreatedBy  string    `json:"createdBy"`
+}
+
 // Site is one tenant's storefront: an editable draft plus published revisions.
 type Site struct {
 	ID   string
@@ -126,6 +137,7 @@ type Site struct {
 	releases  []Release
 	live      *Revision // swapped atomically under mu; readers copy the pointer
 	persist   Persister
+	schedules []SiteSchedule // versions that go live by themselves between two moments
 }
 
 // SetPersister enables durable storage.
@@ -319,10 +331,103 @@ func (s *Site) Rollback(by string) (Release, error) {
 	return rel, nil
 }
 
+// SetSchedules replaces the scheduled versions of the site.
+func (s *Site) SetSchedules(list []SiteSchedule) {
+	s.mu.Lock()
+	s.schedules = append([]SiteSchedule(nil), list...)
+	s.mu.Unlock()
+}
+
+// Schedules returns the scheduled versions.
+func (s *Site) Schedules() []SiteSchedule {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]SiteSchedule(nil), s.schedules...)
+}
+
+// HasRevision reports whether a revision is known (frozen or published).
+func (s *Site) HasRevision(id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.revisions[id]
+	return ok
+}
+
+// revisionAtLocked is the revision live at a moment: the scheduled one whose
+// window holds it (the latest to start wins), otherwise the published one.
+func (s *Site) revisionAtLocked(at time.Time) *Revision {
+	var best *SiteSchedule
+	for i := range s.schedules {
+		sc := &s.schedules[i]
+		if !at.Before(sc.StartsAt) && at.Before(sc.EndsAt) && s.revisions[sc.RevisionID] != nil && (best == nil || sc.StartsAt.After(best.StartsAt)) {
+			best = sc
+		}
+	}
+	if best != nil {
+		return s.revisions[best.RevisionID]
+	}
+	return s.live
+}
+
+// Freeze renders the draft into a revision without publishing it, so it can
+// be scheduled. Nothing is saved if any page is blocked.
+func (s *Site) Freeze(by, message string) (string, map[string]Report, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	rev := &Revision{CreatedAt: s.now().UTC(), CreatedBy: by, Message: message,
+		Templates: make(map[string]Template, len(s.draft)), Reports: map[string]Report{}, Pages: map[string][]byte{}}
+	blocked := false
+	for h, t := range s.draft {
+		r := s.renderFull(t)
+		rev.Templates[h] = t
+		rev.Reports[h] = r.Report
+		rev.Pages[h] = r.Doc
+		blocked = blocked || r.Report.Blocking()
+		if h == "index" {
+			rev.Pages[chromeHead] = []byte(r.Theme.Head())
+			rev.Pages[chromeBody] = []byte(r.Theme.BodyClass())
+			rev.Pages[chromeHeader] = r.Header
+			rev.Pages[chromeFooter] = r.Footer
+		}
+	}
+	if blocked {
+		return "", rev.Reports, ErrBlocked
+	}
+	snap, _ := json.Marshal(rev.Templates)
+	sum := sha256.Sum256(append([]byte(RendererVersion+"|"), snap...))
+	rev.Checksum = hex.EncodeToString(sum[:])
+	rev.ID = "rev_" + rev.Checksum[:12]
+	if _, exists := s.revisions[rev.ID]; !exists {
+		if s.persist != nil {
+			if err := s.persist.SaveRevision(rev); err != nil {
+				return "", rev.Reports, fmt.Errorf("builder: save revision: %w", err)
+			}
+		}
+		s.revisions[rev.ID] = rev
+	}
+	return rev.ID, rev.Reports, nil
+}
+
+// LiveAt returns the HTML of a page as it is (or will be) live at a moment;
+// previews of a scheduled version use a future moment.
+func (s *Site) LiveAt(handle string, at time.Time) ([]byte, string, error) {
+	s.mu.Lock()
+	rev := s.revisionAtLocked(at)
+	s.mu.Unlock()
+	if rev == nil {
+		return nil, "", ErrNotFound
+	}
+	html, ok := rev.Pages[handle]
+	if !ok || strings.HasPrefix(handle, "__") {
+		return nil, "", ErrNotFound
+	}
+	return html, rev.ID, nil
+}
+
 // Live returns the published HTML of a page.
 func (s *Site) Live(handle string) ([]byte, string, error) {
 	s.mu.Lock()
-	rev := s.live
+	rev := s.revisionAtLocked(s.now())
 	s.mu.Unlock()
 	if rev == nil {
 		return nil, "", ErrNotFound
@@ -355,7 +460,7 @@ type Chrome struct {
 // when nothing is published yet.
 func (s *Site) LiveChrome() Chrome {
 	s.mu.Lock()
-	rev := s.live
+	rev := s.revisionAtLocked(s.now())
 	draft, hasDraft := s.draft["index"]
 	s.mu.Unlock()
 	if rev != nil && len(rev.Pages[chromeHead]) > 0 {

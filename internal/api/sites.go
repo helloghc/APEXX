@@ -2,10 +2,13 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/helloghc/apexx/internal/apierr"
 	"github.com/helloghc/apexx/internal/builder"
@@ -124,6 +127,15 @@ func (s *Server) loadSite(tenant, id string, create bool) (*builder.Site, error)
 	}
 	st.Restore(drafts, ver, revs, rels)
 	st.SetPersister(per)
+	var sched []builder.SiteSchedule
+	if err := s.DB.Tx(context.Background(), tenant, func(tx pgx.Tx) error {
+		var e error
+		sched, e = loadSchedulesTx(context.Background(), tx, tenant, id)
+		return e
+	}); err != nil {
+		return nil, err
+	}
+	st.SetSchedules(sched)
 	s.sites[key] = st
 	return st, nil
 }
@@ -353,6 +365,10 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	html, rev, err := st.Live(r.PathValue("handle"))
+	previewAt, preview := s.designPreviewAt(r, tenant)
+	if preview {
+		html, rev, err = st.LiveAt(r.PathValue("handle"), previewAt)
+	}
 	if err != nil {
 		apierr.NotFound(w, "Página no publicada")
 		return
@@ -360,6 +376,14 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 	etag := `"` + rev + `"`
 	h := w.Header()
 	cache := "public, max-age=0, s-maxage=31536000, stale-while-revalidate=60"
+	// A scheduled version changes the page without a publish: caches keep it a minute at most.
+	if pendingSchedule(st.Schedules()) {
+		cache = "public, max-age=0, s-maxage=60, stale-while-revalidate=30"
+	}
+	if preview {
+		cache, etag = "no-store", `"preview-`+rev+`"`
+		h.Set("X-Robots-Tag", "noindex")
+	}
 	// Navigation menus are store configuration, not part of the revision:
 	// they are placed at serve time so a menu change shows without publishing.
 	if t, ok := s.Proj.Tenant(tenant); ok && bytes.Contains(html, []byte(`data-menu="`)) {
