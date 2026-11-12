@@ -140,10 +140,36 @@ deploy/gcp/ha/11-mig-lb.sh                   # plantilla, grupo regional con aut
 - **Autoescalado:** de 2 a 6 VMs cuando el CPU pasa del 60%.
 - **Cloud SQL regional:** si la zona primaria cae, el failover es automático (unos 60 s).
 
-**Antes de pasar a varias VMs, el backend debe resolver tres cosas** (pendientes en el código Go):
-1. **Caché del builder:** cada instancia guarda en memoria el sitio publicado. Al publicar o revertir, las demás instancias deben invalidarlo con el evento `site.released` del outbox; hoy solo lo hace la instancia que publicó.
-2. **Límite de intentos de login:** vive en memoria, así que cuenta por instancia. Para un límite global hay que moverlo a la base de datos o a Valkey.
-3. **Procesos de fondo:** corren en todas las instancias. Hoy son seguros porque usan `FOR UPDATE` y claves de idempotencia en Stripe, pero conviene un candado (`pg_try_advisory_lock`) para que solo uno trabaje a la vez.
+**Varios nodos (resuelto).** El backend ya funciona con varias instancias a la vez:
+1. **Caché del builder:** cada nodo sigue el outbox con su propia proyección; el evento `site.released` (y `site.draft`) borra el sitio en memoria de todos los nodos. Prueba: `TestTwoNodesSeeSamePublishedSite`.
+2. **Límite de intentos de login:** se cuenta en la tabla `login_failures` (solo un hash de dirección y correo), igual para todos los nodos. Si la base no responde, decide la cuenta en memoria del nodo. Prueba: `TestLoginLimitSharedByNodes`.
+3. **Procesos de fondo:** cada trabajo compartido corre en un solo nodo, el que tiene su turno en `job_leases`. El dueño lo renueva en cada vuelta y lo devuelve al apagarse; si el nodo muere, el turno vence (2 intervalos + 15 s) y lo toma otro. Corren en cada nodo solo los que trabajan con su propia memoria: proyección, llaves de tienda, conteo de búsquedas, aprendizaje y operaciones masivas (estas reparten con `FOR UPDATE SKIP LOCKED`). Prueba: `TestJobLeaseOneNodeAtATime`.
+
+## 7.1 Despliegue sin corte
+
+`docker-compose.yml` levanta dos nodos (`apexx` y `apexx2`) con la misma imagen, detrás de Caddy (`least_conn`, chequeo de `/readyz` cada 2 s, reintento en el otro nodo hasta 10 s).
+
+```bash
+APEXX_IMAGE=<imagen nueva> deploy/rolling.sh
+```
+
+1. Corre las migraciones. Deben funcionar con la versión que sigue corriendo: agregar columnas y tablas; quitar solo en una versión posterior.
+2. Reemplaza un nodo a la vez. El contenedor viejo recibe SIGTERM y:
+   - responde `/readyz` con 503 durante `APEXX_DRAIN` (6 s por defecto), y Caddy deja de mandarle tráfico;
+   - termina lo que tiene en curso;
+   - devuelve sus turnos de trabajos de fondo.
+3. Espera a que el nodo nuevo esté sano antes de tocar el otro. Siempre hay un nodo listo.
+
+**Prueba de relevo** (`tools/qa/relevo/run.sh`): dos nodos detrás de Caddy con las mismas reglas, 16 clientes sin pausa (tienda, API, panel y un POST) y cada nodo reemplazado dos veces durante 75 s.
+
+| | Peticiones | Fallidas | Más lenta | Más de 1 s |
+|---|---|---|---|---|
+| Con drenado (6 s) | 154 689 | **0** | 55 ms | 0 |
+| Control sin drenado | 77 071 | 2 (502 en POST) | 4 577 ms | 48 |
+
+Cada nodo tarda de 0,45 a 0,6 s en estar listo al arrancar.
+
+`APEXX_TRUST_PROXY=true` ya viene en el compose: sin él, todos los compradores llegaban con la IP de Caddy y compartían un solo límite por IP.
 
 ## 8. Runbook de incidentes
 

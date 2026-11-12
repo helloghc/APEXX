@@ -73,8 +73,6 @@ Solo crece el historial, a propósito: auditoría, outbox, historial de precios,
   - leer el CSV (normalizar acentos): 19 %;
   - aplicar los eventos en la proyección: 16 %.
   Siguientes pasos: un evento por lote, leer el CSV en varios núcleos y procesar el archivo mientras sube, sin el límite de 5 MB.
-- **Arranque sin corte:**
-  - foto de la proyección en disco con su posición del outbox; se atiende de inmediato y se pone al día en segundo plano;
-  - relevo de versiones con `/readyz`, para que un despliegue nunca deje la tienda sin servicio.
+- **Arranque sin corte: hecho.** Dos nodos detrás de Caddy, drenado con `/readyz` al apagarse, turnos de trabajos de fondo en la base y límite de login compartido. Prueba de relevo: 154 689 peticiones durante 4 reemplazos de nodo, 0 fallidas, la más lenta 55 ms. Detalle en `docs/deploy.md` §7.1.
 - **Memoria:** 523 MB con 50 000 productos. El índice de palabras suma unos 60 MB; hay que revisar estructuras más compactas.
 - **Outbox:** un ciclo completo de carga y borrado de 50 000 productos generó unos 600 000 eventos. Con un evento por lote bajaría unas 1 000 veces.

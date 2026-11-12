@@ -247,13 +247,13 @@ func (s *Server) revokeInvitation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) invitationInfo(w http.ResponseWriter, r *http.Request) {
-	if s.loginBlocked("invite|" + s.clientIP(r)) {
+	if s.loginBlocked(r.Context(), "invite|"+s.clientIP(r)) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "too_many_attempts", Detail: "Demasiados intentos; espera un minuto"})
 		return
 	}
 	tenant, storeName, email, name, err := s.Auth.InvitationInfo(r.Context(), r.PathValue("token"))
 	if err != nil {
-		s.loginFailed("invite|" + s.clientIP(r))
+		s.loginFailed(r.Context(), "invite|"+s.clientIP(r))
 		s.authFail(w, err)
 		return
 	}
@@ -262,7 +262,7 @@ func (s *Server) invitationInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) acceptInvitation(w http.ResponseWriter, r *http.Request) {
-	if s.loginBlocked("invite|" + s.clientIP(r)) {
+	if s.loginBlocked(r.Context(), "invite|"+s.clientIP(r)) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "too_many_attempts", Detail: "Demasiados intentos; espera un minuto"})
 		return
 	}
@@ -280,7 +280,7 @@ func (s *Server) acceptInvitation(w http.ResponseWriter, r *http.Request) {
 	tenant, m, err := s.Auth.AcceptInvitation(r.Context(), r.PathValue("token"), body.Name, body.Password)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvitation) {
-			s.loginFailed("invite|" + s.clientIP(r))
+			s.loginFailed(r.Context(), "invite|"+s.clientIP(r))
 		}
 		s.authFail(w, err)
 		return
@@ -369,7 +369,7 @@ func (s *Server) authStores(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := s.clientIP(r) + "|" + strings.ToLower(strings.TrimSpace(body.Email))
-	if s.loginBlocked(key) {
+	if s.loginBlocked(r.Context(), key) {
 		w.Header().Set("Retry-After", "60")
 		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "too_many_attempts", Detail: "Demasiados intentos; espera un minuto"})
 		return
@@ -380,7 +380,7 @@ func (s *Server) authStores(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(list) == 0 {
-		s.loginFailed(key)
+		s.loginFailed(r.Context(), key)
 		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_credentials", Detail: "Correo o contraseña incorrectos"})
 		return
 	}

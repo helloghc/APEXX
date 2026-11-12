@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/helloghc/apexx/internal/apierr"
@@ -67,6 +68,7 @@ type Server struct {
 	sites   map[string]*builder.Site // tenant/site -> site
 
 	loginMu   sync.Mutex
+	draining  atomic.Bool // set on shutdown: /readyz answers 503
 	loginHits map[string][]time.Time
 
 	metrics *metrics
@@ -310,7 +312,17 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// Drain marks this node as leaving: /readyz answers 503 from now on, so the
+// load balancer stops sending new requests here while the ones in flight
+// finish. Call it before http.Server.Shutdown.
+func (s *Server) Drain() { s.draining.Store(true) }
+
 func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
+	if s.draining.Load() {
+		w.Header().Set("Connection", "close")
+		http.Error(w, "draining", http.StatusServiceUnavailable)
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
 	if err := s.DB.App.Ping(ctx); err != nil {
@@ -449,7 +461,12 @@ func (s *Server) clientIP(r *http.Request) string {
 }
 
 // loginBlocked reports whether key had 10 failed attempts in the last minute.
-func (s *Server) loginBlocked(key string) bool {
+// Attempts are counted in the database, so the limit holds across every node;
+// if the database cannot answer, this node's own count decides.
+func (s *Server) loginBlocked(ctx context.Context, key string) bool {
+	if n, err := s.DB.LoginFailures(ctx, key, time.Minute); err == nil {
+		return n >= 10
+	}
 	s.loginMu.Lock()
 	defer s.loginMu.Unlock()
 	now := time.Now()
@@ -464,7 +481,10 @@ func (s *Server) loginBlocked(key string) bool {
 }
 
 // loginFailed records a failed attempt; successful logins never count.
-func (s *Server) loginFailed(key string) {
+func (s *Server) loginFailed(ctx context.Context, key string) {
+	if err := s.DB.AddLoginFailure(ctx, key); err != nil {
+		s.Log.Warn("login attempt not recorded", "err", err)
+	}
 	s.loginMu.Lock()
 	s.loginHits[key] = append(s.loginHits[key], time.Now())
 	s.loginMu.Unlock()
@@ -481,14 +501,14 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limitKey := s.clientIP(r) + "|" + strings.ToLower(strings.TrimSpace(body.Email))
-	if s.loginBlocked(limitKey) {
+	if s.loginBlocked(r.Context(), limitKey) {
 		w.Header().Set("Retry-After", "60")
 		apierr.Write(w, apierr.Problem{Status: http.StatusTooManyRequests, Code: "too_many_attempts", Detail: "Demasiados intentos; espera un minuto"})
 		return
 	}
 	token, m, err := s.Auth.Login(r.Context(), body.Store, body.Email, body.Password, body.Code, s.clientIP(r), r.UserAgent())
 	if errors.Is(err, auth.ErrBadCredentials) {
-		s.loginFailed(limitKey)
+		s.loginFailed(r.Context(), limitKey)
 		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_credentials", Detail: "Correo o contraseña incorrectos"})
 		return
 	}
@@ -502,7 +522,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if errors.Is(err, auth.ErrBadCode) {
-		s.loginFailed(limitKey)
+		s.loginFailed(r.Context(), limitKey)
 		apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "invalid_code", Detail: "El código de verificación no es correcto"})
 		return
 	}

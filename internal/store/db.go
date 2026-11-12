@@ -274,6 +274,8 @@ func ensureRoles(ctx context.Context, conn *pgx.Conn, appPassword, systemPasswor
 	for _, q := range []string{
 		"REVOKE ALL ON api_keys FROM apexx_app",
 		"REVOKE ALL ON sessions FROM apexx_app",
+		"REVOKE ALL ON job_leases FROM apexx_app",
+		"REVOKE ALL ON login_failures FROM apexx_app",
 		"REVOKE INSERT, UPDATE, DELETE ON tenants FROM apexx_app",
 	} {
 		if _, err := conn.Exec(ctx, q); err != nil {

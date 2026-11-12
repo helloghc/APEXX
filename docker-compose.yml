@@ -2,6 +2,8 @@
 #   postgres  : PostgreSQL 16 with a persistent volume
 #   migrate   : one-shot schema migrations + DB roles (runs on every `up`, idempotent)
 #   apexx     : API, storefront, editor and workers (restart: always + healthcheck)
+#   apexx2    : second node of the same image; deploy/rolling.sh replaces one
+#               node at a time so the store never goes down on a deploy
 #   caddy     : automatic HTTPS (Let's Encrypt) and security headers
 #   autoheal  : restarts any container whose healthcheck turns unhealthy
 #
@@ -89,7 +91,7 @@ services:
     logging: *logging
     networks: [backend]
 
-  apexx:
+  apexx: &apexx-node
     image: ${APEXX_IMAGE:-apexx:latest}
     command: ["serve"]
     restart: always
@@ -103,6 +105,8 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       APEXX_PLATFORM_FEE_BPS: ${APEXX_PLATFORM_FEE_BPS:-0}
       APEXX_SECURE_COOKIES: "true"
+      APEXX_TRUST_PROXY: "true"
+      APEXX_DRAIN: ${APEXX_DRAIN:-6s}
     depends_on:
       postgres:
         condition: service_healthy
@@ -123,7 +127,10 @@ services:
     # Loopback only: lets the Ops Agent scrape /metrics; not reachable from outside the VM.
     ports:
       - "127.0.0.1:9100:8080"
-    stop_grace_period: 25s
+    # On SIGTERM a node answers /readyz with 503 for APEXX_DRAIN (Caddy stops
+    # sending it traffic), finishes what is in flight and hands its job
+    # leases over; the grace period covers drain + shutdown.
+    stop_grace_period: 40s
     logging: *logging
     networks: [backend, frontend]
     deploy:
@@ -131,6 +138,11 @@ services:
         limits:
           cpus: "${APEXX_CPUS:-3}"
           memory: ${APEXX_MEMORY_LIMIT:-4g}
+
+  apexx2:
+    <<: *apexx-node
+    ports:
+      - "127.0.0.1:9101:8080"
 
   caddy:
     image: mirror.gcr.io/library/caddy:2.8.4-alpine
@@ -149,6 +161,7 @@ services:
       - caddy_config:/config
     depends_on:
       - apexx
+      - apexx2
     cap_drop:
       - ALL
     cap_add:

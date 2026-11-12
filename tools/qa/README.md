@@ -40,3 +40,14 @@ node tools/qa/escala/run.js 50000   # 1000, 10000, 50000…
 6. Borra todo y compara cada tabla con la foto.
 
 `measure.js N` repite solo las latencias sobre una tienda ya cargada. Los resultados quedan en `$APEXX_QA_OUT` (por omisión `./out`).
+
+## Prueba de relevo (despliegue sin corte)
+
+```
+# con el entorno del servidor ya exportado (DATABASE_URL, …) y las variables de arriba
+APEXX_BIN=./apexx CADDY_BIN=/ruta/a/caddy tools/qa/relevo/run.sh
+```
+
+Levanta dos nodos y Caddy con las mismas reglas de `deploy/caddy/Caddyfile` y manda tráfico constante con `relevo/load.js` (16 clientes: tienda, API, panel y un POST). Mientras tanto reemplaza cada nodo dos veces. Pasa si ninguna petición falla.
+
+Para el control, repítelo con `APEXX_DRAIN=0s`: deben aparecer fallos o esperas largas, lo que prueba que el drenado es lo que los evita.

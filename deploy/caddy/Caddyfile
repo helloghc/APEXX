@@ -31,13 +31,21 @@
 	@internal path /metrics
 	respond @internal 404
 
-	reverse_proxy apexx:8080 {
+	# Two nodes. A node leaving (deploy, restart) answers /readyz with 503
+	# for a few seconds before it stops, so it is taken out of rotation
+	# before any request can fail; a request that still meets a closed
+	# node is retried on the other one.
+	reverse_proxy apexx:8080 apexx2:8080 {
 		header_up X-Forwarded-For {remote_host}
+		lb_policy least_conn
 		health_uri /readyz
-		health_interval 5s
+		health_interval 2s
 		health_timeout 2s
+		health_fails 1
+		health_passes 2
+		fail_duration 10s
 		lb_try_duration 10s
-		lb_try_interval 250ms
+		lb_try_interval 100ms
 	}
 
 	log {

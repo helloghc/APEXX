@@ -13,6 +13,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"flag"
 	"fmt"
@@ -224,56 +225,74 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 			}
 			return lines, res.Totals.Items.Amount, string(res.Totals.Items.Currency), true
 		}}
+	// Background jobs shared by every node run on one node at a time: the one
+	// holding the job's lease (see store.TakeLease). Jobs that work on this
+	// node's memory (keys, search counts, learning) run on every node.
+	node := nodeID()
+	every := func(name string, interval time.Duration, fn func(context.Context) error) {
+		ttl := 2*interval + 15*time.Second
+		resilience.Every(ctx, log, name, interval, func(ctx context.Context) error {
+			if ok, err := db.TakeLease(ctx, name, node, ttl); !ok {
+				return err
+			}
+			return fn(ctx)
+		})
+	}
 	ord := &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve, Notify: mail, PublicURL: publicURL, Log: log}
-	resilience.Every(ctx, log, "mailer", 2*time.Second, func(ctx context.Context) error {
+	every("mailer", 2*time.Second, func(ctx context.Context) error {
 		_, err := mail.Send(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "abandoned-carts", time.Minute, func(ctx context.Context) error {
+	every("abandoned-carts", time.Minute, func(ctx context.Context) error {
 		_, err := cust.RemindDue(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "refund-reconciler", time.Minute, func(ctx context.Context) error {
+	every("refund-reconciler", time.Minute, func(ctx context.Context) error {
 		_, err := ord.ReconcileRefunds(ctx, 2*time.Minute)
 		return err
 	})
-	resilience.Every(ctx, log, "quote-expiry", time.Minute, func(ctx context.Context) error {
+	every("quote-expiry", time.Minute, func(ctx context.Context) error {
 		_, err := ord.ExpireQuotes(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "company-due-reminders", 15*time.Minute, func(ctx context.Context) error {
+	every("company-due-reminders", 15*time.Minute, func(ctx context.Context) error {
 		_, err := ord.RemindCompanyDues(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "company-autopay", 15*time.Minute, func(ctx context.Context) error {
+	every("company-autopay", 15*time.Minute, func(ctx context.Context) error {
 		_, err := ord.RunAutopay(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "purchase-request-expiry", time.Minute, func(ctx context.Context) error {
+	every("purchase-request-expiry", time.Minute, func(ctx context.Context) error {
 		_, err := ord.ExpirePurchaseRequests(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "seller-payouts", 10*time.Minute, func(ctx context.Context) error {
+	every("seller-payouts", 10*time.Minute, func(ctx context.Context) error {
 		_, err := ord.RunPayouts(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "shopper-purge", time.Hour, cust.Purge)
+	every("shopper-purge", time.Hour, cust.Purge)
 
 	// Background workers, each supervised and restarted on failure.
 	resilience.Supervise(ctx, log, "projector", func(ctx context.Context) error { proj.Run(ctx); return nil })
-	resilience.Every(ctx, log, "reservation-expiry", 30*time.Second, func(ctx context.Context) error {
+	every("reservation-expiry", 30*time.Second, func(ctx context.Context) error {
 		_, err := db.ExpireReservations(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "payment-reconciler", time.Minute, func(ctx context.Context) error {
+	every("payment-reconciler", time.Minute, func(ctx context.Context) error {
 		_, err := ord.Reconcile(ctx, 2*time.Minute)
 		return err
 	})
-	resilience.Every(ctx, log, "invoicer", 15*time.Second, func(ctx context.Context) error {
+	every("invoicer", 15*time.Second, func(ctx context.Context) error {
 		_, err := ord.IssueInvoices(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "session-purge", time.Hour, (&auth.Service{DB: db}).PurgeSessions)
+	every("session-purge", time.Hour, func(ctx context.Context) error {
+		if err := db.PurgeLoginFailures(ctx); err != nil {
+			return err
+		}
+		return (&auth.Service{DB: db}).PurgeSessions(ctx)
+	})
 	resilience.Every(ctx, log, "tenant-keys", 30*time.Second, func(ctx context.Context) error {
 		ts, err := db.Tenants(ctx)
 		if err != nil {
@@ -288,17 +307,17 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	})
 
 	wh := &webhooks.Service{DB: db, Keys: keys, Proj: proj, AllowPrivate: env("APEXX_WEBHOOK_ALLOW_PRIVATE", "false") == "true"}
-	resilience.Every(ctx, log, "webhook-dispatcher", time.Second, func(ctx context.Context) error {
+	every("webhook-dispatcher", time.Second, func(ctx context.Context) error {
 		_, err := wh.Dispatch(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "webhook-sender", time.Second, func(ctx context.Context) error {
+	every("webhook-sender", time.Second, func(ctx context.Context) error {
 		_, err := wh.Send(ctx)
 		return err
 	})
 	// Keep 30 days of outbox for the event feed and replays; never prune past
 	// what the projector has applied.
-	resilience.Every(ctx, log, "outbox-prune", time.Hour, func(ctx context.Context) error {
+	every("outbox-prune", time.Hour, func(ctx context.Context) error {
 		return db.PruneOutbox(ctx, proj.Stats().LastID, 30*24*time.Hour)
 	})
 
@@ -309,7 +328,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	ordersDirty.Store(true)
 	proj.On(store.TopicOrder, func(_, _ string) { ordersDirty.Store(true) })
 	lastFullSync := time.Time{}
-	resilience.Every(ctx, log, "analytics-orders", 2*time.Second, func(ctx context.Context) error {
+	every("analytics-orders", 2*time.Second, func(ctx context.Context) error {
 		// Order events wake the sync at once; a sweep every 30 s covers any missed signal.
 		if !ordersDirty.Swap(false) && time.Since(lastFullSync) < 30*time.Second {
 			return nil
@@ -321,11 +340,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		}
 		return err
 	})
-	resilience.Every(ctx, log, "analytics-traffic", 30*time.Second, func(ctx context.Context) error {
+	every("analytics-traffic", 30*time.Second, func(ctx context.Context) error {
 		_, err := rep.RollupTraffic(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "analytics-retention", 6*time.Hour, func(ctx context.Context) error {
+	every("analytics-retention", 6*time.Hour, func(ctx context.Context) error {
 		_, err := rep.Purge(ctx)
 		return err
 	})
@@ -337,7 +356,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	mediaStore, err := media.NewLocal(env("APEXX_MEDIA_DIR", "data/media"))
 	must(log, err, "media directory")
 	// Drafts with a publication date go live on time.
-	resilience.Every(ctx, log, "scheduled-publish", 20*time.Second, func(ctx context.Context) error {
+	every("scheduled-publish", 20*time.Second, func(ctx context.Context) error {
 		_, err := db.PublishDue(ctx)
 		return err
 	})
@@ -358,22 +377,22 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		srv.ChannelEndpoints = saleschannels.Endpoints{MeliAPI: h, MeliAuth: h, AmazonAPI: h, AmazonAuth: h, AmazonMarketplace: saleschannels.Default.AmazonMarketplace}
 		log.Warn("sales channels point to a test host", "host", h)
 	}
-	resilience.Every(ctx, log, "warehouse-requests", 30*time.Second, func(ctx context.Context) error {
+	every("warehouse-requests", 30*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunWarehouseRequests(ctx)
 		return err
 	})
 	// Purchases reported to ad platforms from the server.
-	resilience.Every(ctx, log, "ad-conversions", 15*time.Second, func(ctx context.Context) error {
+	every("ad-conversions", 15*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunConversions(ctx)
 		return err
 	})
 	// Mercado Libre and Amazon: listings in step and orders imported.
-	resilience.Every(ctx, log, "sales-channels", 20*time.Second, func(ctx context.Context) error {
+	every("sales-channels", 20*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunSalesChannels(ctx)
 		return err
 	})
 	// Email campaigns due to go out.
-	resilience.Every(ctx, log, "campaigns", 30*time.Second, func(ctx context.Context) error {
+	every("campaigns", 30*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunCampaigns(ctx)
 		return err
 	})
@@ -383,18 +402,18 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		return err
 	})
 	// Automations: "when X happens to an order, do Y", with retries.
-	resilience.Every(ctx, log, "automations", 5*time.Second, func(ctx context.Context) error {
+	every("automations", 5*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunAutomations(ctx)
 		return err
 	})
 	// Carriers: parcels with a bought label are tracked until delivered.
-	resilience.Every(ctx, log, "carrier-tracking", 15*time.Minute, func(ctx context.Context) error {
+	every("carrier-tracking", 15*time.Minute, func(ctx context.Context) error {
 		_, err := srv.RunTracking(ctx)
 		return err
 	})
 	// Searches are counted in memory and saved in batches.
 	// Subscriptions: deliveries that are due are charged and ordered.
-	resilience.Every(ctx, log, "subscriptions", time.Minute, func(ctx context.Context) error {
+	every("subscriptions", time.Minute, func(ctx context.Context) error {
 		_, err := ord.RenewSubscriptions(ctx)
 		return err
 	})
@@ -404,7 +423,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		_, err := srv.RunLearning(ctx)
 		return err
 	})
-	resilience.Every(ctx, log, "catalog-sync", time.Minute, srv.SyncCatalogs)
+	every("catalog-sync", time.Minute, srv.SyncCatalogs)
 	hs := &http.Server{
 		Addr: env("APEXX_ADDR", ":8080"), Handler: srv.Routes(),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second,
@@ -418,10 +437,20 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		}
 	}()
 	<-ctx.Done()
+	// Zero-downtime hand-over: /readyz turns 503 so the load balancer stops
+	// sending new requests here (it checks every few seconds), then the
+	// requests in flight finish and the leases go to the other nodes.
+	srv.Drain()
+	drain, _ := time.ParseDuration(env("APEXX_DRAIN", "6s"))
+	log.Info("draining", "for", drain.String())
+	time.Sleep(drain)
 	log.Info("shutting down")
 	sctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	_ = hs.Shutdown(sctx)
+	if err := db.ReleaseLeases(sctx, node); err != nil {
+		log.Warn("leases not released", "err", err)
+	}
 }
 
 // cmdRotate re-wraps every tenant key from APEXX_MASTER_KEY to
@@ -439,4 +468,13 @@ func cmdRotate(ctx context.Context, log *slog.Logger) {
 	})
 	must(log, err, "rotate")
 	log.Info("master key rotated; now set APEXX_MASTER_KEY to the new value and restart", "tenants", n)
+}
+
+// nodeID names this process for job leases: host name plus a random suffix,
+// so two processes on one host never share leases.
+func nodeID() string {
+	h, _ := os.Hostname()
+	b := make([]byte, 4)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("%s-%x", h, b)
 }
