@@ -176,7 +176,7 @@ function Field({
           {!field.required && <option value="">—</option>}
           {field.options.map((o) => (
             <option key={String(o)} value={String(o)}>
-              {String(o)}
+              {OPTION_LABELS[String(o)] ?? String(o)}
             </option>
           ))}
         </select>
@@ -289,3 +289,9 @@ function AudienceField({ section, onChange }: { section: SectionInstance; onChan
     </fieldset>
   );
 }
+
+/** Readable names for the choices sections offer (the stored value stays as is). */
+const OPTION_LABELS: Record<string, string> = {
+  left: "Izquierda", center: "Centro", right: "Derecha", full: "Ancho completo", split: "Dividido", text: "Solo texto",
+  small: "Chico", medium: "Mediano", large: "Grande", tall: "Vertical", square: "Cuadrado", pill: "Redondeado",
+};

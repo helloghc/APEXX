@@ -36,6 +36,9 @@ const shopperCookie = "apexx_shopper"
 func (s *Server) setShopperCookie(w http.ResponseWriter, tenant, token string, maxAge int) {
 	http.SetCookie(w, &http.Cookie{Name: shopperCookie, Value: token, Path: "/s/" + tenant, HttpOnly: true, Secure: s.SecureCookies,
 		SameSite: http.SameSiteLaxMode, MaxAge: maxAge})
+	// A marker the store's script can read, so it only asks for account data
+	// (saved cards) when someone is signed in. It holds nothing secret.
+	http.SetCookie(w, &http.Cookie{Name: "apexx_in", Value: "1", Path: "/s/" + tenant, Secure: s.SecureCookies, SameSite: http.SameSiteLaxMode, MaxAge: maxAge})
 }
 
 // shopper returns the signed-in customer id ("" when there is no valid session).

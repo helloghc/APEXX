@@ -3573,5 +3573,18 @@
 "POST {endpoint}/tax con JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; responde {lines:[{class, label, rateBps, tax}]}. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/tax dengan JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; jawab {lines:[{class, label, rateBps, tax}]}. Tanda tangan: X-Apexx-Signature = hex(HMAC-SHA256(rahasia, timestamp + \".\" + isi)).",
 "{} · # disponibles": "{} · # tersedia",
 "Idioma del comprador": "Bahasa pembeli",
-"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "Setiap pelanggan menerima email dalam bahasa saat ia membeli. Jika Anda mengubah teks templat ini, email dikirim sesuai tulisan Anda, dengan terjemahan sendiri dari Pengaturan › Bahasa."
+"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "Setiap pelanggan menerima email dalam bahasa saat ia membeli. Jika Anda mengubah teks templat ini, email dikirim sesuai tulisan Anda, dengan terjemahan sendiri dari Pengaturan › Bahasa.",
+"Diseñador": "Desainer",
+"Izquierda": "Kiri",
+"Centro": "Tengah",
+"Derecha": "Kanan",
+"Ancho completo": "Lebar penuh",
+"Dividido": "Terbagi",
+"Solo texto": "Hanya teks",
+"Chico": "Kecil",
+"Mediano": "Sedang",
+"Grande": "Besar",
+"Vertical": "Vertikal",
+"Cuadrado": "Persegi",
+"Redondeado": "Membulat"
 }

@@ -239,7 +239,7 @@ function downloadsBox(ds) {
         "<td><span class='qty'><button type='button' data-dec='" + esc(keyOf(l)) + "' aria-label='Quitar uno de " + esc(l.title) + "'>−</button><span>" + l.qty + "</span>" +
         "<button type='button' data-inc='" + esc(keyOf(l)) + "' aria-label='Agregar uno de " + esc(l.title) + "'>+</button></span></td>" +
         "<td class='num'>" + money(l.total) + "</td><td><button type='button' class='linkbtn' data-del='" + esc(keyOf(l)) + "'>Quitar</button></td></tr>").join("");
-      view.innerHTML = "<table><thead><tr><th>Producto</th><th>Cantidad</th><th class='num'>Total</th><th><span class='sr'>Acciones</span></th></tr></thead><tbody>" + rows + "</tbody></table>" + renderOptions(r.body) + renderTotals(r.body);
+      view.innerHTML = "<table class='cart-lines'><thead><tr><th>Producto</th><th>Cantidad</th><th class='num'>Total</th><th><span class='sr'>Acciones</span></th></tr></thead><tbody>" + rows + "</tbody></table>" + renderOptions(r.body) + renderTotals(r.body);
       // Keep local quantities in sync with what the store can actually sell.
       const fixed = c.map((x) => { const l = r.body.lines.find((y) => keyOf(y) === keyOf(x) && !y.gift); return l ? { ...x, qty: l.qty } : x; });
       store.set(KEY, fixed.filter((l) => l.qty > 0)); count();
@@ -331,7 +331,7 @@ function downloadsBox(ds) {
     const cardsBox = document.createElement("div"); cardsBox.dataset.savedCards = ""; payBox.before(cardsBox);
     const savedCard = () => { const r = cardsBox.querySelector("input[name=savedcard]:checked"); return r && r.value !== "new" ? r.value : ""; };
     let signedIn = false;
-    fetch(api + "/account/cards").then((x) => (x.ok ? x.json() : null)).then((c) => {
+    (/(?:^|; )apexx_in=1/.test(document.cookie) ? fetch(api + "/account/cards") : Promise.resolve({ ok: false })).then((x) => (x.ok ? x.json() : null)).then((c) => {
       if (!c) return;
       signedIn = true;
       for (const [k, v] of [["email", c.email], ["name", c.name], ["phone", c.phone]]) { const el = $("#" + k); if (el && v && !el.value) { el.value = v; if (k === "email") el.dispatchEvent(new Event("change")); } }
@@ -1019,6 +1019,7 @@ function downloadsBox(ds) {
     if (r && r.status === 204) box.remove(); else box.querySelector("[data-card-status]").textContent = "No pudimos quitar la tarjeta. Intenta de nuevo.";
   }));
   const buy = document.querySelector("form[data-buy]"); if (!buy || !tenant) return;
+  if (!/(?:^|; )apexx_in=1/.test(document.cookie)) return; // express buy is for signed-in shoppers
   fetch(api + "/account/express").then((x) => (x.status === 200 ? x.json() : null)).then((ex) => {
     if (!ex) return;
     const base = document.body.dataset.base || "", mk = new URLSearchParams(location.search).get("mk") || "", channel = mk || document.body.dataset.channel || "mx";
@@ -1264,7 +1265,7 @@ function downloadsBox(ds) {
 
   // Product page: signed-in shoppers with a registry add the chosen variant to it.
   const buy = document.querySelector("form[data-buy]");
-  if (buy && !head && body.hasAttribute("data-registries")) {
+  if (buy && !head && body.hasAttribute("data-registries") && /(?:^|; )apexx_in=1/.test(document.cookie)) {
     send("GET", "/account/registries").then((r) => {
       if (r.status !== 200 || !r.body.enabled) return;
       const list = r.body.items.filter((g) => g.status === "active");

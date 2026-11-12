@@ -49,7 +49,9 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
   const canPublish = can(me, "builder", "admin");
 
   const [selected, setSelected] = useState<string | null>(null);
-  const [device, setDevice] = useState<Device>("desktop");
+  // On a phone the three panes are tabs: the list, the preview and the form.
+  const [pane, setPane] = useState<"sections" | "preview" | "settings">("sections");
+  const [device, setDevice] = useState<Device>(() => (typeof window !== "undefined" && window.matchMedia?.("(max-width: 719px)").matches ? "mobile" : "desktop"));
   const [picker, setPicker] = useState(false);
   const [history, setHistory] = useState(false);
   const [style, setStyle] = useState(false);
@@ -165,7 +167,12 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
           {issues.page.map((i) => i.message).join(" · ")}
         </div>
       )}
-      <div className={s.main}>
+      <div className={s.tabs} role="tablist" aria-label="Diseñador">
+        {([["sections", "Secciones"], ["preview", "Vista previa"], ["settings", "Editar"]] as const).map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={pane === k} className={s.tab} onClick={() => setPane(k)}>{label}</button>
+        ))}
+      </div>
+      <div className={s.main} data-pane={pane}>
         <SectionList
           header={regionSections(template, "header")}
           footer={regionSections(template, "footer")}
@@ -173,7 +180,7 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
           defs={defs}
           issues={issues.bySection}
           selected={selected}
-          onSelect={setSelected}
+          onSelect={(id) => { setSelected(id); if (window.matchMedia("(max-width: 719px)").matches) setPane("settings"); }}
           onMove={(from, to) => void ed.apply(moveSection(template, from, to))}
           onDuplicate={(i) => {
             const id = newId("sec");

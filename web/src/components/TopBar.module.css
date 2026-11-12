@@ -9,3 +9,9 @@
 .device + .device { border-left: 1px solid var(--line); }
 .on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .reasons { flex-basis: 100%; margin: 0; padding: 6px 12px 6px 28px; background: var(--bad-soft); color: var(--bad); border-radius: var(--radius); font-size: 13px; }
+@media (max-width: 719px) {
+  .bar { gap: 8px; padding: 8px 12px; }
+  .health, .devices { display: none; }
+  .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .actions { margin-left: 0; width: 100%; justify-content: space-between; }
+}

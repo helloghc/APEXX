@@ -3573,5 +3573,18 @@
 "POST {endpoint}/tax con JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; responde {lines:[{class, label, rateBps, tax}]}. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/tax に JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]} を送信し、{lines:[{class, label, rateBps, tax}]}. 署名： X-Apexx-Signature = hex(HMAC-SHA256(シークレット, timestamp + \".\" + 本文)).",
 "{} · # disponibles": "{} · 在庫#個",
 "Idioma del comprador": "購入者の言語",
-"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "お客様は購入時の言語でメールを受け取ります。このテンプレートの文面を変更した場合は、入力したとおりに、設定 › 言語の独自翻訳を使って送信されます。"
+"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "お客様は購入時の言語でメールを受け取ります。このテンプレートの文面を変更した場合は、入力したとおりに、設定 › 言語の独自翻訳を使って送信されます。",
+"Diseñador": "デザイナー",
+"Izquierda": "左",
+"Centro": "中央",
+"Derecha": "右",
+"Ancho completo": "全幅",
+"Dividido": "分割",
+"Solo texto": "テキストのみ",
+"Chico": "小",
+"Mediano": "中",
+"Grande": "大",
+"Vertical": "縦長",
+"Cuadrado": "正方形",
+"Redondeado": "角丸"
 }

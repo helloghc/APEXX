@@ -2,6 +2,7 @@
 .t-lienzo .display{font-weight:400;letter-spacing:-.02em}
 .t-lienzo h1.display{font-weight:300;font-style:normal;font-size:clamp(2.8rem,1.4rem + 5.4vw,6rem)}
 .t-lienzo .eyebrow{letter-spacing:.32em;font-size:.72rem;color:var(--c-text)}
+.t-lienzo .hero-full .eyebrow{color:rgb(255 255 255 / .9)}
 .t-lienzo .btn{letter-spacing:.18em;text-transform:uppercase;font-size:.78rem;font-weight:500;min-height:52px;padding:0 34px}
 .t-lienzo .sx-announce{background:var(--c-text);font-size:.74rem;letter-spacing:.2em;text-transform:uppercase}
 .t-lienzo .hdr-logo{font-size:2rem;letter-spacing:.42em;font-weight:500;padding-left:.42em}
@@ -20,7 +21,7 @@
 .t-lienzo .ph span{color:rgb(25 24 23 / .55);font-style:italic;font-weight:300}
 .t-lienzo .ph-hero span{font-size:clamp(10rem,30vw,26rem);color:rgb(255 255 255 / .5)}
 .t-lienzo .pcard-title{font-size:.92rem;letter-spacing:.02em}
-.t-lienzo .pcard-brand{letter-spacing:.24em;font-size:.68rem}
+.t-lienzo .pcard-brand{letter-spacing:.24em;font-size:.72rem}
 .t-lienzo .pcard-badge{border-radius:0;background:var(--c-bg);letter-spacing:.16em}
 .t-lienzo .tile-copy strong{font-size:1.6rem;font-style:italic;font-weight:400}
 .t-lienzo .sx-benefits ul{border-color:var(--c-text)}

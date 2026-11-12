@@ -86,24 +86,24 @@ export function TopBar(p: Props) {
             </button>
           ))}
         </div>
-        <Button variant="outline" size="sm" onClick={p.onUndo} disabled={!p.canUndo} aria-keyshortcuts="Control+Z" title="Deshacer (Ctrl+Z)">
-          <Undo2 /> Deshacer
+        <Button variant="outline" size="sm" onClick={p.onUndo} disabled={!p.canUndo} aria-keyshortcuts="Control+Z" title="Deshacer (Ctrl+Z)" aria-label="Deshacer">
+          <Undo2 /> <span className={s.label}>Deshacer</span>
         </Button>
-        <Button variant="outline" size="sm" onClick={p.onRedo} disabled={!p.canRedo} aria-keyshortcuts="Control+Shift+Z" title="Rehacer (Ctrl+Shift+Z)">
-          <Redo2 /> Rehacer
+        <Button variant="outline" size="sm" onClick={p.onRedo} disabled={!p.canRedo} aria-keyshortcuts="Control+Shift+Z" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer">
+          <Redo2 /> <span className={s.label}>Rehacer</span>
         </Button>
         {p.onStyle && (
-          <Button variant="outline" size="sm" onClick={p.onStyle}>
-            <Palette /> Estilo
+          <Button variant="outline" size="sm" onClick={p.onStyle} aria-label="Estilo">
+            <Palette /> <span className={s.label}>Estilo</span>
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={p.onHistory}>
-          <History /> Historial
+        <Button variant="outline" size="sm" onClick={p.onHistory} aria-label="Historial">
+          <History /> <span className={s.label}>Historial</span>
         </Button>
         {p.liveUrl && (
           <Button variant="ghost" size="sm" asChild>
-            <a href={p.liveUrl} target="_blank" rel="noreferrer">
-              <ExternalLink /> Ver tienda
+            <a href={p.liveUrl} target="_blank" rel="noreferrer" aria-label="Ver tienda">
+              <ExternalLink /> <span className={s.label}>Ver tienda</span>
             </a>
           </Button>
         )}

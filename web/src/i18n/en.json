@@ -3573,5 +3573,18 @@
 "POST {endpoint}/tax con JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; responde {lines:[{class, label, rateBps, tax}]}. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/tax with JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; answer {lines:[{class, label, rateBps, tax}]}. Signature: X-Apexx-Signature = hex(HMAC-SHA256(secret, timestamp + \".\" + body)).",
 "{} · # disponibles": "{} · # available",
 "Idioma del comprador": "Buyer language",
-"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "Each customer receives their emails in the language they bought in. If you change this template's text, it's sent as you write it, with your own translations from Settings › Languages."
+"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "Each customer receives their emails in the language they bought in. If you change this template's text, it's sent as you write it, with your own translations from Settings › Languages.",
+"Diseñador": "Designer",
+"Izquierda": "Left",
+"Centro": "Center",
+"Derecha": "Right",
+"Ancho completo": "Full width",
+"Dividido": "Split",
+"Solo texto": "Text only",
+"Chico": "Small",
+"Mediano": "Medium",
+"Grande": "Large",
+"Vertical": "Tall",
+"Cuadrado": "Square",
+"Redondeado": "Rounded"
 }
