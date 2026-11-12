@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { MailCheck, RefreshCw, Send } from "lucide-react";
-import { errorMessage, type Me } from "@/api";
+import { errorMessage, request, type Me } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,6 +95,7 @@ function TemplateEditor({ t, canEdit, onSaved }: { t: MailTemplate; canEdit: boo
             <div className="grid gap-1.5">
               <span className="text-sm font-medium">Datos que puedes insertar</span>
               <div className="flex flex-wrap gap-1">{t.variables.map((v) => <button key={v.name} type="button" title={`Ejemplo: ${v.sample}`} onClick={() => insert(v.name)} className="rounded border bg-muted px-2 py-0.5 font-mono text-xs hover:border-primary">{`{{${v.name}}}`}</button>)}</div>
+              {t.variables.some((v) => v.name === "pedido.numero") && <CustomVarChips insert={insert} />}
             </div>
             {t.optional && <label className="flex items-center gap-2 text-sm"><Checkbox checked={enabled} onCheckedChange={(c) => setEnabled(!!c)} /> Enviar este correo</label>}
             <div className="flex flex-wrap gap-2">
@@ -230,5 +231,18 @@ function Settings({ canEdit }: { canEdit: boolean }) {
         {canEdit && <div><Button type="submit" disabled={busy}>{busy ? "Guardando…" : "Guardar ajustes"}</Button></div>}
       </fieldset>
     </form>
+  );
+}
+
+/** The store's own fields of orders and customers, insertable in order emails. */
+function CustomVarChips({ insert }: { insert: (name: string) => void }) {
+  const order = useQuery({ queryKey: ["fields", "order"], queryFn: () => request<{ fields: { key: string; label: string }[] }>("GET", "/v1/fields/order") });
+  const customer = useQuery({ queryKey: ["fields", "customer"], queryFn: () => request<{ fields: { key: string; label: string }[] }>("GET", "/v1/fields/customer") });
+  const chips = [...(order.data?.fields ?? []).map((f) => ({ name: "campo." + f.key, label: f.label })), ...(customer.data?.fields ?? []).map((f) => ({ name: "cliente.campo." + f.key, label: f.label + " (cliente)" }))];
+  if (chips.length === 0) return null;
+  return (
+    <div className="grid gap-1"><span className="text-xs text-muted-foreground">Tus campos propios (vacíos si el pedido no los tiene)</span>
+      <div className="flex flex-wrap gap-1">{chips.map((c) => <button key={c.name} type="button" onClick={() => insert(c.name)} className="rounded border bg-card px-2 py-0.5 text-xs hover:bg-accent">{c.label}</button>)}</div>
+    </div>
   );
 }

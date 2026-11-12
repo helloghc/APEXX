@@ -152,3 +152,16 @@ func TestProductLinkedRecords(t *testing.T) {
 		t.Fatal("the record leaked to the catalog")
 	}
 }
+
+// Order emails can use the store's own fields.
+func TestCustomFieldsInEmails(t *testing.T) {
+	e := setup(t)
+	e.must(200, "PUT", "/v1/fields/order", e.adminA, m{"fields": []m{{"key": "mensaje_regalo", "label": "Mensaje de regalo", "type": "text"}}})
+	body := m{"subject": "Tu pedido #{{pedido.numero}}", "blocks": m{"heading": "Gracias", "body": "Tu mensaje: {{campo.mensaje_regalo}} {{cliente.campo.talla_2}}", "cta": "Ver", "footer": ""}}
+	if st, b := e.do("PUT", "/v1/notifications/templates/order_confirmed", e.adminA, body); st != 200 {
+		t.Fatalf("template with custom fields = %d %v", st, b)
+	}
+	if st, _ := e.do("PUT", "/v1/notifications/templates/order_confirmed", e.adminA, m{"subject": "x", "blocks": m{"body": "{{campo.malo-x}} {{inventado}}"}}); st != 400 {
+		t.Fatalf("unknown variable accepted: %d", st)
+	}
+}

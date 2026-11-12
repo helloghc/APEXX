@@ -296,6 +296,12 @@ func (s *Service) notifyTx(ctx context.Context, tx pgx.Tx, tenant, id, tpl strin
 		return err
 	}
 	d := notify.Data{Vars: map[string]string{"cliente.nombre": firstWord(c.Name), "pedido.numero": strconv.FormatInt(number, 10), "pedido.total": notify.Money(grand, cur)}, ActionURL: action}
+	// The store's own fields of the order ({{campo.mensaje_regalo}}) and of
+	// the customer ({{cliente.campo.talla}}) can be used in the copy.
+	s.customVars(ctx, tx, tenant, "order", id, "campo.", d.Vars)
+	if cid != nil {
+		s.customVars(ctx, tx, tenant, "customer", *cid, "cliente.campo.", d.Vars)
+	}
 	for k, v := range vars {
 		d.Vars[k] = v
 	}
@@ -954,4 +960,28 @@ func (s *Service) DeleteView(ctx context.Context, tenant, actor, id string) erro
 		}
 		return store.Audit(ctx, tx, tenant, actor, "order.view_deleted", id, map[string]any{})
 	})
+}
+
+// customVars adds the custom field values of a record to email variables.
+// The email goes to the same person the record is about, so personal values
+// are included too.
+func (s *Service) customVars(ctx context.Context, tx pgx.Tx, tenant, resource, id, prefix string, vars map[string]string) {
+	var data, secret []byte
+	if err := tx.QueryRow(ctx, `SELECT data, secret FROM custom_values WHERE tenant_id=$1 AND resource=$2 AND owner_id=$3`, tenant, resource, id).Scan(&data, &secret); err != nil {
+		return
+	}
+	vals := map[string]string{}
+	_ = json.Unmarshal(data, &vals)
+	if len(secret) > 0 && s.Keys != nil {
+		if plain, err := s.Keys.Decrypt(tenant, secret, "fields:"+resource+":"+id); err == nil {
+			var p map[string]string
+			_ = json.Unmarshal(plain, &p)
+			for k, v := range p {
+				vals[k] = v
+			}
+		}
+	}
+	for k, v := range vals {
+		vars[prefix+k] = v
+	}
 }

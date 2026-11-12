@@ -210,7 +210,7 @@ func Sample(d Definition) Data {
 	return out
 }
 
-var placeholder = regexp.MustCompile(`\{\{\s*([a-zA-Z_.]+)\s*\}\}`)
+var placeholder = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}`)
 
 func fill(s string, vars map[string]string, escape bool) string {
 	return placeholder.ReplaceAllStringFunc(s, func(m string) string {
@@ -226,16 +226,21 @@ func fill(s string, vars map[string]string, escape bool) string {
 	})
 }
 
+var customVar = regexp.MustCompile(`^(campo|cliente\.campo)\.[a-z][a-z0-9_]{0,39}$`)
+
 // UnknownVariables lists placeholders in the blocks that the template does not provide.
 func UnknownVariables(d Definition, subject string, b Blocks) []string {
 	known := map[string]bool{}
 	for _, v := range d.Variables {
 		known[v.Name] = true
 	}
+	// Emails about an order can use the store's own fields of the order and
+	// of the customer; a field without a value renders empty.
+	orderMail := known["pedido.numero"]
 	seen := map[string]bool{}
 	for _, s := range []string{subject, b.Heading, b.Body, b.CTA, b.Footer} {
 		for _, m := range placeholder.FindAllStringSubmatch(s, -1) {
-			if !known[m[1]] {
+			if !known[m[1]] && !(orderMail && customVar.MatchString(m[1])) {
 				seen[m[1]] = true
 			}
 		}
