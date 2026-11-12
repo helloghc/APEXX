@@ -208,3 +208,19 @@ Regalar || Give this gift || Offrir || Presentear || Hadiahkan || 贈る
 Ya regalado || Already given || Déjà offert || Já presenteado || Sudah dihadiahkan || 贈呈済み
 regalos ya tienen quién los regale. || gifts already have a giver. || cadeaux ont déjà trouvé preneur. || presentes já têm quem os dê. || hadiah sudah ada pemberinya. || 件のギフトはすでに贈り主が決まっています。
 tu cuenta || your account || votre compte || sua conta || akun Anda || マイアカウント
+
+## Jerarquía de empresas en "Mi empresa".
+@ es || en || fr || pt || id || ja
+Crédito del grupo || Group credit || Crédit du groupe || Crédito do grupo || Kredit grup || グループの与信枠
+y sus filiales comparten un crédito de || and its subsidiaries share a credit line of || et ses filiales partagent un crédit de || e suas filiais compartilham um crédito de || dan anak perusahaannya berbagi kredit sebesar || とその子会社が共有する与信枠：
+; hoy deben || ; today they owe || ; aujourd'hui elles doivent || ; hoje devem || ; saat ini berutang || 。現在の債務合計：
+en conjunto. || in total. || au total. || no total. || secara keseluruhan. || です。
+Filiales || Subsidiaries || Filiales || Filiais || Anak perusahaan || 子会社
+Empresa || Company || Entreprise || Empresa || Perusahaan || 会社
+Crédito || Credit || Crédit || Crédito || Kredit || 与信
+Debe || Owes || Doit || Deve || Berutang || 債務
+· con tus condiciones || · with your terms || · avec vos conditions || · com suas condições || · dengan ketentuan Anda || ・貴社の条件を適用
+Compartido || Shared || Partagé || Compartilhado || Bersama || 共有
+Propio || Own || Propre || Próprio || Sendiri || 独自
+Activa || Active || Active || Ativa || Aktif || 有効
+Suspendida || Suspended || Suspendue || Suspensa || Ditangguhkan || 停止中

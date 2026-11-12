@@ -52,6 +52,14 @@ type Company struct {
 	// CatalogRestricted: its buyers see and buy only the products priced by
 	// a price list of its group (or its branch's).
 	CatalogRestricted bool `json:"catalogRestricted"`
+	// Hierarchy: the parent company, whether this one buys on the parent's
+	// credit and whether it takes the parent's terms, prices and rules.
+	ParentID     string         `json:"parentId"`
+	ParentName   string         `json:"parentName,omitempty"`
+	SharedCredit bool           `json:"sharedCredit"`
+	InheritTerms bool           `json:"inheritTerms"`
+	Children     []CompanyChild `json:"children,omitempty"`
+	Pool         *CreditPool    `json:"pool,omitempty"`
 }
 
 // CompanyEntry is one movement of a company's account.
@@ -110,6 +118,10 @@ func (c *Company) clean() error {
 	if c.ApprovalRules == nil {
 		c.ApprovalRules = []ApprovalRule{}
 	}
+	c.ParentID = strings.TrimSpace(c.ParentID)
+	if c.ParentID == "" && (c.SharedCredit || c.InheritTerms) {
+		return FieldError{"parentId", "Para compartir crédito o heredar condiciones elige la empresa matriz"}
+	}
 	if err := cleanRules(c.ApprovalRules); err != nil {
 		return err
 	}
@@ -125,7 +137,7 @@ func (c *Company) clean() error {
 		return FieldError{"terms", "Plazo de pago desconocido"}
 	case c.CreditLimit < 0 || c.CreditLimit > 1_000_000_000_00:
 		return FieldError{"creditLimit", "Límite de crédito fuera de rango"}
-	case c.Terms != "prepaid" && c.CreditLimit == 0:
+	case c.Terms != "prepaid" && c.CreditLimit == 0 && !c.SharedCredit && !c.InheritTerms:
 		return FieldError{"creditLimit", "Para vender a crédito define un límite mayor a cero"}
 	case c.DiscountBps < 0 || c.DiscountBps > 9000:
 		return FieldError{"discountBps", "El descuento debe estar entre 0% y 90%"}
@@ -151,8 +163,8 @@ const companySelect = `SELECT c.id, c.name, c.rfc, c.status, c.terms, c.credit_l
 	COALESCE(e.balance,0),
 	LEAST(GREATEST(COALESCE(e.balance,0),0), GREATEST(COALESCE(e.due,0) - COALESCE(e.paid,0), 0)),
 	(SELECT count(*) FROM company_buyers b WHERE b.tenant_id=c.tenant_id AND b.company_id=c.id)::int, c.price_group, c.approval_threshold, c.tax_exempt, COALESCE(to_char(c.tax_exempt_until,'YYYY-MM-DD'),''), c.require_po, c.credit_only,
-	c.approval_rules, c.approval_days, c.catalog_restricted
-	FROM companies c LEFT JOIN (SELECT company_id, sum(amount) AS balance,
+	c.approval_rules, c.approval_days, c.catalog_restricted, COALESCE(c.parent_id,''), COALESCE(p.name,''), c.shared_credit, c.inherit_terms
+	FROM companies c LEFT JOIN companies p ON p.tenant_id=c.tenant_id AND p.id=c.parent_id LEFT JOIN (SELECT company_id, sum(amount) AS balance,
 			sum(amount) FILTER (WHERE kind='charge' AND due_at < now()) AS due,
 			-sum(amount) FILTER (WHERE kind IN ('payment','refund','release') OR (kind='adjust' AND amount < 0)) AS paid
 		FROM company_entries WHERE tenant_id=$1 GROUP BY company_id) e ON e.company_id=c.id
@@ -160,7 +172,7 @@ const companySelect = `SELECT c.id, c.name, c.rfc, c.status, c.terms, c.credit_l
 
 func scanCompany(r pgx.Row) (Company, error) {
 	var c Company
-	return c, r.Scan(&c.ID, &c.Name, &c.RFC, &c.Status, &c.Terms, &c.CreditLimit, &c.DiscountBps, &c.Note, &c.CreatedAt, &c.Balance, &c.Overdue, &c.Buyers, &c.PriceGroup, &c.ApprovalThreshold, &c.TaxExempt, &c.TaxExemptUntil, &c.RequirePO, &c.CreditOnly, &c.ApprovalRules, &c.ApprovalDays, &c.CatalogRestricted)
+	return c, r.Scan(&c.ID, &c.Name, &c.RFC, &c.Status, &c.Terms, &c.CreditLimit, &c.DiscountBps, &c.Note, &c.CreatedAt, &c.Balance, &c.Overdue, &c.Buyers, &c.PriceGroup, &c.ApprovalThreshold, &c.TaxExempt, &c.TaxExemptUntil, &c.RequirePO, &c.CreditOnly, &c.ApprovalRules, &c.ApprovalDays, &c.CatalogRestricted, &c.ParentID, &c.ParentName, &c.SharedCredit, &c.InheritTerms)
 }
 
 // Companies lists the business customers of a store.
@@ -204,6 +216,16 @@ func (s *Service) CompanyFull(ctx context.Context, tenant, id string, pii bool) 
 		}
 		if err != nil {
 			return err
+		}
+		if c.Children, err = childrenTx(ctx, tx, tenant, id); err != nil {
+			return err
+		}
+		pool, _, err := creditPoolTx(ctx, tx, tenant, id, false)
+		if err != nil {
+			return err
+		}
+		if len(pool.Members) > 1 || pool.RootID != id {
+			c.Pool = &pool
 		}
 		if pii {
 			rows, err := tx.Query(ctx, `SELECT email, approver FROM company_buyers WHERE tenant_id=$1 AND company_id=$2`, tenant, id)
@@ -287,11 +309,23 @@ func (s *Service) SaveCompanyWith(ctx context.Context, tenant, actor string, in 
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		if in.ID == "" {
 			in.ID = newID("com_")
+			if err := checkParentTx(ctx, tx, tenant, "", in.ParentID); err != nil {
+				return err
+			}
 			if _, err := tx.Exec(ctx, `INSERT INTO companies (tenant_id, id, name, rfc, status, terms, credit_limit, discount_bps, note, price_group, approval_threshold, tax_exempt, tax_exempt_until, require_po, credit_only, approval_rules, approval_days, catalog_restricted) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULLIF($13,'')::date,$14,$15,$16,$17,$18)`,
 				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold, in.TaxExempt, in.TaxExemptUntil, in.RequirePO, in.CreditOnly, in.ApprovalRules, in.ApprovalDays, in.CatalogRestricted); err != nil {
 				return err
 			}
+			if _, err := tx.Exec(ctx, `UPDATE companies SET parent_id=NULLIF($3,''), shared_credit=$4, inherit_terms=$5 WHERE tenant_id=$1 AND id=$2`, tenant, in.ID, in.ParentID, in.SharedCredit, in.InheritTerms); err != nil {
+				return err
+			}
 		} else {
+			if err := checkParentTx(ctx, tx, tenant, in.ID, in.ParentID); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `UPDATE companies SET parent_id=NULLIF($3,''), shared_credit=$4, inherit_terms=$5 WHERE tenant_id=$1 AND id=$2`, tenant, in.ID, in.ParentID, in.SharedCredit, in.InheritTerms); err != nil {
+				return err
+			}
 			ct, err := tx.Exec(ctx, `UPDATE companies SET name=$3, rfc=$4, status=$5, terms=$6, credit_limit=$7, discount_bps=$8, note=$9, price_group=$10, approval_threshold=$11, tax_exempt=$12, tax_exempt_until=NULLIF($13,'')::date, require_po=$14, credit_only=$15, approval_rules=$16, approval_days=$17, catalog_restricted=$18, updated_at=now() WHERE tenant_id=$1 AND id=$2`,
 				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold, in.TaxExempt, in.TaxExemptUntil, in.RequirePO, in.CreditOnly, in.ApprovalRules, in.ApprovalDays, in.CatalogRestricted)
 			if err != nil {
@@ -344,7 +378,7 @@ func (s *Service) SaveCompanyWith(ctx context.Context, tenant, actor string, in 
 				return FieldError{"approvalRules", fmt.Sprintf("Una regla pide aprobación de nivel %d y nadie aprueba ese nivel. Guarda la empresa sin esa regla, asigna el nivel en “Editar compradores” y vuelve a agregarla.", need)}
 			}
 		}
-		return store.Audit(ctx, tx, tenant, actor, "company.save", in.ID, map[string]any{"name": in.Name, "terms": in.Terms, "creditLimit": in.CreditLimit, "discountBps": in.DiscountBps, "status": in.Status})
+		return store.Audit(ctx, tx, tenant, actor, "company.save", in.ID, map[string]any{"name": in.Name, "terms": in.Terms, "creditLimit": in.CreditLimit, "discountBps": in.DiscountBps, "status": in.Status, "parentId": in.ParentID, "sharedCredit": in.SharedCredit, "inheritTerms": in.InheritTerms})
 	})
 	if err != nil {
 		return Company{}, err
@@ -415,6 +449,9 @@ func (s *Service) CompanyForEmail(ctx context.Context, tenant, email string) (*C
 		if locGroup != "" {
 			a.PriceGroup = locGroup // the branch buys with its own price list
 		}
+		if err := applyHierarchyTx(ctx, tx, tenant, &a, locGroup != ""); err != nil {
+			return err
+		}
 		if !a.Approver {
 			a.ApproverLevel = 0
 		}
@@ -429,9 +466,7 @@ func (s *Service) CompanyForEmail(ctx context.Context, tenant, email string) (*C
 	if err != nil {
 		return nil, err
 	}
-	if a.Terms != "prepaid" {
-		a.Available = max(limit-balance, 0)
-	}
+	_, _ = limit, balance // the credit comes from the company's pool (applyHierarchyTx)
 	return &a, nil
 }
 
@@ -448,10 +483,8 @@ func (s *Service) CompanyAccessByID(ctx context.Context, tenant, id string) (*Co
 	// A server-side integration acts for the company itself: it needs no approval.
 	a := &CompanyAccess{ID: c.ID, Name: c.Name, Terms: c.Terms, DiscountBps: c.DiscountBps, PriceGroup: c.PriceGroup, ApprovalThreshold: c.ApprovalThreshold, Approver: true, ApproverLevel: maxApprovalLevel, Rules: c.ApprovalRules, CatalogRestricted: c.CatalogRestricted,
 		TaxExempt: c.TaxExempt && (c.TaxExemptUntil == "" || c.TaxExemptUntil >= time.Now().Format("2006-01-02")), RequirePO: c.RequirePO, CreditOnly: c.CreditOnly}
-	if c.Terms != "prepaid" {
-		a.Available = max(c.CreditLimit-c.Balance, 0)
-	}
-	return a, nil
+	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error { return applyHierarchyTx(ctx, tx, tenant, a, false) })
+	return a, err
 }
 
 // CompanyPromo is the company's discount as a promotion for the cart.
@@ -473,22 +506,29 @@ func creditChargeTx(ctx context.Context, tx pgx.Tx, tenant, actor, orderID strin
 	if c == nil {
 		return &CreditError{"credit_unavailable", "Para pagar a crédito entra con la cuenta de un comprador de empresa"}
 	}
-	var terms, status string
-	var limit, balance int64
-	if err := tx.QueryRow(ctx, `SELECT terms, status, credit_limit FROM companies WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, c.ID).Scan(&terms, &status, &limit); err != nil {
+	// The pool's root is locked: the parent and its subsidiaries that share
+	// its credit cannot spend the same money at once.
+	pool, rootStatus, err := creditPoolTx(ctx, tx, tenant, c.ID, true)
+	if err != nil {
 		return err
 	}
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(sum(amount),0) FROM company_entries WHERE tenant_id=$1 AND company_id=$2`, tenant, c.ID).Scan(&balance); err != nil {
+	var status string
+	if err := tx.QueryRow(ctx, `SELECT status FROM companies WHERE tenant_id=$1 AND id=$2`, tenant, c.ID).Scan(&status); err != nil {
 		return err
 	}
+	terms, limit, balance := pool.Terms, pool.Limit, pool.Balance
 	switch {
-	case status != "active" || terms == "prepaid":
+	case status != "active" || rootStatus != "active" || terms == "prepaid":
 		return &CreditError{"credit_unavailable", "Tu empresa no tiene crédito activo en esta tienda"}
 	case balance+amount > limit:
-		return &CreditError{"credit_limit", fmt.Sprintf("El pedido supera el crédito disponible de tu empresa ($%s)", cents(max(limit-balance, 0)))}
+		msg := fmt.Sprintf("El pedido supera el crédito disponible de tu empresa ($%s)", cents(max(limit-balance, 0)))
+		if pool.RootID != c.ID {
+			msg = fmt.Sprintf("El pedido supera el crédito disponible del grupo %s ($%s)", pool.RootName, cents(max(limit-balance, 0)))
+		}
+		return &CreditError{"credit_limit", msg}
 	}
 	due := time.Now().AddDate(0, 0, termDays[terms])
-	_, err := tx.Exec(ctx, `INSERT INTO company_entries (tenant_id, id, company_id, kind, amount, order_id, due_at, actor, buyer_hash, location_id) VALUES ($1,$2,$3,'charge',$4,$5,$6,$7,$8,$9)`,
+	_, err = tx.Exec(ctx, `INSERT INTO company_entries (tenant_id, id, company_id, kind, amount, order_id, due_at, actor, buyer_hash, location_id) VALUES ($1,$2,$3,'charge',$4,$5,$6,$7,$8,$9)`,
 		tenant, newID("cen_"), c.ID, amount, orderID, due, actor, c.BuyerHash, c.Location)
 	return err
 }

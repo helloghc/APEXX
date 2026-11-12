@@ -435,6 +435,13 @@ type companyPortal struct {
 	Locations                                     []orders.Location
 	Autopay                                       *orders.Autopay
 	Credit                                        bool // the company buys on credit (autopay applies)
+	Subsidiaries                                  []portalSub
+	PoolName, PoolOwed, PoolLimit                 string // shared credit of the group
+}
+
+type portalSub struct {
+	Name, Owed, Status string
+	Shared, Inherits   bool
 }
 
 type portalRequest struct {
@@ -542,6 +549,20 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 				var ap orders.Autopay
 				ap, err = s.Orders.CompanyAutopay(r.Context(), tenant, a.ID)
 				p.Autopay, p.Credit = &ap, a.Terms != "prepaid"
+			}
+			if err == nil {
+				var subs []orders.CompanyChild
+				subs, err = s.Orders.Subsidiaries(r.Context(), tenant, a.ID)
+				for _, c := range subs {
+					st := "Activa"
+					if c.Status != "active" {
+						st = "Suspendida"
+					}
+					p.Subsidiaries = append(p.Subsidiaries, portalSub{Name: c.Name, Owed: mon(c.Balance, cur), Status: st, Shared: c.SharedCredit, Inherits: c.InheritTerms})
+				}
+				if full, _, _, e := s.Orders.Company(r.Context(), tenant, a.ID, false); e == nil && full.Pool != nil {
+					p.PoolName, p.PoolOwed, p.PoolLimit = full.Pool.RootName, mon(full.Pool.Balance, cur), mon(full.Pool.Limit, cur)
+				}
 			}
 			if err != nil {
 				internalError(w, s.Log, err)

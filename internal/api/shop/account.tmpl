@@ -80,6 +80,11 @@
 {{with .Available}}<p class="muted">Crédito disponible de la empresa: {{.}}.</p>{{end}}
 {{if $.Company.Approver}}<p class="muted">Apruebas compras de nivel {{$.Company.ApproverLevel}}.</p>{{end}}
 </div>
+{{if .PoolName}}<div class="acct-box" data-pool><h2>Crédito del grupo</h2><p>{{.PoolName}} y sus filiales comparten un crédito de <strong>{{.PoolLimit}}</strong>; hoy deben <strong>{{.PoolOwed}}</strong> en conjunto.</p></div>{{end}}
+{{if .Subsidiaries}}<h2>Filiales</h2>
+<div class="scrollx"><table data-subsidiaries><thead><tr><th>Empresa</th><th>Estado</th><th>Crédito</th><th class="num">Debe</th></tr></thead><tbody>
+{{range .Subsidiaries}}<tr><td>{{.Name}}{{if .Inherits}} <span class="muted">· con tus condiciones</span>{{end}}</td><td>{{.Status}}</td><td>{{if .Shared}}Compartido{{else}}Propio{{end}}</td><td class="num">{{.Owed}}</td></tr>{{end}}
+</tbody></table></div>{{end}}
 <h2>Solicitudes de aprobación</h2>
 {{if .Requests}}<div class="scrollx"><table><thead><tr><th>Fecha</th><th>Quién</th><th>Motivo</th><th>Nivel</th><th>Estado</th><th class="num">Total</th></tr></thead><tbody>
 {{range .Requests}}<tr data-request="{{.ID}}"><td>{{.Date}}</td><td>{{.Requester}}</td><td>{{.Reason}}</td><td>{{.Level}}</td><td>{{.Status}}{{if .Pending}} <button class="linkbtn" type="button" data-request-cancel data-confirm="¿Cancelar esta solicitud?">Cancelar</button>{{end}}</td><td class="num">{{.Total}}</td></tr>

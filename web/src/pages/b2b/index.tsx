@@ -23,7 +23,10 @@ import { dateTime, ErrorBox, Notice, Page } from "../common";
 import { EmptyState, SkeletonRows } from "../promotions/shared";
 
 const enc = encodeURIComponent;
-interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; requirePO?: boolean; creditOnly?: boolean; approvalThreshold: number; approvalRules?: Rule[]; approvalDays?: number; catalogRestricted?: boolean }
+interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; requirePO?: boolean; creditOnly?: boolean; approvalThreshold: number; approvalRules?: Rule[]; approvalDays?: number; catalogRestricted?: boolean;
+  parentId?: string; parentName?: string; sharedCredit?: boolean; inheritTerms?: boolean;
+  children?: { id: string; name: string; status: string; balance: number; sharedCredit: boolean; inheritTerms: boolean; children: number }[];
+  pool?: { rootId: string; rootName: string; limit: number; balance: number; available: number; members: string[] } }
 interface CEntry { id: string; kind: string; amount: number; orderId?: string; orderNumber?: number; dueAt?: string; note?: string; at: string }
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[] }
 interface Entity { id: string; name: string; description: string; public: boolean; showOnProduct?: boolean; success: string; fields: Field[]; records: number }
@@ -92,6 +95,7 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
   const [pct, setPct] = useState(String((company?.discountBps ?? 0) / 100));
   const [emails, setEmails] = useState((buyers ?? []).filter((b) => !(approvers ?? []).includes(b)).join("\n"));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const all = useQuery({ queryKey: ["companies"], queryFn: () => api.companies() });
   const branches = useQuery({ queryKey: ["company-branches", company?.id], queryFn: () => request<{ items: Branch[] }>("GET", `/v1/companies/${enc(company!.id)}/locations`).then((r) => r.items), enabled: !!company });
   const save = useMutation({
     mutationFn: () => api.saveCompany({ ...c, creditLimit: c.terms === "prepaid" ? 0 : parsePesos(limit) ?? 0, discountBps: Math.round((Number(pct.replace(",", ".")) || 0) * 100), buyerEmails: emails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean),
@@ -111,6 +115,17 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
           <div className="grid gap-1.5"><span className="text-sm font-medium">Forma de pago</span><Select value={c.terms ?? "prepaid"} onValueChange={(v) => setC({ ...c, terms: v })}><SelectTrigger aria-label="Forma de pago"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(TERMS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent></Select></div>
           {c.terms !== "prepaid" && <div className="grid gap-1.5"><Label htmlFor="co-limit">Límite de crédito (MXN)</Label><Input id="co-limit" inputMode="decimal" value={limit} onChange={(e) => setLimit(e.target.value)} />{err("creditLimit")}</div>}
           {company && <div className="grid gap-1.5"><span className="text-sm font-medium">Estado</span><Select value={c.status ?? "active"} onValueChange={(v) => setC({ ...c, status: v })}><SelectTrigger aria-label="Estado"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Activa</SelectItem><SelectItem value="suspended">Suspendida (compra como cliente normal)</SelectItem></SelectContent></Select></div>}
+          <fieldset className="grid gap-2 rounded-md border p-3 sm:col-span-2"><legend className="px-1 text-sm font-medium">Grupo de empresas</legend>
+            <div className="grid gap-1.5"><Label htmlFor="co-parent">Empresa matriz</Label>
+              <select id="co-parent" className="h-9 rounded-md border bg-background px-2 text-sm" value={c.parentId ?? ""} onChange={(e) => setC({ ...c, parentId: e.target.value, ...(e.target.value ? {} : { sharedCredit: false, inheritTerms: false }) })}>
+                <option value="">Ninguna (es independiente o es la matriz)</option>
+                {(all.data ?? []).filter((x: Company) => x.id !== company?.id).map((x: Company) => <option key={x.id} value={x.id}>{x.name}</option>)}
+              </select>{err("parentId")}</div>
+            {c.parentId && <>
+              <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.sharedCredit} onChange={(e) => setC({ ...c, sharedCredit: e.target.checked })} /><span>Compra con el crédito de la matriz<span className="block text-muted-foreground">La matriz y sus filiales comparten un solo límite; ninguna puede gastar el crédito de otra a la vez.</span></span></label>
+              <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.inheritTerms} onChange={(e) => setC({ ...c, inheritTerms: e.target.checked })} /><span>Usa las condiciones de la matriz<span className="block text-muted-foreground">Plazo, descuento, lista de precios, catálogo, exención y orden de compra se toman de la matriz.</span></span></label>
+            </>}
+          </fieldset>
           <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="co-buyers">Correos de sus compradores (uno por línea)</Label><Textarea id="co-buyers" rows={4} className="font-mono" value={emails} onChange={(e) => setEmails(e.target.value)} placeholder={"compras@empresa.com\ndirector@empresa.com"} />{err("buyers")}<p className="text-xs text-muted-foreground">Cada persona entra a “Mi cuenta” en tu tienda con su correo (le llega un código). Así nadie más puede usar el crédito.</p></div>
           <div className="grid gap-1.5"><Label htmlFor="co-group">Grupo de precios (precio por producto)</Label><Input id="co-group" className="font-mono" value={c.priceGroup ?? ""} onChange={(e) => setC({ ...c, priceGroup: e.target.value.trim() })} placeholder="acme" />{err("priceGroup")}<p className="text-xs text-muted-foreground">Escribe el mismo “grupo de clientes” de una lista de precios (Promociones › Listas de precios). Esa lista fija el precio de cada producto para esta empresa.</p></div>
           <div className="grid gap-1.5"><Label htmlFor="co-thr">Pedir aprobación desde (MXN)</Label><Input id="co-thr" inputMode="decimal" value={threshold} onChange={(e) => setThreshold(e.target.value)} placeholder="Sin aprobación" />{err("approvalThreshold")}<p className="text-xs text-muted-foreground">Las compras a crédito por encima de este total esperan a que alguien de la empresa las apruebe.</p></div>
@@ -145,9 +160,19 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
   return (
     <Page title={c.name} sub={<><a className="hover:underline" href={href("empresas")}>← Empresas</a> · {TERMS[c.terms]}{c.discountBps ? ` · ${c.discountBps / 100}% de descuento` : ""}{c.status !== "active" ? " · suspendida" : ""}</>}
       actions={isAdmin && <><Button variant="outline" onClick={() => setEdit(true)}>Editar</Button></>}>
-      <div className="grid gap-3 sm:grid-cols-3">{[["Debe", formatMoney(c.balance)], ["Vencido", formatMoney(c.overdue)], ["Crédito disponible", c.terms === "prepaid" ? "No aplica" : formatMoney(Math.max(c.creditLimit - c.balance, 0))]].map(([l, v]) => (
+      <div className="grid gap-3 sm:grid-cols-3">{[["Debe", formatMoney(c.balance)], ["Vencido", formatMoney(c.overdue)], ["Crédito disponible", c.pool ? formatMoney(c.pool.available) : c.terms === "prepaid" ? "No aplica" : formatMoney(Math.max(c.creditLimit - c.balance, 0))]].map(([l, v]) => (
         <Card key={l}><CardContent className="grid gap-1 pt-5"><span className="text-sm text-muted-foreground">{l}</span><span className="text-xl font-semibold tabular-nums">{v}</span></CardContent></Card>
       ))}</div>
+      {(c.parentId || (c.children?.length ?? 0) > 0 || c.pool) && (
+        <Card data-company-group><CardHeader><CardTitle className="text-base">Grupo</CardTitle>
+          <CardDescription>{c.parentId ? <>Filial de <a className="text-primary underline" href={href("empresas", c.parentId)}>{c.parentName}</a>{c.sharedCredit ? " · compra con su crédito" : ""}{c.inheritTerms ? " · usa sus condiciones" : ""}</> : "Matriz del grupo"}</CardDescription></CardHeader>
+          <CardContent className="grid gap-3">
+            {c.pool && <p className="text-sm">Crédito compartido de <strong>{c.pool.rootName}</strong>: límite {formatMoney(c.pool.limit)}, deben {formatMoney(c.pool.balance)} entre {c.pool.members.length} empresas, disponible <strong>{formatMoney(c.pool.available)}</strong>.</p>}
+            {(c.children?.length ?? 0) > 0 && <Table><TableHeader><TableRow><TableHead>Filial</TableHead><TableHead>Crédito</TableHead><TableHead>Condiciones</TableHead><TableHead className="text-right">Debe</TableHead></TableRow></TableHeader>
+              <TableBody>{c.children!.map((k) => <TableRow key={k.id}><TableCell><a className="text-primary underline" href={href("empresas", k.id)}>{k.name}</a>{k.children ? <span className="text-xs text-muted-foreground"> · {k.children} sucursales</span> : null}{k.status !== "active" && <span className="text-xs text-bad"> · suspendida</span>}</TableCell>
+                <TableCell>{k.sharedCredit ? "Compartido" : "Propio"}</TableCell><TableCell>{k.inheritTerms ? "De la matriz" : "Propias"}</TableCell><TableCell className="text-right tabular-nums">{formatMoney(k.balance)}</TableCell></TableRow>)}</TableBody></Table>}
+          </CardContent></Card>
+      )}
       {c.overdue > 0 && <Notice tone="warn">Esta empresa tiene {formatMoney(c.overdue)} vencido. Puedes suspenderla para que no compre a crédito hasta que pague.</Notice>}
       <Card>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Estado de cuenta</CardTitle><CardDescription>Los pedidos a crédito suman; los pagos y reembolsos restan.</CardDescription></div>

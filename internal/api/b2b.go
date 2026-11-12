@@ -333,6 +333,17 @@ func (s *Server) shopCompanyPortal(w http.ResponseWriter, r *http.Request) {
 		if ap, err := s.Orders.CompanyAutopay(r.Context(), tenant, c.ID); err == nil {
 			out["autopay"] = ap
 		}
+		// A parent's administrator sees its subsidiaries and the shared credit;
+		// a subsidiary never sees its siblings.
+		subs, err := s.Orders.Subsidiaries(r.Context(), tenant, c.ID)
+		if err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+		out["subsidiaries"] = subs
+		if full, _, _, err := s.Orders.Company(r.Context(), tenant, c.ID, false); err == nil && full.Pool != nil {
+			out["pool"] = full.Pool
+		}
 	}
 	httpx.JSON(w, r, http.StatusOK, out)
 }
