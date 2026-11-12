@@ -1,0 +1,126 @@
+## Frases con partes variables: {} es un texto (se traduce a su vez), # una cifra.
+@ es || en || fr || pt || id || ja
+lun # ene || Mon Jan # || lun. # janv. || seg, # jan || Sen, # Jan || 1月#日(月)
+lun # feb || Mon Feb # || lun. # févr. || seg, # fev || Sen, # Feb || 2月#日(月)
+lun # mar || Mon Mar # || lun. # mars || seg, # mar || Sen, # Mar || 3月#日(月)
+lun # abr || Mon Apr # || lun. # avr. || seg, # abr || Sen, # Apr || 4月#日(月)
+lun # may || Mon May # || lun. # mai || seg, # mai || Sen, # Mei || 5月#日(月)
+lun # jun || Mon Jun # || lun. # juin || seg, # jun || Sen, # Jun || 6月#日(月)
+lun # jul || Mon Jul # || lun. # juil. || seg, # jul || Sen, # Jul || 7月#日(月)
+lun # ago || Mon Aug # || lun. # août || seg, # ago || Sen, # Agu || 8月#日(月)
+lun # sep || Mon Sep # || lun. # sept. || seg, # set || Sen, # Sep || 9月#日(月)
+lun # oct || Mon Oct # || lun. # oct. || seg, # out || Sen, # Okt || 10月#日(月)
+lun # nov || Mon Nov # || lun. # nov. || seg, # nov || Sen, # Nov || 11月#日(月)
+lun # dic || Mon Dec # || lun. # déc. || seg, # dez || Sen, # Des || 12月#日(月)
+mar # ene || Tue Jan # || mar. # janv. || ter, # jan || Sel, # Jan || 1月#日(火)
+mar # feb || Tue Feb # || mar. # févr. || ter, # fev || Sel, # Feb || 2月#日(火)
+mar # mar || Tue Mar # || mar. # mars || ter, # mar || Sel, # Mar || 3月#日(火)
+mar # abr || Tue Apr # || mar. # avr. || ter, # abr || Sel, # Apr || 4月#日(火)
+mar # may || Tue May # || mar. # mai || ter, # mai || Sel, # Mei || 5月#日(火)
+mar # jun || Tue Jun # || mar. # juin || ter, # jun || Sel, # Jun || 6月#日(火)
+mar # jul || Tue Jul # || mar. # juil. || ter, # jul || Sel, # Jul || 7月#日(火)
+mar # ago || Tue Aug # || mar. # août || ter, # ago || Sel, # Agu || 8月#日(火)
+mar # sep || Tue Sep # || mar. # sept. || ter, # set || Sel, # Sep || 9月#日(火)
+mar # oct || Tue Oct # || mar. # oct. || ter, # out || Sel, # Okt || 10月#日(火)
+mar # nov || Tue Nov # || mar. # nov. || ter, # nov || Sel, # Nov || 11月#日(火)
+mar # dic || Tue Dec # || mar. # déc. || ter, # dez || Sel, # Des || 12月#日(火)
+mié # ene || Wed Jan # || mer. # janv. || qua, # jan || Rab, # Jan || 1月#日(水)
+mié # feb || Wed Feb # || mer. # févr. || qua, # fev || Rab, # Feb || 2月#日(水)
+mié # mar || Wed Mar # || mer. # mars || qua, # mar || Rab, # Mar || 3月#日(水)
+mié # abr || Wed Apr # || mer. # avr. || qua, # abr || Rab, # Apr || 4月#日(水)
+mié # may || Wed May # || mer. # mai || qua, # mai || Rab, # Mei || 5月#日(水)
+mié # jun || Wed Jun # || mer. # juin || qua, # jun || Rab, # Jun || 6月#日(水)
+mié # jul || Wed Jul # || mer. # juil. || qua, # jul || Rab, # Jul || 7月#日(水)
+mié # ago || Wed Aug # || mer. # août || qua, # ago || Rab, # Agu || 8月#日(水)
+mié # sep || Wed Sep # || mer. # sept. || qua, # set || Rab, # Sep || 9月#日(水)
+mié # oct || Wed Oct # || mer. # oct. || qua, # out || Rab, # Okt || 10月#日(水)
+mié # nov || Wed Nov # || mer. # nov. || qua, # nov || Rab, # Nov || 11月#日(水)
+mié # dic || Wed Dec # || mer. # déc. || qua, # dez || Rab, # Des || 12月#日(水)
+jue # ene || Thu Jan # || jeu. # janv. || qui, # jan || Kam, # Jan || 1月#日(木)
+jue # feb || Thu Feb # || jeu. # févr. || qui, # fev || Kam, # Feb || 2月#日(木)
+jue # mar || Thu Mar # || jeu. # mars || qui, # mar || Kam, # Mar || 3月#日(木)
+jue # abr || Thu Apr # || jeu. # avr. || qui, # abr || Kam, # Apr || 4月#日(木)
+jue # may || Thu May # || jeu. # mai || qui, # mai || Kam, # Mei || 5月#日(木)
+jue # jun || Thu Jun # || jeu. # juin || qui, # jun || Kam, # Jun || 6月#日(木)
+jue # jul || Thu Jul # || jeu. # juil. || qui, # jul || Kam, # Jul || 7月#日(木)
+jue # ago || Thu Aug # || jeu. # août || qui, # ago || Kam, # Agu || 8月#日(木)
+jue # sep || Thu Sep # || jeu. # sept. || qui, # set || Kam, # Sep || 9月#日(木)
+jue # oct || Thu Oct # || jeu. # oct. || qui, # out || Kam, # Okt || 10月#日(木)
+jue # nov || Thu Nov # || jeu. # nov. || qui, # nov || Kam, # Nov || 11月#日(木)
+jue # dic || Thu Dec # || jeu. # déc. || qui, # dez || Kam, # Des || 12月#日(木)
+vie # ene || Fri Jan # || ven. # janv. || sex, # jan || Jum, # Jan || 1月#日(金)
+vie # feb || Fri Feb # || ven. # févr. || sex, # fev || Jum, # Feb || 2月#日(金)
+vie # mar || Fri Mar # || ven. # mars || sex, # mar || Jum, # Mar || 3月#日(金)
+vie # abr || Fri Apr # || ven. # avr. || sex, # abr || Jum, # Apr || 4月#日(金)
+vie # may || Fri May # || ven. # mai || sex, # mai || Jum, # Mei || 5月#日(金)
+vie # jun || Fri Jun # || ven. # juin || sex, # jun || Jum, # Jun || 6月#日(金)
+vie # jul || Fri Jul # || ven. # juil. || sex, # jul || Jum, # Jul || 7月#日(金)
+vie # ago || Fri Aug # || ven. # août || sex, # ago || Jum, # Agu || 8月#日(金)
+vie # sep || Fri Sep # || ven. # sept. || sex, # set || Jum, # Sep || 9月#日(金)
+vie # oct || Fri Oct # || ven. # oct. || sex, # out || Jum, # Okt || 10月#日(金)
+vie # nov || Fri Nov # || ven. # nov. || sex, # nov || Jum, # Nov || 11月#日(金)
+vie # dic || Fri Dec # || ven. # déc. || sex, # dez || Jum, # Des || 12月#日(金)
+sáb # ene || Sat Jan # || sam. # janv. || sáb, # jan || Sab, # Jan || 1月#日(土)
+sáb # feb || Sat Feb # || sam. # févr. || sáb, # fev || Sab, # Feb || 2月#日(土)
+sáb # mar || Sat Mar # || sam. # mars || sáb, # mar || Sab, # Mar || 3月#日(土)
+sáb # abr || Sat Apr # || sam. # avr. || sáb, # abr || Sab, # Apr || 4月#日(土)
+sáb # may || Sat May # || sam. # mai || sáb, # mai || Sab, # Mei || 5月#日(土)
+sáb # jun || Sat Jun # || sam. # juin || sáb, # jun || Sab, # Jun || 6月#日(土)
+sáb # jul || Sat Jul # || sam. # juil. || sáb, # jul || Sab, # Jul || 7月#日(土)
+sáb # ago || Sat Aug # || sam. # août || sáb, # ago || Sab, # Agu || 8月#日(土)
+sáb # sep || Sat Sep # || sam. # sept. || sáb, # set || Sab, # Sep || 9月#日(土)
+sáb # oct || Sat Oct # || sam. # oct. || sáb, # out || Sab, # Okt || 10月#日(土)
+sáb # nov || Sat Nov # || sam. # nov. || sáb, # nov || Sab, # Nov || 11月#日(土)
+sáb # dic || Sat Dec # || sam. # déc. || sáb, # dez || Sab, # Des || 12月#日(土)
+dom # ene || Sun Jan # || dim. # janv. || dom, # jan || Min, # Jan || 1月#日(日)
+dom # feb || Sun Feb # || dim. # févr. || dom, # fev || Min, # Feb || 2月#日(日)
+dom # mar || Sun Mar # || dim. # mars || dom, # mar || Min, # Mar || 3月#日(日)
+dom # abr || Sun Apr # || dim. # avr. || dom, # abr || Min, # Apr || 4月#日(日)
+dom # may || Sun May # || dim. # mai || dom, # mai || Min, # Mei || 5月#日(日)
+dom # jun || Sun Jun # || dim. # juin || dom, # jun || Min, # Jun || 6月#日(日)
+dom # jul || Sun Jul # || dim. # juil. || dom, # jul || Min, # Jul || 7月#日(日)
+dom # ago || Sun Aug # || dim. # août || dom, # ago || Min, # Agu || 8月#日(日)
+dom # sep || Sun Sep # || dim. # sept. || dom, # set || Min, # Sep || 9月#日(日)
+dom # oct || Sun Oct # || dim. # oct. || dom, # out || Min, # Okt || 10月#日(日)
+dom # nov || Sun Nov # || dim. # nov. || dom, # nov || Min, # Nov || 11月#日(日)
+dom # dic || Sun Dec # || dim. # déc. || dom, # dez || Min, # Des || 12月#日(日)
+Llega entre el {} y el {} || Arrives between {} and {} || Arrive entre le {} et le {} || Chega entre {} e {} || Tiba antara {} dan {} || {}〜{}にお届け
+Llega el {} || Arrives {} || Arrive le {} || Chega {} || Tiba {} || {}にお届け
+Zona {}: el código postal # es de {} || {} zone: postal code # is in {} || Zone {} : le code postal # est à {} || Zona {}: o CEP # é de {} || Zona {}: kode pos # berada di {} || {}ゾーン：郵便番号 # は{}です
+Tu código postal pertenece a una zona más específica ({}) || Your postal code belongs to a more specific zone ({}) || Votre code postal appartient à une zone plus précise ({}) || Seu CEP pertence a uma zona mais específica ({}) || Kode pos Anda termasuk zona yang lebih spesifik ({}) || 郵便番号はより詳細なゾーン（{}）に該当します
+Solo para productos del perfil {} || Only for products in the {} profile || Uniquement pour les produits du profil {} || Só para produtos do perfil {} || Hanya untuk produk profil {} || {}プロファイルの商品のみ
+Tarifa en vivo de {} || Live rate from {} || Tarif en direct de {} || Tarifa ao vivo da {} || Tarif langsung dari {} || {}のリアルタイム料金
+Pedido antes de las #:#: sale hoy || Order before #:#: ships today || Commande avant #:# : expédiée aujourd'hui || Pedido antes das #:#: sai hoje || Pesan sebelum pukul #:#: dikirim hari ini || #:#までのご注文は当日発送
+Pedido después de las #:#: sale el siguiente día hábil || Order after #:#: ships the next business day || Commande après #:# : expédiée le jour ouvré suivant || Pedido depois das #:#: sai no próximo dia útil || Pesan setelah pukul #:#: dikirim hari kerja berikutnya || #:#以降のご注文は翌営業日発送
+No cuenta el feriado {} ({}) || The {} holiday doesn't count ({}) || Le jour férié {} ne compte pas ({}) || O feriado {} não conta ({}) || Hari libur {} tidak dihitung ({}) || 祝日（{}、{}）は日数に含みません
+Hoy es feriado ({}): sale el siguiente día hábil || Today is a holiday ({}): ships the next business day || Aujourd'hui est férié ({}) : expédiée le jour ouvré suivant || Hoje é feriado ({}): sai no próximo dia útil || Hari ini libur ({}): dikirim hari kerja berikutnya || 本日は祝日（{}）のため翌営業日発送
+Sábados y domingos no cuentan como día hábil || Saturdays and Sundays don't count as business days || Les samedis et dimanches ne sont pas des jours ouvrés || Sábados e domingos não contam como dia útil || Sabtu dan Minggu tidak dihitung hari kerja || 土日は営業日に含みません
+Día de la Revolución || Revolution Day || Jour de la Révolution || Dia da Revolução || Hari Revolusi || 革命記念日
+Navidad || Christmas || Noël || Natal || Natal || クリスマス
+Año Nuevo || New Year's Day || Jour de l'An || Ano Novo || Tahun Baru || 元日
+Día de la Constitución || Constitution Day || Jour de la Constitution || Dia da Constituição || Hari Konstitusi || 憲法記念日
+Natalicio de Benito Juárez || Benito Juárez's Birthday || Anniversaire de Benito Juárez || Aniversário de Benito Juárez || Hari Lahir Benito Juárez || ベニート・フアレス生誕記念日
+Día del Trabajo || Labor Day || Fête du Travail || Dia do Trabalho || Hari Buruh || メーデー
+Día de la Independencia || Independence Day || Jour de l'Indépendance || Dia da Independência || Hari Kemerdekaan || 独立記念日
+Tarifa fija || Flat rate || Tarif fixe || Tarifa fixa || Tarif tetap || 定額料金
+Gratis: el pedido ({}) alcanza el mínimo de {} || Free: the order ({}) reaches the minimum of {} || Gratuit : la commande ({}) atteint le minimum de {} || Grátis: o pedido ({}) atinge o mínimo de {} || Gratis: pesanan ({}) mencapai minimum {} || 無料：ご注文（{}）が最低額{}に達しています
+Por peso: tramo hasta {} (peso {}) || By weight: tier up to {} (weight {}) || Au poids : tranche jusqu'à {} (poids {}) || Por peso: faixa até {} (peso {}) || Berdasarkan berat: tingkat hingga {} (berat {}) || 重量別：{}までの区分（重量{}）
+Por peso: tramo sin límite (peso {}) || By weight: unlimited tier (weight {}) || Au poids : tranche sans limite (poids {}) || Por peso: faixa sem limite (peso {}) || Berdasarkan berat: tingkat tanpa batas (berat {}) || 重量別：上限なしの区分（重量{}）
+Por monto: pedidos hasta {} (pedido de {}) || By amount: orders up to {} (order of {}) || Au montant : commandes jusqu'à {} (commande de {}) || Por valor: pedidos até {} (pedido de {}) || Berdasarkan jumlah: pesanan hingga {} (pesanan {}) || 金額別：{}までの注文（注文額{}）
+Por monto: tramo sin límite (pedido de {}) || By amount: unlimited tier (order of {}) || Au montant : tranche sans limite (commande de {}) || Por valor: faixa sem limite (pedido de {}) || Berdasarkan jumlah: tingkat tanpa batas (pesanan {}) || 金額別：上限なしの区分（注文額{}）
+El peso del pedido ({}) supera el máximo de {} || The order weight ({}) exceeds the maximum of {} || Le poids de la commande ({}) dépasse le maximum de {} || O peso do pedido ({}) passa do máximo de {} || Berat pesanan ({}) melebihi maksimum {} || 注文の重量（{}）が上限{}を超えています
+No hay tarifa para un pedido de {} || There's no rate for an order of {} || Aucun tarif pour une commande de {} || Não há tarifa para um pedido de {} || Tidak ada tarif untuk pesanan {} || {}の注文に対応する料金はありません
+Te faltan {} para envío gratis || You're {} away from free shipping || Plus que {} pour la livraison gratuite || Faltam {} para frete grátis || Kurang {} lagi untuk gratis ongkir || あと{}で送料無料
+Recoge tu pedido en {} || Pick up your order at {} || Retirez votre commande à {} || Retire seu pedido em {} || Ambil pesanan Anda di {} || {}でご注文をお受け取りください
+Llevas # pieza gratis (la de menor precio) || You get # item free (the lowest-priced one) || Vous avez # article offert (le moins cher) || Você leva # peça grátis (a de menor preço) || Anda mendapat # barang gratis (yang termurah) || #点無料（最も安い商品）
+Llevas # piezas gratis (las de menor precio) || You get # items free (the lowest-priced ones) || Vous avez # articles offerts (les moins chers) || Você leva # peças grátis (as de menor preço) || Anda mendapat # barang gratis (yang termurah) || #点無料（最も安い商品）
+Agrega $# más para obtener esta promoción (mínimo $#). || Add $# more to get this promotion (minimum $#). || Ajoutez # $ de plus pour obtenir cette promotion (minimum # $). || Adicione mais $# para obter esta promoção (mínimo $#). || Tambah $# lagi untuk mendapatkan promosi ini (minimum $#). || あと$#でこのプロモーションが適用されます（最低$#）。
+Agrega # pieza más para obtener esta promoción (mínimo #). || Add # more item to get this promotion (minimum #). || Ajoutez # article de plus pour obtenir cette promotion (minimum #). || Adicione mais # peça para obter esta promoção (mínimo #). || Tambah # barang lagi untuk mendapatkan promosi ini (minimum #). || あと#点でこのプロモーションが適用されます（最低#点）。
+Agrega # piezas más para obtener esta promoción (mínimo #). || Add # more items to get this promotion (minimum #). || Ajoutez # articles de plus pour obtenir cette promotion (minimum #). || Adicione mais # peças para obter esta promoção (mínimo #). || Tambah # barang lagi untuk mendapatkan promosi ini (minimum #). || あと#点でこのプロモーションが適用されます（最低#点）。
+Agrega # más para llevar # y pagar #. || Add # more to take # and pay for #. || Ajoutez-en # de plus pour en prendre # et en payer #. || Adicione mais # para levar # e pagar #. || Tambah # lagi untuk ambil # dan bayar #. || あと#点で#点を#点分の価格で購入できます。
+Ingresa tu código postal para ver el envío. || Enter your postal code to see shipping. || Saisissez votre code postal pour voir la livraison. || Informe seu CEP para ver o frete. || Masukkan kode pos Anda untuk melihat ongkir. || 郵便番号を入力すると送料が表示されます。
+Envío gratis || Free shipping || Livraison gratuite || Frete grátis || Gratis ongkir || 送料無料
+Cupón {} aplicado: {} || Coupon {} applied: {} || Coupon {} appliqué : {} || Cupom {} aplicado: {} || Kupon {} diterapkan: {} || クーポン {} を適用：{}
+El cupón {} no existe || Coupon {} doesn't exist || Le coupon {} n'existe pas || O cupom {} não existe || Kupon {} tidak ada || クーポン {} は存在しません
+La promoción terminó el {} || The promotion ended on {} || La promotion s'est terminée le {} || A promoção terminou em {} || Promosi berakhir pada {} || プロモーションは{}に終了しました
+La promoción empieza el {} || The promotion starts on {} || La promotion commence le {} || A promoção começa em {} || Promosi dimulai pada {} || プロモーションは{}に開始します

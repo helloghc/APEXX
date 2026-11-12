@@ -2,6 +2,8 @@ package i18n
 
 import (
 	"embed"
+	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -88,10 +90,16 @@ func load() map[string]map[string]string {
 	return out
 }
 
+// langKey is asked of a Lookup to learn its language (for the patterns).
+const langKey = "\x00lang"
+
 // Builtin looks a phrase up in Apexx's own dictionary for that language.
 func Builtin(lang string) Lookup {
 	d := builtin[lang]
 	return func(p string) (string, bool) {
+		if p == langKey {
+			return lang, true
+		}
 		v, ok := d[p]
 		return v, ok
 	}
@@ -102,6 +110,9 @@ func Builtin(lang string) Lookup {
 func With(lang string, own map[string]string) Lookup {
 	d := builtin[lang]
 	return func(p string) (string, bool) {
+		if p == langKey {
+			return lang, true
+		}
 		if v, ok := own[p]; ok && v != "" {
 			return v, true
 		}
@@ -196,4 +207,153 @@ func (c *Config) Merge(products []ProductTexts) {
 			}
 		}
 	}
+}
+
+// pattern is a phrase with variable parts: "Llega el {}" or "Zona {}: el
+// código postal # es de {}". Text parts ({}) are translated themselves;
+// numbers (#) go back as they were.
+type pattern struct {
+	re    *regexp.Regexp
+	out   string
+	kinds []byte // 't' text, 'n' number, in order
+}
+
+// patterns[lang][first word] lists the patterns that start with that word
+// (most specific first), so a message only tries the few that could match.
+var patterns = map[string]map[string][]pattern{}
+
+func firstWord(s string) string {
+	if i := strings.IndexByte(s, ' '); i > 0 {
+		return s[:i]
+	}
+	return s
+}
+
+func init() {
+	for lang, d := range builtin {
+		var list []pattern
+		for k, v := range d {
+			if !strings.Contains(k, "{}") || len(strings.TrimSpace(strings.NewReplacer("{}", "", "#", "").Replace(k))) < 3 {
+				continue
+			}
+			var kinds []byte
+			var src strings.Builder
+			src.WriteString("^")
+			for _, part := range splitKeep(k) {
+				switch part {
+				case "{}":
+					kinds = append(kinds, 't')
+					src.WriteString("(.+?)")
+				case "#":
+					kinds = append(kinds, 'n')
+					src.WriteString(`([0-9][0-9.,]*[0-9]|[0-9])`)
+				default:
+					src.WriteString(regexp.QuoteMeta(part))
+				}
+			}
+			src.WriteString("$")
+			list = append(list, pattern{re: regexp.MustCompile(src.String()), out: v, kinds: kinds})
+		}
+		// Longer keys first: the most specific pattern wins.
+		sort.Slice(list, func(i, j int) bool { return len(list[i].re.String()) > len(list[j].re.String()) })
+		byWord := map[string][]pattern{}
+		for _, p := range list {
+			w := firstWord(strings.TrimPrefix(p.re.String(), "^"))
+			if strings.ContainsAny(w, "(\\") {
+				w = "" // starts with a variable part
+			}
+			byWord[w] = append(byWord[w], p)
+		}
+		patterns[lang] = byWord
+	}
+}
+
+func splitKeep(k string) []string {
+	var out []string
+	for k != "" {
+		i := strings.IndexAny(k, "{#")
+		if i < 0 {
+			out = append(out, k)
+			break
+		}
+		if k[i] == '{' && !strings.HasPrefix(k[i:], "{}") {
+			out = append(out, k[:i+1])
+			k = k[i+1:]
+			continue
+		}
+		if i > 0 {
+			out = append(out, k[:i])
+		}
+		if k[i] == '#' {
+			out = append(out, "#")
+			k = k[i+1:]
+		} else {
+			out = append(out, "{}")
+			k = k[i+2:]
+		}
+	}
+	return out
+}
+
+// byPattern translates a phrase with variable parts, or reports false.
+func byPattern(key string, look Lookup, depth int) (string, bool) {
+	lang, ok := look(langKey)
+	if !ok || depth > 2 {
+		return "", false
+	}
+	cands := append(patterns[lang][firstWord(key)], patterns[lang][""]...)
+	for _, p := range cands {
+		m := p.re.FindStringSubmatch(key)
+		if m == nil {
+			continue
+		}
+		var texts, nums []string
+		for i, k := range p.kinds {
+			if k == 't' {
+				texts = append(texts, translatePart(m[i+1], look, depth+1))
+			} else {
+				nums = append(nums, m[i+1])
+			}
+		}
+		var b strings.Builder
+		ti, ni := 0, 0
+		for _, part := range splitKeep(p.out) {
+			switch part {
+			case "{}":
+				if ti < len(texts) {
+					b.WriteString(texts[ti])
+					ti++
+				}
+			case "#":
+				if ni < len(nums) {
+					b.WriteString(nums[ni])
+					ni++
+				}
+			default:
+				b.WriteString(part)
+			}
+		}
+		return b.String(), true
+	}
+	return "", false
+}
+
+// translatePart translates the variable part of a pattern: whole, by its
+// numbers, or as another pattern; else it stays as it is (a name, a place).
+func translatePart(v string, look Lookup, depth int) string {
+	if out, ok := look(v); ok {
+		return out
+	}
+	if nums := numbers.FindAllString(v, -1); len(nums) > 0 {
+		if out, ok := look(numbers.ReplaceAllString(v, "#")); ok {
+			for _, n := range nums {
+				out = strings.Replace(out, "#", n, 1)
+			}
+			return out
+		}
+	}
+	if out, ok := byPattern(v, look, depth); ok {
+		return out
+	}
+	return v
 }

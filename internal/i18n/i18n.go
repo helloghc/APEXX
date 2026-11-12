@@ -257,6 +257,20 @@ func escapeScript(s string) string { return scriptEscaper.Replace(s) }
 
 // Phrase translates one plain piece of text (not markup), such as a message
 // inside an API answer.
+// Messages the server builds (delivery dates, promotion progress) are also
+// matched against phrases with variable parts; page text never is, so a
+// store's own sentence is not half-translated by a pattern.
 func Phrase(s string, look Lookup) string {
-	return phrase(s, look, func(x string) string { return x })
+	out := phrase(s, look, func(x string) string { return x })
+	if out != s {
+		return out
+	}
+	core := strings.TrimSpace(s)
+	if core == "" {
+		return s
+	}
+	if t, ok := byPattern(spaces.ReplaceAllString(core, " "), look, 0); ok {
+		return s[:strings.Index(s, core)] + t + s[strings.Index(s, core)+len(core):]
+	}
+	return s
 }
