@@ -122,8 +122,8 @@ func (s *Server) updateCustomer(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) deleteCustomer(w http.ResponseWriter, r *http.Request) {
 	p := principal(r)
-	if err := s.Customers.Delete(r.Context(), p.Tenant, p.Actor(), r.PathValue("id")); err != nil {
-		s.fail(w, err)
+	if err := s.eraseCustomer(r.Context(), p.Tenant, p.Actor(), r.PathValue("id")); err != nil {
+		s.failErase(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

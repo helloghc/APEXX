@@ -518,6 +518,7 @@ var accountNotices = map[string]string{
 	"direccion": "Dirección guardada.", "direccion-borrada": "Dirección eliminada.", "datos": "Tus datos se guardaron.",
 	"contrasena": "Contraseña guardada. Ya puedes entrar con ella.", "sin-contrasena": "Quitamos tu contraseña; entra con un código por correo.",
 	"salir": "Cerraste sesión.", "bienvenida": "¡Listo! Ya estás en tu cuenta.",
+	"cuenta-borrada": "Borramos tu cuenta y tus datos personales. Tus pedidos se conservan sin tu nombre ni tu dirección, como exige la contabilidad.",
 }
 
 func (s *Server) shopAccountPage(w http.ResponseWriter, r *http.Request) {
@@ -665,6 +666,21 @@ func (s *Server) shopAccountForm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		back("?ver=datos&ok=datos")
+	case "borrar-cuenta":
+		if strings.TrimSpace(strings.ToUpper(f("confirmar"))) != "BORRAR" {
+			formError("profile", "Mis datos", customers.FieldError{Field: "confirmar", Message: "Escribe BORRAR para confirmar"})
+			return
+		}
+		if err := s.eraseCustomer(r.Context(), tenant, actor, id); err != nil {
+			if errors.Is(err, errActiveSubscription) {
+				formError("profile", "Mis datos", customers.FieldError{Field: "confirmar", Message: "Tienes suscripciones activas. Cancélalas primero desde el correo de tu suscripción"})
+				return
+			}
+			internalError(w, s.Log, err)
+			return
+		}
+		s.setShopperCookie(w, tenant, "", -1)
+		back("?ok=cuenta-borrada")
 	case "contrasena":
 		pw := r.PostForm.Get("contrasena")
 		if err := s.Customers.SetPassword(r.Context(), tenant, id, pw, token); err != nil {
@@ -723,4 +739,18 @@ func (s *Server) shopPayPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.renderAccount(w, "pay", status, d)
+}
+
+// shopAccountExport hands the signed-in shopper a copy of their data.
+func (s *Server) shopAccountExport(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.shopperAPI(w, r)
+	if !ok {
+		return
+	}
+	out, err := s.exportCustomer(r.Context(), r.PathValue("tenant"), id)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	writeExport(w, out, id)
 }

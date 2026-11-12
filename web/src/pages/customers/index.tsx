@@ -208,6 +208,7 @@ function CustomerDetail({ me, id }: { me: Me; id: string }) {
             </CardContent>
           </Card>
           <CustomFields resource="customer" id={id} canEdit={canEdit} />
+          {can(me, "customers", "admin") && <PrivacyCard id={id} name={c.name || c.email} />}
           <Card>
             <CardHeader><CardTitle className="text-base">Notas internas</CardTitle></CardHeader>
             <CardContent className="grid gap-3">
@@ -443,5 +444,54 @@ function Carts({ me }: { me: Me }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Privacy requests: hand the person a copy of their data, or erase it. */
+function PrivacyCard({ id, name }: { id: string; name: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function download() {
+    try {
+      const text = await request<string>("GET", `/v1/customers/${encodeURIComponent(id)}/export`, undefined, { as: "text" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+      a.download = `datos-${id}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast.success("Descargamos sus datos. Entrégaselos por un canal seguro.");
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  }
+  async function erase() {
+    setBusy(true);
+    try {
+      await request<void>("DELETE", `/v1/customers/${encodeURIComponent(id)}`, undefined, { as: "none" });
+      toast.success("Borramos a la persona. Sus pedidos se conservan sin datos personales.");
+      void qc.invalidateQueries({ queryKey: ["customers"] });
+      navigate("clientes");
+    } catch (e) {
+      toast.error(errorMessage(e));
+      setBusy(false);
+    }
+  }
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Privacidad</CardTitle></CardHeader>
+      <CardContent className="grid gap-3">
+        <p className="text-sm text-muted-foreground">Si la persona lo pide, entrégale una copia de sus datos o bórralos. Al borrar, sus pedidos se conservan con sus importes pero sin nombre, correo ni dirección. El comprador también puede hacerlo desde su cuenta en la tienda.</p>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void download()}>Descargar sus datos</Button><Button variant="outline" className="text-bad" onClick={() => setOpen(true)}><Trash2 aria-hidden="true" /> Borrar sus datos</Button></div>
+      </CardContent>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setTyped(""); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Borrar los datos de {name}</DialogTitle><DialogDescription>No se puede deshacer. Se borran su perfil, direcciones, notas, favoritos y campos propios; sus pedidos quedan sin datos personales.</DialogDescription></DialogHeader>
+          <div className="grid gap-1.5"><Label htmlFor="erase-confirm">Escribe BORRAR para confirmar</Label><Input id="erase-confirm" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} /></div>
+          <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button variant="destructive" disabled={typed.trim().toUpperCase() !== "BORRAR" || busy} onClick={() => void erase()}>{busy ? "Borrando…" : "Borrar para siempre"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }

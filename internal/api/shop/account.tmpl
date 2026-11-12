@@ -142,6 +142,17 @@
 <div class="field"><label for="contrasena">Nueva contraseña (mínimo 10 caracteres)</label><input id="contrasena" name="contrasena" type="password" autocomplete="new-password" minlength="10" maxlength="200"></div>
 <button class="btn btn-ghost" type="submit">Guardar contraseña</button>
 </fieldset></form>
+<fieldset><legend>Tus datos personales</legend>
+<p class="muted">Puedes descargar una copia de todo lo que la tienda guarda sobre ti, o pedir que se borre.</p>
+<p><a class="btn btn-ghost" href="/s/{{.Tenant}}/api/account/export" download>Descargar mis datos</a></p>
+<details class="danger"><summary>Borrar mi cuenta</summary>
+<form method="post" action="{{.Base}}/cuenta">
+<input type="hidden" name="accion" value="borrar-cuenta">
+<p class="muted">Se borran tu cuenta, direcciones, favoritos y datos personales. Tus pedidos se conservan sin tu nombre ni tu dirección, porque la tienda los necesita para su contabilidad. No se puede deshacer.</p>
+<div class="field"><label for="confirmar">Escribe BORRAR para confirmar</label><input id="confirmar" name="confirmar" autocomplete="off" maxlength="10" required></div>
+<button class="btn" type="submit">Borrar mi cuenta para siempre</button>
+</form></details>
+</fieldset>
 </div></div>
 {{end}}
 {{end}}

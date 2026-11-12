@@ -411,3 +411,4 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .langs a:hover{opacity:1;text-decoration:underline}
 .langs a[aria-current]{opacity:1;font-weight:600}
 .langs .markets{margin-top:6px;font-size:.8rem}
+.danger summary{cursor:pointer;color:var(--bad,#a3202a);margin-top:8px}
