@@ -239,6 +239,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesStorefronts(handle)
 	s.routesCompanyRoles(handle)
 	s.routesSalesReps(handle)
+	s.routesQuoteTemplates(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

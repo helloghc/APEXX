@@ -20,7 +20,10 @@ func (s *Server) fail(w http.ResponseWriter, err error) {
 	var of orders.FieldError
 	var nf notify.FieldError
 	var ce *orders.CreditError
+	var te orders.ErrTemplate
 	switch {
+	case errors.As(err, &te):
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "agreement_rule", Detail: te.Msg})
 	case errors.As(err, &ce):
 		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: ce.Code, Detail: ce.Message})
 	case errors.As(err, &cf):

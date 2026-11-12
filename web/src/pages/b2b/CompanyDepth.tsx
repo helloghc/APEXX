@@ -323,3 +323,71 @@ export function Roles({ id, canEdit }: { id: string; canEdit: boolean }) {
     </Card>
   );
 }
+
+interface TItem { sku: string; title?: string; unit: number; minQty: number; maxQty: number }
+interface Template { id: string; companyId: string; name: string; items: TItem[]; minOrderTotal: number; commitTotal: number; validFrom: string; validUntil: string; status: "active" | "closed"; note: string; used: number; orders: number; live: boolean }
+
+/** Agreements (quote templates): negotiated prices and quantities the company orders from without renegotiating. */
+export function Agreements({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["agreements", id], queryFn: () => request<{ items: Template[] }>("GET", `/v1/quote-templates?company=${enc(id)}`).then((r) => r.items) });
+  const [edit, setEdit] = useState<(Template & { rows: { sku: string; unit: string; minQty: string; maxQty: string }[]; min: string; commit: string }) | null>(null);
+  const today = new Date().toISOString().slice(0, 10);
+  const open = (t?: Template) => setEdit(t ? { ...t, rows: t.items.map((i) => ({ sku: i.sku, unit: centsToPesos(i.unit), minQty: String(i.minQty), maxQty: i.maxQty ? String(i.maxQty) : "" })), min: t.minOrderTotal ? centsToPesos(t.minOrderTotal) : "", commit: t.commitTotal ? centsToPesos(t.commitTotal) : "" }
+    : { id: "", companyId: id, name: "", items: [], minOrderTotal: 0, commitTotal: 0, validFrom: today, validUntil: new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10), status: "active", note: "", used: 0, orders: 0, live: true, rows: [{ sku: "", unit: "", minQty: "1", maxQty: "" }], min: "", commit: "" });
+  async function save() {
+    if (!edit) return;
+    const body = { companyId: id, name: edit.name, validFrom: edit.validFrom, validUntil: edit.validUntil, status: edit.status, note: edit.note, minOrderTotal: parsePesos(edit.min) ?? 0, commitTotal: parsePesos(edit.commit) ?? 0,
+      items: edit.rows.filter((r) => r.sku.trim()).map((r) => ({ sku: r.sku.trim(), unit: parsePesos(r.unit) ?? 0, minQty: Number(r.minQty) || 1, maxQty: Number(r.maxQty) || 0 })) };
+    try {
+      await request(edit.id ? "PUT" : "POST", edit.id ? `/v1/quote-templates/${enc(edit.id)}` : "/v1/quote-templates", body);
+      toast.success("Acuerdo guardado. Sus compradores ya pueden pedir de él en «Mi empresa»."); setEdit(null); void qc.invalidateQueries({ queryKey: ["agreements", id] });
+    } catch (e) { toast.error(errorMessage(e)); }
+  }
+  const setRow = (i: number, p: Partial<{ sku: string; unit: string; minQty: string; maxQty: string }>) => edit && setEdit({ ...edit, rows: edit.rows.map((r, j) => (j === i ? { ...r, ...p } : r)) });
+  return (
+    <Card data-agreements>
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Acuerdos de compra</CardTitle><CardDescription>Precio negociado por producto, cantidades por pedido y vigencia. La empresa pide de aquí sin volver a cotizar.</CardDescription></div>
+        {canEdit && <Button variant="outline" onClick={() => open()}><Plus className="size-4" /> Nuevo acuerdo</Button>}</CardHeader>
+      <CardContent>
+        {(q.data?.length ?? 0) === 0 ? <p className="text-sm text-muted-foreground">Sin acuerdos todavía.</p> : (
+          <Table><TableHeader><TableRow><TableHead>Acuerdo</TableHead><TableHead>Vigencia</TableHead><TableHead>Productos</TableHead><TableHead className="text-right">Usado</TableHead><TableHead /></TableRow></TableHeader>
+            <TableBody>{q.data!.map((t) => (
+              <TableRow key={t.id}><TableCell className="font-medium">{t.name}{!t.live && <Badge variant="secondary" className="ml-2">{t.status === "closed" ? "Cerrado" : "Fuera de vigencia"}</Badge>}</TableCell>
+                <TableCell className="whitespace-nowrap">{t.validFrom} a {t.validUntil}</TableCell><TableCell>{t.items.length}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatMoney(t.used)}{t.commitTotal ? ` de ${formatMoney(t.commitTotal)}` : ""}<div className="text-xs text-muted-foreground">{t.orders} pedidos</div></TableCell>
+                <TableCell className="text-right">{canEdit && <Button size="sm" variant="ghost" onClick={() => open(t)}>Editar</Button>}</TableCell></TableRow>
+            ))}</TableBody></Table>
+        )}
+      </CardContent>
+      {edit && (
+        <Dialog open onOpenChange={(o) => !o && setEdit(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader><DialogTitle>{edit.id ? "Editar acuerdo" : "Nuevo acuerdo"}</DialogTitle><DialogDescription>Los compradores de la empresa piden con estos precios y cantidades mientras esté vigente.</DialogDescription></DialogHeader>
+            <div className="grid max-h-[60vh] gap-3 overflow-auto pr-1 sm:grid-cols-2">
+              <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="ag-name">Nombre</Label><Input id="ag-name" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Contrato anual 2027" /></div>
+              <div className="grid gap-1.5"><Label htmlFor="ag-from">Desde</Label><Input id="ag-from" type="date" value={edit.validFrom} onChange={(e) => setEdit({ ...edit, validFrom: e.target.value })} /></div>
+              <div className="grid gap-1.5"><Label htmlFor="ag-until">Hasta</Label><Input id="ag-until" type="date" value={edit.validUntil} onChange={(e) => setEdit({ ...edit, validUntil: e.target.value })} /></div>
+              <div className="grid gap-1.5"><Label htmlFor="ag-min">Pedido mínimo (MXN)</Label><Input id="ag-min" inputMode="decimal" value={edit.min} onChange={(e) => setEdit({ ...edit, min: e.target.value })} placeholder="Sin mínimo" /></div>
+              <div className="grid gap-1.5"><Label htmlFor="ag-commit">Compromiso total (MXN)</Label><Input id="ag-commit" inputMode="decimal" value={edit.commit} onChange={(e) => setEdit({ ...edit, commit: e.target.value })} placeholder="Opcional" /></div>
+              <fieldset className="grid gap-2 sm:col-span-2"><legend className="text-sm font-medium">Productos</legend>
+                {edit.rows.map((r, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_7rem_5rem_5rem_auto] items-end gap-2">
+                    <div className="grid gap-1"><Label htmlFor={`ag-sku-${i}`} className="text-xs">SKU</Label><Input id={`ag-sku-${i}`} className="font-mono" value={r.sku} onChange={(e) => setRow(i, { sku: e.target.value })} /></div>
+                    <div className="grid gap-1"><Label htmlFor={`ag-unit-${i}`} className="text-xs">Precio</Label><Input id={`ag-unit-${i}`} inputMode="decimal" value={r.unit} onChange={(e) => setRow(i, { unit: e.target.value })} /></div>
+                    <div className="grid gap-1"><Label htmlFor={`ag-minq-${i}`} className="text-xs">Mín.</Label><Input id={`ag-minq-${i}`} inputMode="numeric" value={r.minQty} onChange={(e) => setRow(i, { minQty: e.target.value })} /></div>
+                    <div className="grid gap-1"><Label htmlFor={`ag-maxq-${i}`} className="text-xs">Máx.</Label><Input id={`ag-maxq-${i}`} inputMode="numeric" placeholder="—" value={r.maxQty} onChange={(e) => setRow(i, { maxQty: e.target.value })} /></div>
+                    <Button type="button" variant="ghost" size="icon" aria-label="Quitar producto" onClick={() => setEdit({ ...edit, rows: edit.rows.filter((_, j) => j !== i) })}><Trash2 className="size-4" /></Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => setEdit({ ...edit, rows: [...edit.rows, { sku: "", unit: "", minQty: "1", maxQty: "" }] })}><Plus className="size-4" /> Agregar producto</Button>
+              </fieldset>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={edit.status === "closed"} onChange={(e) => setEdit({ ...edit, status: e.target.checked ? "closed" : "active" })} /> Cerrar el acuerdo</label>
+            </div>
+            <DialogFooter><Button variant="outline" onClick={() => setEdit(null)}>Cancelar</Button><Button disabled={!edit.name.trim()} onClick={() => void save()}>Guardar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </Card>
+  );
+}

@@ -1295,3 +1295,36 @@ function downloadsBox(ds) {
     st.textContent = r && r.ok ? (on ? "Listo: tu representante puede hacer pedidos por tu empresa." : "Listo: tu representante ya no puede hacer pedidos por tu empresa.") : "No se pudo guardar. Intenta de nuevo.";
   });
 })();
+
+/* ==== company agreements: order at the negotiated price ==== */
+(() => {
+  const box = document.querySelector("[data-agreements-portal]"); if (!box) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2], base = document.body.dataset.base || "";
+  const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (c) => "$" + (c / 100).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " MXN";
+  fetch("/s/" + tenant + "/api/account/company/templates", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+    if (!j || !j.items.length) return;
+    box.innerHTML = "<h2>Acuerdos de compra</h2>" + j.items.map((t) => "<form class='acct-box' data-agreement='" + esc(t.id) + "'><h3>" + esc(t.name) + "</h3><p class='muted'>Vigente hasta " + esc(t.validUntil) +
+      (t.minOrderTotal ? " · pedido mínimo " + money(t.minOrderTotal) : "") + (t.commitTotal ? " · usado " + money(t.used) + " de " + money(t.commitTotal) : "") + "</p>" +
+      "<div class='scrollx'><table><thead><tr><th>Producto</th><th class='num'>Precio</th><th>Cantidad</th></tr></thead><tbody>" + t.items.map((it) => "<tr><td>" + esc(it.title || it.sku) + "<br><small class='muted'>" + esc(it.sku) + " · de " + it.minQty + (it.maxQty ? " a " + it.maxQty : " en adelante") + " piezas</small></td><td class='num'>" + money(it.unit) +
+        "</td><td><input type='number' min='0' " + (it.maxQty ? "max='" + it.maxQty + "' " : "") + "value='0' data-sku='" + esc(it.sku) + "' data-unit='" + it.unit + "' aria-label='Cantidad de " + esc(it.title || it.sku) + "' style='width:90px'></td></tr>").join("") +
+      "</tbody></table></div><p><strong data-agreement-total>" + money(0) + "</strong></p><button class='btn' type='submit'>" + (j.canCredit ? "Pedir a crédito" : "Pedir y pagar") + "</button><p class='note' role='status' data-agreement-status></p></form>").join("");
+    box.addEventListener("input", (e) => {
+      const f = e.target.closest("[data-agreement]"); if (!f) return;
+      const tot = [...f.querySelectorAll("input[data-sku]")].reduce((a, i) => a + (Number(i.value) || 0) * Number(i.dataset.unit), 0);
+      f.querySelector("[data-agreement-total]").textContent = money(tot);
+    });
+    box.addEventListener("submit", async (e) => {
+      const f = e.target.closest("[data-agreement]"); if (!f) return; e.preventDefault();
+      const st = f.querySelector("[data-agreement-status]"), b = f.querySelector("button"); b.disabled = true; st.textContent = "";
+      const items = [...f.querySelectorAll("input[data-sku]")].map((i) => ({ sku: i.dataset.sku, qty: Number(i.value) || 0 })).filter((i) => i.qty > 0);
+      const r = await fetch("/s/" + tenant + "/api/account/company/templates/" + encodeURIComponent(f.dataset.agreement) + "/order", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ items }) })
+        .then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+      b.disabled = false;
+      if (!r.ok) { st.textContent = r.body.detail || "No se pudo hacer el pedido."; return; }
+      if (r.body.payUrl) { location.href = r.body.payUrl; return; }
+      st.innerHTML = "Pedido #" + esc(r.body.order.number) + " hecho a crédito por " + money(r.body.order.grandTotal) + ". <a href='" + base + "/cuenta'>Ver mis pedidos</a>";
+      f.querySelectorAll("input[data-sku]").forEach((i) => (i.value = "0"));
+    });
+  }).catch(() => {});
+})();
