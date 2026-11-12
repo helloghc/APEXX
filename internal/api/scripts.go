@@ -89,13 +89,15 @@ func (s *Server) shopCSPFor(tenant string, thirdParty bool) string {
 	if !thirdParty || tenant == "" {
 		return shopCSP
 	}
+	// App content sections load in sandboxed frames from any https origin.
+	base := strings.Replace(shopCSP, "frame-src https://js.stripe.com https://hooks.stripe.com;", "frame-src https://js.stripe.com https://hooks.stripe.com https:;", 1)
 	o := s.scriptsOf(tenant).origins
 	if o == "" {
-		return shopCSP
+		return base
 	}
-	csp := strings.Replace(shopCSP, "script-src 'self' https://js.stripe.com;", "script-src 'self' https://js.stripe.com "+o+";", 1)
+	csp := strings.Replace(base, "script-src 'self' https://js.stripe.com;", "script-src 'self' https://js.stripe.com "+o+";", 1)
 	csp = strings.Replace(csp, "connect-src 'self' https://api.stripe.com;", "connect-src 'self' https://api.stripe.com "+o+";", 1)
-	return strings.Replace(csp, "frame-src https://js.stripe.com https://hooks.stripe.com;", "frame-src https://js.stripe.com https://hooks.stripe.com "+o+";", 1)
+	return csp
 }
 
 func (s *Server) getScripts(w http.ResponseWriter, r *http.Request) {

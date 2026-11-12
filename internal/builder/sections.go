@@ -31,8 +31,9 @@ var sectionFuncs = template.FuncMap{
 		}
 		return out
 	},
-	"tone":   func(i int) int { return i%6 + 1 },
-	"toneOf": func(v any) int { s, _ := v.(string); return ToneOf(s) },
+	"tone":      func(i int) int { return i%6 + 1 },
+	"toneOf":    func(v any) int { s, _ := v.(string); return ToneOf(s) },
+	"hasPrefix": func(v any, p string) bool { s, _ := v.(string); return strings.HasPrefix(s, p) },
 	"initial": func(v any) string {
 		s, _ := v.(string)
 		s = strings.TrimSpace(s)
@@ -118,6 +119,19 @@ func DefaultSections() []SectionDefinition {
 				"align": {Type: "string", Title: "Alineación", Enum: []any{"left", "center"}, Default: "center"},
 			}),
 			Template: `<div class="sx-rich align-{{.S.align}}">{{with .S.eyebrow}}<p class="eyebrow">{{.}}</p>{{end}}{{template "heading" (dict .H1 .S.heading)}}{{with .S.body}}<p class="lede">{{.}}</p>{{end}}</div>`,
+		},
+		{
+			// Content from a store app (reviews, social feed, booking) in an isolated frame:
+			// it cannot read the page, the cart or the shopper's data.
+			Type: "app-embed", Version: "1.0.0", Name: "Contenido de una app", Category: "contenido",
+			Description: "Muestra una vista de una app (reseñas, redes, reservaciones) en un marco aislado.", Hydration: "none",
+			Budget: Budget{HTMLBytes: 700, CSSBytes: 200},
+			SettingsSchema: obj([]string{"url", "title"}, map[string]Schema{
+				"title":  str("Título (para lectores de pantalla)", 80),
+				"url":    {Type: "string", Title: "Dirección https de la vista de la app", MaxLength: intp(300)},
+				"height": {Type: "integer", Title: "Altura en píxeles", Minimum: floatp(120), Maximum: floatp(1600), Default: 400.0},
+			}),
+			Template: `<div class="sx-embed">{{if hasPrefix .S.url "https://"}}<iframe src="{{.S.url}}" title="{{.S.title}}" loading="lazy" sandbox="allow-scripts allow-popups allow-forms" referrerpolicy="no-referrer" style="width:100%;height:{{.S.height}}px;border:0"></iframe>{{end}}</div>`,
 		},
 		{
 			Type: "product-grid", Version: "1.0.0", Name: "Grilla de productos", Category: "productos",

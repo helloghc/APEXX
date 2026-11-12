@@ -158,3 +158,27 @@ func BenchmarkPublish(b *testing.B) {
 		}
 	}
 }
+
+// An app content section renders an isolated frame for https only.
+func TestAppEmbedSection(t *testing.T) {
+	lib, err := NewLibrary(DefaultSections()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := home()
+	page.Regions["main"] = append(page.Regions["main"],
+		SectionInstance{ID: "ok", Type: "app-embed", Settings: map[string]any{"url": "https://resenas.example/widget?t=1", "title": "Reseñas", "height": 300.0}},
+		SectionInstance{ID: "bad", Type: "app-embed", Settings: map[string]any{"url": "javascript:alert(1)", "title": "Malo", "height": 300.0}})
+	s := NewSite("s", lib, nil, page)
+	html, _, err := s.Preview("index")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := string(html)
+	if !strings.Contains(h, `src="https://resenas.example/widget?t=1"`) || !strings.Contains(h, `sandbox="allow-scripts allow-popups allow-forms"`) {
+		t.Fatalf("app frame missing: %s", h)
+	}
+	if strings.Contains(h, "javascript:") || strings.Count(h, "<iframe") != 1 {
+		t.Fatalf("unsafe frame rendered: %d frames", strings.Count(h, "<iframe"))
+	}
+}
