@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { WriteHelper } from "@/components/Copilots";
 import { useState } from "react";
 import { Plus, Send, Trash2 } from "lucide-react";
 import { errorMessage, fieldErrors, request, type Me } from "@/api";
@@ -54,7 +55,7 @@ export function MailCampaigns({ me }: { me: Me }) {
           <fieldset disabled={!canEdit} className="grid gap-3 sm:grid-cols-2" data-campaign-form>
             <div className="grid gap-1.5"><Label htmlFor="cm-name">Nombre interno</Label><Input id="cm-name" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />{errs.name && <p className="text-xs text-bad">{errs.name}</p>}</div>
             <div className="grid gap-1.5"><Label htmlFor="cm-group">Para</Label><select id="cm-group" className="h-9 rounded-md border bg-background px-2 text-sm" value={edit.groupId} onChange={(e) => setEdit({ ...edit, groupId: e.target.value })}><option value="">Todos los clientes con permiso</option>{(groups.data ?? []).map((g) => <option key={g.id} value={g.id}>{g.name} ({g.count})</option>)}</select></div>
-            <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="cm-subject">Asunto</Label><Input id="cm-subject" value={edit.subject} onChange={(e) => setEdit({ ...edit, subject: e.target.value })} />{errs.subject && <p className="text-xs text-bad">{errs.subject}</p>}</div>
+            <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="cm-subject">Asunto</Label><Input id="cm-subject" value={edit.subject} onChange={(e) => setEdit({ ...edit, subject: e.target.value })} /><WriteHelper kind="email_subject" about={[edit.name, edit.blocks.heading, edit.blocks.body].filter(Boolean).join(". ")} label="Sugerir asuntos" onPick={(t) => setEdit({ ...edit, subject: t })} />{errs.subject && <p className="text-xs text-bad">{errs.subject}</p>}</div>
             <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="cm-heading">Título (puedes usar {"{{cliente.nombre}}"})</Label><Input id="cm-heading" value={b.heading} onChange={(e) => setEdit({ ...edit, blocks: { ...b, heading: e.target.value } })} /></div>
             <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="cm-body">Texto</Label><Textarea id="cm-body" rows={6} value={b.body} onChange={(e) => setEdit({ ...edit, blocks: { ...b, body: e.target.value } })} /></div>
             <div className="grid gap-1.5"><Label htmlFor="cm-cta">Botón</Label><Input id="cm-cta" value={b.cta} onChange={(e) => setEdit({ ...edit, blocks: { ...b, cta: e.target.value } })} /></div>

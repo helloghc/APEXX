@@ -451,6 +451,19 @@ func (t *Taxonomy) Attribute(id string) (AttributeDef, bool) {
 	return a, ok
 }
 
+// AttributeByName finds a definition by its name, ignoring case and accents.
+func (t *Taxonomy) AttributeByName(name string) (AttributeDef, bool) {
+	f := fold(strings.TrimSpace(name))
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	for _, a := range t.attrs {
+		if fold(a.Name) == f {
+			return a, true
+		}
+	}
+	return AttributeDef{}, false
+}
+
 // Attributes returns every definition in display order.
 func (t *Taxonomy) Attributes() []AttributeDef {
 	t.mu.RLock()

@@ -1,4 +1,5 @@
 import { Datasheet } from "./Datasheet";
+import { ProductSuggestions } from "@/components/Copilots";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink, ImagePlus, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
@@ -345,6 +346,10 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
               <Textarea id="p-desc" rows={5} value={d.description} onChange={(e) => set("description", e.target.value)} />
             </Field>
           </Section>
+
+          {!isNew && <Section title="Sugerencias de Apexx" description="Lo que le falta al producto, con el porqué. Aplica solo lo que te sirva; todo se puede deshacer.">
+            <ProductSuggestions productId={id} canEdit={canEdit} />
+          </Section>}
 
           {!isNew && <Section title="Ficha técnica (PDF)" description="El texto del PDF aparece en la ficha y responde preguntas en «Pregúntale a la tienda».">
             <Datasheet productId={id} canEdit={canEdit} />

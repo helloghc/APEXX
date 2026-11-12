@@ -1,4 +1,5 @@
 import { CustomFields } from "@/components/CustomFields";
+import { OrderAssist } from "@/components/Copilots";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowLeft, Ban, ExternalLink, PackageCheck, PencilLine, Plus, Printer, RotateCcw, StickyNote, Trash2, Truck, Undo2 } from "lucide-react";
@@ -99,6 +100,8 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
         )}
       </div>
 
+      <Card data-order-copilot><CardHeader><CardTitle className="text-base">Resumen y respuesta sugerida</CardTitle></CardHeader>
+        <CardContent><OrderAssist orderId={o.id} /></CardContent></Card>
       <WarehouseStatus id={o.id} />
       {!!o.downloads?.length && <Downloads order={o} canEdit={can(me, "orders", "edit")} />}
       <OrderAppBlocks orderId={o.id} />

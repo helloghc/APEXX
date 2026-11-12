@@ -84,6 +84,50 @@ type ImportContext struct {
 	SKUOwner     func(sku string) (handle string, ok bool)
 	HandleExists func(handle string) bool
 	Attribute    func(id string) (AttributeDef, bool)
+	// AttributeByName finds an attribute by its name ("Material"), so a
+	// column named like an attribute is read as that attribute. Optional.
+	AttributeByName func(name string) (AttributeDef, bool)
+}
+
+// columnAliases are the names people and other platforms' exports give to
+// the import's columns (folded: lowercase, no accents). The importer reads
+// them as the canonical column and says so in the preview.
+var columnAliases = map[string]string{
+	"nombre": "title", "titulo": "title", "producto": "title", "nombre del producto": "title", "name": "title", "product name": "title",
+	"descripcion": "description", "body html": "description", "body": "description", "descripcion larga": "description",
+	"precio": "price", "precio venta": "price", "precio de venta": "price", "variant price": "price", "precio publico": "price",
+	"precio anterior": "compare_at_price", "precio de lista": "compare_at_price", "precio regular": "compare_at_price", "precio antes": "compare_at_price",
+	"compare at price": "compare_at_price", "variant compare at price": "compare_at_price",
+	"existencias": "stock", "existencia": "stock", "inventario": "stock", "cantidad": "stock", "stock disponible": "stock", "variant inventory qty": "stock", "inventory": "stock", "qty": "stock",
+	"codigo": "sku", "clave": "sku", "referencia": "sku", "variant sku": "sku", "codigo interno": "sku", "modelo": "sku",
+	"codigo de barras": "barcode", "ean": "barcode", "upc": "barcode", "gtin": "barcode", "variant barcode": "barcode",
+	"peso": "weight_grams", "peso g": "weight_grams", "peso gramos": "weight_grams", "peso en gramos": "weight_grams", "variant grams": "weight_grams", "grams": "weight_grams",
+	"marca": "brand", "vendor": "brand", "fabricante": "brand",
+	"categoria": "categories", "categorias": "categories", "category": "categories", "product category": "categories", "departamento": "categories",
+	"tipo": "type", "product type": "type", "tipo de producto": "type",
+	"etiquetas": "tags", "palabras clave": "tags",
+	"estado": "status", "estatus": "status",
+	"url": "handle", "slug": "handle", "url amigable": "handle",
+	"titulo seo": "seo_title", "seo title": "seo_title", "meta titulo": "seo_title",
+	"descripcion seo": "seo_description", "seo description": "seo_description", "meta descripcion": "seo_description",
+}
+
+// mapColumn reads a header as a canonical column: itself, an alias, or an
+// attribute named like it. mapped is false when the header was already canonical.
+func mapColumn(h string, ctx ImportContext, known map[string]bool) (col string, mapped bool) {
+	if known[h] || strings.HasPrefix(h, "attr:") {
+		return h, false
+	}
+	f := strings.Join(strings.Fields(strings.NewReplacer("(", " ", ")", " ", "_", " ", "-", " ", ".", " ").Replace(fold(h))), " ")
+	if c, ok := columnAliases[f]; ok {
+		return c, true
+	}
+	if ctx.AttributeByName != nil {
+		if a, ok := ctx.AttributeByName(h); ok {
+			return "attr:" + a.ID, true
+		}
+	}
+	return h, false
 }
 
 // ParseAmount converts "1,299.50", "$1299" or "1299,5" into minor units.
@@ -168,9 +212,18 @@ func ParseCSV(data []byte, ctx ImportContext) (*ImportPlan, error) {
 	col := map[string]int{}
 	attrCols := map[string]AttributeDef{}
 	for i, h := range header {
-		h = strings.ToLower(strings.TrimSpace(h))
+		orig := strings.TrimSpace(h)
+		h = strings.ToLower(orig)
 		if h == "" {
 			continue
+		}
+		if c, mapped := mapColumn(h, ctx, known); mapped {
+			if _, dup := col[c]; dup {
+				plan.Warnings = append(plan.Warnings, fmt.Sprintf("La columna %q se ignora: ya hay otra columna leída como %q", orig, c))
+				continue
+			}
+			plan.Warnings = append(plan.Warnings, fmt.Sprintf("La columna %q se leyó como %q", orig, c))
+			h = c
 		}
 		if _, dup := col[h]; dup {
 			return nil, fmt.Errorf("%w: la columna %q está repetida", ErrCSVFormat, h)
@@ -193,6 +246,13 @@ func ParseCSV(data []byte, ctx ImportContext) (*ImportPlan, error) {
 		plan.Has[h] = true
 		plan.Columns = append(plan.Columns, h)
 	}
+	// Without handles, the product name makes them ("Tenis Pacífico" ->
+	// tenis-pacifico); variant rows without a name belong to the product above.
+	deriveHandle := !plan.Has["handle"] && plan.Has["title"]
+	if deriveHandle {
+		plan.Has["handle"] = true
+		plan.Warnings = append(plan.Warnings, "No hay columna handle: cada producto toma el suyo de su nombre")
+	}
 	for _, need := range []string{"handle", "sku"} {
 		if !plan.Has[need] {
 			return nil, fmt.Errorf("%w: falta la columna obligatoria %q", ErrCSVFormat, need)
@@ -211,6 +271,7 @@ func ParseCSV(data []byte, ctx ImportContext) (*ImportPlan, error) {
 		}
 	}
 	line := 1
+	lastTitleHandle := ""
 	for {
 		rec, err := r.Read()
 		if err == io.EOF {
@@ -245,6 +306,12 @@ func ParseCSV(data []byte, ctx ImportContext) (*ImportPlan, error) {
 			return nil, fmt.Errorf("%w: el archivo pasa de %d filas; divídelo en varios", ErrCSVFormat, MaxCSVRows)
 		}
 		handle := get("handle")
+		if deriveHandle {
+			if t := get("title"); t != "" {
+				lastTitleHandle = Slug(t)
+			}
+			handle = lastTitleHandle
+		}
 		if !ValidHandle(handle) {
 			addErr("", line, "handle", "invalid", "handle es obligatorio y solo admite minúsculas, números y guiones (por ejemplo tenis-pacifico)")
 			continue

@@ -69,8 +69,9 @@ func importContext(t *projection.Tenant) catalog.ImportContext {
 			}
 			return p.Handle, true
 		},
-		HandleExists: func(h string) bool { _, ok := t.Catalog.IDByHandle(h); return ok },
-		Attribute:    t.Taxo.Attribute,
+		HandleExists:    func(h string) bool { _, ok := t.Catalog.IDByHandle(h); return ok },
+		Attribute:       t.Taxo.Attribute,
+		AttributeByName: t.Taxo.AttributeByName,
 	}
 }
 

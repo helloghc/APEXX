@@ -1,4 +1,5 @@
 import type { FieldDef } from "@/components/CustomFields";
+import { DescribeSegment } from "@/components/Copilots";
 import { CustomFields } from "@/components/CustomFields";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
@@ -281,6 +282,7 @@ function Segments({ me }: { me: Me }) {
         <p className="max-w-2xl text-sm text-muted-foreground">Un segmento agrupa clientes por reglas que se actualizan solas, por ejemplo “gastaron más de $5,000” o “no compran hace 90 días”.</p>
         {canEdit && <Button onClick={() => setEdit({ kind: "rules", name: "", description: "", rules: { match: "all", conditions: [{ field: "total_spent", op: "gte", value: 500000 }] } })}><Plus aria-hidden="true" /> Nuevo segmento</Button>}
       </div>
+      {canEdit && <DescribeSegment onRules={(name, rules, explain) => setEdit({ kind: "rules", name, description: explain.join(" · "), rules: rules as Group["rules"] })} />}
       <ErrorBox error={list.error} onRetry={() => void list.refetch()} />
       {!list.isLoading && items.length === 0 ? (
         <EmptyState icon={<UserRound />} title="Aún no hay segmentos" text="Crea segmentos para filtrar clientes y, más adelante, dirigir promociones y correos." />

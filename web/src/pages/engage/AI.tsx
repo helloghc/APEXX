@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CatalogSuggestions } from "@/components/Copilots";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { errorMessage, request } from "@/api";
@@ -68,6 +69,11 @@ export function AIPanel({ canEdit, canAdmin }: { canEdit: boolean; canAdmin: boo
         </CardContent>
       </Card>
       <GraphCard canEdit={canEdit} />
+      <Card data-ai-suggestions className="xl:col-span-2">
+        <CardHeader><CardTitle className="text-base">Sugerencias para tu catálogo</CardTitle>
+          <CardDescription>Atributos que tus textos ya dicen, categoría para productos sin una, títulos y descripciones para buscadores, y posibles duplicados. Cada una dice por qué; aplicas solo lo que te sirva y puedes deshacerlo.</CardDescription></CardHeader>
+        <CardContent><CatalogSuggestions canEdit={canEdit} /></CardContent>
+      </Card>
       {s.semantic && <SemanticCard sem={s.semantic} cur={cur} canAdmin={canAdmin} busy={save.isPending} put={put} />}
       <Card data-ai-mcp className="xl:col-span-2">
         <CardHeader><CardTitle className="text-base">Asistentes de IA (MCP)</CardTitle>

@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DescribePromotion } from "@/components/Copilots";
 import { useState } from "react";
 import { Archive, Copy, MoreHorizontal, Pause, Pencil, Play, Plus, Search, Tag, Ticket, Trash2 } from "lucide-react";
 import { errorMessage, type Me } from "@/api";
@@ -137,6 +138,7 @@ export function PromotionList({ me }: { me: Me }) {
 
   return (
     <div className="grid gap-4">
+      {canEdit && <DescribePromotion />}
       <div className="flex gap-1 overflow-x-auto pb-1" role="tablist" aria-label="Filtrar por estado">
         {TABS.map((t) => {
           const n = t.key === "" ? totalAll : (counts[t.key] ?? 0);
