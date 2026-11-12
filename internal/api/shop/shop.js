@@ -52,6 +52,7 @@ function downloadsBox(ds) {
     return { status: r.status, body: j };
   }
   const PLAN = { "1w": "cada semana", "2w": "cada 2 semanas", "1m": "cada mes", "2m": "cada 2 meses", "3m": "cada 3 meses", "6m": "cada 6 meses" };
+  const preNote = (l) => l.preorder ? "<br><small class='muted'>Preventa: se envía a partir del " + esc(new Date(l.preorder.shipsOn + "T12:00:00").toLocaleDateString(document.documentElement.lang || "es-MX", { dateStyle: "long" })) + "</small>" : "";
   const planNote = (sku) => { const l = cart().find((x) => x.sku === sku); return l && l.plan && PLAN[l.plan] ? "<br><small class='muted'>Suscripción: entrega " + PLAN[l.plan] + "</small>" : ""; };
   // Only coupons the store confirmed as applied are kept; an invalid code is never stored or shown as applied.
   const coupons = () => store.get(CPN, []);
@@ -67,9 +68,11 @@ function downloadsBox(ds) {
     const all = r.shippingOptions || [];
     if (all.length < 2 && !all.some((o) => !o.available || o.kind === "pickup")) return "";
     const sel = r.shipping ? r.shipping.id : "";
+    const pre = (r.lines || []).filter((l) => l.preorder).map((l) => l.preorder.shipsOn).sort().pop();
+    const when = (o) => pre ? "Se envía a partir del " + new Date(pre + "T12:00:00").toLocaleDateString(document.documentElement.lang || "es-MX", { dateStyle: "long" }) : o.estimate ? o.estimate.text : "";
     const row = (o) => o.available
       ? "<label class='shipopt'><input type='radio' name='shipopt' value='" + esc(o.id) + "'" + (o.id === sel ? " checked" : "") + "> <span><strong>" + esc(o.name) + "</strong>" + (o.carrier ? " · " + esc(o.carrier) : "") +
-        " — " + (o.price ? money({ amount: o.price, currency: r.totals.grand.currency }) : "Gratis") + "<br><span class='muted'>" + esc(o.estimate ? o.estimate.text : "") +
+        " — " + (o.price ? money({ amount: o.price, currency: r.totals.grand.currency }) : "Gratis") + "<br><span class='muted'>" + esc(when(o)) +
         (o.kind === "pickup" && o.pickupAddress ? " · " + esc(o.pickupAddress) : "") + (o.freeMissing ? " · Te faltan " + money({ amount: o.freeMissing, currency: r.totals.grand.currency }) + " para envío gratis" : "") + "</span></span></label>"
       : "<p class='muted'>" + esc(o.name) + ": " + esc(o.reason) + "</p>";
     const on = all.filter((o) => o.available), off = all.filter((o) => !o.available);
@@ -145,16 +148,21 @@ function downloadsBox(ds) {
     const promos = (r.promotions || []).filter((p) => p.applied || !p.coupon).map((p) => "<p class='promo" + (p.applied ? " on" : "") + "'>" + (p.applied ? "✓ " : "") + esc(p.name) + ": " + esc(p.reason) +
       (p.coupon ? " <button type='button' class='linkbtn' data-coupon-del='" + esc(p.coupon) + "'>Quitar cupón " + esc(p.coupon) + "</button>" : "") + (p.hint ? " <span class='muted'>" + esc(p.hint) + "</span>" : "") + "</p>").join("");
     const msgs = (r.messages || []).map((m) => "<li>" + esc(m.text) + "</li>").join("");
+    // A preorder ships on its own date, not on the carrier's estimate.
+    const pre = (r.lines || []).filter((l) => l.preorder).map((l) => l.preorder.shipsOn).sort().pop();
+    const est = (sh) => pre ? "se envía a partir del " + esc(new Date(pre + "T12:00:00").toLocaleDateString(document.documentElement.lang || "es-MX", { dateStyle: "long" })) : sh.estimate ? esc(sh.estimate.text) : sh.estimateDays + " días";
     return (msgs ? "<ul class='msgs'>" + msgs + "</ul>" : "") + promos +
       "<table class='totals'><tr><td>Productos</td><td class='num'>" + money(t.items) + "</td></tr>" +
       (t.discounts.amount ? "<tr><td>Descuentos</td><td class='num'>−" + money(t.discounts) + "</td></tr>" : "") +
-      "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + (r.shipping.estimate ? ". " + esc(r.shipping.estimate.text) : ", " + r.shipping.estimateDays + " días") + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : (r.noShipping ? "Entrega digital" : (r.messages || []).some((m) => m.code === "no_shipping_option") ? "Sin entrega disponible" : "Ingresa tu código postal")) + "</td></tr>" +
+      "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + ". " + est(r.shipping) + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : (r.noShipping ? "Entrega digital" : (r.messages || []).some((m) => m.code === "no_shipping_option") ? "Sin entrega disponible" : "Ingresa tu código postal")) + "</td></tr>" +
       // Where prices exclude tax it is added before the total; an exempt buyer
       // sees the tax taken out.
       (r.fees || []).map((f) => "<tr><td>" + esc(f.name) + " <span class='muted'>" + esc(f.reason) + "</span></td><td class='num'>" + money({ amount: f.amount, currency: t.grand.currency }) + "</td></tr>").join("") +
       (adj > 0 ? taxLines.map((x) => "<tr><td>" + esc(x.label) + "</td><td class='num'>" + money({ amount: x.tax, currency: t.grand.currency }) + "</td></tr>").join("") : "") +
       (adj < 0 ? "<tr><td>Impuestos (exento)</td><td class='num'>−" + money({ amount: -adj, currency: t.grand.currency }) + "</td></tr>" : "") +
       "<tr class='grand'><td>Total</td><td class='num'>" + money(t.grand) + "</td></tr>" +
+      (t.dueLater && t.dueLater.amount ? "<tr class='due'><td><strong>Pagas hoy</strong> <span class='muted'>(anticipo de preventa)</span></td><td class='num'><strong>" + money({ amount: t.grand.amount - t.dueLater.amount, currency: t.grand.currency }) + "</strong></td></tr>" +
+        "<tr><td class='muted'>Pagas cuando esté listo para enviarse</td><td class='num muted'>" + money(t.dueLater) + "</td></tr>" : "") +
       (adj === 0 ? taxLines.map((x) =>
         "<tr><td class='muted'>" + esc(x.label) + (x.rateBps === 0 ? "" : " incluido") + "</td><td class='num muted'>" + money({ amount: x.tax, currency: t.grand.currency }) + "</td></tr>").join("") : "") + "</table>";
   }
@@ -177,7 +185,7 @@ function downloadsBox(ds) {
       if (r.status !== 200) { view.innerHTML = "<p class='error'>No pudimos calcular tu carrito: " + esc(r.body.detail || "intenta de nuevo") + "</p>"; return; }
       const lostCoupons = syncCoupons(r.body);
       if (lostCoupons.length && couponStatus) couponStatus.textContent = lostCoupons.join(" ");
-      const rows = r.body.lines.map((l) => l.gift ? "<tr><td>" + esc(l.title) + "</td><td>" + l.qty + "</td><td class='num'>Gratis</td><td></td></tr>" : "<tr><td>" + esc(l.title) + planNote(l.sku) + (l.compareAt ? " <s class='muted'>" + money(l.compareAt) + "</s>" : "") + "</td>" +
+      const rows = r.body.lines.map((l) => l.gift ? "<tr><td>" + esc(l.title) + "</td><td>" + l.qty + "</td><td class='num'>Gratis</td><td></td></tr>" : "<tr><td>" + esc(l.title) + planNote(l.sku) + preNote(l) + (l.compareAt ? " <s class='muted'>" + money(l.compareAt) + "</s>" : "") + "</td>" +
         "<td><span class='qty'><button type='button' data-dec='" + esc(l.sku) + "' aria-label='Quitar uno de " + esc(l.title) + "'>−</button><span>" + l.qty + "</span>" +
         "<button type='button' data-inc='" + esc(l.sku) + "' aria-label='Agregar uno de " + esc(l.title) + "'>+</button></span></td>" +
         "<td class='num'>" + money(l.total) + "</td><td><button type='button' class='linkbtn' data-del='" + esc(l.sku) + "'>Quitar</button></td></tr>").join("");
@@ -220,7 +228,7 @@ function downloadsBox(ds) {
       const r = await simulate($("#postal").value.trim(), { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
       if (r.status === 200 && shipBox) shipBox.innerHTML = r.body.noShipping ? "<p class='note'>Entrega digital: no hay nada que enviar. Recibirás tus archivos en cuanto se confirme el pago.</p>" : renderOptions(r.body);
       if (r.status === 200) { const a = $("#address"), f = a && a.closest(".field"); if (a) { a.required = !r.body.noShipping; if (f) f.style.display = r.body.noShipping ? "none" : ""; } }
-      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + planNote(l.sku) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); paintWallet(); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
+      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + planNote(l.sku) + preNote(l) + "</p>").join("") + renderTotals(r.body); const now = { amount: r.body.totals.grand.amount - ((r.body.totals.dueLater && r.body.totals.dueLater.amount) || 0), currency: r.body.totals.grand.currency }; payBtn.textContent = "Pagar " + money(now); paintWallet(); if (elements) elements.update({ amount: now.amount }); }
     }
     // Gift cards and store credit pay first; the card only pays what is left.
     let cards = [];
@@ -229,7 +237,8 @@ function downloadsBox(ds) {
     const instCount = () => { const sel = $("#msi"); return sel && Number(sel.value) > 1 ? Number(sel.value) : undefined; };
     function paintWallet() {
       if (!last) return;
-      const cur = last.totals.grand.currency, g = last.totals.grand.amount, w = walletOf(), due = g - w;
+      const later = voucherKind() || onCredit() ? 0 : (last.totals.dueLater && last.totals.dueLater.amount) || 0;
+      const cur = last.totals.grand.currency, g = last.totals.grand.amount - later, w = Math.min(walletOf(), g), due = g - w;
       if (kindBox.dataset.cur !== cur) { kindBox.dataset.cur = cur; paintKinds(); }
       if (gcList) gcList.innerHTML = cards.map((c, i) => "<li>Tarjeta ••••" + esc(c.last4) + " · saldo " + money({ amount: c.balance, currency: cur }) + " <button type='button' class='linkbtn' data-gc-del='" + i + "'>Quitar</button></li>").join("");
       const old = $("[data-wallet-rows]", summary); if (old) old.remove();
@@ -337,7 +346,7 @@ function downloadsBox(ds) {
       if (co.termsCheckbox && !f.get("terms")) { errBox.textContent = "Acepta los términos y condiciones para continuar."; $("#terms").focus(); return; }
       if (!(pickup() && !String(f.get("postal"))) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
-      const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount); // credit or gift cards pay it all: no card needed
+      const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount - (voucherKind() ? 0 : (last.totals.dueLater && last.totals.dueLater.amount) || 0)); // credit or gift cards pay it all: no card needed
       const kept = !onCredit() && !covered && !voucherKind() ? savedCard() : "";
       let pm = onCredit() ? "credit" : covered ? "pm_gift_card" : voucherKind() ? payKind() : kept ? "pm_saved" : String(f.get("pm") || "");
       if (stripe && !covered && !voucherKind() && !kept) {
@@ -431,7 +440,8 @@ function downloadsBox(ds) {
       "<table><tbody>" + o.lines.map((l) => "<tr><td>" + l.qty + " × " + esc(l.title) + "</td><td class='num'>" + m(l.total) + "</td></tr>").join("") +
       "<tr><td>Envío</td><td class='num'>" + m(o.shipping) + "</td></tr>" + (o.discounts ? "<tr><td>Descuentos</td><td class='num'>−" + m(o.discounts) + "</td></tr>" : "") +
       (o.feeLines || []).map((f) => "<tr><td>" + esc(f.name) + "</td><td class='num'>" + m(f.amount) + "</td></tr>").join("") +
-      "<tr class='grand'><td><strong>" + (v ? "Total a pagar" : "Total pagado") + "</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
+      "<tr class='grand'><td><strong>" + (v ? "Total a pagar" : o.deferred ? "Total" : "Total pagado") + "</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
+      (o.deferred ? "<div class='acct-box' data-deferred><h2>Preventa apartada</h2><p>Pagaste el anticipo. Quedan <strong>" + m(o.deferred) + "</strong> por pagar: te enviaremos un enlace por correo cuando tu pedido esté listo para enviarse.</p></div>" : "") +
       "<p class='muted'>Te enviaremos la factura por correo en unos minutos.</p>" + downloadsBox(o.downloads);
   }
 })();

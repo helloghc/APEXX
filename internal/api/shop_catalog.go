@@ -509,6 +509,7 @@ func (s *Server) shopCollection(w http.ResponseWriter, r *http.Request) {
 type variantView struct {
 	SKU, Title, Price, CompareAt string
 	Available                    int64
+	Preorder                     bool
 	Img, ImgSet                  string // image of the variant: the gallery shows it when chosen
 }
 
@@ -540,6 +541,8 @@ type productPage struct {
 	QtyMax           int64
 	Volume           []specView // volume prices of the first variant: "Desde 12 piezas" -> "$90.00 MXN"
 	Kit              []specView // what a kit contains: component -> "× 2"
+	PreShips         string     // first available variant on preorder: ship date
+	PreDeposit       string     // and the deposit paid now ("20"), empty when paid in full
 	Similar          []cardView
 	Accessories      []cardView
 	Price, CompareAt string
@@ -571,6 +574,8 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 	var images []string
 	for i, v := range p.Variants {
 		vv := variantView{SKU: v.SKU, Title: v.Title, Available: t.Inventory.Available(v.SKU)}
+		pre, onPre := t.Inventory.PreorderOf(v.SKU)
+		vv.Preorder = onPre
 		if q, ok := t.Pricing.Resolve(pd.Channel, v.SKU, 1); ok {
 			vv.Price = pesos(q.Unit)
 			if q.CompareAt != nil && q.CompareAt.Amount > q.Unit.Amount {
@@ -585,6 +590,14 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		}
 		if vv.Available > 0 && pg.FirstAvailable < 0 {
 			pg.FirstAvailable, pg.SoldOut = i, false
+			if onPre {
+				if d, err := time.ParseInLocation("2006-01-02", pre.ShipsOn, mx); err == nil {
+					pg.PreShips = shortDate(d)
+				}
+				if pre.DepositBps < 10000 {
+					pg.PreDeposit = strconv.Itoa(pre.DepositBps / 100)
+				}
+			}
 		}
 		pg.P.Variants = append(pg.P.Variants, vv)
 	}

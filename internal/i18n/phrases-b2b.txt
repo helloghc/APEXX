@@ -121,3 +121,14 @@ Entrega digital: no hay nada que enviar. Recibirás tus archivos en cuanto se co
 · te quedan || · remaining: || · restants : || · restam || · tersisa || ・残り
 descargas, hasta el || downloads, until || téléchargements, jusqu'au || downloads, até || unduhan, sampai || 回、期限：
 Entrega digital || Digital delivery || Livraison numérique || Entrega digital || Pengiriman digital || デジタル配信
+Preventa || Preorder || Précommande || Pré-venda || Pra-pesan || 予約販売
+Apartar en preventa || Preorder now || Précommander || Reservar na pré-venda || Pra-pesan sekarang || 予約する
+Preventa: se envía a partir del || Preorder: ships from || Précommande : expédition à partir du || Pré-venda: enviado a partir de || Pra-pesan: dikirim mulai || 予約販売：発送開始日
+Hoy pagas el || Today you pay || Aujourd'hui vous payez || Hoje você paga || Hari ini Anda membayar || 本日のお支払い：
+% y el resto cuando esté listo para enviarse. || % and the rest when it is ready to ship. || % et le reste lorsqu'il sera prêt à être expédié. || % e o restante quando estiver pronto para envio. || % dan sisanya saat siap dikirim. || %、残りは発送準備が整い次第
+Pagas hoy || You pay today || Vous payez aujourd'hui || Você paga hoje || Anda bayar hari ini || 本日のお支払い
+(anticipo de preventa) || (preorder deposit) || (acompte de précommande) || (sinal da pré-venda) || (uang muka pra-pesan) || （予約金）
+Pagas cuando esté listo para enviarse || You pay when it is ready to ship || Vous payez lorsqu'il est prêt à être expédié || Você paga quando estiver pronto para envio || Anda bayar saat siap dikirim || 発送準備が整い次第お支払い
+Preventa apartada || Preorder placed || Précommande enregistrée || Pré-venda reservada || Pra-pesan tercatat || 予約完了
+se envía a partir del || ships from || expédié à partir du || enviado a partir de || dikirim mulai || 発送開始：
+Se envía a partir del || Ships from || Expédié à partir du || Enviado a partir de || Dikirim mulai || 発送開始：

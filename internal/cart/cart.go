@@ -118,6 +118,9 @@ type Line struct {
 	PromotionID  string       `json:"promotionId,omitempty"`
 	TaxClass     string       `json:"taxClass,omitempty"`
 	Categories   []string     `json:"-"` // for approval rules by category
+	// Preorder: sold before it is in stock; ships on its date and may be
+	// paid with a deposit now and the rest later.
+	Preorder *inventory.Preorder `json:"preorder,omitempty"`
 }
 
 // Shipping is the selected delivery option.
@@ -149,6 +152,9 @@ type Totals struct {
 	TaxAdjust        money.Money `json:"taxAdjust"`
 	Fees             money.Money `json:"fees"` // extra charges and import duties
 	Grand            money.Money `json:"grand"`
+	// DueLater is what preorder deposits leave to pay later; Grand - DueLater
+	// is charged now.
+	DueLater money.Money `json:"dueLater"`
 }
 
 // Result is the simulation output.
@@ -306,6 +312,9 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		class := s.Logistics.ProductClassOf(p.ID)
 		if class.TaxClass != logistics.TaxGeneral {
 			line.TaxClass = class.TaxClass
+		}
+		if pre, ok := s.Inventory.PreorderOf(it.SKU); ok {
+			line.Preorder = &pre
 		}
 		res.Lines = append(res.Lines, line)
 		if qty == 0 {
@@ -528,7 +537,15 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	grand.Amount += adjust.Amount
 	res.Tax = &taxRes
 	tax := money.New(taxRes.Total, cur)
-	res.Totals = Totals{Items: items, Discounts: discounts, Shipping: shipping, ShippingDiscount: shipDisc, Tax: tax, TaxAdjust: adjust, Fees: money.New(feeTotal, cur), Grand: grand}
+	var later int64
+	for _, l := range res.Lines {
+		if l.Preorder != nil && l.Preorder.DepositBps < 10000 {
+			later += l.Total.Amount * int64(10000-l.Preorder.DepositBps) / 10000
+		}
+	}
+	later = min(later, grand.Amount)
+	res.Totals = Totals{Items: items, Discounts: discounts, Shipping: shipping, ShippingDiscount: shipDisc, Tax: tax, TaxAdjust: adjust, Fees: money.New(feeTotal, cur), Grand: grand,
+		DueLater: money.New(max(later, 0), cur)}
 	return res, nil
 }
 

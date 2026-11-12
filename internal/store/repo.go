@@ -217,6 +217,10 @@ func (d *DB) SetStock(ctx context.Context, tenant, actor, sku, location string, 
 // ReserveTx reserves qty of sku for holder inside tx, allocating across
 // locations in order. Rows are locked, so concurrent checkouts cannot oversell.
 func ReserveTx(ctx context.Context, tx pgx.Tx, tenant, holder, sku string, qty int64, ttl time.Duration) error {
+	// A preorder takes from its pool of units, not from stock.
+	if ok, err := reservePreorderTx(ctx, tx, tenant, holder, sku, qty, ttl); ok || err != nil {
+		return err
+	}
 	// A kit reserves its components: the kit itself holds no stock.
 	comps, err := bundleTx(ctx, tx, tenant, sku)
 	if err != nil {
@@ -310,6 +314,18 @@ func settleTx(ctx context.Context, tx pgx.Tx, tenant, holder string, consume boo
 	rows.Close()
 	seen := map[string]bool{}
 	for _, x := range rs {
+		if x.loc == PreorderLocation {
+			// Preorder units are not stock: a release gives them back to the pool.
+			if !consume {
+				if _, err := tx.Exec(ctx, `UPDATE preorders SET sold=GREATEST(sold-$3,0), updated_at=now() WHERE tenant_id=$1 AND sku=$2`, tenant, x.sku, x.qty); err != nil {
+					return err
+				}
+			}
+			if err := Emit(ctx, tx, tenant, TopicStock, x.sku, nil); err != nil {
+				return err
+			}
+			continue
+		}
 		q := `UPDATE stock_levels SET reserved=reserved-$4, updated_at=now() WHERE tenant_id=$1 AND sku=$2 AND location_id=$3`
 		if consume {
 			q = `UPDATE stock_levels SET reserved=reserved-$4, on_hand=on_hand-$4, updated_at=now() WHERE tenant_id=$1 AND sku=$2 AND location_id=$3`
@@ -329,6 +345,12 @@ func settleTx(ctx context.Context, tx pgx.Tx, tenant, holder string, consume boo
 
 // RestockTx adds qty back to on-hand stock (cancellation or return).
 func RestockTx(ctx context.Context, tx pgx.Tx, tenant, sku, location string, qty int64) error {
+	if location == PreorderLocation {
+		if _, err := tx.Exec(ctx, `UPDATE preorders SET sold=GREATEST(sold-$3,0), updated_at=now() WHERE tenant_id=$1 AND sku=$2`, tenant, sku, qty); err != nil {
+			return err
+		}
+		return Emit(ctx, tx, tenant, TopicStock, sku, nil)
+	}
 	ct, err := tx.Exec(ctx, `UPDATE stock_levels SET on_hand=on_hand+$4, updated_at=now()
 		WHERE tenant_id=$1 AND sku=$2 AND location_id=$3`, tenant, sku, location, qty)
 	if err != nil {
@@ -341,6 +363,117 @@ func RestockTx(ctx context.Context, tx pgx.Tx, tenant, sku, location string, qty
 		}
 	}
 	return Emit(ctx, tx, tenant, TopicStock, sku, nil)
+}
+
+// ---------- preorders ----------
+
+// PreorderLocation is the virtual location of units sold on preorder.
+const PreorderLocation = "_preorder"
+
+func reservePreorderTx(ctx context.Context, tx pgx.Tx, tenant, holder, sku string, qty int64, ttl time.Duration) (bool, error) {
+	ct, err := tx.Exec(ctx, `UPDATE preorders SET sold=sold+$3, updated_at=now()
+		WHERE tenant_id=$1 AND sku=$2 AND active AND (max_units=0 OR sold+$3 <= max_units)`, tenant, sku, qty)
+	if err != nil {
+		return false, err
+	}
+	if ct.RowsAffected() == 0 {
+		var active bool
+		err := tx.QueryRow(ctx, `SELECT active FROM preorders WHERE tenant_id=$1 AND sku=$2`, tenant, sku).Scan(&active)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && !active) {
+			return false, nil // not on preorder: normal stock
+		}
+		if err != nil {
+			return false, err
+		}
+		return true, fmt.Errorf("%w: %s preventa agotada", ErrInsufficient, sku)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO reservations (tenant_id, holder, sku, location_id, qty, expires_at) VALUES ($1,$2,$3,$4,$5,$6)`,
+		tenant, holder, sku, PreorderLocation, qty, time.Now().Add(ttl)); err != nil {
+		return true, err
+	}
+	return true, Emit(ctx, tx, tenant, TopicStock, sku, nil)
+}
+
+// Preorder is a SKU sold before it is in stock.
+type Preorder struct {
+	SKU        string    `json:"sku"`
+	ShipsOn    string    `json:"shipsOn"` // YYYY-MM-DD
+	DepositBps int       `json:"depositBps"`
+	MaxUnits   int64     `json:"maxUnits"`
+	Sold       int64     `json:"sold"`
+	Active     bool      `json:"active"`
+	Note       string    `json:"note"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
+const preorderCols = `sku, to_char(ships_on,'YYYY-MM-DD'), deposit_bps, max_units, sold, active, note, updated_at`
+
+func scanPreorder(r pgx.CollectableRow) (Preorder, error) {
+	var p Preorder
+	return p, r.Scan(&p.SKU, &p.ShipsOn, &p.DepositBps, &p.MaxUnits, &p.Sold, &p.Active, &p.Note, &p.UpdatedAt)
+}
+
+// Preorders lists the preorders of a tenant ("" = all), with the system pool
+// when system is true (projector).
+func (d *DB) Preorders(ctx context.Context, tenant, sku string, system bool) ([]Preorder, error) {
+	q := `SELECT ` + preorderCols + ` FROM preorders WHERE tenant_id=$1 AND ($2='' OR sku=$2) ORDER BY sku`
+	if system {
+		rows, err := d.System.Query(ctx, q, tenant, sku)
+		if err != nil {
+			return nil, err
+		}
+		return pgx.CollectRows(rows, scanPreorder)
+	}
+	var out []Preorder
+	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, q, tenant, sku)
+		if err != nil {
+			return err
+		}
+		out, err = pgx.CollectRows(rows, scanPreorder)
+		return err
+	})
+	return out, err
+}
+
+// SetPreorder creates or changes the preorder of sku. Units already sold are
+// kept; the limit cannot go below them.
+func (d *DB) SetPreorder(ctx context.Context, tenant, actor string, p Preorder) (Preorder, error) {
+	var out Preorder
+	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `INSERT INTO preorders (tenant_id, sku, ships_on, deposit_bps, max_units, active, note) VALUES ($1,$2,$3::date,$4,$5,$6,$7)
+			ON CONFLICT (tenant_id, sku) DO UPDATE SET ships_on=EXCLUDED.ships_on, deposit_bps=EXCLUDED.deposit_bps, max_units=EXCLUDED.max_units,
+				active=EXCLUDED.active, note=EXCLUDED.note, updated_at=now()
+			RETURNING `+preorderCols, tenant, p.SKU, p.ShipsOn, p.DepositBps, p.MaxUnits, p.Active, p.Note)
+		if err != nil {
+			return err
+		}
+		if out, err = pgx.CollectExactlyOneRow(rows, scanPreorder); err != nil {
+			return err
+		}
+		if err := Emit(ctx, tx, tenant, TopicStock, p.SKU, nil); err != nil {
+			return err
+		}
+		return Audit(ctx, tx, tenant, actor, "preorder.set", p.SKU, p)
+	})
+	return out, err
+}
+
+// DeletePreorder ends a preorder that sold nothing; one with sales is
+// deactivated instead, so the orders keep their record.
+func (d *DB) DeletePreorder(ctx context.Context, tenant, actor, sku string) error {
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM preorders WHERE tenant_id=$1 AND sku=$2 AND sold=0`, tenant, sku); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE preorders SET active=false, updated_at=now() WHERE tenant_id=$1 AND sku=$2`, tenant, sku); err != nil {
+			return err
+		}
+		if err := Emit(ctx, tx, tenant, TopicStock, sku, nil); err != nil {
+			return err
+		}
+		return Audit(ctx, tx, tenant, actor, "preorder.ended", sku, nil)
+	})
 }
 
 // ---------- kits ----------

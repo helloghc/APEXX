@@ -239,3 +239,20 @@ func (s *Service) DeleteDigitalFile(ctx context.Context, tenant, actor, sku, id 
 	})
 	return key, err
 }
+
+// PreorderBalances lists the paid orders of a preorder SKU that still owe
+// their balance.
+func (s *Service) PreorderBalances(ctx context.Context, tenant, sku string) ([]string, error) {
+	var ids []string
+	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT DISTINCT o.id FROM orders o JOIN order_lines l ON l.tenant_id=o.tenant_id AND l.order_id=o.id
+			WHERE o.tenant_id=$1 AND l.sku=$2 AND l.preorder_ships_on IS NOT NULL AND o.deferred > 0
+			  AND o.status IN ('paid','fulfilled') AND o.payment_status='balance_due' ORDER BY o.id`, tenant, sku)
+		if err != nil {
+			return err
+		}
+		ids, err = pgx.CollectRows(rows, pgx.RowTo[string])
+		return err
+	})
+	return ids, err
+}

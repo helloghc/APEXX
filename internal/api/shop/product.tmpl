@@ -11,7 +11,7 @@
 <p class="price big" data-price-out>{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p>
 <fieldset><legend>Elige una opción</legend><div class="opts">
 {{range $i, $v := .P.Variants}}<label class="opt"><input type="radio" name="sku" value="{{$v.SKU}}" data-title="{{$.P.Title}} · {{$v.Title}}" data-price="{{$v.Price}}" data-compare="{{$v.CompareAt}}" data-available="{{$v.Available}}"{{if $v.Img}} data-img="{{$v.Img}}" data-imgset="{{$v.ImgSet}}"{{end}} {{if eq $i $.FirstAvailable}}checked{{end}} {{if eq $v.Available 0}}disabled{{end}}>
-<span>{{$v.Title}}<small>{{if eq $v.Available 0}}Agotado{{else}}{{$v.Available}} disponibles{{end}}</small></span></label>{{end}}
+<span>{{$v.Title}}<small>{{if eq $v.Available 0}}Agotado{{else if $v.Preorder}}Preventa{{else}}{{$v.Available}} disponibles{{end}}</small></span></label>{{end}}
 </div></fieldset>
 {{with .Sub}}<fieldset class="subchoice"><legend>¿Cómo lo quieres?</legend>
 <label class="opt"><input type="radio" name="mode" value="" checked><span>Compra única</span></label>
@@ -19,7 +19,8 @@
 <label class="subplan" for="plan">Entrega <select id="plan" name="plan">{{range .Plans}}<option value="{{.id}}">{{.label}}</option>{{end}}</select></label>
 </fieldset>{{end}}
 <div class="qtyrow"><label for="qty">Cantidad <input id="qty" name="qty" type="number" min="{{.QtyMin}}" step="{{.QtyStep}}" max="{{if .QtyMax}}{{.QtyMax}}{{else}}9999{{end}}" value="{{.QtyMin}}" inputmode="numeric"></label>
-<button class="btn" type="submit" {{if .SoldOut}}disabled{{end}}>{{if .SoldOut}}Agotado{{else}}Agregar al carrito{{end}}</button></div>
+<button class="btn" type="submit" {{if .SoldOut}}disabled{{end}}>{{if .SoldOut}}Agotado{{else if .PreShips}}Apartar en preventa{{else}}Agregar al carrito{{end}}</button></div>
+{{with .PreShips}}<p class="note preorder" data-preorder>Preventa: se envía a partir del {{.}}.{{with $.PreDeposit}} Hoy pagas el {{.}}% y el resto cuando esté listo para enviarse.{{end}}</p>{{end}}
 <p class="note" role="status" data-buy-status></p>
 {{if gt .QtyStep 1}}<p class="muted">Se vende en múltiplos de {{.QtyStep}}.</p>{{else if gt .QtyMin 1}}<p class="muted">Compra mínima: {{.QtyMin}} piezas.</p>{{end}}
 {{if .Volume}}<table class="specs volume"><caption>Precio por volumen</caption><tbody>{{range .Volume}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table>{{end}}

@@ -42,7 +42,20 @@ type Snapshot struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 	// Components is set for a kit: its stock is derived from these SKUs.
 	Components []Component `json:"components,omitempty"`
+	// Preorder is set while the SKU is sold before it is in stock.
+	Preorder *Preorder `json:"preorder,omitempty"`
 }
+
+// Preorder is how a SKU on preorder is sold: from a pool of units (Left < 0
+// means no limit), shipping on ShipsOn, with DepositBps of the price paid now.
+type Preorder struct {
+	ShipsOn    string `json:"shipsOn"`
+	DepositBps int    `json:"depositBps"`
+	Left       int64  `json:"left"`
+}
+
+// Unlimited is the availability shown for a preorder without a limit.
+const Unlimited = 999999
 
 // Component is one SKU (and how many units) inside a kit.
 type Component struct {
@@ -63,6 +76,7 @@ type Service struct {
 	updated      map[string]time.Time
 	reservations map[string][]reservation // holder (cart id) -> reservations
 	bundles      map[string][]Component   // kit sku -> components
+	preorders    map[string]Preorder      // sku on preorder
 	bus          *events.Bus
 	now          func() time.Time
 }
@@ -74,6 +88,7 @@ func New(bus *events.Bus) *Service {
 		updated:      map[string]time.Time{},
 		reservations: map[string][]reservation{},
 		bundles:      map[string][]Component{},
+		preorders:    map[string]Preorder{},
 		bus:          bus,
 		now:          time.Now,
 	}
@@ -111,6 +126,13 @@ func (s *Service) Get(sku string) (Snapshot, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.expireLocked()
+	if p, ok := s.preorders[sku]; ok {
+		snap := Snapshot{SKU: sku, UpdatedAt: s.updated[sku].UTC(), Available: p.Left, Preorder: &p}
+		if p.Left < 0 {
+			snap.Available = Unlimited
+		}
+		return snap, true
+	}
 	if comps, ok := s.bundles[sku]; ok {
 		return s.bundleLocked(sku, comps), true
 	}
@@ -132,6 +154,26 @@ func (s *Service) SetBundle(sku string, comps []Component) {
 	}
 	s.updated[sku] = s.now()
 	s.mu.Unlock()
+}
+
+// SetPreorder puts sku on preorder (nil takes it off).
+func (s *Service) SetPreorder(sku string, p *Preorder) {
+	s.mu.Lock()
+	if p == nil {
+		delete(s.preorders, sku)
+	} else {
+		s.preorders[sku] = *p
+	}
+	s.updated[sku] = s.now()
+	s.mu.Unlock()
+}
+
+// PreorderOf returns the preorder of sku, if it is on one.
+func (s *Service) PreorderOf(sku string) (Preorder, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	p, ok := s.preorders[sku]
+	return p, ok
 }
 
 // Bundle returns the components of a kit (nil for a normal SKU).

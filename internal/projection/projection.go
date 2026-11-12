@@ -246,6 +246,13 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 	for sku, comps := range kits {
 		t.Inventory.SetBundle(sku, comps)
 	}
+	pres, err := p.db.Preorders(ctx, id, "", true)
+	if err != nil {
+		return err
+	}
+	for _, pr := range pres {
+		t.Inventory.SetPreorder(pr.SKU, preorderView([]store.Preorder{pr}))
+	}
 	keys, err := p.db.PriceKeys(ctx, id)
 	if err != nil {
 		return err
@@ -367,7 +374,24 @@ func (p *Projector) applyStock(ctx context.Context, t *Tenant, sku string) error
 		return err
 	}
 	t.Inventory.SetBundle(sku, kits[sku])
+	pre, err := p.db.Preorders(ctx, t.ID, sku, true)
+	if err != nil {
+		return err
+	}
+	t.Inventory.SetPreorder(sku, preorderView(pre))
 	return nil
+}
+
+func preorderView(ps []store.Preorder) *inventory.Preorder {
+	if len(ps) == 0 || !ps[0].Active {
+		return nil
+	}
+	p := ps[0]
+	left := int64(-1)
+	if p.MaxUnits > 0 {
+		left = max(p.MaxUnits-p.Sold, 0)
+	}
+	return &inventory.Preorder{ShipsOn: p.ShipsOn, DepositBps: p.DepositBps, Left: left}
 }
 
 func (p *Projector) applyPrice(ctx context.Context, t *Tenant, channel, sku string) error {

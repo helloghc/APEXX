@@ -583,6 +583,7 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
               <div className="line-clamp-2 text-muted-foreground">{d.seoDescription || d.description || "Descripción del producto."}</div>
             </div>
           </Section>
+          {!isNew && d.variants.length > 0 && <PreorderEditor skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={canEdit} canCollect={can(me, "orders", "edit")} />}
           {!isNew && d.variants.length > 0 && <DigitalFiles skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={canEdit} />}
           {!isNew && d.variants.length > 0 && <KitEditor skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={can(me, "settings", "admin")} />}
           {!isNew && <QtyRules id={id} canEdit={canEdit} />}
@@ -728,6 +729,94 @@ function Translations({ id, canEdit }: { id: string; canEdit: boolean }) {
 }
 
 interface QtyRule { group: string; min: number; max: number; step: number }
+
+interface PreorderData { sku: string; shipsOn: string; depositBps: number; maxUnits: number; sold: number; active: boolean; note: string }
+
+/** Preorder: sell before the stock arrives, from a pool of units, with an
+ *  optional deposit; the balance is charged later with one click. */
+function PreorderEditor({ skus, canEdit, canCollect }: { skus: string[]; canEdit: boolean; canCollect: boolean }) {
+  const qc = useQueryClient();
+  const [sku, setSku] = useState(skus[0] ?? "");
+  useEffect(() => { if (!skus.includes(sku)) setSku(skus[0] ?? ""); }, [skus, sku]);
+  const q = useQuery({ queryKey: ["preorder", sku], queryFn: () => request<{ configured: boolean; preorder?: PreorderData; ordersOwing?: number }>("GET", `/v1/preorders/${encodeURIComponent(sku)}`), enabled: !!sku });
+  const empty = { shipsOn: "", deposit: "100", max: "", note: "", active: true };
+  const [v, setV] = useState(empty);
+  const [busy, setBusy] = useState(false);
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const p = q.data?.preorder;
+    setV(p ? { shipsOn: p.shipsOn, deposit: String(p.depositBps / 100), max: p.maxUnits ? String(p.maxUnits) : "", note: p.note, active: p.active } : empty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q.data]);
+  if (!q.data) return null;
+  const p = q.data.preorder;
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ["preorder", sku] }); void qc.invalidateQueries({ queryKey: ["product"] }); };
+  async function save(active: boolean) {
+    setBusy(true); setErrs({});
+    try {
+      await request("PUT", `/v1/preorders/${encodeURIComponent(sku)}`, { shipsOn: v.shipsOn, depositBps: Math.round((Number(v.deposit) || 100) * 100), maxUnits: Number(v.max) || 0, note: v.note, active });
+      toast.success(active ? "Preventa activa: la tienda ya la ofrece." : "Preventa pausada: se vende de nuevo con existencias.");
+      refresh();
+    } catch (e) {
+      setErrs(fieldErrors(e)); toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function end() {
+    setBusy(true);
+    try {
+      await request("DELETE", `/v1/preorders/${encodeURIComponent(sku)}`, undefined, { as: "none" });
+      toast.success("Preventa terminada. Los pedidos apartados se conservan.");
+      refresh();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function collect() {
+    setBusy(true);
+    try {
+      const r = await request<{ sent: number; failed: number }>("POST", `/v1/preorders/${encodeURIComponent(sku)}/collect`);
+      toast.success(`Enviamos el enlace de pago a ${r.sent} ${r.sent === 1 ? "comprador" : "compradores"}${r.failed ? ` (${r.failed} sin enviar)` : ""}.`);
+      refresh();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Section title="Preventa" description="Vende antes de tener existencias. Las piezas apartadas no tocan tu inventario; puedes cobrar un anticipo y enviar el enlace para pagar el resto a todos los compradores cuando llegue el producto."
+      actions={canEdit && (
+        <div className="flex gap-2">
+          {p?.active && <Button size="sm" variant="outline" disabled={busy} onClick={() => void end()}>Terminar</Button>}
+          <Button size="sm" disabled={busy || !v.shipsOn} onClick={() => void save(true)}>{p?.active ? "Guardar" : "Activar preventa"}</Button>
+        </div>
+      )}>
+      {skus.length > 1 && (
+        <Field label="Variante" htmlFor="po-sku">
+          <select id="po-sku" className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={sku} onChange={(e) => setSku(e.target.value)}>
+            {skus.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </Field>
+      )}
+      {p?.active && <Notice tone="ok">En preventa: {p.sold} {p.sold === 1 ? "pieza apartada" : "piezas apartadas"}{p.maxUnits ? ` de ${p.maxUnits}` : ""}.</Notice>}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field label="Se envía a partir del" htmlFor="po-ships" hint={errs.shipsOn}><Input id="po-ships" type="date" value={v.shipsOn} disabled={!canEdit} onChange={(e) => setV({ ...v, shipsOn: e.target.value })} /></Field>
+        <Field label="Anticipo (%)" htmlFor="po-dep" hint={errs.depositBps || "100 = se paga todo al apartar"}><Input id="po-dep" inputMode="numeric" value={v.deposit} disabled={!canEdit} onChange={(e) => setV({ ...v, deposit: e.target.value.replace(/[^\d]/g, "") })} /></Field>
+        <Field label="Piezas disponibles" htmlFor="po-max" hint={errs.maxUnits || "Vacío = sin límite"}><Input id="po-max" inputMode="numeric" value={v.max} disabled={!canEdit} onChange={(e) => setV({ ...v, max: e.target.value.replace(/\D/g, "") })} /></Field>
+      </div>
+      {!!q.data.ordersOwing && canCollect && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
+          <span>{q.data.ordersOwing} {q.data.ordersOwing === 1 ? "pedido debe" : "pedidos deben"} el resto del pago.</span>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => void collect()}>Enviar enlace de pago a todos</Button>
+        </div>
+      )}
+    </Section>
+  );
+}
 
 const fileSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 

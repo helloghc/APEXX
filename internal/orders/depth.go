@@ -420,14 +420,15 @@ func lockOrder(ctx context.Context, tx pgx.Tx, tenant, id string) (orderRow, err
 }
 
 func linesTx(ctx context.Context, tx pgx.Tx, tenant, id string) ([]Line, error) {
-	rows, err := tx.Query(ctx, `SELECT line, sku, title, qty, unit, total, fulfilled_qty, returned_qty, refunded_qty, cancelled_qty, origin
+	rows, err := tx.Query(ctx, `SELECT line, sku, title, qty, unit, total, fulfilled_qty, returned_qty, refunded_qty, cancelled_qty, origin,
+			COALESCE(to_char(preorder_ships_on,'YYYY-MM-DD'),'')
 		FROM order_lines WHERE tenant_id=$1 AND order_id=$2 ORDER BY line`, tenant, id)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Line, error) {
 		var l Line
-		return l, r.Scan(&l.Line, &l.SKU, &l.Title, &l.Qty, &l.Unit, &l.Total, &l.FulfilledQty, &l.ReturnedQty, &l.RefundedQty, &l.CancelledQty, &l.Origin)
+		return l, r.Scan(&l.Line, &l.SKU, &l.Title, &l.Qty, &l.Unit, &l.Total, &l.FulfilledQty, &l.ReturnedQty, &l.RefundedQty, &l.CancelledQty, &l.Origin, &l.PreorderShipsOn)
 	})
 }
 
@@ -473,10 +474,10 @@ func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Ord
 		var methodJSON, taxJSON, riskJSON []byte
 		err := tx.QueryRow(ctx, `SELECT id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, created_at,
 				COALESCE(customer_id,''), payment_status, fulfillment_status, refunded_total, source,
-				shipping_method, tax_detail, display_number, risk, installments, po_number, fees, fee_lines, COALESCE(postal_code,''), voucher
+				shipping_method, tax_detail, display_number, risk, installments, po_number, fees, fee_lines, COALESCE(postal_code,''), voucher, deferred
 			FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, id).
 			Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.ItemsTotal, &o.Discounts, &o.Shipping, &o.TaxIncluded, &o.GrandTotal, &enc, &o.CreatedAt,
-				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber, &riskJSON, &o.Installments, &o.PONumber, &o.Fees, &o.FeeLines, &o.PostalCode, &o.Voucher)
+				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber, &riskJSON, &o.Installments, &o.PONumber, &o.Fees, &o.FeeLines, &o.PostalCode, &o.Voucher, &o.Deferred)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

@@ -126,17 +126,18 @@ type ShippingMethod struct {
 
 // Line is an order line. Fulfillable units = Qty - FulfilledQty - CancelledQty.
 type Line struct {
-	Line         int    `json:"line"`
-	SKU          string `json:"sku"`
-	Title        string `json:"title"`
-	Qty          int64  `json:"qty"`
-	Unit         int64  `json:"unit"`
-	Total        int64  `json:"total"`
-	FulfilledQty int64  `json:"fulfilledQty"`
-	ReturnedQty  int64  `json:"returnedQty"`
-	RefundedQty  int64  `json:"refundedQty"`
-	CancelledQty int64  `json:"cancelledQty"`
-	Origin       string `json:"origin,omitempty"`
+	Line            int    `json:"line"`
+	SKU             string `json:"sku"`
+	Title           string `json:"title"`
+	Qty             int64  `json:"qty"`
+	Unit            int64  `json:"unit"`
+	Total           int64  `json:"total"`
+	FulfilledQty    int64  `json:"fulfilledQty"`
+	ReturnedQty     int64  `json:"returnedQty"`
+	RefundedQty     int64  `json:"refundedQty"`
+	CancelledQty    int64  `json:"cancelledQty"`
+	Origin          string `json:"origin,omitempty"`
+	PreorderShipsOn string `json:"preorderShipsOn,omitempty"` // sold on preorder: promised ship date
 }
 
 // Event is one entry in the order history.
@@ -199,6 +200,7 @@ type Order struct {
 	Voucher        *payments.Voucher    `json:"voucher,omitempty"`   // cash or transfer still to be paid
 	FeeLines       []cart.Fee           `json:"feeLines,omitempty"`  // each one with its reason
 	Downloads      []Download           `json:"downloads,omitempty"` // files of digital products, with signed links
+	Deferred       int64                `json:"deferred,omitempty"`  // preorder balance left to pay later
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
 	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`
 }
@@ -493,11 +495,20 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	}
 	tot := sim.Totals
 	var number, wallet, credit int64
+	// Preorder deposits: the rest is owed and charged later with a link. Cash,
+	// transfer and company credit pay the whole order at once.
+	deferred := tot.DueLater.Amount
+	if _, voucher := payments.VoucherMethods[req.PaymentMethod]; voucher || req.PaymentMethod == "credit" {
+		deferred = 0
+	}
 
 	// Subscribed lines (Simulate cleared the plans the store does not offer).
 	subscribed := false
 	for _, it := range req.Items {
 		subscribed = subscribed || it.Plan != ""
+	}
+	if subscribed {
+		deferred = 0
 	}
 	if subscribed && len(req.GiftCards) > 0 {
 		return problem(409, "gift_card_not_with_subscription", "Una suscripción se paga con tarjeta bancaria, para poder cobrar las siguientes entregas. Quita la tarjeta de regalo o compra una sola vez.", nil), nil
@@ -559,11 +570,11 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code,
-				shipping_method, tax_detail, display_number, tax_adjust, po_number, fees, fee_lines)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+				shipping_method, tax_detail, display_number, tax_adjust, po_number, fees, fee_lines, deferred)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
 			tenant, id, number, req.Channel, StatusPendingPayment, string(tot.Grand.Currency), tot.Items.Amount, tot.Discounts.Amount,
 			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number), tot.TaxAdjust.Amount, req.PONumber,
-			tot.Fees.Amount, feeJSON(sim.Fees)); err != nil {
+			tot.Fees.Amount, feeJSON(sim.Fees), deferred); err != nil {
 			return err
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
@@ -587,7 +598,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 		if err := promostore.ReserveTx(ctx, tx, tenant, id, custHash, string(tot.Grand.Currency), redemptions); err != nil {
 			return err
 		}
-		if wallet, err = s.redeemWalletTx(ctx, tx, tenant, actor, id, req.GiftCards, tot.Grand.Amount, string(tot.Grand.Currency)); err != nil {
+		if wallet, err = s.redeemWalletTx(ctx, tx, tenant, actor, id, req.GiftCards, tot.Grand.Amount-deferred, string(tot.Grand.Currency)); err != nil {
 			return err
 		}
 		if req.PaymentMethod == "credit" {
@@ -625,7 +636,16 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 
 	// 3. Charge what gift cards did not cover. The idempotency key is the order
 	// id, so a retry never charges twice.
-	due := tot.Grand.Amount - wallet - credit
+	if deferred > tot.Grand.Amount-wallet-credit {
+		deferred = max(tot.Grand.Amount-wallet-credit, 0)
+		if err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+			_, err := tx.Exec(ctx, `UPDATE orders SET deferred=$3 WHERE tenant_id=$1 AND id=$2`, tenant, id, deferred)
+			return err
+		}); err != nil {
+			return Result{}, err
+		}
+	}
+	due := tot.Grand.Amount - wallet - credit - deferred
 	ch := payments.Charge{Status: "captured", Ref: "no_card"}
 	if due > 0 {
 		var payErr error
@@ -678,9 +698,9 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Account, ch payments.Charge) error {
 	return s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		var status, cur string
-		var grand, tax int64
-		if err := tx.QueryRow(ctx, `SELECT status, currency, grand_total, tax_included FROM orders WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, id).
-			Scan(&status, &cur, &grand, &tax); err != nil {
+		var grand, tax, deferred int64
+		if err := tx.QueryRow(ctx, `SELECT status, currency, grand_total, tax_included, deferred FROM orders WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, id).
+			Scan(&status, &cur, &grand, &tax, &deferred); err != nil {
 			return err
 		}
 		if status != StatusPendingPayment {
@@ -723,7 +743,7 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		if err != nil {
 			return err
 		}
-		due := grand - wallet - onCredit
+		due := grand - wallet - onCredit - deferred
 		if due > 0 {
 			if _, err := tx.Exec(ctx, `INSERT INTO payments (tenant_id, id, order_id, provider, provider_ref, status, amount, currency)
 				VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, tenant, newID("pay_"), id, acct.Provider.Name(), ch.Ref, pstatus, due, cur); err != nil {
@@ -790,6 +810,7 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		entries[clearing(acct.Provider.Name())] += due
 		entries[clearing("gift_card")] += wallet
 		entries[clearing("company_credit")] += onCredit
+		entries["customer_receivable"] += deferred // preorder balance, paid later by link
 		if err := ledger(ctx, tx, tenant, txID, id, cur, entries); err != nil {
 			return err
 		}
