@@ -213,7 +213,77 @@ func (s *Server) searchTerms(w http.ResponseWriter, r *http.Request) {
 		internalError(w, s.Log, err)
 		return
 	}
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"days": days, "top": nonNil(top), "noResults": nonNil(zero)})
+	type zeroRow struct {
+		store.TermCount
+		Suggest *termSuggestion `json:"suggest,omitempty"`
+	}
+	rows := make([]zeroRow, 0, len(zero))
+	t, _ := s.Proj.Tenant(tenant)
+	for _, z := range zero {
+		rows = append(rows, zeroRow{TermCount: z, Suggest: s.suggestFor(t, z.Term)})
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"days": days, "top": nonNil(top), "noResults": rows})
+}
+
+// termSuggestion is what the store could do about a search without results:
+// the products closest in meaning and a word of the catalog to make it a
+// synonym of. The merchant decides; nothing changes on its own.
+type termSuggestion struct {
+	Synonym  string       `json:"synonym,omitempty"`
+	Products []productRef `json:"products"`
+}
+
+func (s *Server) suggestFor(t *projection.Tenant, term string) *termSuggestion {
+	if t == nil || !s.semActive(t.ID) {
+		return nil
+	}
+	x := s.loadedIndex(t.ID)
+	v := s.queryVector(term)
+	if x == nil || v == nil {
+		return nil
+	}
+	hits, err := x.Search(v, 5, func(id string) bool {
+		p, err := t.Catalog.Get(id)
+		return err == nil && p.Status == "active"
+	})
+	// The merchant reviews these, so the floor is lower than in search.
+	floor := semanticFloor / 2
+	if err != nil || len(hits) == 0 || hits[0].Score < floor {
+		return nil
+	}
+	out := &termSuggestion{}
+	votes := map[string]int{}
+	best := ""
+	for _, h := range hits {
+		if h.Score < max(floor, hits[0].Score*semanticRel) {
+			break
+		}
+		p, err := t.Catalog.Get(h.ID)
+		if err != nil {
+			continue
+		}
+		if len(out.Products) < 3 {
+			out.Products = append(out.Products, productRef{ID: p.ID, Title: p.Title, Handle: p.Handle})
+		}
+		// The word the catalog uses for this kind of product.
+		w := strings.ToLower(strings.TrimSpace(p.Type))
+		if w == "" {
+			if f := strings.Fields(p.Title); len(f) > 0 {
+				w = strings.ToLower(f[0])
+			}
+		}
+		if w != "" && engage.Fold(w) != engage.Fold(term) {
+			votes[w]++
+			if votes[w] > votes[best] {
+				best = w
+			}
+		}
+	}
+	out.Synonym = best
+	if len(out.Products) == 0 {
+		return nil
+	}
+	return out
 }
 
 // searchPreview shows what a shopper would get for q with the saved rules.
@@ -390,9 +460,9 @@ func (s *Server) shopSuggest(w http.ResponseWriter, r *http.Request) {
 		q := catalog.BrowseQuery{Q: text, Limit: 6}
 		s.searchQuery(t, &q)
 		of := offerOf(t, pd.Channel)
-		res := s.browse.browse(t.ID, t.Version(), "s\x00"+pd.Channel+"\x00"+text+"\x00r="+ruleKey(q), func() catalog.BrowseResult {
-			narrow(t, &q)
-			return catalog.Browse(t.Catalog.Products(), t.Taxo, of, q)
+		res := s.browse.browse(t.ID, t.Version(), "s\x00"+pd.Channel+"\x00"+text+"\x00r="+ruleKey(q)+s.semKey(t.ID), func() catalog.BrowseResult {
+			s.narrow(t, &q)
+			return catalog.Browse(t.Catalog.ProductsIn(q.Only), t.Taxo, of, q)
 		})
 		res = liveOnly(t.Catalog, res)
 		cards := make([]cardJSON, 0, len(res.Items))

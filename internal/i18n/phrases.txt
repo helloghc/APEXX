@@ -342,3 +342,4 @@ El código no es correcto o ya venció. Revisa tu correo o pide uno nuevo. || Th
 Correo o contraseña incorrectos. También puedes entrar con un código por correo. || Wrong email or password. You can also sign in with an emailed code. || E-mail ou senha incorretos. Você também pode entrar com um código por e-mail.
 Esta cuenta está desactivada. Escribe a la tienda. || This account is disabled. Contact the store. || Esta conta está desativada. Escreva para a loja.
 Idioma || Language || Idioma
+Entendimos tu búsqueda con: || We read your search as: || Entendemos sua busca como:

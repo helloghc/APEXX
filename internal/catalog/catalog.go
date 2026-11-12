@@ -216,6 +216,25 @@ func (s *Store) Products() []*Product {
 	return out
 }
 
+// ProductsIn returns the products whose ids are in only, in id order (the
+// order Products uses), or every product when only is nil. A search the word
+// index already narrowed to a few hundred products does not walk 50 000.
+func (s *Store) ProductsIn(only map[string]bool) []*Product {
+	if only == nil {
+		return s.Products()
+	}
+	s.mu.RLock()
+	out := make([]*Product, 0, len(only))
+	for id := range only {
+		if p, ok := s.byID[id]; ok {
+			out = append(out, p)
+		}
+	}
+	s.mu.RUnlock()
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
+}
+
 // IDByHandle returns the id of the product with handle h, in any status.
 func (s *Store) IDByHandle(h string) (string, bool) {
 	s.mu.RLock()

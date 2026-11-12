@@ -55,6 +55,15 @@ func within1(a, b string) bool {
 
 // tokenMatches: prefix match, or one typo for tokens of 4+ letters.
 func tokenMatches(q string, ws []string) bool {
+	// A number is a size, a model or a year: "2800" is not a typo of "2900".
+	if isDigits(q) {
+		for _, w := range ws {
+			if strings.HasPrefix(w, q) {
+				return true
+			}
+		}
+		return false
+	}
 	for _, w := range ws {
 		if strings.HasPrefix(w, q) || (len(q) >= 4 && (within1(q, w) || (len(w) > len(q) && within1(q, w[:len(q)])))) {
 			return true

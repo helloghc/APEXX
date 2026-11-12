@@ -20,7 +20,7 @@ import { ChipInput, EmptyState, SkeletonRows, SubNav, useDebounced } from "../pr
 const enc = encodeURIComponent;
 interface Ref { id: string; title: string; handle: string }
 interface Config { synonyms: string[][]; redirects: { term: string; url: string }[]; pins: { term: string; productIds: string[] }[]; hidden: string[]; noLearning?: boolean }
-interface Term { term: string; searches: number; results: number }
+interface Term { term: string; searches: number; results: number; suggest?: { synonym?: string; products: Ref[] } }
 interface Review { id: string; productId: string; productTitle: string; productHandle: string; rating: number; title: string; body: string; author: string; verified: boolean; status: string; reply: string; createdAt: string }
 interface Preview { total: number; items: { id: string; title: string; brand: string; pinned: boolean }[]; alternatives: string[]; redirect: string }
 
@@ -51,7 +51,7 @@ export function Engage({ me, route }: { me: Me; route: string[] }) {
   return (
     <Page title="Búsqueda y opiniones" sub="Decide qué encuentran tus clientes, mira qué buscan y modera lo que opinan. Los cambios aplican al instante, sin reindexar.">
       <SubNav items={TABS} active={section} label="Secciones" />
-      {section === "terminos" ? <Terms /> : section === "opiniones" ? <Reviews canEdit={canEdit} canDelete={can(me, "catalog", "admin")} /> : section === "favoritos" ? <Wishes /> : section === "ia" ? <AIPanel canEdit={canEdit} canAdmin={can(me, "catalog", "admin")} /> : <Rules canEdit={canEdit} />}
+      {section === "terminos" ? <Terms canEdit={canEdit} /> : section === "opiniones" ? <Reviews canEdit={canEdit} canDelete={can(me, "catalog", "admin")} /> : section === "favoritos" ? <Wishes /> : section === "ia" ? <AIPanel canEdit={canEdit} canAdmin={can(me, "catalog", "admin")} /> : <Rules canEdit={canEdit} />}
     </Page>
   );
 }
@@ -171,17 +171,32 @@ function Rules({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-function Terms() {
+function Terms({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
   const [days, setDays] = useState("30");
   const q = useQuery({ queryKey: ["search-terms", days], queryFn: () => api.terms(Number(days)) });
+  // A suggested synonym is added to the saved rules; nothing else changes.
+  const addSyn = useMutation({
+    mutationFn: async (v: { term: string; synonym: string }) => {
+      const cur = await api.config();
+      const syn = [...(cur.config.synonyms ?? []), [v.term, v.synonym]];
+      return api.save({ ...cur.config, synonyms: syn });
+    },
+    onSuccess: (_, v) => { toast.success(`Listo: «${v.term}» ahora busca «${v.synonym}».`); void qc.invalidateQueries({ queryKey: ["search-config"] }); void qc.invalidateQueries({ queryKey: ["search-terms"] }); },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
   const table = (title: string, text: string, rows: Term[], zero: boolean) => (
     <Card>
       <CardHeader><CardTitle className="text-base">{title}</CardTitle><CardDescription>{text}</CardDescription></CardHeader>
       <CardContent>
         {q.isLoading ? <p className="text-sm text-muted-foreground">Cargando…</p> : rows.length === 0 ? <p className="text-sm text-muted-foreground">{zero ? "Nada por aquí: todas las búsquedas encontraron productos." : "Todavía no hay búsquedas en este periodo."}</p> : (
           <Table>
-            <TableHeader><TableRow><TableHead>Término</TableHead><TableHead className="text-right">Búsquedas</TableHead>{!zero && <TableHead className="text-right">Resultados</TableHead>}</TableRow></TableHeader>
-            <TableBody>{rows.map((t) => <TableRow key={t.term}><TableCell className="font-medium">{t.term}</TableCell><TableCell className="text-right tabular-nums">{t.searches}</TableCell>{!zero && <TableCell className="text-right tabular-nums">{t.results === 0 ? <Badge variant="warn">0</Badge> : t.results}</TableCell>}</TableRow>)}</TableBody>
+            <TableHeader><TableRow><TableHead>Término</TableHead><TableHead className="text-right">Búsquedas</TableHead>{!zero && <TableHead className="text-right">Resultados</TableHead>}{zero && <TableHead>Sugerencia</TableHead>}</TableRow></TableHeader>
+            <TableBody>{rows.map((t) => <TableRow key={t.term}><TableCell className="font-medium">{t.term}</TableCell><TableCell className="text-right tabular-nums">{t.searches}</TableCell>{!zero && <TableCell className="text-right tabular-nums">{t.results === 0 ? <Badge variant="warn">0</Badge> : t.results}</TableCell>}
+              {zero && <TableCell data-term-suggest>{t.suggest ? <div className="grid gap-1 text-sm">
+                <span className="text-muted-foreground">Parecido a: {t.suggest.products.map((p) => p.title).join(" · ")}</span>
+                {t.suggest.synonym && canEdit && <div><Button type="button" size="sm" variant="outline" disabled={addSyn.isPending} onClick={() => addSyn.mutate({ term: t.term, synonym: t.suggest!.synonym! })}>Agregar sinónimo: {t.suggest.synonym}</Button></div>}
+              </div> : <span className="text-muted-foreground">Sin sugerencia</span>}</TableCell>}</TableRow>)}</TableBody>
           </Table>
         )}
       </CardContent>

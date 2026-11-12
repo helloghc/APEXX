@@ -397,6 +397,9 @@ func (d *DB) DeleteProducts(ctx context.Context, tenant, actor string, ids []str
 			INSERT INTO outbox (tenant_id, topic, key, payload) SELECT $1, $3, id, 'null'::jsonb FROM c`, tenant, gids, TopicCollection)
 		b.Queue(`INSERT INTO outbox (tenant_id, topic, key, payload) SELECT $1, $2, x, '{"deleted":true}'::jsonb FROM unnest($3::text[]) x`,
 			tenant, TopicProduct, gids)
+		// Their vectors and graph edges go with them (no AI leftovers).
+		b.Queue(`DELETE FROM ai_chunks WHERE tenant_id=$1 AND source_kind='product' AND source_id = ANY($2)`, tenant, gids)
+		b.Queue(`DELETE FROM kg_edges WHERE tenant_id=$1 AND ((src_kind='product' AND src_id = ANY($2)) OR (dst_kind='product' AND dst_id = ANY($2)))`, tenant, gids)
 		if err := sendBatch(ctx, tx, b, func(_ int, err error) error { return err }); err != nil {
 			return err
 		}
@@ -447,6 +450,9 @@ func deleteProductTx(ctx context.Context, tx pgx.Tx, tenant, actor, id string) e
 			}
 		}
 		if err := Emit(ctx, tx, tenant, TopicProduct, id, map[string]any{"deleted": true}); err != nil {
+			return err
+		}
+		if err := dropAIOf(ctx, tx, tenant, "product", id); err != nil {
 			return err
 		}
 		return Audit(ctx, tx, tenant, actor, "product.delete", id, map[string]any{"title": title, "skus": len(skus)})

@@ -18,6 +18,7 @@
 <p class="muted">{{.PriceHint}}</p><button class="btn btn-ghost" type="submit">Aplicar precio</button></form>{{end}}
 </div></aside>{{end}}
 <div class="browse-main">
+{{if .Understood}}<p class="muted" data-understood>Entendimos tu búsqueda con: {{.Understood}}</p>{{end}}
 {{if .Products}}<div class="sortbar"><p class="muted" data-total="{{.Total}}">{{.Total}} {{if eq .Total 1}}producto{{else}}productos{{end}}</p>
 <nav aria-label="Ordenar"><span class="muted">Ordenar:</span> {{range .Sorts}}<a href="{{.URL}}" rel="nofollow"{{if .Selected}} aria-current="true"{{end}}>{{.Label}}</a> {{end}}</nav></div>{{end}}
 {{if not .Products}}<p class="empty">No encontramos productos{{if .Query}} para “{{.Query}}”. Revisa la ortografía o prueba con otra palabra{{else if .Active}} con estos filtros. <a href="{{.ClearURL}}" rel="nofollow">Quita los filtros</a> para ver más{{end}}.</p>{{end}}

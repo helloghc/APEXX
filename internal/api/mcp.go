@@ -268,7 +268,8 @@ func (s *Server) mcpCall(r *http.Request, t *projection.Tenant, name string, raw
 		}
 		q := catalog.BrowseQuery{Q: strings.TrimSpace(a.Query), Limit: a.Limit}
 		s.searchQuery(t, &q)
-		res := catalog.Browse(t.Catalog.Products(), t.Taxo, of, q)
+		s.narrow(t, &q)
+		res := catalog.Browse(t.Catalog.ProductsIn(q.Only), t.Taxo, of, q)
 		items := make([]map[string]any, 0, len(res.Items))
 		for i, p := range res.Items {
 			o := res.Offers[i]

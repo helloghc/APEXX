@@ -1,6 +1,10 @@
 package catalog
 
-import "sort"
+import (
+	"sort"
+	"strings"
+	"sync"
+)
 
 // Word index: which products contain each search word. A query used to test
 // every word of every product (50 000 products, about 750 000 words) with
@@ -10,22 +14,46 @@ import "sort"
 
 type wordIndex struct {
 	posts map[string]map[string]struct{} // word -> product ids
-	byLen map[int]map[string]struct{}    // word length -> words
+	byLen map[int]map[string]struct{}    // word length -> words with a letter
+	// nums holds the words made only of digits (sizes, models, years): a
+	// catalog can have tens of thousands. They match by prefix only, found
+	// by binary search in numSorted (rebuilt after changes, on first use).
+	nums      map[string]struct{}
+	numSorted []string
+	numDirty  bool
+	numMu     sync.Mutex
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (x *wordIndex) add(id string, hay []string) {
 	if x.posts == nil {
-		x.posts, x.byLen = map[string]map[string]struct{}{}, map[int]map[string]struct{}{}
+		x.posts, x.byLen, x.nums = map[string]map[string]struct{}{}, map[int]map[string]struct{}{}, map[string]struct{}{}
 	}
 	for _, w := range hay {
 		ids := x.posts[w]
 		if ids == nil {
 			ids = map[string]struct{}{}
 			x.posts[w] = ids
-			if x.byLen[len(w)] == nil {
-				x.byLen[len(w)] = map[string]struct{}{}
+			if isDigits(w) {
+				x.nums[w] = struct{}{}
+				x.numDirty = true
+			} else {
+				if x.byLen[len(w)] == nil {
+					x.byLen[len(w)] = map[string]struct{}{}
+				}
+				x.byLen[len(w)][w] = struct{}{}
 			}
-			x.byLen[len(w)][w] = struct{}{}
 		}
 		ids[id] = struct{}{}
 	}
@@ -40,7 +68,12 @@ func (x *wordIndex) remove(id string, hay []string) {
 		delete(ids, id)
 		if len(ids) == 0 {
 			delete(x.posts, w)
-			delete(x.byLen[len(w)], w)
+			if isDigits(w) {
+				delete(x.nums, w)
+				x.numDirty = true
+			} else {
+				delete(x.byLen[len(w)], w)
+			}
 		}
 	}
 }
@@ -60,7 +93,45 @@ func (x *wordIndex) matchingWords(tok string) map[string]bool {
 			}
 		}
 	}
+	// Words of digits only: a numeric token matches them by prefix, and a
+	// token with letters only when it is one edit away from a number
+	// ("12a4" ~ "1234"), which needs at most one non-digit.
+	nonDigits := 0
+	for i := 0; i < len(tok); i++ {
+		if tok[i] < '0' || tok[i] > '9' {
+			nonDigits++
+		}
+	}
+	switch {
+	case nonDigits == 0:
+		ns := x.sortedNums()
+		for i := sort.SearchStrings(ns, tok); i < len(ns) && strings.HasPrefix(ns[i], tok); i++ {
+			out[ns[i]] = true
+		}
+	case nonDigits == 1:
+		for w := range x.nums {
+			if tokenMatches(tok, []string{w}) {
+				out[w] = true
+			}
+		}
+	}
 	return out
+}
+
+// sortedNums returns the numeric words in order. Callers hold the store's
+// read lock, so the rebuild is guarded by its own lock.
+func (x *wordIndex) sortedNums() []string {
+	x.numMu.Lock()
+	defer x.numMu.Unlock()
+	if x.numDirty || x.numSorted == nil {
+		x.numSorted = x.numSorted[:0]
+		for w := range x.nums {
+			x.numSorted = append(x.numSorted, w)
+		}
+		sort.Strings(x.numSorted)
+		x.numDirty = false
+	}
+	return x.numSorted
 }
 
 // Matching returns the ids of products whose words match every token of q

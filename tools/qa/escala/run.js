@@ -10,7 +10,7 @@ const R = { n: N, at: new Date().toISOString(), phases: {} };
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const save = () => fs.writeFileSync(OUT, JSON.stringify(R, null, 1));
 // Tables that only ever grow: history, by design (who did what, what changed).
-const HISTORY = new Set(['audit_log', 'outbox', 'price_history', 'import_jobs', 'bulk_jobs', 'idempotency_keys', 'stock_movements', 'inventory_ledger']);
+const HISTORY = new Set(['audit_log', 'outbox', 'price_history', 'import_jobs', 'bulk_jobs', 'idempotency_keys', 'stock_movements', 'inventory_ledger', 'search_terms_daily', 'ai_usage']);
 
 async function allProducts() {
   const ids = []; let cursor = '';
@@ -88,6 +88,16 @@ async function storeTotal(q = '') {
   R.phases.load = { files: imp, totalMs: Math.round(tLoad), perSec: Math.round(N / (tLoad / 1000)), visibleAfterImportMs: Math.round(visibleAfter), storeCount: seen, rssMB: L.serverRSS() };
   log('carga total', Math.round(tLoad), 'ms ·', R.phases.load.perSec, 'productos/s · la tienda muestra', seen, 'productos', Math.round(visibleAfter), 'ms después · memoria', R.phases.load.rssMB, 'MB');
   save();
+
+  // 2b. Vectors (search by meaning): how long until every product has one.
+  {
+    const tv0 = performance.now();
+    let sem = {};
+    for (let i = 0; i < 1200; i++) { sem = (await L.api('GET', '/v1/ai/settings')).semantic || {}; if (sem.vectors >= N || sem.on === false) break; await L.sleep(250); }
+    R.phases.vectors = { vectors: sem.vectors, products: sem.products, afterVisibleMs: Math.round(performance.now() - tv0), memoryMB: Math.round((sem.memoryBytes || 0) / 1048576 * 10) / 10, model: sem.model, rssMB: L.serverRSS() };
+    log('vectores:', JSON.stringify(R.phases.vectors));
+    save();
+  }
 
   // 3. Latencies, one client and 16 at once.
   const mid = Math.ceil(N / 2);

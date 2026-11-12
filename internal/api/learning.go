@@ -32,6 +32,21 @@ type aiConfig struct {
 	RecsOff bool     `json:"recsOff,omitempty"` // no "also bought" on product pages and cart
 	Exclude []string `json:"exclude,omitempty"` // never recommended
 	MCP     bool     `json:"mcp,omitempty"`     // AI assistants may use the store (off until turned on)
+	// SemanticOff stops vectors for this store: search stays lexical.
+	SemanticOff bool `json:"semanticOff,omitempty"`
+	// BudgetUSD caps what paid AI providers may cost this store per month
+	// (0: the default of 10 USD). Local embeddings cost nothing.
+	BudgetUSD float64 `json:"budgetUsd,omitempty"`
+}
+
+const defaultAIBudgetUSD = 10
+
+func (c aiConfig) budgetMicros() int64 {
+	b := c.BudgetUSD
+	if b <= 0 {
+		b = defaultAIBudgetUSD
+	}
+	return int64(b * 1e6)
 }
 
 type tenantLearn struct {
@@ -186,6 +201,55 @@ func (s *Server) recsFor(tenant string, ids []string, skip map[string]bool, limi
 		if !skip[r.ID] && len(out) < limit {
 			out = append(out, r)
 		}
+	}
+	if len(out) < limit {
+		out = append(out, s.similarRecs(tenant, ids, skip, l.cfg.Exclude, out, limit-len(out))...)
+	}
+	return out
+}
+
+// similarRecs fills recommendations with the products closest in meaning,
+// so a new product without sales or visits still shows related ones. They
+// come after what shoppers chose together, never before.
+func (s *Server) similarRecs(tenant string, ids []string, skip map[string]bool, exclude []string, have []recs.Rec, n int) []recs.Rec {
+	if n <= 0 || len(ids) == 0 || !s.semActive(tenant) {
+		return nil
+	}
+	x := s.loadedIndex(tenant)
+	c, ok := x.Centroid(ids)
+	if !ok {
+		return nil
+	}
+	no := map[string]bool{}
+	for _, id := range ids {
+		no[id] = true
+	}
+	for _, id := range exclude {
+		no[id] = true
+	}
+	for _, r := range have {
+		no[r.ID] = true
+	}
+	t, _ := s.Proj.Tenant(tenant)
+	hits, err := x.Search(c, n+len(no)+8, func(id string) bool {
+		if no[id] || skip[id] {
+			return false
+		}
+		if t == nil {
+			return true
+		}
+		p, err := t.Catalog.Get(id)
+		return err == nil && p.Status == "active"
+	})
+	if err != nil {
+		return nil
+	}
+	var out []recs.Rec
+	for _, h := range hits {
+		if h.Score < semanticFloor || len(out) >= n {
+			break
+		}
+		out = append(out, recs.Rec{ID: h.ID, Score: h.Score})
 	}
 	return out
 }
@@ -417,6 +481,7 @@ func (s *Server) getAISettings(w http.ResponseWriter, r *http.Request) {
 	}
 	t, _ := s.Proj.Tenant(p.Tenant)
 	out := map[string]any{"settings": cfg, "excluded": refsOf(t, cfg.Exclude), "mcpUrl": s.publicOrigin(r) + "/mcp/" + p.Tenant}
+	out["semantic"] = s.semanticStatus(r.Context(), p.Tenant, t, cfg)
 	if l := s.learned(p.Tenant); l != nil {
 		out["index"] = map[string]any{"builtAt": l.recs.Built, "products": l.recs.Products(), "orders": l.recs.Orders, "terms": len(l.boosts)}
 	}
@@ -447,6 +512,10 @@ func (s *Server) putAISettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	in.Exclude = ex
+	if in.BudgetUSD < 0 || in.BudgetUSD > 100000 {
+		apierr.BadRequest(w, "", apierr.FieldError{Field: "budgetUsd", Code: "out_of_range", Message: "El presupuesto mensual va de 0 a 100 000 USD"})
+		return
+	}
 	if err := s.DB.SetDoc(r.Context(), p.Tenant, p.Actor(), aiDocKind, aiDocID, "", in); err != nil {
 		internalError(w, s.Log, err)
 		return

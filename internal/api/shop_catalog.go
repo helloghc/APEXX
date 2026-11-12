@@ -124,6 +124,7 @@ type browsePage struct {
 	PriceMin, PriceMax      string
 	PriceHint               string
 	ShowFilters             bool
+	Understood              string // what the search was read as (intent), shown above the results
 	Prev, Next              string
 	Page, Pages             int
 }
@@ -320,7 +321,7 @@ func (s *Server) renderBrowse(w http.ResponseWriter, r *http.Request, t *project
 			return
 		}
 	}
-	key := "b\x00" + pd.Channel + "\x00" + st.key() + "\x00r=" + ruleKey(q)
+	key := "b\x00" + pd.Channel + "\x00" + st.key() + "\x00r=" + ruleKey(q) + s.semKey(t.ID)
 	if cat != nil {
 		key += "\x00c=" + cat.ID
 	}
@@ -328,8 +329,28 @@ func (s *Server) renderBrowse(w http.ResponseWriter, r *http.Request, t *project
 		key += "\x00k=" + col.ID
 	}
 	res := s.browse.browse(t.ID, t.Version(), key, func() catalog.BrowseResult {
-		narrow(t, &q)
-		return catalog.Browse(t.Catalog.Products(), t.Taxo, offerOf(t, pd.Channel), q)
+		of := offerOf(t, pd.Channel)
+		// A search that names a color, a size, a brand or a price is read
+		// as text plus filters, unless the shopper already chose filters;
+		// if that leaves nothing, the plain search answers.
+		if q.Q != "" && !st.filtered() {
+			if it := catalog.ParseIntent(q.Q, t.Taxo); it.Any() {
+				iq := q
+				iq.Q, iq.Brands, iq.Attrs, iq.PriceMin, iq.PriceMax = it.Q, it.Brands, it.Attrs, it.PriceMin, it.PriceMax
+				if q.Sort == "" && it.Sort != "" {
+					iq.Sort = it.Sort
+				}
+				if iq.Q != "" {
+					s.narrow(t, &iq)
+				}
+				if r := catalog.Browse(t.Catalog.ProductsIn(iq.Only), t.Taxo, of, iq); r.Total > 0 {
+					r.Understood = it.Labels
+					return r
+				}
+			}
+		}
+		s.narrow(t, &q)
+		return catalog.Browse(t.Catalog.ProductsIn(q.Only), t.Taxo, of, q)
 	})
 	res = liveOnly(t.Catalog, res)
 	if st.q != "" && st.page == 1 && !st.filtered() {
@@ -338,6 +359,7 @@ func (s *Server) renderBrowse(w http.ResponseWriter, r *http.Request, t *project
 
 	bp := browsePage{pageData: pd, Total: res.Total, Page: st.page, Pages: (res.Total + shopPageSize - 1) / shopPageSize}
 	bp.Query = st.q
+	bp.Understood = strings.Join(res.Understood, " · ")
 	bp.Crumbs = []crumb{{"Inicio", pd.Base + "/index"}, {"Productos", pd.Base + "/c"}}
 	switch {
 	case cat != nil:

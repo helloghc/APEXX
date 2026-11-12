@@ -170,6 +170,18 @@ func (p *Projector) Tenant(id string) (*Tenant, bool) {
 	return t, ok
 }
 
+// TenantIDs lists the stores loaded in memory.
+func (p *Projector) TenantIDs() []string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	out := make([]string, 0, len(p.tenants))
+	for id := range p.tenants {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // Stats returns freshness statistics.
 func (p *Projector) Stats() Stats {
 	p.mu.RLock()
@@ -739,6 +751,21 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 		return p.loadTenant(ctx, e.Tenant)
 	}
 	defer t.version.Add(1)
+	if err := p.applyTopic(ctx, t, e); err != nil {
+		return err
+	}
+	// Hooks run after the event is applied, for every topic, so a hook
+	// sees the read models already up to date.
+	p.hooksMu.RLock()
+	hs := p.hooks[e.Topic]
+	p.hooksMu.RUnlock()
+	for _, h := range hs {
+		h(e.Tenant, e.Key)
+	}
+	return nil
+}
+
+func (p *Projector) applyTopic(ctx context.Context, t *Tenant, e store.OutboxEvent) error {
 	switch e.Topic {
 	case store.TopicProduct:
 		return p.applyProduct(ctx, t, e.Key)
@@ -758,15 +785,7 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 	case store.TopicCategory, store.TopicBrand, store.TopicCollection, store.TopicAttribute, store.TopicMedia:
 		return p.applyTaxonomy(ctx, t, e.Topic, e.Key)
 	case store.TopicSettings:
-		if err := p.applySettings(ctx, t, e.Key); err != nil {
-			return err
-		}
-	}
-	p.hooksMu.RLock()
-	hs := p.hooks[e.Topic]
-	p.hooksMu.RUnlock()
-	for _, h := range hs {
-		h(e.Tenant, e.Key)
+		return p.applySettings(ctx, t, e.Key)
 	}
 	return nil
 }

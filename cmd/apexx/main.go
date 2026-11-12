@@ -26,6 +26,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/helloghc/apexx/internal/ai"
 	"github.com/helloghc/apexx/internal/api"
 	"github.com/helloghc/apexx/internal/auth"
 	"github.com/helloghc/apexx/internal/builder"
@@ -424,6 +425,13 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		return err
 	})
 	every("catalog-sync", time.Minute, srv.SyncCatalogs)
+	// Vectors for semantic search: what changed is embedded by one node and
+	// every node loads it (see internal/api/semantic.go).
+	srv.Embedder = embedderFromEnv(log)
+	every("ai-embed", 2*time.Second, func(ctx context.Context) error {
+		_, err := srv.RunEmbeddings(ctx)
+		return err
+	})
 	hs := &http.Server{
 		Addr: env("APEXX_ADDR", ":8080"), Handler: srv.Routes(),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 120 * time.Second,
@@ -477,4 +485,20 @@ func nodeID() string {
 	b := make([]byte, 4)
 	_, _ = rand.Read(b)
 	return fmt.Sprintf("%s-%x", h, b)
+}
+
+// embedderFromEnv picks the embeddings provider: local (default, no network
+// and no cost) or voyage (semantic; the key comes from VOYAGE_API_KEY or is
+// injected by the network proxy).
+func embedderFromEnv(log *slog.Logger) ai.Embedder {
+	switch env("APEXX_EMBEDDINGS", "local") {
+	case "voyage":
+		dim, _ := strconv.Atoi(env("APEXX_EMBED_DIM", "512"))
+		price, _ := strconv.ParseInt(env("APEXX_EMBED_PRICE_MICROS_PER_M", "20000"), 10, 64)
+		log.Info("embeddings", "provider", "voyage")
+		return &ai.Voyage{Key: os.Getenv("VOYAGE_API_KEY"), ModelName: env("APEXX_EMBED_MODEL", "voyage-3.5-lite"), D: dim,
+			URL: env("APEXX_EMBED_URL", "https://api.voyageai.com/v1/embeddings"), PricePerM: price}
+	default:
+		return ai.NewLocal(384)
+	}
 }

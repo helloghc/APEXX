@@ -341,3 +341,4 @@ El código no es correcto o ya venció. Revisa tu correo o pide uno nuevo. || Le
 Correo o contraseña incorrectos. También puedes entrar con un código por correo. || E-mail ou mot de passe incorrect. Vous pouvez aussi vous connecter avec un code reçu par e-mail. || Email atau kata sandi salah. Anda juga bisa masuk dengan kode lewat email. || メールアドレスまたはパスワードが正しくありません。メールで届くコードでもログインできます。
 Esta cuenta está desactivada. Escribe a la tienda. || Ce compte est désactivé. Écrivez à la boutique. || Akun ini dinonaktifkan. Hubungi toko. || このアカウントは無効です。ショップにお問い合わせください。
 Idioma || Langue || Bahasa || 言語
+Entendimos tu búsqueda con: || Nous avons compris votre recherche ainsi : || Kami membaca pencarian Anda sebagai: || 検索内容をこう解釈しました：

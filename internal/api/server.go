@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/helloghc/apexx/internal/ai"
 	"github.com/jackc/pgx/v5/pgconn"
 	"io"
 	"log/slog"
@@ -63,6 +64,7 @@ type Server struct {
 	TrustProxy       bool          // honour X-Forwarded-For (only behind our own proxy)
 	MetricsToken     string        // bearer token for /metrics; empty = loopback/private callers only
 	Media            media.Storage // media library files; nil = local disk under the system temp dir
+	Embedder         ai.Embedder   // vectors for semantic search; nil = local (no network, no cost)
 
 	sitesMu sync.Mutex
 	sites   map[string]*builder.Site // tenant/site -> site
@@ -79,6 +81,8 @@ type Server struct {
 	sso           ssoProviders  // identity providers already discovered
 	engage        engageState   // search terms and review cache
 	learn         learnState    // recommendations and learning search
+	sem           semState      // vectors per product (semantic index)
+	qvec          qcache        // query vectors, reused across searches
 	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
 }
@@ -100,6 +104,7 @@ func (s *Server) Routes() http.Handler {
 		}
 		s.Proj.On("site.released", evict)
 		s.Proj.On("site.draft", evict)
+		s.semHooks()
 		s.Proj.SetLiveRates(s.LiveRate)
 		s.Proj.SetExternalTax(s.ExternalTax)
 		s.Proj.SetExternalRules(s.ExternalRules)

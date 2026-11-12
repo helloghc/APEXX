@@ -51,6 +51,10 @@ type BrowseQuery struct {
 	// already knows (from the word index) which products can match Q, its
 	// synonyms or the pins. Every other check still runs on them.
 	Only map[string]bool
+	// Semantic lists products close in meaning to Q, with their rank (0 is
+	// the closest). They match Q even without its words, and the default
+	// order fuses the lexical and the semantic rank (Reciprocal Rank Fusion).
+	Semantic map[string]int
 }
 
 // FacetValue is one choice of a facet with the number of products it would show.
@@ -78,6 +82,9 @@ type BrowseResult struct {
 	Attrs      []Facet
 	PriceFloor int64 // lowest and highest price among products matching every filter but price
 	PriceCeil  int64
+	// Understood lists what the search was read as besides text (brand,
+	// color, size, price), when an intent was applied.
+	Understood []string
 }
 
 // MatchesCollection reports whether p belongs to c.
@@ -174,7 +181,13 @@ type cand struct {
 	offer Offer
 	score int
 	order int // position in a manual collection
+	tier  int // pins and learned boosts: always above relevance
+	lex   bool
+	fused float64
 }
+
+// rrfK is the usual Reciprocal Rank Fusion constant.
+const rrfK = 60
 
 // Browse filters, counts facets, sorts and pages the active products.
 // Facet counts are disjunctive: the counts of a facet ignore the selections
@@ -247,11 +260,14 @@ func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) Br
 		if q.Exclude[p.ID] {
 			continue
 		}
+		lex := true
 		if len(qs) > 0 && !matchesAll(qs, p.hay) {
-			ok := pinPos[p.ID] > 0 // a pinned product shows even when its text does not match
+			lex = false
+			_, ok := q.Semantic[p.ID]
+			ok = ok || pinPos[p.ID] > 0 // a pinned product shows even when its text does not match
 			for _, a := range alts {
 				if matchesAll(a, p.hay) {
-					ok = true
+					ok, lex = true, true
 					break
 				}
 			}
@@ -332,8 +348,8 @@ func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) Br
 				childCount[c]++
 			}
 		}
-		c := cand{p: p, offer: of}
-		if len(qs) > 0 {
+		c := cand{p: p, offer: of, lex: lex}
+		if len(qs) > 0 && lex {
 			tw := words(p.Title)
 			for _, tok := range qs {
 				c.score++
@@ -342,7 +358,10 @@ func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) Br
 				}
 			}
 		}
-		c.score += pinPos[p.ID]*1000 + q.Boost[p.ID]
+		c.tier = pinPos[p.ID]*1000 + q.Boost[p.ID]
+		if q.Semantic == nil {
+			c.score += c.tier // historical order: one score
+		}
 		if pos, ok := manualPos[p.ID]; ok {
 			c.order = pos
 		}
@@ -370,6 +389,10 @@ func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) Br
 			return hits[i].p.ID > hits[j].p.ID
 		})
 	default:
+		if q.Semantic != nil && len(qs) > 0 {
+			fuse(hits, q.Semantic)
+			break
+		}
 		sort.SliceStable(hits, func(i, j int) bool {
 			a, b := hits[i], hits[j]
 			if a.score != b.score {
@@ -486,4 +509,50 @@ func ValidateAttributeValue(a AttributeDef, raw string) (string, string) {
 		return "", a.Name + " debe ser una de: " + strings.Join(a.Options, ", ")
 	}
 	return raw, ""
+}
+
+// fuse orders hits by pins and boosts first, then by the fused lexical and
+// semantic rank, then stock and id.
+func fuse(hits []cand, sem map[string]int) {
+	// Lexical rank: the classic order among the hits that matched the words.
+	lexIdx := make([]int, 0, len(hits))
+	for i := range hits {
+		if hits[i].lex {
+			lexIdx = append(lexIdx, i)
+		}
+	}
+	sort.SliceStable(lexIdx, func(i, j int) bool {
+		a, b := hits[lexIdx[i]], hits[lexIdx[j]]
+		if a.score != b.score {
+			return a.score > b.score
+		}
+		if a.order != b.order {
+			return a.order < b.order
+		}
+		if a.offer.InStock != b.offer.InStock {
+			return a.offer.InStock
+		}
+		return a.p.ID < b.p.ID
+	})
+	for r, i := range lexIdx {
+		hits[i].fused += 1 / float64(rrfK+r+1)
+	}
+	for i := range hits {
+		if r, ok := sem[hits[i].p.ID]; ok {
+			hits[i].fused += 1 / float64(rrfK+r+1)
+		}
+	}
+	sort.SliceStable(hits, func(i, j int) bool {
+		a, b := hits[i], hits[j]
+		if a.tier != b.tier {
+			return a.tier > b.tier
+		}
+		if a.fused != b.fused {
+			return a.fused > b.fused
+		}
+		if a.offer.InStock != b.offer.InStock {
+			return a.offer.InStock
+		}
+		return a.p.ID < b.p.ID
+	})
 }

@@ -12,8 +12,9 @@ import { dateTime, Notice } from "../common";
 
 const enc = encodeURIComponent;
 interface Ref { id: string; title: string; handle: string }
-interface Settings { recsOff?: boolean; exclude?: string[]; mcp?: boolean }
-interface State { settings: Settings; excluded: Ref[]; mcpUrl: string; index?: { builtAt: string; products: number; orders: number; terms: number } }
+interface Settings { recsOff?: boolean; exclude?: string[]; mcp?: boolean; semanticOff?: boolean; budgetUsd?: number }
+interface Semantic { on: boolean; model: string; local: boolean; products: number; vectors: number; memoryBytes?: number; budgetUsd: number; monthCostUsd?: number; lastError?: string }
+interface State { settings: Settings; excluded: Ref[]; mcpUrl: string; index?: { builtAt: string; products: number; orders: number; terms: number }; semantic?: Semantic }
 interface Rec extends Ref { buys: number; views: number; score: number }
 
 const api = {
@@ -36,7 +37,7 @@ export function AIPanel({ canEdit, canAdmin }: { canEdit: boolean; canAdmin: boo
   });
   const s = q.data;
   if (!s) return <p className="text-sm text-muted-foreground">Cargando…</p>;
-  const cur: Settings = { recsOff: !!s.settings.recsOff, exclude: s.settings.exclude ?? [], mcp: !!s.settings.mcp };
+  const cur: Settings = { recsOff: !!s.settings.recsOff, exclude: s.settings.exclude ?? [], mcp: !!s.settings.mcp, semanticOff: !!s.settings.semanticOff, budgetUsd: s.settings.budgetUsd ?? 0 };
   const put = (patch: Partial<Settings>) => save.mutate({ ...cur, ...patch });
   return (
     <div className="grid gap-5 xl:grid-cols-2">
@@ -65,6 +66,7 @@ export function AIPanel({ canEdit, canAdmin }: { canEdit: boolean; canAdmin: boo
           {recs.data?.off && <Notice tone="warn">Las recomendaciones están apagadas: la tienda no las muestra.</Notice>}
         </CardContent>
       </Card>
+      {s.semantic && <SemanticCard sem={s.semantic} cur={cur} canAdmin={canAdmin} busy={save.isPending} put={put} />}
       <Card data-ai-mcp className="xl:col-span-2">
         <CardHeader><CardTitle className="text-base">Asistentes de IA (MCP)</CardTitle>
           <CardDescription>Permite que asistentes como Claude o ChatGPT consulten tu catálogo, precios, existencias y envío, y armen un carrito para tu cliente. El asistente nunca paga: le da al cliente un enlace a tu pago de siempre, con los mismos límites y antifraude.</CardDescription></CardHeader>
@@ -81,5 +83,31 @@ export function AIPanel({ canEdit, canAdmin }: { canEdit: boolean; canAdmin: boo
         }} />
       {!canEdit && null}
     </div>
+  );
+}
+
+/** Search by meaning: one vector per product, kept in step with the catalog. */
+function SemanticCard({ sem, cur, canAdmin, busy, put }: { sem: Semantic; cur: Settings; canAdmin: boolean; busy: boolean; put: (p: Partial<Settings>) => void }) {
+  const [budget, setBudget] = useState(String(cur.budgetUsd || sem.budgetUsd));
+  const pct = sem.products ? Math.min(100, Math.round((sem.vectors / sem.products) * 100)) : 100;
+  return (
+    <Card data-ai-semantic className="xl:col-span-2">
+      <CardHeader><CardTitle className="text-base">Búsqueda por significado</CardTitle>
+        <CardDescription>Cada producto tiene una huella de su significado. Así la tienda encuentra «algo para la lluvia» o «zapatillas» aunque el producto diga «chamarra impermeable» o «tenis». Se actualiza sola al guardar, importar o borrar productos. Si algo falla, la búsqueda sigue funcionando con las palabras exactas.</CardDescription></CardHeader>
+      <CardContent className="grid gap-3 text-sm">
+        <label className="flex items-center gap-2"><input type="checkbox" checked={!cur.semanticOff} disabled={!canAdmin || busy} onChange={(e) => put({ semanticOff: !e.target.checked })} /> Usar búsqueda por significado {sem.on ? <Badge variant="ok">Activa</Badge> : <Badge variant="outline">Apagada</Badge>}</label>
+        <p className="text-muted-foreground">Productos con huella: <span className="tabular-nums">{sem.vectors}</span> de <span className="tabular-nums">{sem.products}</span> ({pct} %){sem.memoryBytes ? <> · memoria: <span className="tabular-nums">{(sem.memoryBytes / 1048576).toFixed(1)}</span> MB</> : null}.</p>
+        <p className="text-muted-foreground">Modelo: <code>{sem.model}</code> {sem.local ? "(en el servidor de Apexx, sin costo)" : "(proveedor externo, con costo por uso)"}</p>
+        {!sem.local && <div className="grid gap-1.5">
+          <p>Gasto de este mes: <span className="tabular-nums">{(sem.monthCostUsd ?? 0).toFixed(2)}</span> USD de <span className="tabular-nums">{sem.budgetUsd.toFixed(2)}</span> USD</p>
+          {canAdmin && <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); const n = Number(budget); if (Number.isFinite(n) && n >= 0) put({ budgetUsd: n }); }}>
+            <label className="grid gap-1"><span>Presupuesto mensual (USD)</span><input className="h-9 w-32 rounded-md border bg-background px-2" type="number" min={0} max={100000} step="1" value={budget} onChange={(e) => setBudget(e.target.value)} /></label>
+            <Button type="submit" variant="outline" disabled={busy}>Guardar presupuesto</Button>
+          </form>}
+          <p className="text-muted-foreground">Al llegar al tope se pausan las huellas nuevas hasta el mes siguiente; la búsqueda sigue funcionando.</p>
+        </div>}
+        {sem.lastError && <Notice tone="warn">El último intento de actualizar huellas falló; se reintenta solo. Detalle: {sem.lastError}</Notice>}
+      </CardContent>
+    </Card>
   );
 }
