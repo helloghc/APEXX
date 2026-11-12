@@ -197,6 +197,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesPayMethods(handle)
 	s.routesShopCards(handle)
 	s.routesTaxService(handle)
+	s.routesWarehouses(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

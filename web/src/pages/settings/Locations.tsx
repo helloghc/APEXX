@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowRight, ArrowLeftRight, BellRing, MapPin, MoreHorizontal, Plus, Store as StoreIcon, Trash2, Warehouse } from "lucide-react";
-import { errorMessage, fieldErrors, type Me } from "@/api";
+import { errorMessage, fieldErrors, request, type Me } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -232,6 +232,7 @@ function LocationSheet({ row, states, taken, onClose }: { row: LocationRow | nul
     pickupEnabled: row?.pickupEnabled ?? false,
     pickupInstructions: row?.pickupInstructions ?? "",
     active: row?.active ?? true,
+    fulfillerEndpoint: row?.fulfillerEndpoint ?? "",
   }));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -347,6 +348,10 @@ function LocationSheet({ row, states, taken, onClose }: { row: LocationRow | nul
           <FormField id="loc-phone" label="Teléfono (opcional)" error={errors.phone}>
             <Input type="tel" value={f.phone ?? ""} onChange={(e) => setF({ ...f, phone: e.target.value })} />
           </FormField>
+          <FormField id="loc-3pl" label="Almacén externo (opcional)" error={errors.fulfillerEndpoint} description="Si un tercero opera esta ubicación, escribe la dirección de su sistema. Le enviamos firmado cada pedido pagado con stock de aquí, con reintentos, y él avisa el envío con su llave de API.">
+            <Input className="font-mono text-xs" value={f.fulfillerEndpoint ?? ""} placeholder="https://almacen.ejemplo.com/apexx" onChange={(e) => setF({ ...f, fulfillerEndpoint: e.target.value.trim() })} />
+          </FormField>
+          {row?.fulfillerEndpoint && <WarehouseSecret id={row.id} />}
 
           <div className="grid gap-3 border-t pt-4">
             <div className="flex items-start justify-between gap-4">
@@ -823,5 +828,16 @@ function Alerts({ locations, canEdit, defaultThreshold }: { locations: LocationR
         </Dialog>
       )}
     </>
+  );
+}
+
+/** WarehouseSecret shows what the third-party warehouse needs to check our signature. */
+function WarehouseSecret({ id }: { id: string }) {
+  const [info, setInfo] = useState<{ secret: string; contract: string } | null>(null);
+  return (
+    <div className="grid gap-1 text-sm">
+      {!info ? <Button type="button" variant="ghost" className="justify-self-start" onClick={() => void request<{ secret: string; contract: string }>("GET", `/v1/locations/${encodeURIComponent(id)}/warehouse-secret`).then(setInfo)}>Datos para el almacén</Button>
+        : <><span className="font-medium">Secreto de firma</span><code className="break-all rounded bg-muted px-2 py-1 text-xs">{info.secret}</code><span className="text-muted-foreground">{info.contract}</span></>}
+    </div>
   );
 }

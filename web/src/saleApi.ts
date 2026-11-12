@@ -75,6 +75,7 @@ export const sale = {
     request<{ before: OTotals; after: OTotals; difference: number; refundError?: string }>("POST", `/v1/orders/${enc(id)}/edit`, b),
   connectedCarriers: () => request<{ carriers: { id: string; name: string; active: boolean; provider?: string }[] }>("GET", "/v1/shipping").then((r) => r.carriers.filter((c) => c.active && c.provider)),
   payVoucher: (id: string) => request<void>("POST", `/v1/sandbox/orders/${enc(id)}/pay-voucher`, undefined, { as: "none" }),
+  warehouseRequests: (id: string) => request<{ items: { id: string; locationId: string; kind: string; status: string; attempts: number; reference?: string; lastError?: string; updatedAt: string }[] }>("GET", `/v1/orders/${enc(id)}/warehouse-requests`).then((r) => r.items),
   productSearch: (q: string) => request<{ items: { id: string; title: string; skus: string[] }[] }>("GET", `/v1/product-search?q=${enc(q)}`).then((r) => r.items),
   addNote: (id: string, body: string, visibility: "internal" | "customer") => request<ONote>("POST", `/v1/orders/${enc(id)}/notes`, { body, visibility }),
   deleteNote: (id: string, note: string) => request<void>("DELETE", `/v1/orders/${enc(id)}/notes/${enc(note)}`, undefined, { as: "none" }),

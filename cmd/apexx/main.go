@@ -349,6 +349,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		MetricsToken:  os.Getenv("APEXX_METRICS_TOKEN"),
 		Media:         mediaStore,
 	}
+	// Third-party warehouses get their paid orders, with retries.
+	resilience.Every(ctx, log, "warehouse-requests", 30*time.Second, func(ctx context.Context) error {
+		_, err := srv.RunWarehouseRequests(ctx)
+		return err
+	})
 	// Carriers: parcels with a bought label are tracked until delivered.
 	resilience.Every(ctx, log, "carrier-tracking", 15*time.Minute, func(ctx context.Context) error {
 		_, err := srv.RunTracking(ctx)

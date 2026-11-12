@@ -718,6 +718,9 @@ func (s *Service) Cancel(ctx context.Context, tenant, actor, id, reason string) 
 		if _, err := tx.Exec(ctx, `UPDATE fulfillments SET status='cancelled', cancelled_at=now() WHERE tenant_id=$1 AND order_id=$2 AND status='pending'`, tenant, id); err != nil {
 			return err
 		}
+		if err := cancelFulfillmentRequestsTx(ctx, tx, tenant, id); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `UPDATE orders SET status=$3, refunded_total=grand_total, refunded_tax=tax_included, version=version+1, updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, id, StatusRefunded); err != nil {
 			return err
 		}

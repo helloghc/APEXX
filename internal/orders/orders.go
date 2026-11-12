@@ -752,6 +752,15 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		if err := store.CommitTx(ctx, tx, tenant, id); err != nil {
 			return err
 		}
+		// Stock taken from a third-party warehouse: send it the order to ship.
+		if _, err := tx.Exec(ctx, `INSERT INTO fulfillment_requests (tenant_id, id, order_id, location_id)
+			SELECT $1, 'ffr_' || substr(md5(random()::text || a.location_id), 1, 20), $2, a.location_id
+			FROM (SELECT DISTINCT location_id FROM order_allocations WHERE tenant_id=$1 AND order_id=$2) a
+			JOIN stock_locations d ON d.tenant_id=$1 AND d.id=a.location_id
+			WHERE COALESCE(d.data->>'fulfillerEndpoint','') <> ''
+			ON CONFLICT DO NOTHING`, tenant, id); err != nil {
+			return err
+		}
 		if err := promostore.ConfirmTx(ctx, tx, tenant, id); err != nil {
 			return err
 		}

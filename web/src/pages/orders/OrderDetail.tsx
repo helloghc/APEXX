@@ -97,6 +97,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
         )}
       </div>
 
+      <WarehouseStatus id={o.id} />
       {o.status === "pending_payment" && o.voucher && (
         <Notice tone="warn">
           <strong>Esperando el pago {o.voucher.kind === "oxxo" ? "en OXXO" : "por SPEI"}.</strong> {o.voucher.kind === "oxxo" ? `Referencia ${o.voucher.reference}` : `CLABE ${o.voucher.clabe}${o.voucher.reference ? `, referencia ${o.voucher.reference}` : ""}`}; vence {dateTime(o.voucher.expiresAt)}. El stock está apartado y el pedido se confirma solo al llegar el dinero; si vence, se cancela.
@@ -551,5 +552,19 @@ function CancelDialog({ order, onClose, onDone }: DP) {
       footer={<Button variant="destructive" onClick={() => void go()} disabled={busy}>{busy ? "Cancelando…" : paid ? "Cancelar y reembolsar" : "Cancelar pedido"}</Button>}>
       <div className="grid gap-1.5"><Label htmlFor="cn-reason">Motivo (opcional)</Label><Input id="cn-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
     </Shell>
+  );
+}
+
+const WH: Record<string, string> = { pending: "enviándolo al almacén", accepted: "el almacén lo recibió", rejected: "el almacén lo rechazó", failed: "no se pudo entregar al almacén" };
+
+/** WarehouseStatus: what a third-party warehouse knows of this order. */
+function WarehouseStatus({ id }: { id: string }) {
+  const q = useQuery({ queryKey: ["warehouse-requests", id], queryFn: () => sale.warehouseRequests(id), staleTime: 15_000 });
+  const list = q.data ?? [];
+  if (!list.length) return null;
+  return (
+    <Notice tone={list.some((r) => r.status === "rejected" || r.status === "failed") ? "bad" : "ok"}>
+      {list.map((r) => <span key={r.id} className="block">Almacén externo {r.locationId}: {r.kind === "cancel" ? "cancelación, " : ""}{WH[r.status] ?? r.status}{r.reference ? ` (folio ${r.reference})` : ""}{r.lastError ? ` · ${r.lastError}` : ""}{r.status === "pending" && r.attempts ? ` · intento ${r.attempts} de 10` : ""}.</span>)}
+    </Notice>
   );
 }

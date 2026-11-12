@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -320,4 +321,48 @@ func (s *Service) UpdateFulfillment(ctx context.Context, tenant, actor, orderID,
 		}
 		return FieldError{"action", "action: ship, deliver o cancel"}
 	})
+}
+
+// cancelFulfillmentRequestsTx tells third-party warehouses an order is
+// cancelled: a request not yet delivered is dropped; one they accepted gets
+// a cancel request.
+func cancelFulfillmentRequestsTx(ctx context.Context, tx pgx.Tx, tenant, orderID string) error {
+	if _, err := tx.Exec(ctx, `UPDATE fulfillment_requests SET status='rejected', last_error='Pedido cancelado antes de enviarse al almacén', updated_at=now()
+		WHERE tenant_id=$1 AND order_id=$2 AND kind='fulfill' AND status IN ('pending','failed')`, tenant, orderID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO fulfillment_requests (tenant_id, id, order_id, location_id, kind)
+		SELECT tenant_id, 'ffr_' || substr(md5(random()::text || location_id), 1, 20), order_id, location_id, 'cancel'
+		FROM fulfillment_requests WHERE tenant_id=$1 AND order_id=$2 AND kind='fulfill' AND status='accepted'
+		ON CONFLICT DO NOTHING`, tenant, orderID)
+	return err
+}
+
+// FulfillmentRequest is an order sent to a third-party warehouse.
+type FulfillmentRequest struct {
+	ID         string    `json:"id"`
+	LocationID string    `json:"locationId"`
+	Kind       string    `json:"kind"`
+	Status     string    `json:"status"`
+	Attempts   int       `json:"attempts"`
+	Reference  string    `json:"reference,omitempty"`
+	LastError  string    `json:"lastError,omitempty"`
+	UpdatedAt  time.Time `json:"updatedAt"`
+}
+
+// FulfillmentRequests lists what an order sent to warehouses.
+func (s *Service) FulfillmentRequests(ctx context.Context, tenant, orderID string) ([]FulfillmentRequest, error) {
+	var out []FulfillmentRequest
+	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT id, location_id, kind, status, attempts, reference, last_error, updated_at FROM fulfillment_requests WHERE tenant_id=$1 AND order_id=$2 ORDER BY created_at`, tenant, orderID)
+		if err != nil {
+			return err
+		}
+		out, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (FulfillmentRequest, error) {
+			var f FulfillmentRequest
+			return f, r.Scan(&f.ID, &f.LocationID, &f.Kind, &f.Status, &f.Attempts, &f.Reference, &f.LastError, &f.UpdatedAt)
+		})
+		return err
+	})
+	return out, err
 }

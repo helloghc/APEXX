@@ -263,6 +263,12 @@ func (a *Address) Validate(prefix string, required bool) []apierr.FieldError {
 func (l *Location) Validate() []apierr.FieldError {
 	l.Name = strings.TrimSpace(l.Name)
 	errs := name(nil, l.Name)
+	l.FulfillerEndpoint = strings.TrimSpace(l.FulfillerEndpoint)
+	if l.FulfillerEndpoint != "" {
+		if u, err := url.Parse(l.FulfillerEndpoint); err != nil || u.Scheme != "https" || u.Host == "" || len(l.FulfillerEndpoint) > 300 {
+			errs = append(errs, fe("fulfillerEndpoint", "invalid", "Escribe la dirección https del almacén"))
+		}
+	}
 	switch l.Kind {
 	case "":
 		l.Kind = "warehouse"

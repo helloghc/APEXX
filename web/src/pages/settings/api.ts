@@ -39,6 +39,7 @@ export interface Location {
   pickupEnabled: boolean;
   pickupInstructions?: string;
   active: boolean;
+  fulfillerEndpoint?: string;
 }
 
 export interface LocationRow extends Location {

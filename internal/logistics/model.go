@@ -170,6 +170,9 @@ type Location struct {
 	PickupEnabled      bool             `json:"pickupEnabled"`
 	PickupInstructions string           `json:"pickupInstructions,omitempty"`
 	Active             bool             `json:"active"`
+	// FulfillerEndpoint: a third-party warehouse (3PL) runs this location;
+	// paid orders with stock here are sent to it, signed, to be shipped.
+	FulfillerEndpoint string `json:"fulfillerEndpoint,omitempty"`
 }
 
 // Weekdays in the order used by Location.Hours.
