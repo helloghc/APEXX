@@ -414,3 +414,6 @@ const KeyQtyRules = "qty_rules"
 
 // KeyOrderFees is the TopicSettings key of the extra charges per order.
 const KeyOrderFees = "order_fees"
+
+// KeyGiftOptions is the TopicSettings key of gift wrapping, messages and registries.
+const KeyGiftOptions = "gift_options"

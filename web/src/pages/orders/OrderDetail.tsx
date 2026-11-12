@@ -1,7 +1,7 @@
 import { CustomFields } from "@/components/CustomFields";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowLeft, Ban, ExternalLink, PackageCheck, PencilLine, Plus, RotateCcw, StickyNote, Trash2, Truck, Undo2 } from "lucide-react";
+import { ArrowLeft, Ban, ExternalLink, PackageCheck, PencilLine, Plus, Printer, RotateCcw, StickyNote, Trash2, Truck, Undo2 } from "lucide-react";
 import { errorMessage, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,6 +90,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
         {canEdit && (
           <div className="flex flex-wrap gap-2">
             {open && toShip && <Button onClick={() => setDialog("ship")}><Truck aria-hidden="true" /> Enviar productos</Button>}
+            {open && <Button variant="outline" onClick={() => window.print()}><Printer aria-hidden="true" /> {o.gift?.hidePrices ? "Imprimir ticket de regalo" : "Imprimir hoja de empaque"}</Button>}
             {editable && <Button variant="outline" onClick={() => setDialog("edit")}><PencilLine aria-hidden="true" /> Editar productos</Button>}
             {open && returnable && <Button variant="outline" onClick={() => setDialog("return")}><Undo2 aria-hidden="true" /> Devolución</Button>}
             {open && refundable && <Button variant="outline" onClick={() => setDialog("refund")}><RotateCcw aria-hidden="true" /> Reembolsar</Button>}
@@ -101,6 +102,16 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
       <WarehouseStatus id={o.id} />
       {!!o.downloads?.length && <Downloads order={o} canEdit={can(me, "orders", "edit")} />}
       <OrderAppBlocks orderId={o.id} />
+      <PackingSlip o={o} />
+      {(o.gift || o.registryId) && (
+        <Card data-gift><CardHeader><CardTitle className="text-base">Regalo</CardTitle></CardHeader>
+          <CardContent className="grid gap-1 text-sm">
+            {o.registryId && <p>Comprado para una <a className="text-primary underline" href={href("configuracion", "regalos")}>mesa de regalos</a>.</p>}
+            {o.gift?.wrap && <p><strong>Envolver para regalo.</strong></p>}
+            {o.gift?.hidePrices && <p><strong>Ticket de regalo:</strong> el paquete va sin precios.</p>}
+            {o.gift?.message && <p><span className="text-muted-foreground">Mensaje para la tarjeta:</span> «{o.gift.message}»</p>}
+          </CardContent></Card>
+      )}
       {!!o.checkoutFields?.length && (
         <Card data-checkout-fields><CardHeader><CardTitle className="text-base">Datos del pago</CardTitle></CardHeader>
           <CardContent className="grid gap-1 text-sm">{o.checkoutFields.map((f) => <p key={f.id}><span className="text-muted-foreground">{f.label}:</span> {f.value}</p>)}</CardContent></Card>
@@ -612,5 +623,26 @@ function WarehouseStatus({ id }: { id: string }) {
     <Notice tone={list.some((r) => r.status === "rejected" || r.status === "failed") ? "bad" : "ok"}>
       {list.map((r) => <span key={r.id} className="block">Almacén externo {r.locationId}: {r.kind === "cancel" ? "cancelación, " : ""}{WH[r.status] ?? r.status}{r.reference ? ` (folio ${r.reference})` : ""}{r.lastError ? ` · ${r.lastError}` : ""}{r.status === "pending" && r.attempts ? ` · intento ${r.attempts} de 10` : ""}.</span>)}
     </Notice>
+  );
+}
+
+/** PackingSlip prints with the order: what goes in the box, without prices for a gift. */
+function PackingSlip({ o }: { o: Order }) {
+  const gift = o.gift?.hidePrices;
+  return (
+    <div className="print-area" aria-hidden="true">
+      <h1 style={{ fontSize: 18, fontWeight: 700 }}>{gift ? "Ticket de regalo" : "Hoja de empaque"} · Pedido {o.displayNumber ?? `#${o.number}`}</h1>
+      {o.customer?.address?.startsWith("Para ") ? <p>{o.customer.address} · De: {o.customer.name}</p> : o.customer?.name && <p>Para: {o.customer.name}{o.customer.address ? ` · ${o.customer.address}` : ""}</p>}
+      <table style={{ width: "100%", marginTop: 12, borderCollapse: "collapse" }}>
+        <thead><tr><th style={{ textAlign: "left" }}>Producto</th><th style={{ textAlign: "right" }}>Cantidad</th>{!gift && <th style={{ textAlign: "right" }}>Importe</th>}</tr></thead>
+        <tbody>
+          {(o.lines ?? []).filter((l) => l.qty - (l.cancelledQty ?? 0) > 0).map((l) => (
+            <tr key={l.line} style={{ borderTop: "1px solid #999" }}><td>{l.title} <small>{l.sku}</small></td><td style={{ textAlign: "right" }}>{l.qty - (l.cancelledQty ?? 0)}</td>{!gift && <td style={{ textAlign: "right" }}>{formatMoney(l.total, o.currency)}</td>}</tr>
+          ))}
+        </tbody>
+      </table>
+      {o.gift?.wrap && <p style={{ marginTop: 12 }}><strong>Envolver para regalo.</strong></p>}
+      {o.gift?.message && <p style={{ marginTop: 12, border: "1px dashed #000", padding: 12 }}>{o.gift.message}</p>}
+    </div>
   );
 }

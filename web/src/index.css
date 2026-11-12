@@ -108,3 +108,11 @@
   body:has(#pos-ticket) #pos-ticket, body:has(#pos-ticket) #pos-ticket * { visibility: visible; }
   #pos-ticket { position: fixed; left: 0; top: 0; width: 80mm; border: 0; }
 }
+
+/* Packing slips and gift receipts: invisible on screen, alone on paper. */
+.print-area { display: none; }
+@media print {
+  body:has(.print-area) * { visibility: hidden; }
+  body:has(.print-area) .print-area, body:has(.print-area) .print-area * { visibility: visible; }
+  .print-area { display: block; position: fixed; left: 0; top: 0; width: 100%; padding: 16px; color: #000; background: #fff; }
+}

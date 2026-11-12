@@ -73,7 +73,10 @@ function downloadsBox(ds) {
   const planNote = (sku) => { const l = cart().find((x) => keyOf(x) === sku); return l && l.plan && PLAN[l.plan] ? "<br><small class='muted'>Suscripción: entrega " + PLAN[l.plan] + "</small>" : ""; };
   // Only coupons the store confirmed as applied are kept; an invalid code is never stored or shown as applied.
   const coupons = () => store.get(CPN, []);
-  const simulate = (zip, extra = {}) => post("/simulate", { channel, postalCode: zip || undefined, shippingOption: store.get(SHIP, "") || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined, custom: l.custom || undefined, ref: keyOf(l) })), coupons: coupons(), ...extra });
+  // Gift options and the gift registry chosen at checkout travel with every simulation.
+  let giftState = () => ({});
+  const REG = "apexx_registry_" + tenant;
+  const simulate = (zip, extra = {}) => post("/simulate", { channel, postalCode: zip || undefined, shippingOption: store.get(SHIP, "") || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined, custom: l.custom || undefined, ref: keyOf(l) })), coupons: coupons(), ...giftState(), ...extra });
   // Drops stored codes that stopped applying and returns the reasons to show.
   const syncCoupons = (r) => {
     const res = r.coupons || [], lost = res.filter((c) => !c.applied && coupons().includes(c.code));
@@ -366,6 +369,38 @@ function downloadsBox(ds) {
             ? "<label class='shipopt' data-block='" + esc(b.id) + "'><input type='checkbox' name='blk." + esc(b.id) + "'" + (b.required ? " data-required" : "") + "> <span>" + esc(b.label) + (b.text ? " <span class='muted'>" + esc(b.text) + "</span>" : "") + "</span></label>"
             : "<div class='field' data-block='" + esc(b.id) + "'><label for='blk-" + esc(b.id) + "'>" + esc(b.label) + (b.required ? "" : " (opcional)") + "</label><input id='blk-" + esc(b.id) + "' name='blk." + esc(b.id) + "' maxlength='" + (b.maxLength || 80) + "'" + (b.required ? " data-required" : "") + ">" + (b.text ? "<small class='muted'>" + esc(b.text) + "</small>" : "") + "</div>").join(""));
       } catch {}
+      // Gifts: wrapping, a card message and a gift receipt, when the store offers them.
+      const gc = cfg.gift || {}, reg = store.get(REG, null);
+      if (extras && reg && reg.handle) {
+        extras.insertAdjacentHTML("afterbegin", "<div class='acct-box' data-reg-box><p>Compras para la mesa de regalos <strong>" + esc(reg.title || reg.handle) + "</strong>.</p>" +
+          (reg.ship ? "<label class='shipopt'><input type='checkbox' id='toreg' checked> <span>Enviar a la dirección de los festejados <span class='muted'>(no la verás; la tienda la usa para la entrega)</span></span></label>" : "") +
+          "<button type='button' class='linkbtn' data-reg-clear>No es para esta mesa</button></div>");
+      }
+      if (extras && gc.enabled) {
+        extras.insertAdjacentHTML("beforeend", "<fieldset class='giftbox' data-giftbox><legend class='sr'>Regalo</legend><label class='shipopt'><input type='checkbox' id='isgift'> <span>Es para regalo</span></label><div data-gift-more hidden>" +
+          "<label class='shipopt'><input type='checkbox' id='giftwrap'> <span>Envolver para regalo" + (gc.wrapPrice ? " (+" + money({ amount: gc.wrapPrice, currency: cfg.currency || "MXN" }) + ")" : " (sin costo)") + "</span></label>" +
+          "<div class='field'><label for='giftmsg'>Mensaje para la tarjeta (opcional)</label><textarea id='giftmsg' maxlength='" + (gc.messageMax || 250) + "' rows='2'></textarea></div>" +
+          (gc.receipt ? "<label class='shipopt'><input type='checkbox' id='giftreceipt' checked> <span>Ticket de regalo: el paquete va sin precios</span></label>" : "") + "</div></fieldset>");
+      }
+      const toReg = () => !!(store.get(REG, null) && $("#toreg") && $("#toreg").checked);
+      const addrFields = () => ["address", "postal"].map((k) => form.elements[k] && form.elements[k].closest(".field")).filter(Boolean);
+      const paintReg = () => addrFields().forEach((el) => { el.hidden = toReg(); });
+      giftState = () => {
+        const out = {}, r = store.get(REG, null);
+        if (r && r.handle) { out.registry = r.handle; if (toReg()) out.shipToRegistry = true; }
+        if ($("#isgift") && $("#isgift").checked) out.gift = { wrap: !!($("#giftwrap") && $("#giftwrap").checked), message: ($("#giftmsg") && $("#giftmsg").value.trim()) || undefined, hidePrices: !!($("#giftreceipt") && $("#giftreceipt").checked) || undefined };
+        return out;
+      };
+      if (extras) {
+        extras.addEventListener("change", (e) => {
+          if (e.target.id === "isgift") $("[data-gift-more]").hidden = !e.target.checked;
+          if (e.target.id === "toreg") paintReg();
+          if (["isgift", "giftwrap", "toreg"].includes(e.target.id)) refresh();
+        });
+        const clr = $("[data-reg-clear]");
+        if (clr) clr.addEventListener("click", () => { localStorage.removeItem(REG); $("[data-reg-box]").remove(); paintReg(); refresh(); });
+      }
+      paintReg();
       await refresh();
       if (cfg.mode === "stripe" && cfg.publishableKey) {
         await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
@@ -382,7 +417,8 @@ function downloadsBox(ds) {
       e.preventDefault(); errBox.textContent = "";
       const f = new FormData(form);
       const co = cfg.checkout || {};
-      for (const [k, label] of [["email", "tu correo"], ["name", "tu nombre"]].concat(co.phoneRequired ? [["phone", "tu teléfono"]] : [], pickup() || (last && last.noShipping) ? [] : [["address", "tu dirección"], ["postal", "tu código postal"]])) {
+      const regShip = !!giftState().shipToRegistry;
+      for (const [k, label] of [["email", "tu correo"], ["name", "tu nombre"]].concat(co.phoneRequired ? [["phone", "tu teléfono"]] : [], pickup() || regShip || (last && last.noShipping) ? [] : [["address", "tu dirección"], ["postal", "tu código postal"]])) {
         if (!String(f.get(k) || "").trim()) { errBox.textContent = "Falta " + label + "."; form.elements[k].focus(); return; }
       }
       if (co.termsCheckbox && !f.get("terms")) { errBox.textContent = "Acepta los términos y condiciones para continuar."; $("#terms").focus(); return; }
@@ -392,7 +428,7 @@ function downloadsBox(ds) {
         if (v) blocks[el.name.slice(4)] = v;
         else if (el.hasAttribute("data-required")) { errBox.textContent = (el.type === "checkbox" ? "Falta aceptar: " : "Falta: ") + (el.closest("[data-block]").querySelector("span, label").textContent.trim()); el.focus(); return; }
       }
-      if (!(pickup() && !String(f.get("postal"))) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
+      if (!regShip && !(pickup() && !String(f.get("postal"))) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
       const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount - (voucherKind() ? 0 : (last.totals.dueLater && last.totals.dueLater.amount) || 0)); // credit or gift cards pay it all: no card needed
       const kept = !onCredit() && !covered && !voucherKind() ? savedCard() : "";
@@ -412,10 +448,11 @@ function downloadsBox(ds) {
         shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined, blocks: Object.keys(blocks).length ? blocks : undefined, campaign: campaignClick(), adsConsent: adsConsent() || undefined,
         customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, poNumber: company ? String(f.get("po") || "").trim() || undefined : undefined, paymentMethod: pm,
         coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,
-        savedCard: kept || undefined, saveCard: !kept && signedIn && !!f.get("savecard") || undefined,
+        savedCard: kept || undefined, saveCard: !kept && signedIn && !!f.get("savecard") || undefined, ...giftState(),
       }, { "Idempotency-Key": key });
       if (res.status === 201) {
         sessionStorage.removeItem("apexx_idem"); sessionStorage.setItem("apexx_last_order", JSON.stringify(res.body));
+        try { localStorage.removeItem(REG); } catch {}
         store.set(KEY, []); store.set(CPN, []); location.href = withLang(base + "/gracias"); return;
       }
       sessionStorage.removeItem("apexx_idem");
@@ -1118,4 +1155,112 @@ function downloadsBox(ds) {
     s.hidden = s.dataset.audienceMode === "only" ? !inGroup : inGroup;
   });
   fetch("/s/" + tenant + "/api/account/groups", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : { groups: [] })).then((j) => apply(j.groups || [])).catch(() => apply([]));
+})();
+
+/* ==== gift registries: give from a registry, manage mine, add from a product ==== */
+(() => {
+  const body = document.body, parts = location.pathname.split("/");
+  const tenant = body.dataset.tenant || parts[2], base = body.dataset.base || "/s/" + parts[2] + "/" + parts[3];
+  const api = "/s/" + tenant + "/api", REG = "apexx_registry_" + tenant, KEY = "apexx_cart_" + tenant;
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const get = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+  const set = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  const send = (method, path, data) => fetch(api + path, { method, headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: data ? JSON.stringify(data) : undefined })
+    .then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
+
+  // A registry's page: "Regalar" puts the gift in the cart and remembers the registry for checkout.
+  const head = document.querySelector("[data-registry]");
+  if (head) {
+    const st = document.querySelector("[data-registry-status]");
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-registry-add]"); if (!b) return;
+      const cur = get(REG, null);
+      if (cur && cur.handle !== head.dataset.registry && get(KEY, []).length && !confirm("Tu carrito tiene regalos de otra mesa. ¿Cambiar a esta mesa?")) return;
+      set(REG, { handle: head.dataset.registry, title: head.dataset.registryTitle, ship: head.hasAttribute("data-registry-ship") });
+      const c = get(KEY, []), sku = b.dataset.registryAdd, max = Number(b.dataset.registryMax) || 1, l = c.find((x) => x.sku === sku && !x.plan && !x.custom);
+      if (l) { if (l.qty >= max) { st.textContent = "Ya tienes en tu carrito todas las piezas que faltan de este regalo."; return; } l.qty += 1; } else c.push({ sku, qty: 1, title: b.dataset.title });
+      set(KEY, c);
+      document.querySelectorAll("[data-cart-count]").forEach((x) => (x.textContent = c.reduce((a, y) => a + y.qty, 0)));
+      st.innerHTML = "«" + esc(b.dataset.title) + "» está en tu carrito. <a href='" + base + "/checkout'>Pagar el regalo</a>";
+    });
+  }
+
+  // My registries (account).
+  const mine = document.querySelector("[data-my-registries]");
+  const KINDS = { boda: "Boda", bebe: "Bebé", cumple: "Cumpleaños", otro: "Otra celebración" };
+  const form = (g) => "<form class='acct-box' data-reg-form" + (g ? " data-id='" + esc(g.id) + "'" : "") + "><h2>" + (g ? "Datos de la mesa" : "Crear mi mesa de regalos") + "</h2>" +
+    "<div class='field'><label for='rg-title-" + (g ? g.id : "new") + "'>Nombre de la mesa</label><input id='rg-title-" + (g ? g.id : "new") + "' name='title' required minlength='3' maxlength='80' value='" + esc(g ? g.title : "") + "' placeholder='Ej. Boda Ana y Luis'></div>" +
+    "<div class='field'><label>Celebración</label><select name='kind'>" + Object.keys(KINDS).map((k) => "<option value='" + k + "'" + (g && g.kind === k ? " selected" : "") + ">" + KINDS[k] + "</option>").join("") + "</select></div>" +
+    "<div class='field'><label>Fecha del evento</label><input type='date' name='eventDate' value='" + esc(g ? g.eventDate : "") + "'></div>" +
+    "<div class='field'><label>Mensaje para tus invitados (opcional)</label><textarea name='message' maxlength='500' rows='2'>" + esc(g ? g.message : "") + "</textarea></div>" +
+    "<fieldset><legend>Dirección para recibir los regalos (opcional, tus invitados no la ven)</legend><div class='field'><label>Quién recibe</label><input name='shipName' maxlength='120' value='" + esc(g && g.shipTo ? g.shipTo.name : "") + "'></div>" +
+    "<div class='field'><label>Dirección</label><input name='shipAddress' maxlength='400' value='" + esc(g && g.shipTo ? g.shipTo.address : "") + "'></div>" +
+    "<div class='field'><label>Código postal</label><input name='shipPostal' maxlength='10' value='" + esc(g && g.shipTo ? g.shipTo.postalCode : "") + "'></div></fieldset>" +
+    "<label class='shipopt'><input type='checkbox' name='listed'" + (!g || g.listed ? " checked" : "") + "> <span>Que mis invitados la encuentren buscando por nombre</span></label>" +
+    (g ? "<label class='shipopt'><input type='checkbox' name='closed'" + (g.status === "closed" ? " checked" : "") + "> <span>Cerrar la mesa (ya no recibe regalos)</span></label>" : "") +
+    "<button class='btn' type='submit'>" + (g ? "Guardar cambios" : "Crear mesa") + "</button><p class='note' role='status' data-reg-msg></p></form>";
+  const card = (g) => {
+    g.items = g.items || [];
+    const link = location.origin + base + "/mesa/" + g.handle;
+    return "<section class='acct-box' data-reg='" + esc(g.id) + "'><h2>" + esc(g.title) + "</h2><p class='muted'>" + g.bought + " de " + g.wanted + " regalos comprados" + (g.status === "closed" ? " · Cerrada" : "") + "</p>" +
+      "<p>Comparte este enlace: <a href='" + esc(link) + "'>" + esc(link) + "</a> <button type='button' class='linkbtn' data-reg-copy='" + esc(link) + "'>Copiar</button></p>" +
+      (g.items.length ? "<table class='reg-table'><thead><tr><th>Producto</th><th>Quiero</th><th>Comprados</th><th></th></tr></thead><tbody>" + g.items.map((it) => "<tr><td><a href='" + base + "/p/" + esc(it.handle) + "'>" + esc(it.title) + "</a><br><small class='muted'>" + esc(it.price) + "</small></td><td><input type='number' min='1' max='999' value='" + it.wanted + "' data-reg-qty='" + esc(it.sku) + "' aria-label='Piezas que quieres de " + esc(it.title) + "'></td><td>" + it.bought + "</td><td><button type='button' class='linkbtn' data-reg-del='" + esc(it.sku) + "'>Quitar</button></td></tr>").join("") + "</tbody></table>"
+        : "<p class='muted'>Agrega productos desde su página con el botón «Agregar a mi mesa de regalos».</p>") +
+      "<details><summary>Editar datos de la mesa</summary>" + form(g) + "</details></section>";
+  };
+  const paint = async () => {
+    const r = await send("GET", "/account/registries");
+    if (r.status !== 200) { mine.innerHTML = "<p class='error'>No pudimos cargar tus mesas.</p>"; return; }
+    mine.innerHTML = r.body.items.map(card).join("") + (r.body.items.length < 10 ? (r.body.items.length ? "<details class='acct-box'><summary>Crear otra mesa</summary>" + form(null) + "</details>" : form(null)) : "");
+  };
+  if (mine) {
+    paint();
+    mine.addEventListener("submit", async (e) => {
+      const f = e.target.closest("[data-reg-form]"); if (!f) return; e.preventDefault();
+      const id = f.dataset.id, msg = f.querySelector("[data-reg-msg]"), b = f.querySelector("button[type=submit]"); b.disabled = true; msg.textContent = "";
+      const ship = { name: f.shipName.value, address: f.shipAddress.value, postalCode: f.shipPostal.value };
+      const r = await send(id ? "PUT" : "POST", "/account/registries" + (id ? "/" + encodeURIComponent(id) : ""), { title: f.title.value, kind: f.kind.value, eventDate: f.eventDate.value, message: f.message.value, listed: f.listed.checked,
+        status: f.closed && f.closed.checked ? "closed" : "active", shipTo: ship.address || ship.postalCode ? ship : undefined });
+      b.disabled = false;
+      if (r.status === 200 || r.status === 201) { await paint(); const ok = mine.querySelector("[data-reg='" + (r.body.id || "").replace(/'/g, "") + "'] h2"); if (ok) ok.insertAdjacentHTML("afterend", "<p class='acct-ok' role='status'>" + (id ? "Cambios guardados." : "Tu mesa está lista. Agrega productos y comparte el enlace.") + "</p>"); return; }
+      msg.textContent = (r.body.errors && r.body.errors[0] && r.body.errors[0].message) || r.body.detail || "No se pudo guardar.";
+    });
+    mine.addEventListener("change", async (e) => {
+      const q = e.target.closest("[data-reg-qty]"); if (!q) return;
+      const id = q.closest("[data-reg]").dataset.reg, n = Math.max(1, Math.min(999, parseInt(q.value, 10) || 1));
+      await send("PUT", "/account/registries/" + encodeURIComponent(id) + "/items", { sku: q.dataset.regQty, wanted: n });
+    });
+    mine.addEventListener("click", async (e) => {
+      const d = e.target.closest("[data-reg-del]"), c = e.target.closest("[data-reg-copy]");
+      if (c) { try { await navigator.clipboard.writeText(c.dataset.regCopy); c.textContent = "Copiado"; } catch {} return; }
+      if (!d) return;
+      await send("PUT", "/account/registries/" + encodeURIComponent(d.closest("[data-reg]").dataset.reg) + "/items", { sku: d.dataset.regDel, wanted: 0 });
+      paint();
+    });
+  }
+
+  // Product page: signed-in shoppers with a registry add the chosen variant to it.
+  const buy = document.querySelector("form[data-buy]");
+  if (buy && !head && body.hasAttribute("data-registries")) {
+    send("GET", "/account/registries").then((r) => {
+      if (r.status !== 200 || !r.body.enabled) return;
+      const list = r.body.items.filter((g) => g.status === "active");
+      const wrap = document.createElement("div"); wrap.className = "reg-add";
+      wrap.innerHTML = list.length
+        ? (list.length > 1 ? "<label class='sr' for='reg-pick'>Mesa</label><select id='reg-pick'>" + list.map((g) => "<option value='" + esc(g.id) + "'>" + esc(g.title) + "</option>").join("") + "</select> " : "") +
+          "<button type='button' class='btn ghost' data-reg-add>Agregar a mi mesa de regalos</button><span role='status' class='muted' data-reg-add-msg></span>"
+        : "<a class='linkbtn' href='" + base + "/cuenta?ver=mesas'>Crear mi mesa de regalos</a>";
+      buy.after(wrap);
+      const b = wrap.querySelector("[data-reg-add]"); if (!b) return;
+      b.addEventListener("click", async () => {
+        const r2 = buy.querySelector("input[name=sku]:checked") || buy.querySelector("input[name=sku]"), id = list.length > 1 ? wrap.querySelector("#reg-pick").value : list[0].id;
+        if (!r2) return;
+        const g = list.find((x) => x.id === id), had = (g.items || []).find((it) => it.sku === r2.value), qty = Math.max(1, Number((buy.querySelector("#qty") || {}).value) || 1);
+        const res = await send("PUT", "/account/registries/" + encodeURIComponent(id) + "/items", { sku: r2.value, wanted: (had ? had.wanted : 0) + qty });
+        const m = wrap.querySelector("[data-reg-add-msg]");
+        if (res.status === 200) { g.items = res.body.items; m.innerHTML = " Agregado a «" + esc(g.title) + "». <a href='" + base + "/cuenta?ver=mesas'>Ver mi mesa</a>"; }
+        else m.textContent = " " + (res.body.detail || "No se pudo agregar.");
+      });
+    }).catch(() => {});
+  }
 })();

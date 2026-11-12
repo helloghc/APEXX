@@ -1,0 +1,28 @@
+{{define "content"}}
+<div class="registry">
+<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/index">Inicio</a> / <a href="{{.Base}}/mesa">Mesa de regalos</a></nav>
+{{if .Reg}}{{with .Reg}}
+<header class="reg-head" data-registry="{{.Handle}}" data-registry-title="{{.Title}}"{{if .HasAddress}} data-registry-ship{{end}}>
+<p class="muted">{{$.KindName}}{{with $.Date}} · {{.}}{{end}}</p>
+<h1>{{.Title}}</h1>
+{{with .Message}}<p class="reg-msg">{{.}}</p>{{end}}
+<p class="muted">{{.Bought}} de {{.Wanted}} regalos ya tienen quién los regale.{{if .HasAddress}} Puedes enviar tu regalo directo a los festejados.{{end}}</p>
+</header>
+{{if .Items}}<ul class="reg-items">{{range .Items}}{{$left := minus .Wanted .Bought}}
+<li class="reg-item{{if le $left 0}} reg-done{{end}}">
+<div><a href="{{$.Base}}/p/{{.Handle}}">{{.Title}}</a><br><span class="muted">{{.Price}}</span></div>
+<div class="reg-state">{{if le $left 0}}<span class="badge">Ya regalado</span>{{else}}<span class="muted">Faltan {{$left}} de {{.Wanted}}</span>
+{{if .Available}}<button type="button" class="btn" data-registry-add="{{.SKU}}" data-registry-max="{{$left}}" data-title="{{.Title}}">Regalar</button>{{else}}<span class="muted">Agotado por ahora</span>{{end}}{{end}}</div>
+</li>{{end}}</ul>
+<p role="status" class="muted" data-registry-status></p>
+{{else}}<p class="muted">Esta mesa todavía no tiene productos.</p>{{end}}
+{{end}}{{else}}
+<h1>{{if eq .Title "Mesa no disponible"}}Esta mesa ya no está disponible{{else if eq .Title "Página no encontrada"}}Página no encontrada{{else}}Mesa de regalos{{end}}</h1>
+{{if eq .Title "Mesa de regalos"}}
+<p>Busca la mesa de los festejados por su nombre, o crea la tuya desde <a href="{{.Base}}/cuenta?ver=mesas">tu cuenta</a>.</p>
+<form class="reg-search" method="get" action="{{.Base}}/mesa" role="search"><label for="rq" class="sr">Nombre de la mesa</label><input id="rq" name="q" value="{{.Q}}" minlength="3" maxlength="80" placeholder="Ej. Boda Ana y Luis"><button class="btn" type="submit">Buscar</button></form>
+{{if .Searched}}{{if .Found}}<ul class="reg-found">{{range .Found}}<li><a href="{{$.Base}}/mesa/{{.Handle}}">{{.Title}}</a>{{with .EventDate}} <span class="muted">· {{.}}</span>{{end}}</li>{{end}}</ul>{{else}}<p class="muted">No encontramos mesas con ese nombre.</p>{{end}}{{end}}
+{{else}}<p><a class="btn btn-ghost" href="{{.Base}}/mesa">Buscar otra mesa</a></p>{{end}}
+{{end}}
+</div>
+{{end}}

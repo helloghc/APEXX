@@ -111,6 +111,13 @@ type CheckoutRequest struct {
 	// AdsConsent: the shopper accepted advertising cookies; the purchase may be
 	// reported to the store's ad platforms from the server.
 	AdsConsent bool `json:"adsConsent,omitempty"`
+	// Gift asks to wrap the order, add a card message or hide prices.
+	Gift *cart.Gift `json:"gift,omitempty"`
+	// Registry is the gift registry the shopper buys for; the store's server
+	// resolves it into RegistryID (and its address when ShipToRegistry).
+	Registry       string `json:"registry,omitempty"`
+	ShipToRegistry bool   `json:"shipToRegistry,omitempty"`
+	RegistryID     string `json:"-"`
 }
 
 func blocksJSON(a []cart.BlockAnswer) []byte {
@@ -219,6 +226,8 @@ type Order struct {
 	Downloads      []Download           `json:"downloads,omitempty"`      // files of digital products, with signed links
 	Deferred       int64                `json:"deferred,omitempty"`       // preorder balance left to pay later
 	CheckoutFields []cart.BlockAnswer   `json:"checkoutFields,omitempty"` // answers to the store's checkout blocks
+	Gift           *cart.Gift           `json:"gift,omitempty"`           // wrapping, card message, gift receipt
+	RegistryID     string               `json:"registryId,omitempty"`     // bought for this gift registry
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
 	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`
 }
@@ -451,7 +460,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	if err != nil {
 		return Result{}, err
 	}
-	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items, ShippingOption: req.ShippingOption,
+	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items, ShippingOption: req.ShippingOption, Gift: req.Gift,
 		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup, Extra: CompanyPromo(req.Company), Group: CompanyGroup(req.Company), RestrictGroup: req.Company != nil && req.Company.CatalogRestricted, TaxExempt: req.Company != nil && req.Company.TaxExempt})
 	if err != nil {
 		return problem(400, "invalid_request", err.Error(), nil), nil
@@ -609,6 +618,15 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
 			return err
+		}
+		if sim.Gift != nil || req.RegistryID != "" {
+			var gift []byte
+			if sim.Gift != nil {
+				gift, _ = json.Marshal(sim.Gift)
+			}
+			if _, err := tx.Exec(ctx, `UPDATE orders SET gift=$3, registry_id=NULLIF($4,'') WHERE tenant_id=$1 AND id=$2`, tenant, id, gift, req.RegistryID); err != nil {
+				return err
+			}
 		}
 		if req.AdsConsent {
 			if _, err := tx.Exec(ctx, `UPDATE orders SET ads_consent=true WHERE tenant_id=$1 AND id=$2`, tenant, id); err != nil {

@@ -36,6 +36,8 @@ export interface Order {
   feeLines?: { id: string; kind: string; name: string; amount: number; reason: string }[];
   downloads?: Download[];
   checkoutFields?: { id: string; label: string; value: string }[];
+  gift?: { wrap: boolean; message?: string; hidePrices?: boolean };
+  registryId?: string;
   deferred?: number;
   voucher?: { kind: string; reference?: string; clabe?: string; bank?: string; url?: string; expiresAt: string };
 }

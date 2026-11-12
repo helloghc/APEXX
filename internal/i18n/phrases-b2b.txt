@@ -189,3 +189,22 @@ ver todos || see all || voir tout || ver todos || lihat semua || すべて見る
 Todavía no hay artículos. || No posts yet. || Aucun article pour l'instant. || Ainda não há artigos. || Belum ada artikel. || まだ記事はありません。
 / Blog || / Blog || / Blog || / Blog || / Blog || / ブログ
 Volver a la tienda || Back to the store || Retour à la boutique || Voltar à loja || Kembali ke toko || ストアに戻る
+
+## Mesa de regalos y opciones de regalo.
+@ es || en || fr || pt || id || ja
+Mesa de regalos || Gift registry || Liste de cadeaux || Lista de presentes || Daftar hadiah || ギフトリスト
+Cargando… || Loading… || Chargement… || Carregando… || Memuat… || 読み込み中…
+Agotado por ahora || Out of stock for now || Épuisé pour le moment || Esgotado no momento || Stok habis untuk saat ini || ただいま在庫切れ
+Busca la mesa de los festejados por su nombre, o crea la tuya desde || Find the hosts' registry by name, or create yours from || Trouvez la liste des invités d'honneur par son nom, ou créez la vôtre depuis || Procure a lista dos homenageados pelo nome ou crie a sua em || Cari daftar hadiah tuan rumah berdasarkan nama, atau buat milik Anda dari || 主役の方のリストを名前で探すか、こちらから自分のリストを作成できます：
+Buscar otra mesa || Find another registry || Chercher une autre liste || Procurar outra lista || Cari daftar lain || 別のリストを探す
+Ej. Boda Ana y Luis || E.g. Ana and Luis's wedding || Ex. Mariage d'Ana et Luis || Ex.: Casamento de Ana e Luis || Mis. Pernikahan Ana dan Luis || 例：アナとルイスの結婚式
+Esta mesa todavía no tiene productos. || This registry has no products yet. || Cette liste n'a pas encore de produits. || Esta lista ainda não tem produtos. || Daftar ini belum memiliki produk. || このリストにはまだ商品がありません。
+Esta mesa ya no está disponible || This registry is no longer available || Cette liste n'est plus disponible || Esta lista não está mais disponível || Daftar ini tidak lagi tersedia || このリストは現在ご利用いただけません
+Faltan || Still needed: || Il en manque || Faltam || Masih dibutuhkan: || 残り
+No encontramos mesas con ese nombre. || We found no registries with that name. || Aucune liste trouvée avec ce nom. || Não encontramos listas com esse nome. || Tidak ada daftar dengan nama itu. || その名前のリストは見つかりませんでした。
+Nombre de la mesa || Registry name || Nom de la liste || Nome da lista || Nama daftar || リスト名
+Puedes enviar tu regalo directo a los festejados. || You can send your gift straight to the hosts. || Vous pouvez envoyer votre cadeau directement aux invités d'honneur. || Você pode enviar seu presente direto aos homenageados. || Anda dapat mengirim hadiah langsung ke tuan rumah. || ギフトを主役の方へ直接お送りいただけます。
+Regalar || Give this gift || Offrir || Presentear || Hadiahkan || 贈る
+Ya regalado || Already given || Déjà offert || Já presenteado || Sudah dihadiahkan || 贈呈済み
+regalos ya tienen quién los regale. || gifts already have a giver. || cadeaux ont déjà trouvé preneur. || presentes já têm quem os dê. || hadiah sudah ada pemberinya. || 件のギフトはすでに贈り主が決まっています。
+tu cuenta || your account || votre compte || sua conta || akun Anda || マイアカウント

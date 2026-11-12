@@ -424,5 +424,12 @@ func (s *Server) extendShopConfig(tenant string, out map[string]any) {
 		co["termsPolicy"], co["termsTitle"] = p.Slug, p.Title
 	}
 	out["checkout"] = co
+	if g := t.GiftOptions(); g.Enabled || g.Registries {
+		max := g.MessageMax
+		if max == 0 {
+			max = 250
+		}
+		out["gift"] = map[string]any{"enabled": g.Enabled, "wrapPrice": g.WrapPrice, "messageMax": max, "receipt": g.Receipt, "registries": g.Registries}
+	}
 	out["store"] = map[string]any{"name": st.Name, "logoUrl": st.LogoURL}
 }

@@ -54,11 +54,14 @@
 {{with .Company}}<a href="{{$.Base}}/cuenta?ver=empresa"{{if eq $.View "company"}} aria-current="page"{{end}}>Mi empresa</a>{{end}}
 <a href="{{.Base}}/cuenta?ver=tarjetas"{{if eq .View "cards"}} aria-current="page"{{end}}>Mis tarjetas</a>
 <a href="{{.Base}}/cuenta?ver=puntos"{{if eq .View "loyalty"}} aria-current="page"{{end}}>Mis puntos</a>
+{{if .Registries}}<a href="{{.Base}}/cuenta?ver=mesas"{{if eq .View "registries"}} aria-current="page"{{end}}>Mesa de regalos</a>{{end}}
 <a href="{{.Base}}/cuenta?ver=datos"{{if eq .View "profile"}} aria-current="page"{{end}}>Mis datos</a>
 <form method="post" action="{{.Base}}/cuenta"><input type="hidden" name="accion" value="salir"><button class="linkbtn" type="submit">Cerrar sesión</button></form>
 </nav>
 {{with .Notice}}<p class="acct-ok" role="status">{{.}}</p>{{end}}
 {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+
+{{if eq .View "registries"}}<div data-my-registries><p class="muted">Cargando…</p></div>{{end}}
 
 {{if eq .View "loyalty"}}{{with .Loyalty}}
 <div class="acct-box" data-loyalty><p class="big"><strong>{{.Points}}</strong> puntos</p><p class="muted">Valen {{.Value}} en saldo a favor.{{with .Tier}} Nivel: <strong>{{.}}</strong>.{{end}}{{with .NextTier}} Te faltan {{$.Loyalty.ToNext}} en compras para el nivel {{.}}.{{end}}</p>{{with .Rule}}<p class="muted">Ganas {{.}} pagado.</p>{{end}}</div>

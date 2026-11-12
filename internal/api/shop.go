@@ -46,9 +46,10 @@ var shopFuncs = template.FuncMap{
 	"cents":  func(n int64) string { return pesos(money.New(n, "MXN")) },
 	"plain":  pesosPlain,
 	"levels": func() []int { return []int{1, 2, 3, 4, 5} },
+	"minus":  func(a, b int) int { return a - b },
 }
 
-var shopPages = localizedPages("catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval", "quote", "quickorder", "compare", "blog", "notice")
+var shopPages = localizedPages("catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval", "quote", "quickorder", "compare", "blog", "notice", "registry")
 
 // shopCSP allows only our own assets plus Stripe for the payment form.
 const shopCSP = "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://js.stripe.com; " +
@@ -60,6 +61,7 @@ type pageData struct {
 	NoIndex                                                 bool   // filtered or paginated views are not indexed
 	Origin, OGImage                                         string // absolute origin and image for social previews
 	Chrome                                                  builder.Chrome
+	Registries                                              bool // the store offers gift registries
 }
 
 type cardView struct {
@@ -111,7 +113,7 @@ func (s *Server) shopContext(w http.ResponseWriter, r *http.Request) (*projectio
 		internalError(w, s.Log, err)
 		return nil, pageData{}, false
 	}
-	pd := pageData{Store: tenant, Tenant: tenant, Base: "/s/" + tenant + "/" + r.PathValue("site"), Channel: ch, Chrome: st.LiveChrome()}
+	pd := pageData{Store: tenant, Tenant: tenant, Base: "/s/" + tenant + "/" + r.PathValue("site"), Channel: ch, Chrome: st.LiveChrome(), Registries: t.GiftOptions().Registries}
 	return t, s.decorate(r, t, pd), true
 }
 
@@ -317,7 +319,15 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 		req.RestrictGroup = c.CatalogRestricted
 		req.TaxExempt = c.TaxExempt
 	}
+	if _, fe := s.applyRegistry(r.Context(), r.PathValue("tenant"), req.Registry, req.ShipToRegistry, &req.PostalCode, nil); fe != nil {
+		apierr.BadRequest(w, "", *fe)
+		return
+	}
 	res, err := t.Simulate(req)
+	if fe, ok := giftFieldError(err); ok {
+		apierr.BadRequest(w, "", fe)
+		return
+	}
 	if err != nil {
 		apierr.BadRequest(w, "Canal de venta no disponible")
 		return
@@ -386,6 +396,9 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 		errs = append(errs, apierr.FieldError{Field: "paymentMethod", Code: "invalid", Message: "Método de pago inválido"})
 	}
 	errs = append(errs, validateCartExtras(&cart.Request{Coupons: req.Coupons})...)
+	if fe := s.registryCheckout(r.Context(), r.PathValue("tenant"), &req); fe != nil {
+		errs = append(errs, *fe)
+	}
 	if len(errs) > 0 {
 		apierr.BadRequest(w, "La compra tiene errores", errs...)
 		return

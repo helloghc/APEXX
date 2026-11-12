@@ -432,3 +432,11 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .blog{max-width:820px;margin:0 auto;padding:0 16px}.post-cover{width:100%;border-radius:12px;margin:12px 0;aspect-ratio:16/9;object-fit:cover}
 .post-body{line-height:1.7}.post-body img{max-width:100%;height:auto}.post-tags a{margin-right:8px}
 .post-list{list-style:none;padding:0;display:grid;gap:24px}.post-card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px}.post-card h2{margin:8px 0 4px;font-size:1.3rem}
+.registry{max-width:860px;margin:0 auto}.reg-head h1{margin:4px 0}.reg-msg{font-size:1.05rem}
+.reg-items{list-style:none;padding:0;margin:16px 0;display:grid;gap:8px}.reg-item{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px;border:1px solid var(--line,#e5e5e5);border-radius:10px}
+.reg-item.reg-done{opacity:.6}.reg-state{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.reg-search{display:flex;gap:8px;margin:12px 0}.reg-search input{flex:1;min-width:0}.reg-found{padding-left:18px}
+.reg-table{width:100%;border-collapse:collapse}.reg-table td,.reg-table th{padding:6px 4px;text-align:left;border-bottom:1px solid var(--line,#eee)}.reg-table input{width:70px}
+.reg-add{margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.giftbox{border:0;padding:0;margin:8px 0}
+@media (max-width:600px){.reg-item{flex-direction:column;align-items:flex-start}.reg-state{justify-content:flex-start}}
+.field[hidden]{display:none}

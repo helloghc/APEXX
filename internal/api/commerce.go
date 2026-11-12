@@ -145,6 +145,10 @@ func (s *Server) simulate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := t.Simulate(req)
+	if fe, ok := giftFieldError(err); ok {
+		apierr.BadRequest(w, "", fe)
+		return
+	}
 	var uc cart.ErrUnknownChannel
 	if errors.As(err, &uc) {
 		apierr.BadRequest(w, "", apierr.FieldError{Field: "channel", Code: "unknown", Message: err.Error()})
@@ -211,6 +215,9 @@ func (s *Server) checkout(w http.ResponseWriter, r *http.Request) {
 		req.Company = c
 	}
 	errs = append(errs, validateCartExtras(&cart.Request{Coupons: req.Coupons})...)
+	if fe := s.registryCheckout(r.Context(), p.Tenant, &req); fe != nil {
+		errs = append(errs, *fe)
+	}
 	if len(errs) > 0 {
 		apierr.BadRequest(w, "La compra tiene errores", errs...)
 		return

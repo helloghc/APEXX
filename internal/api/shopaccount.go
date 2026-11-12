@@ -409,20 +409,21 @@ type returnableLine struct {
 
 type accountData struct {
 	pageData
-	View      string // login | code | home | order | addresses | profile
-	Email     string
-	Error     string
-	Notice    string
-	Customer  customers.Customer
-	Orders    []shopOrderRow
-	NextPage  string
-	Order     *shopOrderView
-	Addresses []customers.Address
-	Lists     []reorderList
-	Company   *orders.CompanyAccess // the company the shopper buys for, if any
-	Cards     []orders.SavedCard
-	Loyalty   *loyaltyView // points, tier and history (?ver=puntos)
-	Portal    *companyPortal
+	Registries bool   // the store offers gift registries
+	View       string // login | code | home | order | addresses | profile
+	Email      string
+	Error      string
+	Notice     string
+	Customer   customers.Customer
+	Orders     []shopOrderRow
+	NextPage   string
+	Order      *shopOrderView
+	Addresses  []customers.Address
+	Lists      []reorderList
+	Company    *orders.CompanyAccess // the company the shopper buys for, if any
+	Cards      []orders.SavedCard
+	Loyalty    *loyaltyView // points, tier and history (?ver=puntos)
+	Portal     *companyPortal
 }
 
 // companyPortal is the company view of "Mi cuenta": the buyer's month and
@@ -654,6 +655,8 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 			return
 		}
 		d.Cards = cards
+	case q.Get("ver") == "mesas" && d.Registries:
+		d.View, d.Title = "registries", "Mi mesa de regalos"
 	case q.Get("ver") == "puntos":
 		d.View, d.Title = "loyalty", "Mis puntos"
 		a, err := s.Orders.LoyaltyAccountOf(r.Context(), tenant, customerID)
@@ -738,6 +741,7 @@ func (s *Server) shopAccountPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := accountData{pageData: pd, Notice: accountNotices[r.URL.Query().Get("ok")]}
+	d.Registries = s.giftOptions(r.Context(), pd.Tenant).Registries
 	if id, _ := s.shopper(r); id != "" {
 		s.accountHome(w, r, d, id)
 		return

@@ -674,3 +674,10 @@ func (p *Projector) SetExternalRules(fn ExternalRulesFunc) { p.extRules.Store(&f
 
 // SetExternalTax installs the tax service function for every store.
 func (p *Projector) SetExternalTax(fn ExternalTaxFunc) { p.extTax.Store(&fn) }
+
+// GiftOptions returns the store's gift setting.
+func (t *Tenant) GiftOptions() cart.GiftOptions {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.Cart.Gift
+}

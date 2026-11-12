@@ -194,6 +194,15 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 		t.Cart.Customs = fields
 		t.mu.Unlock()
 	}
+	if key == "" || key == store.KeyGiftOptions {
+		var g cart.GiftOptions
+		if _, err := p.db.GetDoc(ctx, t.ID, "gift_options", "config", &g); err != nil {
+			return err
+		}
+		t.mu.Lock()
+		t.Cart.Gift = g
+		t.mu.Unlock()
+	}
 	if key == "" || key == store.KeyOrderFees {
 		var rules []cart.FeeRule
 		if _, err := p.db.GetDoc(ctx, t.ID, "order_fees", "rules", &rules); err != nil {

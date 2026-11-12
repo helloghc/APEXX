@@ -86,6 +86,12 @@ type Request struct {
 	// ShippingOption is the option the shopper chose. Empty or unavailable:
 	// the cheapest available delivery is used.
 	ShippingOption string `json:"shippingOption,omitempty"`
+	// Gift asks to wrap the order, add a card message or hide the prices.
+	Gift *Gift `json:"gift,omitempty"`
+	// Registry is the handle of the gift registry the shopper buys for;
+	// ShipToRegistry sends it to the registry's address (filled by the server).
+	Registry       string `json:"registry,omitempty"`
+	ShipToRegistry bool   `json:"shipToRegistry,omitempty"`
 }
 
 // Item is one requested line.
@@ -182,6 +188,7 @@ type Result struct {
 	HiddenPayments []string             `json:"hiddenPayments,omitempty"`
 	Tax            *logistics.TaxResult `json:"tax,omitempty"`
 	Fees           []Fee                `json:"fees,omitempty"`
+	Gift           *Gift                `json:"gift,omitempty"`
 	Totals         Totals               `json:"totals"`
 	Messages       []Message            `json:"messages"`
 }
@@ -203,6 +210,7 @@ type Service struct {
 	CheckoutBlocks []CheckoutBlock // notices, required checkboxes and extra fields of the payment page
 	ExternalRules  func(RulesInput) (RulesResult, bool)
 	FeeRules       []FeeRule // extra charges per order (handling, packaging, small order)
+	Gift           GiftOptions
 	// LiveRate asks a connected carrier for its price, in the store currency
 	// (nil: no connected carriers). It must answer within its own time limit.
 	LiveRate func(carrierID, country, postalCode string, weightGrams, value int64) (amount int64, days int, ok bool)
@@ -251,6 +259,11 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	}
 	cur := ch.Currency
 	res := Result{Channel: ch.ID, Lines: []Line{}, Messages: []Message{}, Promotions: []promo.Result{}, Coupons: []promo.CouponResult{}, ShippingOptions: []logistics.Quote{}}
+	gift, err := s.Gift.Normalize(req.Gift)
+	if err != nil {
+		return Result{}, err
+	}
+	res.Gift = gift
 	var profiles []string
 	var lineClass []string                   // tax class of each priced line, parallel to promoLines
 	var lineCustoms []logistics.ProductClass // tariff code and origin, parallel to promoLines
@@ -572,6 +585,9 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	// Fee rules are in the store currency, like shipping rules: a market that
 	// converts its prices compares thresholds and charges fixed amounts converted.
 	res.Fees = feesFor(s.FeeRules, ch.ID, delivery, req.Group, baseSubtotal)
+	if f := s.Gift.wrapFee(res.Gift); f != nil {
+		res.Fees = append(res.Fees, *f)
+	}
 	for i := range res.Fees {
 		res.Fees[i].Amount = shipCur(res.Fees[i].Amount)
 	}
