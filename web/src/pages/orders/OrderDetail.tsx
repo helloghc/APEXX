@@ -98,6 +98,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
       </div>
 
       <WarehouseStatus id={o.id} />
+      {!!o.downloads?.length && <Downloads order={o} canEdit={can(me, "orders", "edit")} />}
       {o.status === "pending_payment" && o.voucher && (
         <Notice tone="warn">
           <strong>Esperando el pago {o.voucher.kind === "oxxo" ? "en OXXO" : "por SPEI"}.</strong> {o.voucher.kind === "oxxo" ? `Referencia ${o.voucher.reference}` : `CLABE ${o.voucher.clabe}${o.voucher.reference ? `, referencia ${o.voucher.reference}` : ""}`}; vence {dateTime(o.voucher.expiresAt)}. El stock está apartado y el pedido se confirma solo al llegar el dinero; si vence, se cancela.
@@ -552,6 +553,37 @@ function CancelDialog({ order, onClose, onDone }: DP) {
       footer={<Button variant="destructive" onClick={() => void go()} disabled={busy}>{busy ? "Cancelando…" : paid ? "Cancelar y reembolsar" : "Cancelar pedido"}</Button>}>
       <div className="grid gap-1.5"><Label htmlFor="cn-reason">Motivo (opcional)</Label><Input id="cn-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
     </Shell>
+  );
+}
+
+/** Downloads: the buyer's access to the files of the digital products. */
+function Downloads({ order, canEdit }: { order: Order; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState("");
+  async function reset(grant: string) {
+    setBusy(grant);
+    try {
+      await sale.resetDownload(order.id, grant);
+      toast.success("Enlace renovado: el comprador tiene de nuevo todas sus descargas.");
+      void qc.invalidateQueries({ queryKey: ["order", order.id] });
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy("");
+    }
+  }
+  return (
+    <Card data-downloads>
+      <CardHeader><CardTitle className="text-base">Descargas digitales</CardTitle></CardHeader>
+      <CardContent className="grid gap-2 text-sm">
+        {order.downloads!.map((d) => (
+          <div key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2">
+            <span><strong>{d.filename}</strong> <span className="text-muted-foreground">· {d.downloads} de {d.maxDownloads} descargas · {d.revoked ? "sin acceso (pedido cancelado o archivo quitado)" : `vence ${dateTime(d.expiresAt)}`}</span></span>
+            {canEdit && !d.revoked && <Button size="sm" variant="outline" disabled={busy === d.id} onClick={() => void reset(d.id)}><RotateCcw aria-hidden="true" /> Renovar enlace</Button>}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -1,3 +1,13 @@
+// Files of digital products: signed links with what is left of each one.
+function downloadsBox(ds) {
+  if (!ds || !ds.length) return "";
+  const e = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const size = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB";
+  const lang = document.documentElement.lang || "es-MX";
+  return "<div class='acct-box' data-downloads><h2>Tus descargas</h2><ul class='downloads'>" + ds.map((d) => "<li>" + (d.url
+    ? "<a class='btn btn-ghost' href='" + e(d.url) + "' download='" + e(d.filename) + "'>" + e(d.filename) + "</a> <span class='muted'>" + size(d.size) + " · te quedan " + (d.maxDownloads - d.downloads) + " de " + d.maxDownloads + " descargas, hasta el " + e(new Date(d.expiresAt).toLocaleDateString(lang, { dateStyle: "long" })) + "</span>"
+    : "<span>" + e(d.filename) + "</span> <span class='muted'>" + (d.revoked ? "Ya no está disponible." : "El enlace venció o se usó todas las veces. Escríbenos y te damos uno nuevo.") + "</span>") + "</li>").join("") + "</ul></div>";
+}
 // Apexx storefront: cart in localStorage, live simulation, checkout with Stripe.
 (() => {
   const body = document.body;
@@ -138,7 +148,7 @@
     return (msgs ? "<ul class='msgs'>" + msgs + "</ul>" : "") + promos +
       "<table class='totals'><tr><td>Productos</td><td class='num'>" + money(t.items) + "</td></tr>" +
       (t.discounts.amount ? "<tr><td>Descuentos</td><td class='num'>−" + money(t.discounts) + "</td></tr>" : "") +
-      "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + (r.shipping.estimate ? ". " + esc(r.shipping.estimate.text) : ", " + r.shipping.estimateDays + " días") + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : ((r.messages || []).some((m) => m.code === "no_shipping_option") ? "Sin entrega disponible" : "Ingresa tu código postal")) + "</td></tr>" +
+      "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + (r.shipping.estimate ? ". " + esc(r.shipping.estimate.text) : ", " + r.shipping.estimateDays + " días") + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : (r.noShipping ? "Entrega digital" : (r.messages || []).some((m) => m.code === "no_shipping_option") ? "Sin entrega disponible" : "Ingresa tu código postal")) + "</td></tr>" +
       // Where prices exclude tax it is added before the total; an exempt buyer
       // sees the tax taken out.
       (r.fees || []).map((f) => "<tr><td>" + esc(f.name) + " <span class='muted'>" + esc(f.reason) + "</span></td><td class='num'>" + money({ amount: f.amount, currency: t.grand.currency }) + "</td></tr>").join("") +
@@ -208,7 +218,8 @@
     async function refresh() {
       if (!cart().length) { location.href = withLang(base + "/cart"); return; }
       const r = await simulate($("#postal").value.trim(), { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
-      if (r.status === 200 && shipBox) shipBox.innerHTML = renderOptions(r.body);
+      if (r.status === 200 && shipBox) shipBox.innerHTML = r.body.noShipping ? "<p class='note'>Entrega digital: no hay nada que enviar. Recibirás tus archivos en cuanto se confirme el pago.</p>" : renderOptions(r.body);
+      if (r.status === 200) { const a = $("#address"), f = a && a.closest(".field"); if (a) { a.required = !r.body.noShipping; if (f) f.style.display = r.body.noShipping ? "none" : ""; } }
       if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + planNote(l.sku) + "</p>").join("") + renderTotals(r.body); payBtn.textContent = "Pagar " + money(r.body.totals.grand); paintWallet(); if (elements) elements.update({ amount: r.body.totals.grand.amount }); }
     }
     // Gift cards and store credit pay first; the card only pays what is left.
@@ -320,7 +331,7 @@
       e.preventDefault(); errBox.textContent = "";
       const f = new FormData(form);
       const co = cfg.checkout || {};
-      for (const [k, label] of [["email", "tu correo"], ["name", "tu nombre"]].concat(co.phoneRequired ? [["phone", "tu teléfono"]] : [], pickup() ? [] : [["address", "tu dirección"], ["postal", "tu código postal"]])) {
+      for (const [k, label] of [["email", "tu correo"], ["name", "tu nombre"]].concat(co.phoneRequired ? [["phone", "tu teléfono"]] : [], pickup() || (last && last.noShipping) ? [] : [["address", "tu dirección"], ["postal", "tu código postal"]])) {
         if (!String(f.get(k) || "").trim()) { errBox.textContent = "Falta " + label + "."; form.elements[k].focus(); return; }
       }
       if (co.termsCheckbox && !f.get("terms")) { errBox.textContent = "Acepta los términos y condiciones para continuar."; $("#terms").focus(); return; }
@@ -421,7 +432,7 @@
       "<tr><td>Envío</td><td class='num'>" + m(o.shipping) + "</td></tr>" + (o.discounts ? "<tr><td>Descuentos</td><td class='num'>−" + m(o.discounts) + "</td></tr>" : "") +
       (o.feeLines || []).map((f) => "<tr><td>" + esc(f.name) + "</td><td class='num'>" + m(f.amount) + "</td></tr>").join("") +
       "<tr class='grand'><td><strong>" + (v ? "Total a pagar" : "Total pagado") + "</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
-      "<p class='muted'>Te enviaremos la factura por correo en unos minutos.</p>";
+      "<p class='muted'>Te enviaremos la factura por correo en unos minutos.</p>" + downloadsBox(o.downloads);
   }
 })();
 

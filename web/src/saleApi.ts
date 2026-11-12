@@ -34,6 +34,7 @@ export interface Order {
   createdAt: string;
   fees?: number;
   feeLines?: { id: string; kind: string; name: string; amount: number; reason: string }[];
+  downloads?: Download[];
   voucher?: { kind: string; reference?: string; clabe?: string; bank?: string; url?: string; expiresAt: string };
 }
 export interface OrderQuery { review?: string; q?: string; status?: string; payment?: string; fulfillment?: string; from?: string; to?: string; customer?: string; cursor?: string; limit?: number }
@@ -75,6 +76,7 @@ export const sale = {
     request<{ before: OTotals; after: OTotals; difference: number; refundError?: string }>("POST", `/v1/orders/${enc(id)}/edit`, b),
   connectedCarriers: () => request<{ carriers: { id: string; name: string; active: boolean; provider?: string }[] }>("GET", "/v1/shipping").then((r) => r.carriers.filter((c) => c.active && c.provider)),
   payVoucher: (id: string) => request<void>("POST", `/v1/sandbox/orders/${enc(id)}/pay-voucher`, undefined, { as: "none" }),
+  resetDownload: (id: string, grant: string) => request<{ items: Download[] }>("POST", `/v1/orders/${enc(id)}/downloads/${enc(grant)}/reset`).then((r) => r.items),
   warehouseRequests: (id: string) => request<{ items: { id: string; locationId: string; kind: string; status: string; attempts: number; reference?: string; lastError?: string; updatedAt: string }[] }>("GET", `/v1/orders/${enc(id)}/warehouse-requests`).then((r) => r.items),
   productSearch: (q: string) => request<{ items: { id: string; title: string; skus: string[] }[] }>("GET", `/v1/product-search?q=${enc(q)}`).then((r) => r.items),
   addNote: (id: string, body: string, visibility: "internal" | "customer") => request<ONote>("POST", `/v1/orders/${enc(id)}/notes`, { body, visibility }),
@@ -143,3 +145,5 @@ export const mail = {
   settings: () => request<MailSettings>("GET", "/v1/notifications/settings"),
   saveSettings: (s: Partial<MailSettings>) => request<MailSettings>("PUT", "/v1/notifications/settings", s),
 };
+
+export interface Download { id: string; fileId: string; sku: string; filename: string; size: number; downloads: number; maxDownloads: number; expiresAt: string; revoked?: boolean; url?: string }

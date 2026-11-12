@@ -14,7 +14,7 @@ import { centsToPesos, parsePesos } from "@/money";
 import { can } from "@/perms";
 import { href, navigate } from "@/router";
 import { ErrorBox, Notice, StatusPill } from "../common";
-import { cat, type MediaItem, type Option, type ProductBody, type ProductDetail, type RelatedItem, type Variant } from "./api";
+import { cat, type DigitalFile, type MediaItem, type Option, type ProductBody, type ProductDetail, type RelatedItem, type Variant } from "./api";
 import { ProductPicker } from "./ProductPicker";
 import { Confirm, Field, MediaPicker, MultiPick, Skeleton, slug, TagInput, Thumb, Uploader } from "./shared";
 
@@ -583,6 +583,7 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
               <div className="line-clamp-2 text-muted-foreground">{d.seoDescription || d.description || "Descripción del producto."}</div>
             </div>
           </Section>
+          {!isNew && d.variants.length > 0 && <DigitalFiles skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={canEdit} />}
           {!isNew && d.variants.length > 0 && <KitEditor skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={can(me, "settings", "admin")} />}
           {!isNew && <QtyRules id={id} canEdit={canEdit} />}
           {!isNew && <Customs id={id} canEdit={can(me, "settings", "admin")} />}
@@ -727,6 +728,102 @@ function Translations({ id, canEdit }: { id: string; canEdit: boolean }) {
 }
 
 interface QtyRule { group: string; min: number; max: number; step: number }
+
+const fileSize = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+/** Digital product: files delivered after payment by signed links, with a
+ *  download limit and an expiry. Products without weight need no shipping. */
+function DigitalFiles({ skus, canEdit }: { skus: string[]; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const [sku, setSku] = useState(skus[0] ?? "");
+  useEffect(() => { if (!skus.includes(sku)) setSku(skus[0] ?? ""); }, [skus, sku]);
+  const q = useQuery({ queryKey: ["digital", sku], queryFn: () => cat.digitalFiles(sku), enabled: !!sku });
+  const [busy, setBusy] = useState(false);
+  const [maxD, setMaxD] = useState("5");
+  const [days, setDays] = useState("30");
+  const [edits, setEdits] = useState<Record<string, DigitalFile>>({});
+  const [confirm, setConfirm] = useState<DigitalFile | null>(null);
+  if (!q.data) return null;
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["digital", sku] });
+  async function upload(f: File | undefined) {
+    if (!f) return;
+    if (f.size > 100 * 1048576) { toast.error("El archivo pasa de 100 MB."); return; }
+    setBusy(true);
+    try {
+      await cat.uploadDigital(sku, f, Number(maxD) || 5, Number(days) || 30);
+      toast.success(`${f.name} listo. Se entrega al confirmarse cada pago.`);
+      refresh();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function saveEdit(f: DigitalFile) {
+    try {
+      await cat.updateDigital(f);
+      setEdits(({ [f.id]: _, ...rest }) => rest);
+      toast.success("Archivo actualizado. Los enlaces ya entregados conservan sus límites.");
+      refresh();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  }
+  async function remove(f: DigitalFile) {
+    try {
+      await cat.deleteDigital(f.sku, f.id);
+      toast.success("Archivo quitado. Sus enlaces dejaron de funcionar.");
+      refresh();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setConfirm(null);
+    }
+  }
+  const files = q.data;
+  return (
+    <Section title="Archivos digitales" description="Libros, plantillas, música o software. El comprador recibe un enlace de descarga en la página de gracias, en su correo y en su cuenta en cuanto se confirma el pago. Si cancelas o reembolsas el pedido, el enlace deja de funcionar. Si el producto no pesa nada, no se cobra envío.">
+      {skus.length > 1 && (
+        <Field label="Variante" htmlFor="dg-sku">
+          <select id="dg-sku" className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={sku} onChange={(e) => setSku(e.target.value)}>
+            {skus.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </Field>
+      )}
+      {files.length === 0 && <p className="text-sm text-muted-foreground">Sin archivos: es un producto físico.</p>}
+      {files.map((f0) => {
+        const f = edits[f0.id] ?? f0;
+        const set = (p: Partial<DigitalFile>) => setEdits((x) => ({ ...x, [f0.id]: { ...f, ...p } }));
+        return (
+          <div key={f0.id} className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_7rem_7rem_auto] sm:items-end" data-digital-file>
+            <Field label="Nombre del archivo" htmlFor={`dg-n-${f0.id}`} hint={`${fileSize(f0.size)} · ${f0.contentType}`}>
+              <Input id={`dg-n-${f0.id}`} value={f.filename} disabled={!canEdit} onChange={(e) => set({ filename: e.target.value })} />
+            </Field>
+            <Field label="Descargas" htmlFor={`dg-m-${f0.id}`}><Input id={`dg-m-${f0.id}`} inputMode="numeric" value={f.maxDownloads || ""} disabled={!canEdit} onChange={(e) => set({ maxDownloads: Number(e.target.value.replace(/\D/g, "")) || 0 })} /></Field>
+            <Field label="Días del enlace" htmlFor={`dg-d-${f0.id}`}><Input id={`dg-d-${f0.id}`} inputMode="numeric" value={f.linkDays || ""} disabled={!canEdit} onChange={(e) => set({ linkDays: Number(e.target.value.replace(/\D/g, "")) || 0 })} /></Field>
+            {canEdit && (
+              <div className="flex gap-1">
+                {edits[f0.id] && <Button type="button" size="sm" onClick={() => void saveEdit(f)}>Guardar</Button>}
+                <Button type="button" size="icon" variant="ghost" aria-label={`Quitar ${f0.filename}`} onClick={() => setConfirm(f0)}><Trash2 aria-hidden="true" /></Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {canEdit && files.length < 20 && (
+        <div className="grid gap-2 rounded-md border border-dashed p-3 sm:grid-cols-[7rem_7rem_1fr] sm:items-end">
+          <Field label="Descargas" htmlFor="dg-new-m" hint="Por compra"><Input id="dg-new-m" inputMode="numeric" value={maxD} onChange={(e) => setMaxD(e.target.value.replace(/\D/g, ""))} /></Field>
+          <Field label="Días del enlace" htmlFor="dg-new-d"><Input id="dg-new-d" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))} /></Field>
+          <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-accent">
+            <Plus aria-hidden="true" className="size-4" /> {busy ? "Subiendo…" : "Subir archivo (hasta 100 MB)"}
+            <input type="file" className="sr-only" disabled={busy} data-digital-upload onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+        </div>
+      )}
+      <Confirm open={!!confirm} title={`¿Quitar ${confirm?.filename ?? "el archivo"}?`} description="Los enlaces que ya recibieron los compradores dejarán de funcionar." confirmLabel="Quitar" destructive onConfirm={() => { if (confirm) void remove(confirm); }} onClose={() => setConfirm(null)} />
+    </Section>
+  );
+}
 
 interface KitPart { sku: string; qty: number; title?: string; available?: number }
 interface KitView { sku: string; components: KitPart[]; available: number }

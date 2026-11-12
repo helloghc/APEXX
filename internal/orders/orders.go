@@ -196,8 +196,9 @@ type Order struct {
 	PONumber       string               `json:"poNumber,omitempty"`
 	Fees           int64                `json:"fees"` // extra charges and import duties, in the total
 	PostalCode     string               `json:"postalCode,omitempty"`
-	Voucher        *payments.Voucher    `json:"voucher,omitempty"`  // cash or transfer still to be paid
-	FeeLines       []cart.Fee           `json:"feeLines,omitempty"` // each one with its reason
+	Voucher        *payments.Voucher    `json:"voucher,omitempty"`   // cash or transfer still to be paid
+	FeeLines       []cart.Fee           `json:"feeLines,omitempty"`  // each one with its reason
+	Downloads      []Download           `json:"downloads,omitempty"` // files of digital products, with signed links
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
 	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`
 }
@@ -457,6 +458,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	if req.ExpectedTotal != nil && sim.Shipping != nil && *req.ExpectedTotal != sim.Totals.Grand.Amount {
 		return problem(409, "total_changed", "El total de tu compra cambió (una promoción o un precio se actualizó); revisa el resumen antes de pagar",
 			map[string]any{"simulation": sim}), nil
+	}
+	if sim.Shipping == nil && sim.NoShipping {
+		// Only digital products or services: delivered without a parcel.
+		sim.Shipping = &cart.Shipping{ID: "none", Name: "Entrega digital", Kind: "digital", Price: sim.Totals.Shipping}
 	}
 	if sim.Shipping == nil {
 		for _, m := range sim.Messages {

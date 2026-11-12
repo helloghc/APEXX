@@ -139,6 +139,9 @@
 {{with .URL}}<p><a class="btn btn-ghost" href="{{.}}" rel="noopener noreferrer" target="_blank">Rastrear envío</a></p>{{end}}
 </section>
 {{end}}
+{{if .Downloads}}<section class="acct-box" aria-label="Tus descargas" data-downloads><h2>Tus descargas</h2><ul class="downloads">
+{{range .Downloads}}<li>{{if .URL}}<a class="btn btn-ghost" href="{{.URL}}" download="{{.Filename}}">{{.Filename}}</a> <span class="muted">{{.Size}} · te quedan {{.Left}} de {{.Max}} descargas, hasta el {{.Until}}</span>{{else}}<span>{{.Filename}}</span> <span class="muted">{{if .Revoked}}Ya no está disponible.{{else}}El enlace venció o se usó todas las veces. Escríbenos y te damos uno nuevo.{{end}}</span>{{end}}</li>
+{{end}}</ul></section>{{end}}
 {{if .Notes}}<section class="acct-box" aria-label="Mensajes de la tienda"><h2>Mensajes de la tienda</h2>
 {{range .Notes}}<p>{{.Body}}<br><span class="muted">{{.Date}}</span></p>{{end}}</section>{{end}}
 {{if eq .VoucherKind "oxxo"}}<section class="acct-box" aria-label="Pago pendiente"><h2>Paga en OXXO</h2><p>Referencia: <strong>{{.VoucherRef}}</strong>. Paga {{.Total}} antes del {{.VoucherUntil}}.</p>{{with .VoucherURL}}<p><a href="{{.}}" target="_blank" rel="noopener noreferrer">Ver ficha para imprimir</a></p>{{end}}</section>

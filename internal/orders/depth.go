@@ -208,9 +208,13 @@ func clearing(provider string) string {
 // deriveTx recomputes payment_status and fulfillment_status from the facts and
 // refreshes the lifetime stats of the customer. It runs after every order event.
 func deriveTx(ctx context.Context, tx pgx.Tx, tenant, id string) error {
+	if err := digitalGrantsTx(ctx, tx, tenant, id); err != nil {
+		return err
+	}
 	var cid *string
 	err := tx.QueryRow(ctx, `UPDATE orders o SET
 			fulfillment_status = CASE
+				WHEN l.need = 0 AND l.digital > 0 AND o.status <> 'pending_payment' THEN 'fulfilled'
 				WHEN l.need > 0 AND l.fulfilled >= l.need AND f.open = 0 AND f.delivered > 0 THEN 'delivered'
 				WHEN l.need > 0 AND l.fulfilled >= l.need THEN 'fulfilled'
 				WHEN l.fulfilled > 0 THEN 'partial' ELSE 'unfulfilled' END,
@@ -221,7 +225,12 @@ func deriveTx(ctx context.Context, tx pgx.Tx, tenant, id string) error {
 				WHEN o.grand_total - o.refunded_total - p.net > 0 THEN 'balance_due'
 				WHEN o.refunded_total > 0 THEN 'partially_refunded'
 				ELSE 'paid' END
-		FROM (SELECT COALESCE(sum(qty - cancelled_qty),0) AS need, COALESCE(sum(fulfilled_qty),0) AS fulfilled FROM order_lines WHERE tenant_id=$1 AND order_id=$2) l,
+		FROM (SELECT COALESCE(sum(ol.qty - ol.cancelled_qty) FILTER (WHERE NOT d.only),0) AS need, COALESCE(sum(ol.fulfilled_qty),0) AS fulfilled,
+				count(*) FILTER (WHERE d.only) AS digital
+			FROM order_lines ol
+			CROSS JOIN LATERAL (SELECT EXISTS (SELECT 1 FROM digital_files f WHERE f.tenant_id=$1 AND f.sku=ol.sku)
+				AND COALESCE((SELECT v.weight_grams FROM variants v WHERE v.tenant_id=$1 AND v.sku=ol.sku), 0) = 0 AS only) d
+			WHERE ol.tenant_id=$1 AND ol.order_id=$2) l,
 		     (SELECT count(*) FILTER (WHERE status IN ('pending','shipped')) AS open, count(*) FILTER (WHERE status='delivered') AS delivered FROM fulfillments WHERE tenant_id=$1 AND order_id=$2) f,
 		     (SELECT COALESCE(sum(amount - refunded),0) AS net FROM payments WHERE tenant_id=$1 AND order_id=$2 AND status IN ('captured','refunded')) p
 		WHERE o.tenant_id=$1 AND o.id=$2 RETURNING o.customer_id`, tenant, id).Scan(&cid)
@@ -235,6 +244,28 @@ func deriveTx(ctx context.Context, tx pgx.Tx, tenant, id string) error {
 		return customers.RecalcStatsTx(ctx, tx, tenant, *cid)
 	}
 	return nil
+}
+
+// digitalGrantsTx gives the buyer access to the files of the digital SKUs of
+// a paid order, and takes it away when the order is cancelled or refunded or
+// the line is fully cancelled or refunded.
+func digitalGrantsTx(ctx context.Context, tx pgx.Tx, tenant, id string) error {
+	if _, err := tx.Exec(ctx, `INSERT INTO download_grants (tenant_id, id, order_id, file_id, max_downloads, expires_at)
+		SELECT $1, 'dlg_' || replace(gen_random_uuid()::text, '-', ''), $2, f.id, f.max_downloads, now() + make_interval(days => f.link_days)
+		FROM orders o
+		JOIN order_lines l ON l.tenant_id=o.tenant_id AND l.order_id=o.id AND l.qty - l.cancelled_qty - l.refunded_qty > 0
+		JOIN digital_files f ON f.tenant_id=o.tenant_id AND f.sku=l.sku
+		WHERE o.tenant_id=$1 AND o.id=$2 AND o.status IN ('paid','fulfilled')
+		ON CONFLICT (tenant_id, order_id, file_id) DO NOTHING`, tenant, id); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `UPDATE download_grants g SET revoked_at=now()
+		FROM digital_files f, orders o
+		WHERE g.tenant_id=$1 AND g.order_id=$2 AND g.revoked_at IS NULL
+		  AND f.tenant_id=$1 AND f.id=g.file_id AND o.tenant_id=$1 AND o.id=$2
+		  AND (o.status IN ('cancelled','refunded') OR NOT EXISTS (
+			SELECT 1 FROM order_lines l WHERE l.tenant_id=$1 AND l.order_id=$2 AND l.sku=f.sku AND l.qty - l.cancelled_qty - l.refunded_qty > 0))`, tenant, id)
+	return err
 }
 
 // linkCustomerTx finds or creates the customer of a new order by email.
@@ -339,6 +370,21 @@ func (s *Service) notifyTx(ctx context.Context, tx pgx.Tx, tenant, id, tpl strin
 		d.Totals = append(d.Totals, notify.Row{Label: "Descuentos", Value: "-" + notify.Money(disc, cur)})
 	}
 	d.Totals = append(d.Totals, notify.Row{Label: "Envío", Value: notify.Money(ship, cur)}, notify.Row{Label: "Total", Value: notify.Money(grand, cur), Bold: true})
+	if tpl == notify.TplOrderConfirmed {
+		// Paid: the links to the digital files go in the confirmation.
+		if err := digitalGrantsTx(ctx, tx, tenant, id); err != nil {
+			return err
+		}
+		dls, err := s.downloadsTx(ctx, tx, tenant, id)
+		if err != nil {
+			return err
+		}
+		for _, dl := range dls {
+			if dl.URL != "" {
+				d.Downloads = append(d.Downloads, notify.Row{Label: dl.Filename, Value: s.PublicURL + dl.URL})
+			}
+		}
+	}
 	m := notify.Message{Template: tpl, To: c.Email, Name: c.Name, Data: d, OrderID: id, DedupeKey: dedupe}
 	if cid != nil {
 		m.CustomerID = *cid
@@ -456,6 +502,9 @@ func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Ord
 			o.DisplayNumber = fmt.Sprint(o.Number)
 		}
 		if o.Lines, err = linesTx(ctx, tx, tenant, id); err != nil {
+			return err
+		}
+		if o.Downloads, err = s.downloadsTx(ctx, tx, tenant, id); err != nil {
 			return err
 		}
 		rows, err := tx.Query(ctx, `SELECT seq, at, actor, type, from_status, to_status, data FROM order_events WHERE tenant_id=$1 AND order_id=$2 ORDER BY seq`, tenant, id)

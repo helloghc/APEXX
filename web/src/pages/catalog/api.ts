@@ -372,4 +372,18 @@ export const cat = {
     return send<ImportJob>("/v1/catalog/imports", fd);
   },
   applyImport: (id: string) => request<ImportJob>("POST", `/v1/catalog/imports/${enc(id)}/apply`),
+
+  digitalFiles: (sku: string) => request<{ items: DigitalFile[] }>("GET", `/v1/digital/${enc(sku)}`).then((r) => r.items),
+  uploadDigital: (sku: string, file: File, maxDownloads: number, linkDays: number) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("maxDownloads", String(maxDownloads));
+    fd.append("linkDays", String(linkDays));
+    return send<DigitalFile>(`/v1/digital/${enc(sku)}`, fd);
+  },
+  updateDigital: (f: DigitalFile) =>
+    request<DigitalFile>("PATCH", `/v1/digital/${enc(f.sku)}/${enc(f.id)}`, { filename: f.filename, maxDownloads: f.maxDownloads, linkDays: f.linkDays }),
+  deleteDigital: (sku: string, id: string) => request<void>("DELETE", `/v1/digital/${enc(sku)}/${enc(id)}`, undefined, { as: "none" }),
 };
+
+export interface DigitalFile { id: string; sku: string; filename: string; contentType: string; size: number; maxDownloads: number; linkDays: number; createdAt: string }

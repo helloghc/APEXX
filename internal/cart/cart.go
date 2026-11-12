@@ -160,11 +160,14 @@ type Result struct {
 	Shipping   *Shipping            `json:"shipping,omitempty"`
 	// ShippingOptions lists every option of the store for this cart, available
 	// or not, each with its reason.
-	ShippingOptions []logistics.Quote    `json:"shippingOptions"`
-	Tax             *logistics.TaxResult `json:"tax,omitempty"`
-	Fees            []Fee                `json:"fees,omitempty"`
-	Totals          Totals               `json:"totals"`
-	Messages        []Message            `json:"messages"`
+	ShippingOptions []logistics.Quote `json:"shippingOptions"`
+	// NoShipping: nothing in the cart has weight (digital products, services),
+	// so there is nothing to deliver and no address is needed.
+	NoShipping bool                 `json:"noShipping,omitempty"`
+	Tax        *logistics.TaxResult `json:"tax,omitempty"`
+	Fees       []Fee                `json:"fees,omitempty"`
+	Totals     Totals               `json:"totals"`
+	Messages   []Message            `json:"messages"`
 }
 
 // Service wires the domain modules together.
@@ -376,6 +379,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	}
 	switch {
 	case weight == 0:
+		res.NoShipping = len(res.Lines) > 0
 	case s.Logistics.HasOptions():
 		res.ShippingOptions = s.Logistics.Quotes(logistics.QuoteInput{
 			Country: ch.Country, PostalCode: req.PostalCode, Subtotal: baseSubtotal, WeightGrams: weight,

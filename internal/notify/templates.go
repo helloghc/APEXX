@@ -76,6 +76,8 @@ type Data struct {
 	Lines     []Line            `json:"lines,omitempty"`
 	Totals    []Row             `json:"totals,omitempty"`
 	ActionURL string            `json:"actionUrl,omitempty"`
+	// Downloads: files of digital products (Label = file name, Value = link).
+	Downloads []Row `json:"downloads,omitempty"`
 }
 
 // Brand is the look of the emails of a store.
@@ -388,6 +390,18 @@ func Render(subject string, b Blocks, d Data, brand Brand, showItems bool) Rende
 			t.WriteString("  " + r.Label + ": " + r.Value + "\n")
 		}
 		h.WriteString(`</table>`)
+		t.WriteString("\n")
+	}
+	if len(d.Downloads) > 0 {
+		h.WriteString(`<h2 style="margin:8px 0 8px;font-size:17px">Tus descargas</h2><ul style="margin:0 0 16px;padding-left:20px">`)
+		t.WriteString("Tus descargas:\n")
+		for _, r := range d.Downloads {
+			if u := safeURL(r.Value); u != "" {
+				h.WriteString(`<li style="margin:0 0 6px"><a href="` + esc(u) + `">` + esc(r.Label) + `</a></li>`)
+				t.WriteString("  " + r.Label + ": " + u + "\n")
+			}
+		}
+		h.WriteString(`</ul>`)
 		t.WriteString("\n")
 	}
 	if cta := fill(b.CTA, vars, false); cta != "" && action != "" {

@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -370,6 +371,21 @@ type shopOrderView struct {
 	ReturnNote string
 	// A cash or transfer voucher still to be paid.
 	VoucherKind, VoucherRef, VoucherCLABE, VoucherBank, VoucherUntil, VoucherURL string
+	// Files of digital products.
+	Downloads []shopDownload
+}
+
+type shopDownload struct {
+	Filename, URL, Size, Until string
+	Left, Max                  int
+	Revoked                    bool
+}
+
+func fileSize(n int64) string {
+	if n >= 1<<20 {
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	}
+	return fmt.Sprintf("%d KB", max(1, n>>10))
 }
 
 type returnableLine struct {
@@ -528,6 +544,10 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 			Shipping: mon(o.Shipping, o.Currency), Total: mon(o.GrandTotal, o.Currency)}
 		for _, f := range o.FeeLines {
 			v.Fees = append(v.Fees, struct{ Name, Amount string }{f.Name, mon(f.Amount, o.Currency)})
+		}
+		for _, dl := range o.Downloads {
+			v.Downloads = append(v.Downloads, shopDownload{Filename: dl.Filename, URL: dl.URL, Size: fileSize(dl.Size), Until: shortDate(dl.ExpiresAt),
+				Left: dl.MaxDownloads - dl.Downloads, Max: dl.MaxDownloads, Revoked: dl.Revoked})
 		}
 		if vc := o.Voucher; vc != nil {
 			v.VoucherKind, v.VoucherRef, v.VoucherCLABE, v.VoucherBank, v.VoucherUntil = vc.Kind, vc.Reference, vc.CLABE, vc.Bank, shortDateTime(vc.ExpiresAt)
