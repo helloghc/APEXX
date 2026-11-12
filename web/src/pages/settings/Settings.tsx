@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -20,6 +20,7 @@ const Fields = lazy(() => import("./Fields").then((m) => ({ default: m.Fields })
 const CatalogSource = lazy(() => import("./CatalogSource").then((m) => ({ default: m.CatalogSource })));
 const ReturnsPolicy = lazy(() => import("./ReturnsPolicy").then((m) => ({ default: m.ReturnsPolicy })));
 const Fees = lazy(() => import("./Fees").then((m) => ({ default: m.Fees })));
+const Automations = lazy(() => import("./Automations").then((m) => ({ default: m.Automations })));
 const Apps = lazy(() => import("./Apps").then((m) => ({ default: m.Apps })));
 const Checkout = lazy(() => import("./Checkout").then((m) => ({ default: m.Checkout })));
 
@@ -30,6 +31,7 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
   { id: "catalogo-maestro", label: "Catálogo maestro", icon: Copy, group: "General" },
   { id: "campos", label: "Campos propios", icon: ListPlus, group: "General" },
   { id: "apps", label: "Apps", icon: Blocks, group: "General" },
+  { id: "automatizaciones", label: "Automatizaciones", icon: Workflow, group: "General" },
   { id: "ubicaciones", label: "Ubicaciones", icon: MapPin, group: "Logística" },
   { id: "envios", label: "Envíos", icon: Truck, group: "Logística" },
   { id: "impuestos", label: "Impuestos", icon: Percent, group: "Logística" },
@@ -87,6 +89,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "devoluciones":
       body = <ReturnsPolicy me={me} />;
+      break;
+    case "automatizaciones":
+      body = <Automations me={me} />;
       break;
     case "apps":
       body = <Apps me={me} />;

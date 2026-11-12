@@ -354,6 +354,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		_, err := srv.RunWarehouseRequests(ctx)
 		return err
 	})
+	// Automations: "when X happens to an order, do Y", with retries.
+	resilience.Every(ctx, log, "automations", 5*time.Second, func(ctx context.Context) error {
+		_, err := srv.RunAutomations(ctx)
+		return err
+	})
 	// Carriers: parcels with a bought label are tracked until delivered.
 	resilience.Every(ctx, log, "carrier-tracking", 15*time.Minute, func(ctx context.Context) error {
 		_, err := srv.RunTracking(ctx)

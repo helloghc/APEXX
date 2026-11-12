@@ -578,3 +578,6 @@ func (s *Service) Feed(ctx context.Context, tenant string, after int64, limit in
 	})
 	return out, err
 }
+
+// CheckURL tells whether raw is a destination this service may call.
+func (s *Service) CheckURL(raw string) error { return s.checkURL(raw) }

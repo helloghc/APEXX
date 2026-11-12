@@ -201,6 +201,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesDigital(handle)
 	s.routesPreorders(handle)
 	s.routesApps(handle)
+	s.routesAutomations(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

@@ -859,10 +859,20 @@ func ledger(ctx context.Context, tx pgx.Tx, tenant, txID, orderID, cur string, e
 
 func (s *Service) event(ctx context.Context, tx pgx.Tx, tenant, id, actor, typ string, from *string, to string, data any) error {
 	b, _ := json.Marshal(data)
-	if _, err := tx.Exec(ctx, `INSERT INTO order_events (tenant_id, order_id, seq, actor, type, from_status, to_status, data)
-		VALUES ($1,$2,(SELECT COALESCE(max(seq),0)+1 FROM order_events WHERE tenant_id=$1 AND order_id=$2),$3,$4,$5,$6,$7)`,
-		tenant, id, actor, typ, from, to, b); err != nil {
+	var seq int64
+	if err := tx.QueryRow(ctx, `INSERT INTO order_events (tenant_id, order_id, seq, actor, type, from_status, to_status, data)
+		VALUES ($1,$2,(SELECT COALESCE(max(seq),0)+1 FROM order_events WHERE tenant_id=$1 AND order_id=$2),$3,$4,$5,$6,$7) RETURNING seq`,
+		tenant, id, actor, typ, from, to, b).Scan(&seq); err != nil {
 		return err
+	}
+	// Automations listening to this event get a run in this same transaction.
+	// An automation's own actions do not trigger automations again.
+	if !strings.HasPrefix(actor, "automation:") {
+		if _, err := tx.Exec(ctx, `INSERT INTO automation_runs (tenant_id, id, automation_id, order_id, event, event_seq)
+			SELECT $1, 'aru_' || replace(gen_random_uuid()::text, '-', ''), a.id, $2, $3, $4 FROM automations a
+			WHERE a.tenant_id=$1 AND a.active AND a.trigger=$3 ON CONFLICT DO NOTHING`, tenant, id, typ, seq); err != nil {
+			return err
+		}
 	}
 	if err := store.Emit(ctx, tx, tenant, store.TopicOrder, id, map[string]any{"type": typ, "status": to}); err != nil {
 		return err
