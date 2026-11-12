@@ -46,3 +46,4 @@ Plan de las etapas 0 a 7 con metas de velocidad y auditorías: `docs/PLAN-SUPERI
 - Etapa 3 (B2B profundo): hecha; detalle y auditorías en [`docs/fases/etapa-3-b2b.md`](fases/etapa-3-b2b.md).
 - Etapa 4 (logística y pagos conectados): hecha; detalle en [`docs/fases/etapa-4-logistica-pagos.md`](fases/etapa-4-logistica-pagos.md).
 - Etapa 5 (tipos de producto): hecha; detalle en [`docs/fases/etapa-5-tipos-producto.md`](fases/etapa-5-tipos-producto.md).
+- Etapa 6 (extensibilidad): hecha; detalle en [`docs/fases/etapa-6-extensibilidad.md`](fases/etapa-6-extensibilidad.md).
