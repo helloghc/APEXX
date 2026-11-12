@@ -417,3 +417,8 @@ const KeyOrderFees = "order_fees"
 
 // KeyGiftOptions is the TopicSettings key of gift wrapping, messages and registries.
 const KeyGiftOptions = "gift_options"
+
+// KeyTags is the TopicSettings key of the storefront tags and pixels: every
+// node rebuilds its copy when it changes, so a published tag shows on the
+// next page view without a deploy.
+const KeyTags = "tags"

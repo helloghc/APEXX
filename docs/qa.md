@@ -220,3 +220,20 @@ Antes de empezar, en el panel: *Búsqueda y opiniones › Recomendaciones e IA*.
 - Cualquier precio, existencia o plazo que el asistente diga y que no coincida con la ficha o la política.
 - Cualquier respuesta sin «Fuente» que no sea «no sé».
 - Cualquier sugerencia aplicada que cambie algo distinto de lo que dice.
+
+## 9. Etiquetas y píxeles
+
+Pantalla: *Configuración › Etiquetas y píxeles*. Detalle técnico: `docs/etiquetas.md`.
+
+| # | Qué probar | Pasos | Qué debe pasar |
+| --- | --- | --- | --- |
+| E1 | Instalar Analytics | Agrega «Google Analytics 4» con tu ID `G-…` y publica | La siguiente página de la tienda ya la carga (después de aceptar analítica en el aviso). En tiempo real de Analytics aparece la visita |
+| E2 | Tag Manager | Agrega «Google Tag Manager» con `GTM-…` | En el modo de vista previa de GTM llegan `view_item`, `add_to_cart`, `view_cart`, `begin_checkout` y `purchase` con `ecommerce` |
+| E3 | Píxel de Meta | Agrega «Meta» con el ID del píxel; compra algo | En el Administrador de eventos llegan PageView, ViewContent, AddToCart, InitiateCheckout y Purchase con monto; la compra no se cuenta dos veces con las conversiones desde el servidor |
+| E4 | Conversión en una página | Agrega «Script por URL» marcado solo en «Pedido confirmado» | Solo se carga en la página de gracias, una vez por pedido |
+| E5 | Código propio | Agrega «Código propio» con un error a propósito (`x.y.z`) junto a otra etiqueta | La otra etiqueta sigue funcionando; el modo prueba dice que el código falló |
+| E6 | Modo prueba | «Probar en la tienda» | Un recuadro lista cada etiqueta cargada y cada evento con su monto |
+| E7 | Permiso del visitante | Elige «Solo necesarias» en el aviso | Ninguna etiqueta de analítica o publicidad carga; al aceptar después, reciben los eventos de esa página |
+| E8 | Nunca en el pago | Ve al pago y a Mi cuenta | No carga ninguna etiqueta |
+| E9 | Versiones | Publica dos veces y restaura la primera | La tienda vuelve a la primera configuración al instante |
+| E10 | Formato del ID | Pega `UA-123` en Analytics o letras en Meta | Mensaje claro con un ejemplo del formato correcto |

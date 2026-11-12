@@ -10,7 +10,7 @@
 <form class="buy" data-buy>
 <p class="price big" data-price-out>{{if .CompareAt}}<span class="sale">{{.Price}}</span> <s>{{.CompareAt}}</s>{{else}}{{.Price}}{{end}}</p>
 <fieldset><legend>Elige una opción</legend><div class="opts">
-{{range $i, $v := .P.Variants}}<label class="opt"><input type="radio" name="sku" value="{{$v.SKU}}" data-title="{{$.P.Title}} · {{$v.Title}}" data-price="{{$v.Price}}" data-compare="{{$v.CompareAt}}" data-available="{{$v.Available}}"{{if $v.Img}} data-img="{{$v.Img}}" data-imgset="{{$v.ImgSet}}"{{end}} {{if eq $i $.FirstAvailable}}checked{{end}} {{if eq $v.Available 0}}disabled{{end}}>
+{{range $i, $v := .P.Variants}}<label class="opt"><input type="radio" name="sku" value="{{$v.SKU}}" data-title="{{$.P.Title}} · {{$v.Title}}" data-price="{{$v.Price}}" data-cents="{{$v.Cents}}" data-compare="{{$v.CompareAt}}" data-available="{{$v.Available}}"{{if $v.Img}} data-img="{{$v.Img}}" data-imgset="{{$v.ImgSet}}"{{end}} {{if eq $i $.FirstAvailable}}checked{{end}} {{if eq $v.Available 0}}disabled{{end}}>
 <span>{{$v.Title}}<small>{{if eq $v.Available 0}}Agotado{{else if $v.Preorder}}Preventa{{else}}{{$v.Available}} disponibles{{end}}</small></span></label>{{end}}
 </div></fieldset>
 {{with .Sub}}<fieldset class="subchoice"><legend>¿Cómo lo quieres?</legend>

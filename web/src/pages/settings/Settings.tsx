@@ -109,7 +109,7 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
   { id: "redirecciones", label: "Redirecciones", icon: CornerUpRight, group: "Tienda en línea" },
   { id: "dominios", label: "Dominios", icon: Globe, group: "Tienda en línea" },
   { id: "idiomas", label: "Idiomas", icon: LanguagesIcon, group: "Tienda en línea" },
-  { id: "scripts", label: "Scripts y cookies", icon: Cookie, group: "Tienda en línea" },
+  { id: "scripts", label: "Etiquetas y píxeles", icon: Cookie, group: "Tienda en línea" },
   { id: "blog", label: "Blog", icon: Newspaper, group: "Tienda en línea" },
   { id: "diseno-programado", label: "Diseño programado", icon: CalendarClock, group: "Tienda en línea" },
   { id: "anuncios", label: "Anuncios y catálogos", icon: Megaphone, group: "Tienda en línea" },

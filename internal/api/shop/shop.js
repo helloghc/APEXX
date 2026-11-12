@@ -1,3 +1,17 @@
+// Commerce events for the store's tags and pixels (GA4 names and fields):
+// queued in window.apexxEvents and pushed to the dataLayer, so Tag Manager
+// reads them and /s/{store}/api/tags.js hands them to each pixel. Consent and
+// which tags load are decided in tags.js.
+window.apexxTrack = (event, ecommerce) => {
+  const w = window, ev = { event, ecommerce: ecommerce || null };
+  (w.apexxEvents = w.apexxEvents || []).push(ev);
+  w.dataLayer = w.dataLayer || [];
+  w.dataLayer.push({ ecommerce: null });
+  w.dataLayer.push(ecommerce ? { event, ecommerce } : { event });
+  try { w.dispatchEvent(new CustomEvent("apexx:track", { detail: ev })); } catch {}
+};
+const apexxItem = (sku, name, cents, qty, currency) => ({ item_id: sku, item_name: name || sku, price: cents != null && cents !== "" ? Number(cents) / 100 : undefined, quantity: qty || 1, currency });
+
 // A cart link from an AI assistant (MCP): its products go into the cart
 // before anything renders; the shopper reviews and pays as always.
 (() => {
@@ -129,6 +143,7 @@ function downloadsBox(ds) {
     const c = cart(); const sku = b.dataset.quickAdd; const l = c.find((x) => x.sku === sku);
     if (l) l.qty = Math.min(50, l.qty + 1); else c.push({ sku, qty: 1, title: b.dataset.title || sku });
     saveCart(c); b.classList.add("added"); b.textContent = "Agregado ✓";
+    window.apexxTrack("add_to_cart", { items: [apexxItem(sku, b.dataset.title, b.dataset.cents, 1)] });
     setTimeout(() => { b.classList.remove("added"); b.textContent = "Agregar"; }, 1600);
   });
 
@@ -171,6 +186,8 @@ function downloadsBox(ds) {
     const pic = $("[data-pdp-img]");
     const showImg = () => { const s = sel(); if (!pic || !s || !s.dataset.img) return; pic.closest("picture")?.querySelectorAll("source").forEach((x) => x.remove()); pic.srcset = s.dataset.imgset; pic.src = s.dataset.img; };
     buy.addEventListener("change", () => { show(); showImg(); });
+    const curOf = () => { try { return JSON.parse($("script[type='application/ld+json']").textContent).offers.priceCurrency || "MXN"; } catch { return "MXN"; } };
+    { const s0 = sel(); if (s0) { const cur = curOf(); window.apexxTrack("view_item", { currency: cur, value: Number(s0.dataset.cents || 0) / 100, items: [apexxItem(s0.value, s0.dataset.title, s0.dataset.cents, 1, cur)] }); } }
     buy.addEventListener("submit", (e) => {
       e.preventDefault();
       const s = sel(); if (!s) { status.textContent = "Elige una opción."; return; }
@@ -188,6 +205,7 @@ function downloadsBox(ds) {
       const plan = buy.querySelector("input[name=mode]:checked")?.value === "sub" ? (buy.querySelector("#plan")?.value || "") : "";
       if (line) { line.qty = Math.min(50, line.qty + qty); line.plan = plan; } else c.push(ck.length ? { sku: s.value, qty, title: s.dataset.title, plan, custom, ref } : { sku: s.value, qty, title: s.dataset.title, plan });
       saveCart(c);
+      { const cur = curOf(); window.apexxTrack("add_to_cart", { currency: cur, value: Number(s.dataset.cents || 0) * qty / 100, items: [apexxItem(s.value, s.dataset.title, s.dataset.cents, qty, cur)] }); }
       status.innerHTML = "Agregado al carrito. <a href='" + base + "/cart'>Ver carrito</a>";
     });
   }
@@ -243,7 +261,17 @@ function downloadsBox(ds) {
       // Keep local quantities in sync with what the store can actually sell.
       const fixed = c.map((x) => { const l = r.body.lines.find((y) => keyOf(y) === keyOf(x) && !y.gift); return l ? { ...x, qty: l.qty } : x; });
       store.set(KEY, fixed.filter((l) => l.qty > 0)); count();
+      lastCart = cartEvent(r.body);
+      if (!cartSeen && lastCart) { cartSeen = true; window.apexxTrack("view_cart", lastCart); }
     }
+    // Commerce events: the cart with its prices, as the store calculated it.
+    let lastCart = null, cartSeen = false;
+    const cartEvent = (b) => {
+      const ls = (b.lines || []).filter((l) => !l.gift); if (!ls.length) return null;
+      const cur = ls[0].unit.currency;
+      return { currency: cur, value: ((b.totals && b.totals.items ? b.totals.items.amount : ls.reduce((a, l) => a + l.total.amount, 0))) / 100, items: ls.map((l) => apexxItem(l.sku, l.title, l.unit.amount, l.qty, cur)) };
+    };
+    $("[data-to-checkout]")?.addEventListener("click", () => { if (lastCart) window.apexxTrack("begin_checkout", lastCart); });
     view.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return;
       if (b.dataset.couponDel) { store.set(CPN, coupons().filter((x) => x !== b.dataset.couponDel)); if (couponStatus) couponStatus.textContent = "Quitamos el cupón " + b.dataset.couponDel + "."; render(); return; }
@@ -536,6 +564,14 @@ function downloadsBox(ds) {
   if (thanks) {
     let o = null; try { o = JSON.parse(sessionStorage.getItem("apexx_last_order") || "null"); } catch {}
     if (!o) { thanks.innerHTML = "<h1>¡Gracias!</h1><p>No encontramos un pedido reciente en este navegador.</p>"; return; }
+    try {
+      if (o.status !== "pending_payment" && sessionStorage.getItem("apexx_tag_purchase") !== o.id) {
+        sessionStorage.setItem("apexx_tag_purchase", o.id);
+        const cur = o.currency;
+        window.apexxTrack("purchase", { transaction_id: o.id, currency: cur, value: o.grandTotal / 100, shipping: (o.shipping || 0) / 100, tax: (o.taxIncluded || 0) / 100,
+          items: (o.lines || []).filter((l) => !l.gift).map((l) => apexxItem(l.sku, l.title, typeof l.unit === "object" && l.unit ? l.unit.amount : l.unit, l.qty, cur)) });
+      }
+    } catch {}
     const m = (v) => money({ amount: v, currency: o.currency });
     const v = o.status === "pending_payment" && o.voucher;
     // On company credit nothing was charged yet: the company pays the invoice later.
@@ -1158,63 +1194,6 @@ function downloadsBox(ds) {
     if (t) t.addEventListener("change", () => page.classList.toggle("only-diff", t.checked));
   }
   paint();
-})();
-
-/* ==== third-party scripts with consent ==== */
-(() => {
-  const d = document, body = d.body, parts = location.pathname.split("/");
-  const tenant = body.dataset.tenant || parts[2];
-  // Never on payment, approval or account pages (their security policy forbids it anyway).
-  if (!tenant || /\/(checkout|cuenta|pagar|aprobar|cotizacion)(\/|$)/.test(location.pathname)) return;
-  const KEY = "apexx_consent_" + tenant;
-  const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch { return null; } };
-  const write = (c) => { try { localStorage.setItem(KEY, JSON.stringify({ ...c, at: Date.now() })); } catch {} };
-  let cfg = null, loaded = new Set(), banner = null;
-  const load = (c) => {
-    (cfg.items || []).forEach((it) => {
-      if (loaded.has(it.id) || !(it.category === "necessary" || c[it.category])) return;
-      loaded.add(it.id);
-      const s = d.createElement("script"); s.src = it.src; s.async = true; s.dataset.thirdParty = it.id; d.head.appendChild(s);
-    });
-  };
-  const close = () => { if (banner) { banner.remove(); banner = null; } };
-  const show = () => {
-    close();
-    const c = read() || { analytics: false, marketing: false };
-    const has = (k) => (cfg.items || []).some((i) => i.category === k);
-    banner = d.createElement("div"); banner.className = "consent"; banner.setAttribute("role", "dialog"); banner.setAttribute("aria-label", "Cookies y privacidad"); banner.dataset.consent = "";
-    banner.innerHTML = "<p>" + (cfg.bannerText ? cfg.bannerText.replace(/[<>&]/g, "") : "Usamos cookies y herramientas de terceros para medir visitas y mostrarte anuncios. Tú decides.") + "</p>" +
-      "<details><summary>Configurar</summary>" + (has("analytics") ? "<label><input type='checkbox' data-c='analytics'" + (c.analytics ? " checked" : "") + "> Analítica</label>" : "") +
-      (has("marketing") ? "<label><input type='checkbox' data-c='marketing'" + (c.marketing ? " checked" : "") + "> Publicidad</label>" : "") + "<button type='button' class='btn btn-ghost' data-consent-save>Guardar</button></details>" +
-      "<div class='consent-actions'><button type='button' class='btn btn-ghost' data-consent-none>Solo necesarias</button><button type='button' class='btn' data-consent-all>Aceptar todo</button></div>";
-    body.appendChild(banner);
-    banner.addEventListener("click", (e) => {
-      const b = e.target.closest("button"); if (!b) return;
-      let n;
-      if (b.hasAttribute("data-consent-all")) n = { analytics: true, marketing: true };
-      else if (b.hasAttribute("data-consent-none")) n = { analytics: false, marketing: false };
-      else if (b.hasAttribute("data-consent-save")) n = { analytics: !!banner.querySelector("[data-c=analytics]:checked"), marketing: !!banner.querySelector("[data-c=marketing]:checked") };
-      if (!n) return;
-      const before = read(); write(n); close(); load(n);
-      // Taking consent back only takes effect on a fresh page.
-      if (before && ((before.analytics && !n.analytics) || (before.marketing && !n.marketing))) location.reload();
-    });
-  };
-  fetch("/s/" + tenant + "/api/scripts").then((r) => (r.ok ? r.json() : null)).then((c) => {
-    if (!c || !(c.items || []).length) return;
-    cfg = c;
-    const optional = c.items.some((i) => i.category !== "necessary");
-    let consent = read();
-    // Global Privacy Control: no advertising unless the shopper turns it on.
-    if (!consent && navigator.globalPrivacyControl) { consent = { analytics: false, marketing: false }; write(consent); }
-    load(consent || { analytics: false, marketing: false });
-    if (optional && !consent) show();
-    if (optional) {
-      const foot = d.querySelector("footer") || body;
-      const a = d.createElement("button"); a.type = "button"; a.className = "linkbtn consent-open"; a.textContent = "Preferencias de cookies"; a.addEventListener("click", show);
-      foot.appendChild(a);
-    }
-  }).catch(() => {});
 })();
 
 /* ==== loyalty: redeem points into store credit ==== */

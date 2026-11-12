@@ -9,6 +9,7 @@ indexación lenta, stock desalineado, APIs inconsistentes, checkout antiguo y m�
 - IA (búsqueda por significado, «Pregúntale a la tienda», asistentes, grafo, copilotos): [`docs/fases/resumen-ia.md`](docs/fases/resumen-ia.md)
 - Escala con 50 000 productos y reversión total: [`docs/audit/escala-50k.md`](docs/audit/escala-50k.md)
 - Carga de cada vista del panel, en local y con red real: [`docs/audit/carga-paneles.md`](docs/audit/carga-paneles.md)
+- Etiquetas y píxeles (Analytics, Tag Manager, Meta, TikTok, Pinterest, Google Ads, scripts y código propio) publicados al instante: [`docs/etiquetas.md`](docs/etiquetas.md)
 - Despliegue en Google Cloud y despliegue sin corte: [`docs/deploy.md`](docs/deploy.md) (§7.1)
 - Guía de QA para personas (comprador, panel, roles, IA): [`docs/qa.md`](docs/qa.md); herramientas automáticas en [`tools/qa/`](tools/qa/)
 

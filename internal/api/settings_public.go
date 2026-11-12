@@ -221,6 +221,7 @@ func (s *Server) decorate(r *http.Request, t *projection.Tenant, pd pageData) pa
 		return template.HTML(absolutize(applyMenus([]byte(h), site, pd.Base), pd.Base))
 	}
 	pd.Chrome.Header, pd.Chrome.Footer = chrome(pd.Chrome.Header), chrome(pd.Chrome.Footer)
+	pd.Tags = s.tagsHead(t.ID)
 	return pd
 }
 

@@ -79,7 +79,7 @@ type Server struct {
 
 	uploadSlots   chan struct{} // bounds concurrent image processing
 	rules         rulesCache    // checkout rules app: settings and answers
-	scripts       scriptsCache  // third-party scripts of each store
+	tags          tagsCache     // tags and pixels of each store, built per version
 	summaryMu     sync.Mutex
 	summaries     map[string]summaryAt // catalog summary per store, at a projection version
 	sso           ssoProviders         // identity providers already discovered
@@ -255,7 +255,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesApps(handle)
 	s.routesAutomations(handle)
 	s.routesCheckoutRules(handle)
-	s.routesScripts(handle)
+	s.routesTags(handle)
 	s.routesBulk(handle)
 	handle("POST /s/{tenant}/api/graphql", s.shopGraphQL)
 	s.routesSSO(handle)

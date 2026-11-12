@@ -63,7 +63,8 @@ type pageData struct {
 	NoIndex                                                 bool   // filtered or paginated views are not indexed
 	Origin, OGImage                                         string // absolute origin and image for social previews
 	Chrome                                                  builder.Chrome
-	Registries                                              bool // the store offers gift registries
+	Tags                                                    template.HTML // the store's tags.js, on pages that may load it
+	Registries                                              bool          // the store offers gift registries
 }
 
 type cardView struct {
@@ -124,7 +125,7 @@ func (p pageData) tenantID() string { return p.Tenant }
 
 // pagesWithoutScripts never load the store's third-party scripts: the
 // payment and the shopper's data stay out of their reach.
-var pagesWithoutScripts = map[string]bool{"checkout": true, "pay": true, "approval": true, "quote": true}
+var pagesWithoutScripts = map[string]bool{"checkout": true, "pay": true, "approval": true, "quote": true, "account": true}
 
 func (s *Server) renderShop(w http.ResponseWriter, page string, data any, cache bool) {
 	h := w.Header()

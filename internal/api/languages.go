@@ -252,6 +252,7 @@ func localizePage(body []byte, p page) []byte {
 		}
 		out = strings.Replace(out, `<html lang="es">`, `<html lang="`+tag+`" data-hl="`+lang+`">`, 1)
 		out = strings.Replace(out, `/s/assets/shop.js?v=`, `/s/assets/shop.js?hl=`+lang+`&amp;v=`, 1)
+		out = strings.Replace(out, `/api/tags.js?v=`, `/api/tags.js?hl=`+lang+`&amp;v=`, 1)
 	} else if p.mk != "" {
 		out = i18n.Markup(out, func(string) (string, bool) { return "", false }, i18n.Options{Href: keep})
 	}
@@ -355,7 +356,9 @@ func localizedPages(names ...string) map[string]map[string]*template.Template {
 			if l.Code != i18n.Default {
 				src = i18n.Markup(src, i18n.Builtin(l.Code), i18n.Options{})
 			}
-			m[p] = template.Must(template.New(p).Funcs(shopFuncs).Parse(src))
+			// thirdParty says whether this page may load the store's tags.
+			third := !pagesWithoutScripts[p]
+			m[p] = template.Must(template.New(p).Funcs(shopFuncs).Funcs(template.FuncMap{"thirdParty": func() bool { return third }}).Parse(src))
 		}
 		out[l.Code] = m
 	}

@@ -571,6 +571,7 @@ func (s *Server) shopCollection(w http.ResponseWriter, r *http.Request) {
 
 type variantView struct {
 	SKU, Title, Price, CompareAt string
+	Cents                        int64 // the price as a number, for commerce events
 	Available                    int64
 	Preorder                     bool
 	Img, ImgSet                  string // image of the variant: the gallery shows it when chosen
@@ -653,7 +654,7 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		pre, onPre := t.Inventory.PreorderOf(v.SKU)
 		vv.Preorder = onPre
 		if q, ok := t.Pricing.Resolve(pd.Channel, v.SKU, 1); ok {
-			vv.Price = pesos(q.Unit)
+			vv.Price, vv.Cents = pesos(q.Unit), q.Unit.Amount
 			if q.CompareAt != nil && q.CompareAt.Amount > q.Unit.Amount {
 				vv.CompareAt = pesos(*q.CompareAt)
 			}
