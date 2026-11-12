@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -65,4 +66,35 @@ func TestStorefrontGraphQL(t *testing.T) {
 		t.Fatalf("unknown store = %d", st)
 	}
 	_ = fmt.Sprint()
+}
+
+// Headless stores on another domain may call the public storefront API.
+func TestHeadlessCORS(t *testing.T) {
+	e := setup(t)
+	req, _ := http.NewRequest("OPTIONS", e.srv.URL+"/s/store-a/api/graphql", nil)
+	req.Header.Set("Origin", "https://otra-tienda.example")
+	req.Header.Set("Access-Control-Request-Method", "POST")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != 204 || res.Header.Get("Access-Control-Allow-Origin") != "*" || !strings.Contains(res.Header.Get("Access-Control-Allow-Headers"), "Idempotency-Key") {
+		t.Fatalf("preflight = %d %v", res.StatusCode, res.Header)
+	}
+	req, _ = http.NewRequest("POST", e.srv.URL+"/s/store-a/api/graphql", strings.NewReader(`{"query":"{ shop { currency } }"}`))
+	req.Header.Set("Content-Type", "application/json")
+	res, _ = http.DefaultClient.Do(req)
+	res.Body.Close()
+	if res.Header.Get("Access-Control-Allow-Origin") != "*" || res.Header.Get("Access-Control-Allow-Credentials") != "" {
+		t.Fatalf("graphql CORS = %v", res.Header)
+	}
+	// Management stays same-origin only.
+	req, _ = http.NewRequest("GET", e.srv.URL+"/v1/products", nil)
+	req.Header.Set("Authorization", "Bearer "+e.adminA)
+	res, _ = http.DefaultClient.Do(req)
+	res.Body.Close()
+	if res.Header.Get("Access-Control-Allow-Origin") != "" {
+		t.Fatal("the management API allows other origins")
+	}
 }

@@ -17,6 +17,7 @@ import (
 	"io/fs"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -182,6 +183,20 @@ func Migrate(ctx context.Context, adminURL, appPassword, systemPassword string) 
 	return applied, nil
 }
 
+// execRoleRetry runs a role statement. Roles are shared by every database of
+// the server, so two migrations at once (deploys, parallel tests) can collide
+// with "tuple concurrently updated"; that case is simply tried again.
+func execRoleRetry(ctx context.Context, conn *pgx.Conn, q string) error {
+	var err error
+	for i := 0; i < 5; i++ {
+		if _, err = conn.Exec(ctx, q); err == nil || !strings.Contains(err.Error(), "tuple concurrently updated") {
+			return err
+		}
+		time.Sleep(time.Duration(50*(i+1)) * time.Millisecond)
+	}
+	return err
+}
+
 func ensureRoles(ctx context.Context, conn *pgx.Conn, appPassword, systemPassword string) error {
 	for _, r := range []struct{ name, pass, extra string }{
 		{"apexx_app", appPassword, "NOBYPASSRLS"},
@@ -200,7 +215,7 @@ func ensureRoles(ctx context.Context, conn *pgx.Conn, appPassword, systemPasswor
 		}
 		q := fmt.Sprintf("%s ROLE %s LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE %s PASSWORD %s",
 			verb, r.name, r.extra, quoteLiteral(r.pass))
-		if _, err := conn.Exec(ctx, q); err != nil {
+		if err := execRoleRetry(ctx, conn, q); err != nil {
 			return fmt.Errorf("role %s: %w", r.name, err)
 		}
 		for _, g := range []string{
@@ -209,7 +224,7 @@ func ensureRoles(ctx context.Context, conn *pgx.Conn, appPassword, systemPasswor
 			"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO " + r.name,
 			"REVOKE ALL ON schema_migrations FROM " + r.name,
 		} {
-			if _, err := conn.Exec(ctx, g); err != nil {
+			if err := execRoleRetry(ctx, conn, g); err != nil {
 				return fmt.Errorf("grant %s: %w", r.name, err)
 			}
 		}

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tienda de ejemplo con el SDK de Apexx</title>
+<style>
+  :root{--bg:#fafaf9;--fg:#1c1917;--muted:#78716c;--line:#e7e5e4;--accent:#9d174d}
+  @media (prefers-color-scheme:dark){:root{--bg:#1c1917;--fg:#fafaf9;--muted:#a8a29e;--line:#44403c;--accent:#f472b6}}
+  body{margin:0;font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+  header,main{max-width:1100px;margin:0 auto;padding:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px}
+  .card img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:var(--line)}
+  .muted{color:var(--muted);font-size:.9rem} button{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  input{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit;width:100%;max-width:320px}
+  aside{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:16px}
+</style>
+</head>
+<body>
+<header><h1>Tienda de ejemplo</h1><p class="muted">Una tienda en otro dominio construida solo con <code>@apexx/sdk</code>: catálogo por GraphQL y carrito con los precios, promociones e impuestos reales de Apexx.</p>
+<input id="q" type="search" placeholder="Buscar productos" aria-label="Buscar productos"></header>
+<main><div id="grid" class="grid" aria-live="polite">Cargando…</div><aside id="cart" aria-live="polite"><strong>Carrito vacío</strong></aside></main>
+<script type="module">
+import { createStorefront } from "../dist/index.js";
+const p = new URLSearchParams(location.search);
+const shop = createStorefront({ baseUrl: p.get("base") || "http://127.0.0.1:8097", store: p.get("store") || "fa8042" });
+const items = new Map();
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+async function list(query) {
+  const page = await shop.products({ first: 12, query });
+  document.getElementById("grid").innerHTML = page.nodes.map((x) => `<article class="card" data-product="${esc(x.handle)}">${x.images[0] ? `<img src="${esc(x.images[0].url)}" alt="${esc(x.images[0].alt)}" loading="lazy">` : "<img alt=''>"}
+    <strong>${esc(x.title)}</strong><span>${x.price ? esc(x.price.formatted) : "Sin precio"}</span><span class="muted">${x.available ? "Disponible" : "Agotado"}</span>
+    ${x.available ? `<button data-add="${esc(x.variants.find((v) => v.available > 0)?.sku ?? "")}">Agregar</button>` : ""}</article>`).join("") || "<p>Sin resultados.</p>";
+}
+async function cart() {
+  if (!items.size) return;
+  const c = await shop.cart([...items].map(([sku, qty]) => ({ sku, qty })), "06600");
+  document.getElementById("cart").innerHTML = "<strong>Carrito</strong>" + c.lines.map((l) => `<p>${l.qty} × ${esc(l.title)} — ${esc(l.total.formatted)}</p>`).join("") +
+    `<p>Envío: ${esc(c.shipping.formatted)}</p><p data-total><strong>Total: ${esc(c.total.formatted)}</strong></p>` + c.messages.map((m) => `<p class="muted">${esc(m)}</p>`).join("");
+}
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-add]"); if (!b) return; items.set(b.dataset.add, (items.get(b.dataset.add) || 0) + 1); cart().catch((err) => alert(err.message)); });
+let t; document.getElementById("q").addEventListener("input", (e) => { clearTimeout(t); t = setTimeout(() => list(e.target.value), 250); });
+list().catch((err) => { document.getElementById("grid").textContent = "No se pudo cargar: " + err.message; });
+</script>
+</body>
+</html>

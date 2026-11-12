@@ -100,7 +100,15 @@ func (s *Server) Routes() http.Handler {
 	s.patterns = s.patterns[:0]
 	handle := func(pattern string, h http.HandlerFunc) {
 		s.patterns = append(s.patterns, pattern)
+		for _, p := range headlessPaths {
+			if strings.HasSuffix(pattern, " "+p) {
+				h = cors(h)
+			}
+		}
 		mux.Handle(pattern, s.metrics.wrap(pattern, h))
+	}
+	for _, p := range headlessPaths {
+		mux.HandleFunc("OPTIONS "+p, preflight)
 	}
 
 	// Health: liveness says the process runs; readiness says it can serve.
