@@ -317,3 +317,27 @@ func (s *Service) publish(snap Snapshot) {
 		s.bus.Publish(events.Event{Topic: TopicChanged, Key: snap.SKU, Data: snap})
 	}
 }
+
+// StockCounts counts SKUs with stock rows by what they have left (on hand
+// minus reserved, summed over locations): low is 1..threshold, out is 0 or
+// less. Same numbers as the report's SQL, from memory.
+func (s *Service) StockCounts(threshold int64) (low, out int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, locs := range s.levels {
+		if len(locs) == 0 {
+			continue
+		}
+		var avail int64
+		for _, l := range locs {
+			avail += l.OnHand - l.Reserved
+		}
+		switch {
+		case avail <= 0:
+			out++
+		case avail <= threshold:
+			low++
+		}
+	}
+	return low, out
+}

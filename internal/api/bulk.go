@@ -187,6 +187,7 @@ func (s *Server) createBulk(w http.ResponseWriter, r *http.Request) {
 		internalError(w, s.Log, err)
 		return
 	}
+	s.wakeBulk()
 	j, _ := s.bulkJob(r.Context(), pr.Tenant, id)
 	httpx.JSON(w, r, http.StatusAccepted, j)
 }

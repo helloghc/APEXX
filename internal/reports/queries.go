@@ -420,7 +420,7 @@ func (s *Service) Dashboard(ctx context.Context, tenant string, f Filter) (Dashb
 		if err != nil {
 			return err
 		}
-		c, err := opsCounts(ctx, tx, tenant, s.now())
+		c, err := s.opsCounts(ctx, tx, tenant, s.now())
 		if err != nil {
 			return err
 		}
@@ -450,14 +450,20 @@ type counts struct {
 	PaymentsPending, PaymentsOldestPendingSec int64
 }
 
-func opsCounts(ctx context.Context, tx pgx.Tx, tenant string, now time.Time) (counts, error) {
+func (s *Service) opsCounts(ctx context.Context, tx pgx.Tx, tenant string, now time.Time) (counts, error) {
 	var c counts
-	err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE avail > 0 AND avail <= $2), count(*) FILTER (WHERE avail <= 0) FROM (
-			SELECT sum(on_hand - reserved) AS avail FROM stock_levels WHERE tenant_id=$1 GROUP BY sku) x`, tenant, LowStockThreshold).
-		Scan(&c.LowStock, &c.OutOfStock)
-	if err != nil {
-		return c, err
+	ok := false
+	if s.StockCounts != nil {
+		c.LowStock, c.OutOfStock, ok = s.StockCounts(tenant, LowStockThreshold)
 	}
+	if !ok {
+		if err := tx.QueryRow(ctx, `SELECT count(*) FILTER (WHERE avail > 0 AND avail <= $2), count(*) FILTER (WHERE avail <= 0) FROM (
+			SELECT sum(on_hand - reserved) AS avail FROM stock_levels WHERE tenant_id=$1 GROUP BY sku) x`, tenant, LowStockThreshold).
+			Scan(&c.LowStock, &c.OutOfStock); err != nil {
+			return c, err
+		}
+	}
+	var err error
 	err = tx.QueryRow(ctx, `SELECT
 			(SELECT count(*) FROM webhook_deliveries WHERE tenant_id=$1 AND status='dead' AND created_at >= $2::timestamptz - interval '7 days'),
 			(SELECT count(*) FROM webhook_deliveries WHERE tenant_id=$1 AND status='pending' AND attempts > 0),

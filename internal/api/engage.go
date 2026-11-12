@@ -105,6 +105,27 @@ func (s *Server) FlushSearchTerms(ctx context.Context) error {
 }
 
 // searchQuery applies the store's search rules to a browse query.
+// narrow limits a text query to the products the word index says can match
+// it, its synonyms or the pins, so Browse does not scan the whole catalog.
+func narrow(t *projection.Tenant, q *catalog.BrowseQuery) {
+	if q.Q == "" {
+		return
+	}
+	only := t.Catalog.Matching(q.Q)
+	if only == nil {
+		return
+	}
+	for _, a := range q.Alt {
+		for id := range t.Catalog.Matching(a) {
+			only[id] = true
+		}
+	}
+	for _, id := range q.Pinned {
+		only[id] = true
+	}
+	q.Only = only
+}
+
 func (s *Server) searchQuery(t *projection.Tenant, q *catalog.BrowseQuery) {
 	cfg := t.Search()
 	q.Exclude = cfg.HiddenSet()
@@ -370,6 +391,7 @@ func (s *Server) shopSuggest(w http.ResponseWriter, r *http.Request) {
 		s.searchQuery(t, &q)
 		of := offerOf(t, pd.Channel)
 		res := s.browse.browse(t.ID, t.Version(), "s\x00"+pd.Channel+"\x00"+text+"\x00r="+ruleKey(q), func() catalog.BrowseResult {
+			narrow(t, &q)
 			return catalog.Browse(t.Catalog.Products(), t.Taxo, of, q)
 		})
 		cards := make([]cardJSON, 0, len(res.Items))

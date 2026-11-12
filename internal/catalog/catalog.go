@@ -78,6 +78,7 @@ type Store struct {
 	byHdl map[string]string // handle -> product id
 	bySKU map[string]string // sku -> product id
 	ids   []string          // sorted
+	index wordIndex         // search word -> products
 	bus   *events.Bus
 }
 
@@ -100,6 +101,7 @@ func (s *Store) Upsert(p Product) {
 	p.hay = haystack(&p)
 	s.mu.Lock()
 	if old, ok := s.byID[p.ID]; ok {
+		s.index.remove(old.ID, old.hay)
 		for _, v := range old.Variants {
 			delete(s.bySKU, v.SKU)
 		}
@@ -114,6 +116,7 @@ func (s *Store) Upsert(p Product) {
 	}
 	cp := p
 	s.byID[p.ID] = &cp
+	s.index.add(p.ID, p.hay)
 	s.byHdl[p.Handle] = p.ID
 	for _, v := range p.Variants {
 		s.bySKU[v.SKU] = p.ID
@@ -187,6 +190,7 @@ func (s *Store) Delete(id string) {
 	if !ok {
 		return
 	}
+	s.index.remove(id, old.hay)
 	for _, v := range old.Variants {
 		delete(s.bySKU, v.SKU)
 	}

@@ -38,7 +38,9 @@ import (
 
 // Server holds every dependency of the HTTP layer.
 type Server struct {
-	browse browseCache // shared catalog, search and suggestion results by projection version
+	browse   browseCache   // shared catalog, search and suggestion results by projection version
+	bulkWake chan struct{} // a new bulk job starts at once instead of on the next tick
+	bulkOnce sync.Once
 	// ChannelEndpoints and ChannelHTTP reach Mercado Libre and Amazon (zero: production hosts).
 	ChannelEndpoints saleschannels.Endpoints
 	ChannelHTTP      *http.Client
@@ -733,4 +735,18 @@ func forbiddenDetail(module, level string) string {
 		l = level
 	}
 	return fmt.Sprintf("Tu acceso no permite esto: necesitas permiso para %s en «%s». Pídelo a un administrador de la tienda.", l, m)
+}
+
+// BulkWake signals when a bulk job was queued on this node.
+func (s *Server) BulkWake() <-chan struct{} {
+	s.bulkOnce.Do(func() { s.bulkWake = make(chan struct{}, 1) })
+	return s.bulkWake
+}
+
+func (s *Server) wakeBulk() {
+	s.bulkOnce.Do(func() { s.bulkWake = make(chan struct{}, 1) })
+	select {
+	case s.bulkWake <- struct{}{}:
+	default:
+	}
 }

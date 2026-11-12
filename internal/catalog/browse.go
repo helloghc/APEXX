@@ -47,6 +47,10 @@ type BrowseQuery struct {
 	Pinned []string
 	// Boost raises products shoppers chose for this search, below the pins.
 	Boost map[string]int
+	// Only, when not nil, limits the scan to these product ids: the caller
+	// already knows (from the word index) which products can match Q, its
+	// synonyms or the pins. Every other check still runs on them.
+	Only map[string]bool
 }
 
 // FacetValue is one choice of a facet with the number of products it would show.
@@ -234,6 +238,9 @@ func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) Br
 	pass := make([]bool, nGroups)
 	priceSeen := false
 	for _, p := range products {
+		if q.Only != nil && !q.Only[p.ID] {
+			continue
+		}
 		if p.Status != "active" {
 			continue
 		}

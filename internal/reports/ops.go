@@ -176,7 +176,7 @@ func (s *Service) Health(ctx context.Context, tenant string) Health {
 	h.DB.OK, h.DB.Version = true, version
 	now := s.now()
 	_ = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		c, err := opsCounts(ctx, tx, tenant, now)
+		c, err := s.opsCounts(ctx, tx, tenant, now)
 		if err != nil {
 			return err
 		}

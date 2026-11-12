@@ -123,13 +123,3 @@ func (s *Store) ByHandle(h string) (Product, bool) {
 	}
 	return Product{}, false
 }
-
-// Matcher returns a function that reports whether a product matches every
-// token of q (prefix match, one typo allowed). An empty q matches everything.
-func Matcher(q string) func(p *Product) bool {
-	qs := words(q)
-	if len(qs) == 0 {
-		return func(*Product) bool { return true }
-	}
-	return func(p *Product) bool { return matchesAll(qs, p.hay) }
-}

@@ -139,7 +139,7 @@ func totalStock(t *projection.Tenant, p *catalog.Product) int64 {
 }
 
 func (f productFilter) apply(t *projection.Tenant) []*catalog.Product {
-	match := catalog.Matcher(f.q)
+	only := t.Catalog.Matching(f.q) // nil: no text to match
 	var subtree map[string]bool
 	if f.category != "" && f.category != "none" {
 		subtree = t.Taxo.Subtree(f.category)
@@ -200,7 +200,7 @@ func (f productFilter) apply(t *projection.Tenant) []*catalog.Product {
 				continue
 			}
 		}
-		if !match(p) {
+		if only != nil && !only[p.ID] {
 			continue
 		}
 		out = append(out, p)
@@ -292,8 +292,14 @@ func (s *Server) listProducts(w http.ResponseWriter, r *http.Request) {
 		apierr.BadRequest(w, "Filtros inválidos", errs...)
 		return
 	}
-	ps := f.apply(t)
-	sortProducts(t, ps, sortKey)
+	// Filtered and sorted once per projection version and filter; the pages
+	// of a 50 000 product list then cost a slice, not a scan and a sort.
+	key := "admin\x00" + strings.Join([]string{f.q, f.status, f.category, f.brand, f.stock, f.typ, f.tag, sortKey}, "\x00")
+	ps := s.browse.browse(t.ID, t.Version(), key, func() catalog.BrowseResult {
+		ps := f.apply(t)
+		sortProducts(t, ps, sortKey)
+		return catalog.BrowseResult{Items: ps}
+	}).Items
 	// The cursor is the id of the last product of the previous page.
 	start := 0
 	if after != "" {

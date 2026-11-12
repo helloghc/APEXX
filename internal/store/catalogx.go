@@ -482,7 +482,14 @@ func (d *DB) PublishDue(ctx context.Context) (int, error) {
 func (d *DB) Locations(ctx context.Context, tenant string) ([]string, error) {
 	var out []string
 	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT DISTINCT location_id FROM stock_levels WHERE tenant_id=$1 ORDER BY 1`, tenant)
+		// Skip from one location to the next on the (tenant_id, location_id)
+		// index: the cost follows the number of locations, not stock rows.
+		rows, err := tx.Query(ctx, `WITH RECURSIVE l(id) AS (
+				(SELECT location_id FROM stock_levels WHERE tenant_id=$1 ORDER BY location_id LIMIT 1)
+				UNION ALL
+				SELECT (SELECT location_id FROM stock_levels WHERE tenant_id=$1 AND location_id > l.id ORDER BY location_id LIMIT 1)
+				FROM l WHERE l.id IS NOT NULL)
+			SELECT id FROM l WHERE id IS NOT NULL`, tenant)
 		if err != nil {
 			return err
 		}

@@ -328,6 +328,7 @@ func (s *Server) renderBrowse(w http.ResponseWriter, r *http.Request, t *project
 		key += "\x00k=" + col.ID
 	}
 	res := s.browse.browse(t.ID, t.Version(), key, func() catalog.BrowseResult {
+		narrow(t, &q)
 		return catalog.Browse(t.Catalog.Products(), t.Taxo, offerOf(t, pd.Channel), q)
 	})
 	if st.q != "" && st.page == 1 && !st.filtered() {

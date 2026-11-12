@@ -378,7 +378,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		return err
 	})
 	// Bulk operations: stock and price jobs in chunks.
-	resilience.Every(ctx, log, "bulk-jobs", 2*time.Second, func(ctx context.Context) error {
+	resilience.EveryOrWake(ctx, log, "bulk-jobs", 2*time.Second, srv.BulkWake(), func(ctx context.Context) error {
 		_, err := srv.RunBulkJobs(ctx)
 		return err
 	})

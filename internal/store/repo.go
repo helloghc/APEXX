@@ -188,15 +188,6 @@ func (d *DB) LoadProduct(ctx context.Context, tenant, id string) (catalog.Produc
 	return loadProduct(ctx, d.System, tenant, id)
 }
 
-// ProductIDs lists all product ids of a tenant (system pool).
-func (d *DB) ProductIDs(ctx context.Context, tenant string) ([]string, error) {
-	rows, err := d.System.Query(ctx, `SELECT id FROM products WHERE tenant_id=$1 ORDER BY id`, tenant)
-	if err != nil {
-		return nil, err
-	}
-	return pgx.CollectRows(rows, pgx.RowTo[string])
-}
-
 // ---------- inventory ----------
 
 // SetStock sets on-hand stock of sku at location.
@@ -618,15 +609,6 @@ func (d *DB) LoadStock(ctx context.Context, tenant, sku string) ([]inventory.Lev
 	})
 }
 
-// StockSKUs lists SKUs with stock rows (system pool).
-func (d *DB) StockSKUs(ctx context.Context, tenant string) ([]string, error) {
-	rows, err := d.System.Query(ctx, `SELECT DISTINCT sku FROM stock_levels WHERE tenant_id=$1`, tenant)
-	if err != nil {
-		return nil, err
-	}
-	return pgx.CollectRows(rows, pgx.RowTo[string])
-}
-
 // ---------- pricing ----------
 
 // SetPrices replaces the tiers of sku in channel.
@@ -679,19 +661,6 @@ func scanTier(r pgx.CollectableRow) (pricing.Tier, error) {
 		t.CompareAt = &c
 	}
 	return t, nil
-}
-
-// PriceKeys lists (channel, sku) pairs of a tenant (system pool).
-func (d *DB) PriceKeys(ctx context.Context, tenant string) ([][2]string, error) {
-	rows, err := d.System.Query(ctx, `SELECT DISTINCT channel, sku FROM prices WHERE tenant_id=$1`, tenant)
-	if err != nil {
-		return nil, err
-	}
-	return pgx.CollectRows(rows, func(r pgx.CollectableRow) ([2]string, error) {
-		var k [2]string
-		err := r.Scan(&k[0], &k[1])
-		return k, err
-	})
 }
 
 // ---------- channels and promotions ----------

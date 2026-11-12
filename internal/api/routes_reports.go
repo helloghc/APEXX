@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/helloghc/apexx/internal/auth"
 	"github.com/helloghc/apexx/internal/reports"
@@ -15,6 +16,32 @@ import (
 func (s *Server) routesReports(handle func(string, http.HandlerFunc)) {
 	if s.Reports == nil {
 		s.Reports = &reports.Service{DB: s.DB, Keys: s.Keys, Log: s.Log}
+	}
+	if s.Reports.StockCounts == nil && s.Proj != nil {
+		// Counted once per projection version: walking every SKU holds the
+		// inventory lock, so concurrent dashboards must not each walk it.
+		type counted struct {
+			version   uint64
+			low, out  int64
+			threshold int64
+		}
+		var mu sync.Mutex
+		cache := map[string]counted{}
+		s.Reports.StockCounts = func(tenant string, threshold int64) (int64, int64, bool) {
+			t, ok := s.Proj.Tenant(tenant)
+			if !ok {
+				return 0, 0, false
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			v := t.Version()
+			if c, ok := cache[tenant]; ok && c.version == v && c.threshold == threshold {
+				return c.low, c.out, true
+			}
+			low, out := t.Inventory.StockCounts(threshold)
+			cache[tenant] = counted{v, low, out, threshold}
+			return low, out, true
+		}
 	}
 	s.eventsLimiter = &shopLimiter{n: eventsPerMinute}
 	handle("POST /s/{tenant}/api/events", s.shopEvents)

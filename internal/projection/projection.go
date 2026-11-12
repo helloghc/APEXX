@@ -232,24 +232,15 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 		}
 		return 0, 0, false
 	}
-	pids, err := p.db.ProductIDs(ctx, id)
+	// One query per kind for the whole store (not one per product or SKU).
+	if err := p.db.EachProduct(ctx, id, t.Catalog.Upsert); err != nil {
+		return err
+	}
+	stock, err := p.db.AllStock(ctx, id)
 	if err != nil {
 		return err
 	}
-	for _, pid := range pids {
-		if err := p.applyProduct(ctx, t, pid); err != nil {
-			return err
-		}
-	}
-	skus, err := p.db.StockSKUs(ctx, id)
-	if err != nil {
-		return err
-	}
-	for _, sku := range skus {
-		levels, err := p.db.LoadStock(ctx, id, sku)
-		if err != nil {
-			return err
-		}
+	for sku, levels := range stock {
 		t.Inventory.Load(sku, levels)
 	}
 	kits, err := p.db.LoadBundles(ctx, id, "")
@@ -266,14 +257,12 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 	for _, pr := range pres {
 		t.Inventory.SetPreorder(pr.SKU, preorderView([]store.Preorder{pr}))
 	}
-	keys, err := p.db.PriceKeys(ctx, id)
+	prices, err := p.db.AllPrices(ctx, id)
 	if err != nil {
 		return err
 	}
-	for _, k := range keys {
-		if err := p.applyPrice(ctx, t, k[0], k[1]); err != nil {
-			return err
-		}
+	for k, tiers := range prices {
+		t.Pricing.Set(k[0], k[1], tiers...)
 	}
 	if err := p.applyChannels(ctx, t); err != nil {
 		return err

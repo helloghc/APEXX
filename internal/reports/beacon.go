@@ -70,6 +70,9 @@ type Service struct {
 	Keys *crypto.Keyring
 	Log  *slog.Logger
 	Now  func() time.Time // tests replace the clock
+	// StockCounts answers the low and out of stock counts from memory (the
+	// projection) instead of summing every stock row; ok=false falls back.
+	StockCounts func(tenant string, threshold int64) (low, out int64, ok bool)
 
 	saltMu sync.Mutex
 	salts  map[string][]byte

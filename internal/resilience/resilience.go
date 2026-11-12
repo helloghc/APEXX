@@ -169,6 +169,13 @@ func Supervise(ctx context.Context, log *slog.Logger, name string, fn func(conte
 
 // Every runs fn on an interval under supervision.
 func Every(ctx context.Context, log *slog.Logger, name string, interval time.Duration, fn func(context.Context) error) {
+	EveryOrWake(ctx, log, name, interval, nil, fn)
+}
+
+// EveryOrWake is Every that also runs as soon as wake receives, so work
+// that someone just queued starts at once; the interval stays as a safety
+// net for work queued by another node.
+func EveryOrWake(ctx context.Context, log *slog.Logger, name string, interval time.Duration, wake <-chan struct{}, fn func(context.Context) error) {
 	Supervise(ctx, log, name, func(ctx context.Context) error {
 		t := time.NewTicker(interval)
 		defer t.Stop()
@@ -183,6 +190,7 @@ func Every(ctx context.Context, log *slog.Logger, name string, interval time.Dur
 			case <-ctx.Done():
 				return nil
 			case <-t.C:
+			case <-wake:
 			}
 		}
 	})
