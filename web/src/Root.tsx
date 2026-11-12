@@ -1,7 +1,7 @@
 import { PANEL_LANGUAGES, currentLanguage, setLanguage } from "./i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat, Store, Building2, Database, Blocks } from "lucide-react";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat, Store, Building2, Database, Blocks, ScanBarcode } from "lucide-react";
 import { api, ApiError, credentials, errorMessage, request, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -27,7 +27,7 @@ import { Home } from "@/pages/Home";
 // Each section loads on demand so the login screen and home stay light.
 // Every screen of the panel, loaded in the background once the person is in,
 // so moving between screens never waits for a download.
-const SCREENS = [() => import("@/pages/Connectors"), () => import("@/pages/Payments"), () => import("@/pages/Team"), () => import("@/pages/account/index"), () => import("@/pages/b2b/index"), () => import("@/pages/catalog/index"), () => import("@/pages/customers/index"), () => import("@/pages/engage/index"), () => import("@/pages/marketplace/index"), () => import("@/pages/notifications/index"), () => import("@/pages/orders/index"), () => import("@/pages/promotions/index"), () => import("@/pages/reports/Ops"), () => import("@/pages/reports/Reports"), () => import("@/pages/settings/Settings"), () => import("@/pages/subscriptions/index"), () => import("@/pages/wallet/index"), () => import("@/pages/settings/Fees"), () => import("@/pages/settings/Channels"), () => import("@/pages/settings/Shipping"), () => import("@/pages/settings/Taxes")];
+const SCREENS = [() => import("@/pages/Connectors"), () => import("@/pages/pos/index"), () => import("@/pages/Payments"), () => import("@/pages/Team"), () => import("@/pages/account/index"), () => import("@/pages/b2b/index"), () => import("@/pages/catalog/index"), () => import("@/pages/customers/index"), () => import("@/pages/engage/index"), () => import("@/pages/marketplace/index"), () => import("@/pages/notifications/index"), () => import("@/pages/orders/index"), () => import("@/pages/promotions/index"), () => import("@/pages/reports/Ops"), () => import("@/pages/reports/Reports"), () => import("@/pages/settings/Settings"), () => import("@/pages/subscriptions/index"), () => import("@/pages/wallet/index"), () => import("@/pages/settings/Fees"), () => import("@/pages/settings/Channels"), () => import("@/pages/settings/Shipping"), () => import("@/pages/settings/Taxes")];
 let preloaded = false;
 export function preloadScreens() {
   if (preloaded) return;
@@ -58,6 +58,7 @@ const CustomData = lazy(() => import("@/pages/b2b/index").then((m) => ({ default
 const Settings = lazy(() => import("@/pages/settings/Settings").then((m) => ({ default: m.Settings })));
 const Reports = lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.Reports })));
 const Ops = lazy(() => import("@/pages/reports/Ops").then((m) => ({ default: m.Ops })));
+const PointOfSale = lazy(() => import("@/pages/pos/index").then((m) => ({ default: m.PointOfSale })));
 const Connectors = lazy(() => import("@/pages/Connectors").then((m) => ({ default: m.Connectors })));
 import { visibleNav } from "@/perms";
 import { ADMIN_THEMES, applyTheme, currentTheme } from "@/adminThemes";
@@ -411,6 +412,7 @@ const ICONS: Record<string, typeof HomeIcon> = {
   reportes: BarChart3,
   operacion: Activity,
   apps: Blocks,
+  caja: ScanBarcode,
 };
 
 function Shell({ me }: { me: Me }) {
@@ -478,6 +480,9 @@ function Shell({ me }: { me: Me }) {
       break;
     case "tarjetas":
       body = <Wallet me={me} route={route} />;
+      break;
+    case "caja":
+      body = <PointOfSale me={me} />;
       break;
     case "suscripciones":
       body = <Subscriptions me={me} route={route} />;
