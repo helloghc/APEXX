@@ -293,3 +293,38 @@ func TestB2BLevelsCapsBranchesAndPortal(t *testing.T) {
 		t.Fatalf("no approver = %d %s", res.Status, res.Body)
 	}
 }
+
+// A company with a negotiated catalog sees and buys only what its price list prices.
+func TestCompanyRestrictedCatalog(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	if st, _ := e.do("POST", "/v1/companies", e.adminA, m{"name": "Sin grupo", "catalogRestricted": true}); st != 400 {
+		t.Fatalf("restricted catalog without a price group = %d", st)
+	}
+	e.must(201, "POST", "/v1/price-lists", e.adminA, m{"id": "cerrado", "name": "Catálogo cerrado", "kind": "override", "customerGroup": "cerrado", "priority": 10,
+		"items": []m{{"sku": "S1", "amount": 9000}}})
+	e.drain()
+	e.must(201, "POST", "/v1/companies", e.adminA, m{"name": "Catálogo Cerrado", "priceGroup": "cerrado", "catalogRestricted": true, "buyerEmails": []string{"cerrado@empresa.example"}})
+	a, err := e.orders.CompanyForEmail(ctx, "store-a", "cerrado@empresa.example")
+	if err != nil || a == nil || !a.CatalogRestricted {
+		t.Fatalf("access = %+v %v", a, err)
+	}
+	req := orders.CheckoutRequest{Channel: "mx", PostalCode: "53129", Items: []cart.Item{{SKU: "S2", Qty: 1}}, Customer: orders.Customer{Email: "cerrado@empresa.example", Name: "Cerrado"},
+		PaymentMethod: "pm_card_visa", Company: a}
+	stock := e.available("S2")
+	if res, _ := e.orders.Checkout(ctx, "store-a", "storefront:web", "cat-1", req); res.Status == 201 {
+		t.Fatalf("bought a product outside the catalog: %s", res.Body)
+	}
+	if e.available("S2") != stock {
+		t.Fatal("a refused product took stock")
+	}
+	req.Items = []cart.Item{{SKU: "S1", Qty: 1}}
+	if res, _ := e.orders.Checkout(ctx, "store-a", "storefront:web", "cat-2", req); res.Status != 201 || !strings.Contains(string(res.Body), `"itemsTotal":9000`) {
+		t.Fatalf("product in the catalog = %d %s", res.Status, res.Body)
+	}
+	// Everyone else still buys S2.
+	req.Company, req.Customer.Email, req.Items = nil, "otro@cliente.example", []cart.Item{{SKU: "S2", Qty: 1}}
+	if res, _ := e.orders.Checkout(ctx, "store-a", "storefront:web", "cat-3", req); res.Status != 201 {
+		t.Fatalf("a regular shopper = %d %s", res.Status, res.Body)
+	}
+}

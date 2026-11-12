@@ -734,3 +734,45 @@
     out.textContent = r.ok ? "Compradores guardados." : (r.body.detail || "No pudimos guardar. Intenta de nuevo.");
   });
 })();
+
+/* ==== company catalog: a company that buys only what it negotiated ==== */
+(() => {
+  const body = document.body, tenant = body.dataset.tenant; if (!tenant) return;
+  const key = "apexx_co_" + tenant, channel = new URLSearchParams(location.search).get("mk") || body.dataset.channel || "mx";
+  const paint = (el, v) => { el.textContent = ""; if (v.compareAt) { const sale = document.createElement("span"); sale.className = "sale"; sale.textContent = v.price; const old = document.createElement("s"); old.textContent = v.compareAt; el.append(sale, " ", old); } else el.textContent = v.price; };
+  const prices = () => {
+    // The company's own prices on the cards and product shown.
+    const cards = [...document.querySelectorAll(".pcard")], hOf = (c) => { const a = c.querySelector("a.pcard-link"); const m = a && /\/p\/([^/?#]+)/.exec(a.getAttribute("href") || ""); return m ? decodeURIComponent(m[1]) : ""; };
+    const here = (/\/p\/([^/?#]+)/.exec(location.pathname) || [])[1];
+    const want = [...new Set(cards.map(hOf).concat(here ? [decodeURIComponent(here)] : []).filter(Boolean))].slice(0, 60);
+    if (!want.length) return;
+    fetch("/s/" + tenant + "/api/company/prices?channel=" + encodeURIComponent(channel) + "&handles=" + encodeURIComponent(want.join(","))).then((x) => (x.status === 200 ? x.json() : null)).then((j) => {
+      if (!j) return;
+      cards.forEach((c) => { const v = j.handles[hOf(c)], el = c.querySelector(".pcard-price"); if (v && el) paint(el, v); });
+      const radios = document.querySelectorAll("form[data-buy] input[name=sku]"), out = document.querySelector("[data-price-out]");
+      radios.forEach((r) => { const v = j.skus[r.value]; if (v) { r.dataset.price = v.price; r.dataset.compare = v.compareAt || ""; } });
+      const chosen = document.querySelector("form[data-buy] input[name=sku]:checked") || radios[0];
+      const v = chosen ? j.skus[chosen.value] : here && j.handles[decodeURIComponent(here)];
+      if (v && out) paint(out, v);
+    }).catch(() => {});
+  };
+  const apply = (c) => {
+    if (c && c.group) prices();
+    if (!c || !c.restricted) return;
+    const ok = new Set(c.handles || []), handleOf = (href) => { const m = /\/p\/([^/?#]+)/.exec(href || ""); return m ? decodeURIComponent(m[1]) : ""; };
+    document.querySelectorAll(".pcard").forEach((card) => { const a = card.querySelector("a.pcard-link"); if (a && !ok.has(handleOf(a.getAttribute("href")))) { card.hidden = true; card.style.display = "none"; } });
+    const here = handleOf(location.pathname), buy = document.querySelector("form[data-buy]");
+    if (here && buy && !ok.has(here)) {
+      buy.querySelectorAll("button, input, select").forEach((x) => (x.disabled = true));
+      const note = document.createElement("p"); note.className = "note"; note.textContent = "Este producto no está en el catálogo de tu empresa."; buy.after(note);
+    }
+  };
+  // Signing in or out happens in "Mi cuenta": ask again after visiting it.
+  if (/\/cuenta/.test(location.pathname)) { try { sessionStorage.removeItem(key); } catch (e) { /* private mode */ } }
+  let cached = null; try { cached = JSON.parse(sessionStorage.getItem(key) || "null"); } catch (e) { cached = null; }
+  if (cached && cached.at > Date.now() - 300000 && cached.channel === channel) { apply(cached.c); return; }
+  fetch("/s/" + tenant + "/api/company?channel=" + encodeURIComponent(channel)).then((x) => (x.status === 200 ? x.json() : null)).then((c) => {
+    try { sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), channel, c })); } catch (e) { /* private mode */ }
+    apply(c);
+  }).catch(() => {});
+})();

@@ -3,7 +3,7 @@
 <title>{{.Title}} · {{.Store}}</title><meta name="description" content="{{.Description}}">{{with .Canonical}}<link rel="canonical" href="{{.}}">{{end}}{{if .NoIndex}}<meta name="robots" content="noindex,follow">{{end}}
 <meta property="og:type" content="{{if .OGImage}}product{{else}}website{{end}}"><meta property="og:title" content="{{.Title}}"><meta property="og:description" content="{{.Description}}"><meta property="og:site_name" content="{{.Store}}">{{with .Canonical}}<meta property="og:url" content="{{$.Origin}}{{.}}">{{end}}{{with .OGImage}}<meta property="og:image" content="{{.}}"><meta name="twitter:card" content="summary_large_image">{{else}}<meta name="twitter:card" content="summary">{{end}}
 {{.Chrome.Head}}
-<script src="/s/assets/shop.js?v=19" defer></script>
+<script src="/s/assets/shop.js?v=21" defer></script>
 </head>
 <body class="{{.Chrome.BodyClass}}" data-tenant="{{.Tenant}}" data-base="{{.Base}}" data-channel="{{.Channel}}">
 <a class="skip" href="#main">Saltar al contenido</a>

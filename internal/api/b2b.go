@@ -3,6 +3,8 @@ package api
 import (
 	"github.com/helloghc/apexx/internal/apierr"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/helloghc/apexx/internal/auth"
 	"github.com/helloghc/apexx/internal/httpx"
@@ -30,6 +32,7 @@ func (s *Server) routesB2B(handle func(string, http.HandlerFunc)) {
 	handle("POST /s/{tenant}/api/account/company/requests/{id}/cancel", s.shopCancelRequest)
 
 	handle("GET /s/{tenant}/api/company", s.shopCompany)
+	handle("GET /s/{tenant}/api/company/prices", s.shopCompanyPrices)
 	handle("GET /s/{tenant}/{site}/aprobacion/{token}", s.shopApproval)
 	handle("POST /s/{tenant}/api/approval/{token}/{action}", s.shopApprovalAct)
 }
@@ -67,7 +70,42 @@ func (s *Server) shopCompany(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"name": c.Name, "terms": c.Terms, "discountBps": c.DiscountBps, "available": c.Available, "email": email, "approvalThreshold": c.ApprovalThreshold, "approver": c.Approver, "requirePO": c.RequirePO, "creditOnly": c.CreditOnly})
+	out := map[string]any{"name": c.Name, "terms": c.Terms, "discountBps": c.DiscountBps, "available": c.Available, "email": email, "approvalThreshold": c.ApprovalThreshold, "approver": c.Approver, "requirePO": c.RequirePO, "creditOnly": c.CreditOnly, "admin": c.Admin, "group": c.PriceGroup != ""}
+	if c.CatalogRestricted {
+		// The pages stay the same for everyone (cacheable); the script hides
+		// what is not in the company's catalog, and the cart refuses it.
+		out["restricted"], out["handles"] = true, s.companyHandles(r.PathValue("tenant"), r.URL.Query().Get("channel"), c.PriceGroup)
+	}
+	httpx.JSON(w, r, http.StatusOK, out)
+}
+
+// companyHandles lists the products a company with a negotiated catalog can
+// buy: those with a variant priced by a price list of its group.
+func (s *Server) companyHandles(tenant, channel, group string) []string {
+	if channel == "" {
+		channel = "mx"
+	}
+	out := []string{}
+	t, ok := s.Proj.Tenant(tenant)
+	if !ok {
+		return out
+	}
+	now := time.Now()
+	for _, p := range t.Catalog.Products() {
+		if p.Status != "active" {
+			continue
+		}
+		for _, v := range p.Variants {
+			if t.Pricing.GroupCovers(channel, v.SKU, group, now) {
+				out = append(out, p.Handle)
+				break
+			}
+		}
+		if len(out) >= 5000 {
+			break
+		}
+	}
+	return out
 }
 
 func (s *Server) listCompanies(w http.ResponseWriter, r *http.Request) {
@@ -332,4 +370,63 @@ func (s *Server) shopCancelRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// shopCompanyPrices gives a signed-in company buyer the prices of its own
+// price list for the cards and product shown, so the page (the same for
+// everyone, cacheable) shows what they will pay.
+func (s *Server) shopCompanyPrices(w http.ResponseWriter, r *http.Request) {
+	if !s.knownTenant(w, r) || s.limited(w, r, accountLimiter) {
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	c, _ := s.shopperCompany(r)
+	t, ok := s.Proj.Tenant(r.PathValue("tenant"))
+	if c == nil || c.PriceGroup == "" || !ok {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	ch := r.URL.Query().Get("channel")
+	if !shopChannel(t, ch) {
+		apierr.BadRequest(w, "Canal de venta no disponible")
+		return
+	}
+	if ch == "" {
+		ch = mainChannel
+	}
+	now := time.Now()
+	type pv struct {
+		Price     string `json:"price"`
+		CompareAt string `json:"compareAt,omitempty"`
+	}
+	quote := func(sku string) (pv, bool) {
+		q, ok := t.Pricing.ResolveAt(ch, sku, 1, c.PriceGroup, now)
+		if !ok {
+			return pv{}, false
+		}
+		v := pv{Price: pesos(q.Unit)}
+		if q.CompareAt != nil && q.CompareAt.Amount > q.Unit.Amount {
+			v.CompareAt = pesos(*q.CompareAt)
+		}
+		return v, true
+	}
+	handles, skus := map[string]pv{}, map[string]pv{}
+	for i, h := range strings.Split(r.URL.Query().Get("handles"), ",") {
+		if i >= 60 {
+			break
+		}
+		p, ok := t.Catalog.ByHandle(strings.TrimSpace(h))
+		if !ok || p.Status != "active" {
+			continue
+		}
+		for j, v := range p.Variants {
+			if q, ok := quote(v.SKU); ok {
+				skus[v.SKU] = q
+				if j == 0 {
+					handles[p.Handle] = q
+				}
+			}
+		}
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"handles": handles, "skus": skus})
 }

@@ -64,6 +64,9 @@ type Request struct {
 	Extra   []promo.Promotion `json:"-"` // unsaved definitions to preview
 	Only    []string          `json:"-"` // evaluate only these promotions
 	Group   string            `json:"-"` // customer group for price lists (placeholder)
+	// RestrictGroup sells only what a price list of Group prices (a company
+	// with a negotiated catalog).
+	RestrictGroup bool `json:"-"`
 	// TaxExempt removes tax from the order (a company with an exemption).
 	TaxExempt bool `json:"-"`
 	// ShippingOption is the option the shopper chose. Empty or unavailable:
@@ -217,6 +220,10 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		q, ok := s.Pricing.ResolveAt(ch.ID, it.SKU, max(it.Qty, 1), req.Group, now)
 		if !ok {
 			res.Messages = append(res.Messages, Message{Code: "item_not_priced", SKU: it.SKU, Text: "El producto no tiene precio en este canal"})
+			continue
+		}
+		if req.RestrictGroup && !s.Pricing.GroupCovers(ch.ID, it.SKU, req.Group, now) {
+			res.Messages = append(res.Messages, Message{Code: "not_in_company_catalog", SKU: it.SKU, Text: "Este producto no está en el catálogo de tu empresa"})
 			continue
 		}
 		qty := it.Qty

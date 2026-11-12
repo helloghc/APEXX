@@ -302,6 +302,7 @@ func (s *Server) shopSimulate(w http.ResponseWriter, r *http.Request) {
 	if c, _ := s.shopperCompany(r); c != nil {
 		req.Extra = append(req.Extra, orders.CompanyPromo(c)...)
 		req.Group = orders.CompanyGroup(c)
+		req.RestrictGroup = c.CatalogRestricted
 		req.TaxExempt = c.TaxExempt
 	}
 	res, err := t.Simulate(req)

@@ -23,7 +23,7 @@ import { dateTime, ErrorBox, Notice, Page } from "../common";
 import { EmptyState, SkeletonRows } from "../promotions/shared";
 
 const enc = encodeURIComponent;
-interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; requirePO?: boolean; creditOnly?: boolean; approvalThreshold: number; approvalRules?: Rule[]; approvalDays?: number }
+interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; requirePO?: boolean; creditOnly?: boolean; approvalThreshold: number; approvalRules?: Rule[]; approvalDays?: number; catalogRestricted?: boolean }
 interface CEntry { id: string; kind: string; amount: number; orderId?: string; orderNumber?: number; dueAt?: string; note?: string; at: string }
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[] }
 interface Entity { id: string; name: string; description: string; public: boolean; showOnProduct?: boolean; success: string; fields: Field[]; records: number }
@@ -117,7 +117,9 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
           <div className="grid gap-2 sm:col-span-2">
             <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.requirePO} onChange={(e) => setC({ ...c, requirePO: e.target.checked })} /><span>Pedir número de orden de compra<span className="block text-muted-foreground">Sus compradores lo escriben al pagar y aparece en el pedido y en la exportación.</span></span></label>
             <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.creditOnly} disabled={c.terms === "prepaid"} onChange={(e) => setC({ ...c, creditOnly: e.target.checked })} /><span>Solo puede pagar a crédito<span className="block text-muted-foreground">Oculta el pago con tarjeta para esta empresa.</span></span></label>
+            <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.catalogRestricted} onChange={(e) => setC({ ...c, catalogRestricted: e.target.checked })} /><span>Solo ve su catálogo negociado<span className="block text-muted-foreground">Sus compradores solo ven y compran los productos con precio en una lista de su grupo de precios.</span></span></label>
             {errors.creditOnly && <p className="text-sm text-bad">{errors.creditOnly}</p>}
+            {errors.catalogRestricted && <p className="text-sm text-bad">{errors.catalogRestricted}</p>}
           </div>
           <div className="grid gap-1.5 sm:col-span-2"><label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.taxExempt} onChange={(e) => setC({ ...c, taxExempt: e.target.checked })} /><span>Exenta de impuestos<span className="block text-muted-foreground">Sus pedidos se cobran sin impuesto. Guarda su constancia en la nota interna.</span></span></label>
             {c.taxExempt && <div className="grid gap-1.5"><Label htmlFor="co-exu">Vigente hasta (opcional)</Label><Input id="co-exu" type="date" value={c.taxExemptUntil ?? ""} onChange={(e) => setC({ ...c, taxExemptUntil: e.target.value })} />{errors.taxExemptUntil && <p className="text-sm text-bad">{errors.taxExemptUntil}</p>}</div>}</div>

@@ -412,7 +412,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 		return Result{}, err
 	}
 	sim, err := t.Simulate(cart.Request{Channel: req.Channel, PostalCode: req.PostalCode, Items: req.Items, ShippingOption: req.ShippingOption,
-		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup, Extra: CompanyPromo(req.Company), Group: CompanyGroup(req.Company), TaxExempt: req.Company != nil && req.Company.TaxExempt})
+		Coupons: req.Coupons, Email: req.Customer.Email, PaymentMethod: "card", Lookup: lookup, Extra: CompanyPromo(req.Company), Group: CompanyGroup(req.Company), RestrictGroup: req.Company != nil && req.Company.CatalogRestricted, TaxExempt: req.Company != nil && req.Company.TaxExempt})
 	if err != nil {
 		return problem(400, "invalid_request", err.Error(), nil), nil
 	}

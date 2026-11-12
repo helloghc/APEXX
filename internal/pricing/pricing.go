@@ -356,3 +356,23 @@ func (s *Service) VolumeTiers(channel, sku, group string, now time.Time) []ListT
 	}
 	return nil
 }
+
+// GroupCovers reports whether a price list made for group (not one for every
+// customer) prices sku in channel now: the catalog of a company that buys only
+// what it negotiated.
+func (s *Service) GroupCovers(channel, sku, group string, now time.Time) bool {
+	if group == "" {
+		return false
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, l := range s.lists {
+		if l.CustomerGroup != group || !l.Applies(channel, group, now) {
+			continue
+		}
+		if _, ok := l.Items[sku]; ok || len(l.Tiers[sku]) > 0 || (l.Kind != "override" && l.All) {
+			return true
+		}
+	}
+	return false
+}
