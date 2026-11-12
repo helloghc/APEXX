@@ -39,6 +39,7 @@ func (s *Server) routesEngage(handle func(string, http.HandlerFunc)) {
 	handle("PUT /s/{tenant}/api/wishlist/{handle}", s.shopWishSet)
 	handle("DELETE /s/{tenant}/api/wishlist/{handle}", s.shopWishSet)
 	handle("GET /s/{tenant}/{site}/favoritos", s.shopFavorites)
+	handle("GET /s/{tenant}/{site}/comparar", s.shopCompare)
 }
 
 var (

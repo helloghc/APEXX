@@ -1,0 +1,11 @@
+{{define "content"}}
+<div class="compare" data-compare-page>
+<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/index">Inicio</a> / Comparar</nav>
+<h1>Comparar productos</h1>
+{{if lt (len .Cards) 2}}<p>Elige al menos dos productos con el botón <strong>Comparar</strong> de cada producto.</p><p><a class="btn btn-ghost" href="{{.Base}}/c">Ver productos</a></p>
+{{else}}<label class="check"><input type="checkbox" data-only-diff> Ver solo las diferencias</label>
+<div class="scrollx"><table class="specs cmp"><thead><tr><th scope="col"><span class="sr">Característica</span></th>{{range .Cards}}<th scope="col"><a href="{{.Base}}/p/{{.Handle}}">{{if .Img}}{{.Img}}{{else}}<div class="pcard-media ph ph-{{.Tone}}" aria-hidden="true"><span>{{.Initial}}</span></div>{{end}}<span class="cmp-title">{{.Title}}</span></a><button type="button" class="linkbtn" data-compare-del="{{.Handle}}">Quitar</button></th>{{end}}</tr></thead>
+<tbody>{{range .Rows}}<tr{{if .Same}} data-same{{end}}><th scope="row">{{.Name}}</th>{{range .Values}}<td>{{.}}</td>{{end}}</tr>{{end}}</tbody></table></div>
+{{end}}
+</div>
+{{end}}

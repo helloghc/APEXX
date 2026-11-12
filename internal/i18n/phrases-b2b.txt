@@ -136,3 +136,20 @@ Personaliza || Personalize || Personnaliser || Personalize || Personalisasi || �
 (opcional) || (optional) || (facultatif) || (opcional) || (opsional) || （任意）
 Sin elegir || None || Aucun || Nenhum || Tidak ada || 選択なし
 Completa: || Please fill in: || Veuillez remplir : || Preencha: || Harap isi: || 入力してください：
+Comparar || Compare || Comparer || Comparar || Bandingkan || 比較
+Comparar productos || Compare products || Comparer des produits || Comparar produtos || Bandingkan produk || 商品を比較
+Elige al menos dos productos con el botón || Choose at least two products with the button || Choisissez au moins deux produits avec le bouton || Escolha pelo menos dois produtos com o botão || Pilih setidaknya dua produk dengan tombol || 次のボタンで2つ以上の商品を選んでください：
+de cada producto. || on each product. || de chaque produit. || de cada produto. || di setiap produk. || （各商品）
+Ver productos || See products || Voir les produits || Ver produtos || Lihat produk || 商品を見る
+Ver solo las diferencias || Show only differences || Afficher uniquement les différences || Ver só as diferenças || Tampilkan perbedaan saja || 違いのみ表示
+Característica || Feature || Caractéristique || Característica || Fitur || 項目
+Quitar || Remove || Retirer || Remover || Hapus || 削除
+Precio || Price || Prix || Preço || Harga || 価格
+Disponibilidad || Availability || Disponibilité || Disponibilidade || Ketersediaan || 在庫状況
+Marca || Brand || Marque || Marca || Merek || ブランド
+Disponible || Available || Disponible || Disponível || Tersedia || 在庫あり
+✓ Comparando || ✓ Comparing || ✓ Comparé || ✓ Comparando || ✓ Dibandingkan || ✓ 比較中
+Elige otro producto para comparar || Choose another product to compare || Choisissez un autre produit à comparer || Escolha outro produto para comparar || Pilih produk lain untuk dibandingkan || 比較する商品をもう1つ選んでください
+Limpiar || Clear || Effacer || Limpar || Hapus semua || クリア
+Inicio || Home || Accueil || Início || Beranda || ホーム
+/ Comparar || / Compare || / Comparer || / Comparar || / Bandingkan || / 比較

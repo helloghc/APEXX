@@ -958,3 +958,43 @@ function downloadsBox(ds) {
     });
   }).catch(() => {});
 })();
+
+/* ==== product comparison ==== */
+(() => {
+  const d = document, body = d.body, parts = location.pathname.split("/");
+  const tenant = body.dataset.tenant || parts[2], base = body.dataset.base || "/s/" + parts[2] + "/" + parts[3];
+  if (!tenant) return;
+  const KEY = "apexx_cmp_" + tenant, MAX = 4;
+  const get = () => { try { return JSON.parse(localStorage.getItem(KEY) || "[]").slice(0, MAX); } catch { return []; } };
+  const set = (l) => { try { localStorage.setItem(KEY, JSON.stringify(l.slice(0, MAX))); } catch {} paint(); };
+  const url = (l) => base + "/comparar?p=" + l.map(encodeURIComponent).join(",");
+  let bar = null;
+  function paint() {
+    const l = get();
+    d.querySelectorAll("[data-compare]").forEach((b) => { const on = l.includes(b.dataset.compare); b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "✓ Comparando" : "Comparar"; });
+    if (d.querySelector("[data-compare-page]")) return;
+    if (!l.length) { if (bar) bar.hidden = true; return; }
+    if (!bar) { bar = d.createElement("div"); bar.className = "cmpbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Comparar"); body.appendChild(bar); }
+    bar.hidden = false;
+    bar.innerHTML = (l.length < 2 ? "<span>Elige otro producto para comparar</span>" : "<a href='" + url(l) + "'>Comparar (" + l.length + ")</a>") + " <button type='button' data-compare-clear>Limpiar</button>";
+  }
+  d.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-compare],[data-compare-clear],[data-compare-del]"); if (!b) return;
+    e.preventDefault();
+    if (b.hasAttribute("data-compare-clear")) { set([]); return; }
+    if (b.dataset.compareDel) { const l = get().filter((h) => h !== b.dataset.compareDel); set(l); location.href = url(l); return; }
+    const h = b.dataset.compare, l = get();
+    if (l.includes(h)) set(l.filter((x) => x !== h));
+    else if (l.length >= MAX) { b.textContent = "Máximo " + MAX; setTimeout(paint, 1400); }
+    else set([...l, h]);
+  });
+  const page = d.querySelector("[data-compare-page]");
+  if (page) {
+    // The page is the source of truth: what it shows is what is selected.
+    const shown = [...page.querySelectorAll("[data-compare-del]")].map((b) => b.dataset.compareDel);
+    if (shown.length) set(shown);
+    const t = page.querySelector("[data-only-diff]");
+    if (t) t.addEventListener("change", () => page.classList.toggle("only-diff", t.checked));
+  }
+  paint();
+})();

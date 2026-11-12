@@ -416,3 +416,10 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .quick{display:grid;gap:12px;max-width:760px}.quick textarea{font-family:ui-monospace,monospace}
 .cart-tools{margin-top:8px;font-size:.9rem}.lists{list-style:none;padding:0;display:grid;gap:16px}
 .scrollx{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}.scrollx table{min-width:100%}.members input,.members select{min-width:7rem}
+/* product comparison */
+.pcard-cmp{background:none;border:0;color:var(--c-muted,inherit);font:inherit;font-size:.85rem;cursor:pointer;padding:6px 0;min-height:32px;text-decoration:underline;text-underline-offset:3px}
+.pcard-cmp[aria-pressed=true],.wish[data-compare][aria-pressed=true]{color:var(--c-accent);font-weight:600}
+.cmpbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;display:flex;gap:12px;align-items:center;padding:10px 16px;border-radius:999px;background:var(--c-fg,#111);color:var(--c-bg,#fff);box-shadow:0 6px 24px rgba(0,0,0,.18);max-width:calc(100vw - 32px)}
+.cmpbar a{color:inherit;font-weight:600}.cmpbar button{background:none;border:0;color:inherit;cursor:pointer;font:inherit;text-decoration:underline}
+.cmp th,.cmp td{vertical-align:top;min-width:9rem}.cmp thead img,.cmp thead .pcard-media{display:block;width:100%;max-width:160px;aspect-ratio:1;object-fit:cover;margin-bottom:6px}
+.cmp-title{display:block;font-weight:600}.compare.only-diff tr[data-same]{display:none}
