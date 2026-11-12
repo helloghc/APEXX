@@ -250,7 +250,8 @@ function downloadsBox(ds) {
       if (!last) return;
       const later = voucherKind() || onCredit() ? 0 : (last.totals.dueLater && last.totals.dueLater.amount) || 0;
       const cur = last.totals.grand.currency, g = last.totals.grand.amount - later, w = Math.min(walletOf(), g), due = g - w;
-      if (kindBox.dataset.cur !== cur) { kindBox.dataset.cur = cur; paintKinds(); }
+      const kk = cur + "|" + (last.hiddenPayments || []).join(",");
+      if (kindBox.dataset.cur !== kk) { kindBox.dataset.cur = kk; paintKinds(); }
       if (gcList) gcList.innerHTML = cards.map((c, i) => "<li>Tarjeta ••••" + esc(c.last4) + " · saldo " + money({ amount: c.balance, currency: cur }) + " <button type='button' class='linkbtn' data-gc-del='" + i + "'>Quitar</button></li>").join("");
       const old = $("[data-wallet-rows]", summary); if (old) old.remove();
       if (w > 0) summary.insertAdjacentHTML("beforeend", "<table class='totals' data-wallet-rows><tr><td>Tarjeta de regalo o saldo</td><td class='num'>−" + money({ amount: w, currency: cur }) + "</td></tr><tr class='grand'><td>A pagar</td><td class='num'>" + money({ amount: due, currency: cur }) + "</td></tr></table>");
@@ -275,10 +276,16 @@ function downloadsBox(ds) {
     let methods = {};
     const paintKinds = () => {
       const mxn = !last || last.totals.grand.currency === "MXN";
-      const opts = [["oxxo", "Efectivo en OXXO", "Te damos una referencia; pagas en tienda en 3 días."], ["spei", "Transferencia SPEI", "Te damos una CLABE; tu pedido se confirma al llegar el dinero."]].filter((o) => methods[o[0]] && mxn);
-      const keep = payKind();
-      kindBox.innerHTML = opts.length ? "<div class='testcards' role='radiogroup' aria-label='Forma de pago'><label><input type='radio' name='paykind' value='card'" + (keep === "card" ? " checked" : "") + "> Tarjeta</label>" +
-        opts.map((o) => "<label><input type='radio' name='paykind' value='" + o[0] + "'" + (keep === o[0] ? " checked" : "") + "> " + o[1] + " <span class='muted'>" + o[2] + "</span></label>").join("") + "</div>" : "";
+      // The store's checkout rules may hide some methods for this cart.
+      const hidden = (last && last.hiddenPayments) || [];
+      const opts = [["oxxo", "Efectivo en OXXO", "Te damos una referencia; pagas en tienda en 3 días."], ["spei", "Transferencia SPEI", "Te damos una CLABE; tu pedido se confirma al llegar el dinero."]].filter((o) => methods[o[0]] && mxn && !hidden.includes(o[0]));
+      const cardOk = !hidden.includes("card");
+      let keep = payKind();
+      if ((keep === "card" && !cardOk) || (keep !== "card" && !opts.some((o) => o[0] === keep))) keep = cardOk ? "card" : (opts[0] ? opts[0][0] : "");
+      kindBox.innerHTML = (opts.length || !cardOk ? "<div class='testcards' role='radiogroup' aria-label='Forma de pago'>" + (cardOk ? "<label><input type='radio' name='paykind' value='card'" + (keep === "card" ? " checked" : "") + "> Tarjeta</label>" : "") +
+        opts.map((o) => "<label><input type='radio' name='paykind' value='" + o[0] + "'" + (keep === o[0] ? " checked" : "") + "> " + o[1] + " <span class='muted'>" + o[2] + "</span></label>").join("") + "</div>" : "") +
+        (hidden.length ? "<p class='muted' data-hidden-pay>Algunas formas de pago no están disponibles para este pedido.</p>" : "") +
+        (!cardOk && !opts.length ? "<p class='error' role='alert'>Este pedido no se puede pagar en línea. Escríbenos para completarlo.</p>" : "");
     };
     kindBox.addEventListener("change", () => { paintWallet(); });
     // Signed-in customers: pay with a kept card, or keep the new one.

@@ -131,6 +131,7 @@ type Projector struct {
 	// until then, and carts fall back to their fixed rates).
 	liveRates atomic.Pointer[LiveRateFunc]
 	extTax    atomic.Pointer[ExternalTaxFunc]
+	extRules  atomic.Pointer[ExternalRulesFunc]
 
 	hooksMu sync.RWMutex
 	hooks   map[string][]func(tenant, key string)
@@ -212,6 +213,12 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 			return (*fn)(id, country, postal, currency, exclusive, parts)
 		}
 		return logistics.TaxResult{}, false
+	}
+	t.Cart.ExternalRules = func(in cart.RulesInput) (cart.RulesResult, bool) {
+		if fn := p.extRules.Load(); fn != nil {
+			return (*fn)(id, in)
+		}
+		return cart.RulesResult{}, false
 	}
 	t.Cart.LiveRate = func(carrierID, country, postal string, weight, value int64) (int64, int, bool) {
 		if fn := p.liveRates.Load(); fn != nil {
@@ -651,6 +658,12 @@ func (p *Projector) SetLiveRates(fn LiveRateFunc) { p.liveRates.Store(&fn) }
 
 // ExternalTaxFunc asks a store's tax service.
 type ExternalTaxFunc func(tenant, country, postal, currency string, exclusive bool, parts []logistics.TaxPart) (logistics.TaxResult, bool)
+
+// ExternalRulesFunc asks a store's checkout rules app.
+type ExternalRulesFunc func(tenant string, in cart.RulesInput) (cart.RulesResult, bool)
+
+// SetExternalRules installs the rules app function for every store.
+func (p *Projector) SetExternalRules(fn ExternalRulesFunc) { p.extRules.Store(&fn) }
 
 // SetExternalTax installs the tax service function for every store.
 func (p *Projector) SetExternalTax(fn ExternalTaxFunc) { p.extTax.Store(&fn) }

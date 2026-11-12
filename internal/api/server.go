@@ -64,6 +64,7 @@ type Server struct {
 	metrics *metrics
 
 	uploadSlots   chan struct{} // bounds concurrent image processing
+	rules         rulesCache    // checkout rules app: settings and answers
 	engage        engageState   // search terms and review cache
 	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
@@ -88,6 +89,7 @@ func (s *Server) Routes() http.Handler {
 		s.Proj.On("site.draft", evict)
 		s.Proj.SetLiveRates(s.LiveRate)
 		s.Proj.SetExternalTax(s.ExternalTax)
+		s.Proj.SetExternalRules(s.ExternalRules)
 	}
 	mux := http.NewServeMux()
 	s.patterns = s.patterns[:0]
@@ -202,6 +204,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesPreorders(handle)
 	s.routesApps(handle)
 	s.routesAutomations(handle)
+	s.routesCheckoutRules(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

@@ -156,6 +156,17 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 		t.Cart.QtyRules = rules
 		t.mu.Unlock()
 	}
+	if key == "" || key == store.KeyCheckoutRules {
+		var d struct {
+			Rules []cart.CheckoutRule `json:"rules"`
+		}
+		if _, err := p.db.GetDoc(ctx, t.ID, "checkout_rules", "config", &d); err != nil {
+			return err
+		}
+		t.mu.Lock()
+		t.Cart.CheckoutRules = d.Rules
+		t.mu.Unlock()
+	}
 	if key == "" || key == store.KeyProductCustoms {
 		docs, err := p.db.ListDocs(ctx, t.ID, "product_customs")
 		if err != nil {

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -20,6 +20,7 @@ const Fields = lazy(() => import("./Fields").then((m) => ({ default: m.Fields })
 const CatalogSource = lazy(() => import("./CatalogSource").then((m) => ({ default: m.CatalogSource })));
 const ReturnsPolicy = lazy(() => import("./ReturnsPolicy").then((m) => ({ default: m.ReturnsPolicy })));
 const Fees = lazy(() => import("./Fees").then((m) => ({ default: m.Fees })));
+const CheckoutRules = lazy(() => import("./CheckoutRules").then((m) => ({ default: m.CheckoutRules })));
 const Automations = lazy(() => import("./Automations").then((m) => ({ default: m.Automations })));
 const Apps = lazy(() => import("./Apps").then((m) => ({ default: m.Apps })));
 const Checkout = lazy(() => import("./Checkout").then((m) => ({ default: m.Checkout })));
@@ -27,6 +28,7 @@ const Checkout = lazy(() => import("./Checkout").then((m) => ({ default: m.Check
 export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "tienda", label: "Tienda", icon: Store, group: "General" },
   { id: "checkout", label: "Checkout", icon: ShoppingBag, group: "General" },
+  { id: "reglas-pago", label: "Reglas de pago y envío", icon: Filter, group: "General" },
   { id: "canales", label: "Canales", icon: ArrowLeftRight, group: "General" },
   { id: "catalogo-maestro", label: "Catálogo maestro", icon: Copy, group: "General" },
   { id: "campos", label: "Campos propios", icon: ListPlus, group: "General" },
@@ -89,6 +91,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "devoluciones":
       body = <ReturnsPolicy me={me} />;
+      break;
+    case "reglas-pago":
+      body = <CheckoutRules me={me} />;
       break;
     case "automatizaciones":
       body = <Automations me={me} />;

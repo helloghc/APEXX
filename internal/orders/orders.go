@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -516,6 +517,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	}
 	if subscribed && req.Installments > 1 {
 		return problem(409, "installments_unavailable", "Las suscripciones no se pagan a meses sin intereses", nil), nil
+	}
+	// The store's checkout rules may forbid this payment method for this cart.
+	if slices.Contains(sim.HiddenPayments, cart.PaymentKind(req.PaymentMethod)) {
+		return problem(409, "payment_method_unavailable", "Este método de pago no está disponible para este pedido. Elige otro.", map[string]any{"simulation": sim}), nil
 	}
 	if kind, ok := payments.VoucherMethods[req.PaymentMethod]; ok {
 		pm, err := s.PaymentMethods(ctx, tenant)

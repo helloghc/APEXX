@@ -5,6 +5,7 @@ package cart
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -176,11 +177,13 @@ type Result struct {
 	ShippingOptions []logistics.Quote `json:"shippingOptions"`
 	// NoShipping: nothing in the cart has weight (digital products, services),
 	// so there is nothing to deliver and no address is needed.
-	NoShipping bool                 `json:"noShipping,omitempty"`
-	Tax        *logistics.TaxResult `json:"tax,omitempty"`
-	Fees       []Fee                `json:"fees,omitempty"`
-	Totals     Totals               `json:"totals"`
-	Messages   []Message            `json:"messages"`
+	NoShipping bool `json:"noShipping,omitempty"`
+	// HiddenPayments are payment kinds the store's rules do not allow for this cart.
+	HiddenPayments []string             `json:"hiddenPayments,omitempty"`
+	Tax            *logistics.TaxResult `json:"tax,omitempty"`
+	Fees           []Fee                `json:"fees,omitempty"`
+	Totals         Totals               `json:"totals"`
+	Messages       []Message            `json:"messages"`
 }
 
 // Service wires the domain modules together.
@@ -194,7 +197,11 @@ type Service struct {
 	Taxo      *catalog.Taxonomy        // attribute names, for promotions that target attribute values
 	QtyRules  map[string][]QtyRule     // product id -> quantity rules (general and per customer group)
 	Customs   map[string][]CustomField // product id -> personalization fields
-	FeeRules  []FeeRule                // extra charges per order (handling, packaging, small order)
+	// CheckoutRules hide payment methods or delivery options; ExternalRules
+	// asks the store's app (nil: none). It must answer within its own limit.
+	CheckoutRules []CheckoutRule
+	ExternalRules func(RulesInput) (RulesResult, bool)
+	FeeRules      []FeeRule // extra charges per order (handling, packaging, small order)
 	// LiveRate asks a connected carrier for its price, in the store currency
 	// (nil: no connected carriers). It must answer within its own time limit.
 	LiveRate func(carrierID, country, postalCode string, weightGrams, value int64) (amount int64, days int, ok bool)
@@ -412,6 +419,22 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		}
 		return v
 	}
+	// Checkout rules see the cart after discounts, before delivery.
+	var rules RulesResult
+	if len(s.CheckoutRules) > 0 || s.ExternalRules != nil {
+		in := RulesInput{Channel: ch.ID, Currency: string(cur), Subtotal: baseSubtotal, PostalCode: req.PostalCode, Group: req.Group}
+		for _, l := range res.Lines {
+			if !l.Gift {
+				in.Lines = append(in.Lines, RulesLine{SKU: l.SKU, Qty: l.Qty, Unit: l.Unit.Amount})
+			}
+		}
+		rules = s.evaluateRules(in)
+		res.HiddenPayments = rules.HidePayments
+		for _, m := range rules.Messages {
+			res.Messages = append(res.Messages, Message{Code: "checkout_rule", Text: m})
+		}
+	}
+	hiddenShip := func(id string) bool { return slices.Contains(rules.HideShipping, id) }
 	// promoShipping applies free-shipping promotions to the chosen option.
 	promoShipping := func(free bool) {
 		price := res.Shipping.Price
@@ -433,6 +456,9 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		})
 		for i := range res.ShippingOptions {
 			res.ShippingOptions[i].Price = shipCur(res.ShippingOptions[i].Price)
+			if res.ShippingOptions[i].Available && hiddenShip(res.ShippingOptions[i].ID) {
+				res.ShippingOptions[i].Available, res.ShippingOptions[i].Reason = false, "No disponible para este pedido"
+			}
 		}
 		if i := logistics.Choose(res.ShippingOptions, req.ShippingOption); i >= 0 {
 			q := res.ShippingOptions[i]
@@ -455,6 +481,9 @@ func (s *Service) Simulate(req Request) (Result, error) {
 			out.ApplyShipping(nil, false)
 			res.Messages = append(res.Messages, Message{Code: "no_shipping_option", Text: "No hay opciones de entrega para el código postal " + req.PostalCode})
 		}
+	case req.PostalCode != "" && hiddenShip("channel"):
+		out.ApplyShipping(nil, false)
+		res.Messages = append(res.Messages, Message{Code: "no_shipping_option", Text: "No hay opciones de entrega para este pedido"})
 	case req.PostalCode != "":
 		// Legacy: one rate per channel, by weight.
 		sh := ch.Shipping
