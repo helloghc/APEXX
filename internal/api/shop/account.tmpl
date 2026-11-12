@@ -135,6 +135,8 @@
 {{end}}
 {{if .Notes}}<section class="acct-box" aria-label="Mensajes de la tienda"><h2>Mensajes de la tienda</h2>
 {{range .Notes}}<p>{{.Body}}<br><span class="muted">{{.Date}}</span></p>{{end}}</section>{{end}}
+{{if eq .VoucherKind "oxxo"}}<section class="acct-box" aria-label="Pago pendiente"><h2>Paga en OXXO</h2><p>Referencia: <strong>{{.VoucherRef}}</strong>. Paga {{.Total}} antes del {{.VoucherUntil}}.</p>{{with .VoucherURL}}<p><a href="{{.}}" target="_blank" rel="noopener noreferrer">Ver ficha para imprimir</a></p>{{end}}</section>
+{{else if eq .VoucherKind "spei"}}<section class="acct-box" aria-label="Pago pendiente"><h2>Paga por transferencia SPEI</h2><p>CLABE: <strong>{{.VoucherCLABE}}</strong>{{with .VoucherBank}} ({{.}}){{end}}{{with .VoucherRef}} · referencia {{.}}{{end}}. Transfiere {{.Total}} antes del {{.VoucherUntil}}.</p>{{with .VoucherURL}}<p><a href="{{.}}" target="_blank" rel="noopener noreferrer">Ver instrucciones</a></p>{{end}}</section>{{end}}
 {{if .Returns}}<section class="acct-box" aria-label="Devoluciones"><h2>Devoluciones</h2>
 {{range .Returns}}<p>{{.Number}} · {{.Status}}{{with .LabelTracking}} · guía {{.}}{{end}}{{with .LabelURL}} · <a href="{{.}}" target="_blank" rel="noopener noreferrer">Imprimir guía</a>{{end}}</p>{{end}}</section>{{end}}
 {{if .Returnable}}<section class="acct-box" aria-label="Devolver productos"><h2>Devolver productos</h2>

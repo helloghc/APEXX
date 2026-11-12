@@ -34,6 +34,7 @@ export interface Order {
   createdAt: string;
   fees?: number;
   feeLines?: { id: string; kind: string; name: string; amount: number; reason: string }[];
+  voucher?: { kind: string; reference?: string; clabe?: string; bank?: string; url?: string; expiresAt: string };
 }
 export interface OrderQuery { review?: string; q?: string; status?: string; payment?: string; fulfillment?: string; from?: string; to?: string; customer?: string; cursor?: string; limit?: number }
 export interface Quote { items: { line: number; sku: string; qty: number; amount: number }[]; itemsAmount: number; shipping: number; suggested: number; maxRefundable: number; shippingLeft: number; tax: number }
@@ -73,6 +74,7 @@ export const sale = {
   editOrder: (id: string, b: { add: { sku: string; qty: number }[]; remove: { line: number; qty: number }[]; reason: string; dryRun: boolean }) =>
     request<{ before: OTotals; after: OTotals; difference: number; refundError?: string }>("POST", `/v1/orders/${enc(id)}/edit`, b),
   connectedCarriers: () => request<{ carriers: { id: string; name: string; active: boolean; provider?: string }[] }>("GET", "/v1/shipping").then((r) => r.carriers.filter((c) => c.active && c.provider)),
+  payVoucher: (id: string) => request<void>("POST", `/v1/sandbox/orders/${enc(id)}/pay-voucher`, undefined, { as: "none" }),
   productSearch: (q: string) => request<{ items: { id: string; title: string; skus: string[] }[] }>("GET", `/v1/product-search?q=${enc(q)}`).then((r) => r.items),
   addNote: (id: string, body: string, visibility: "internal" | "customer") => request<ONote>("POST", `/v1/orders/${enc(id)}/notes`, { body, visibility }),
   deleteNote: (id: string, note: string) => request<void>("DELETE", `/v1/orders/${enc(id)}/notes/${enc(note)}`, undefined, { as: "none" }),

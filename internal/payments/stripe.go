@@ -86,10 +86,27 @@ func (s *Stripe) call(ctx context.Context, method, path, account, idem string, f
 }
 
 type paymentIntent struct {
-	ID               string `json:"id"`
-	Status           string `json:"status"`
-	Customer         string `json:"customer"`
-	PaymentMethod    string `json:"payment_method"`
+	ID            string `json:"id"`
+	Status        string `json:"status"`
+	Customer      string `json:"customer"`
+	PaymentMethod string `json:"payment_method"`
+	NextAction    *struct {
+		OXXO *struct {
+			ExpiresAfter     int64  `json:"expires_after"`
+			HostedVoucherURL string `json:"hosted_voucher_url"`
+			Number           string `json:"number"`
+		} `json:"oxxo_display_details"`
+		Transfer *struct {
+			Reference          string `json:"reference"`
+			HostedInstructions string `json:"hosted_instructions_url"`
+			FinancialAddresses []struct {
+				SPEI *struct {
+					CLABE    string `json:"clabe"`
+					BankName string `json:"bank_name"`
+				} `json:"spei"`
+			} `json:"financial_addresses"`
+		} `json:"display_bank_transfer_instructions"`
+	} `json:"next_action"`
 	LastPaymentError *struct {
 		Code string `json:"code"`
 	} `json:"last_payment_error"`
@@ -102,6 +119,18 @@ func (pi paymentIntent) charge() Charge {
 		c.Status = "captured"
 	case "requires_action":
 		c.Status = "requires_action"
+		if na := pi.NextAction; na != nil && na.OXXO != nil {
+			c.Status = "pending"
+			c.Voucher = &Voucher{Kind: "oxxo", Reference: na.OXXO.Number, URL: na.OXXO.HostedVoucherURL, ExpiresAt: time.Unix(na.OXXO.ExpiresAfter, 0)}
+		} else if na != nil && na.Transfer != nil {
+			c.Status = "pending"
+			c.Voucher = &Voucher{Kind: "spei", Reference: na.Transfer.Reference, URL: na.Transfer.HostedInstructions, ExpiresAt: time.Now().Add(VoucherTTL)}
+			for _, a := range na.Transfer.FinancialAddresses {
+				if a.SPEI != nil {
+					c.Voucher.CLABE, c.Voucher.Bank = a.SPEI.CLABE, a.SPEI.BankName
+				}
+			}
+		}
 	default:
 		c.Status = "failed"
 		if pi.LastPaymentError != nil {
@@ -116,10 +145,36 @@ func (s *Stripe) Charge(ctx context.Context, r ChargeRequest) (Charge, error) {
 	f := url.Values{}
 	f.Set("amount", strconv.FormatInt(r.Amount, 10))
 	f.Set("currency", strings.ToLower(r.Currency))
-	f.Set("payment_method", r.PaymentMethod)
 	f.Set("confirm", "true")
-	f.Set("automatic_payment_methods[enabled]", "true")
-	f.Set("automatic_payment_methods[allow_redirects]", "never")
+	switch r.PaymentMethod {
+	case "oxxo":
+		// Cash at OXXO: the buyer gets a voucher and pays within three days.
+		f.Set("payment_method_types[]", "oxxo")
+		f.Set("payment_method_data[type]", "oxxo")
+		f.Set("payment_method_data[billing_details][name]", firstNonEmptyS(r.Name, "Cliente"))
+		f.Set("payment_method_data[billing_details][email]", r.Email)
+		f.Set("payment_method_options[oxxo][expires_after_days]", "3")
+	case "spei":
+		// Bank transfer (SPEI) to a CLABE of the store's Stripe balance.
+		cf := url.Values{}
+		cf.Set("email", r.Email)
+		cf.Set("metadata[apexx_order]", r.OrderID)
+		var cus struct {
+			ID string `json:"id"`
+		}
+		if err := s.call(ctx, http.MethodPost, "/v1/customers", r.Account, "cus-"+r.IdempotencyKey, cf, &cus); err != nil {
+			return Charge{}, err
+		}
+		f.Set("customer", cus.ID)
+		f.Set("payment_method_types[]", "customer_balance")
+		f.Set("payment_method_data[type]", "customer_balance")
+		f.Set("payment_method_options[customer_balance][funding_type]", "bank_transfer")
+		f.Set("payment_method_options[customer_balance][bank_transfer][type]", "mx_bank_transfer")
+	default:
+		f.Set("payment_method", r.PaymentMethod)
+		f.Set("automatic_payment_methods[enabled]", "true")
+		f.Set("automatic_payment_methods[allow_redirects]", "never")
+	}
 	f.Set("metadata[apexx_order]", r.OrderID)
 	if r.Email != "" {
 		f.Set("receipt_email", r.Email)
@@ -153,6 +208,8 @@ func (s *Stripe) Charge(ctx context.Context, r ChargeRequest) (Charge, error) {
 	case r.OffSession:
 		f.Set("customer", r.Customer)
 		f.Set("off_session", "true")
+	case r.Customer != "":
+		f.Set("customer", r.Customer) // a card the buyer saved, used with the buyer present
 	}
 	var pi paymentIntent
 	err := s.call(ctx, http.MethodPost, "/v1/payment_intents", r.Account, r.IdempotencyKey, f, &pi)
@@ -340,4 +397,11 @@ func (s *Stripe) SaveCard(ctx context.Context, account, pm, email, idem string) 
 		return "", "", err
 	}
 	return cus.ID, pm, nil
+}
+
+func firstNonEmptyS(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }

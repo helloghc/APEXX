@@ -19,6 +19,7 @@ import (
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/orders"
+	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/store"
 )
@@ -349,7 +350,7 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(req.Customer.Name) == "" || len(req.Customer.Name) > 200 || len(req.Customer.Address) > 500 {
 		errs = append(errs, apierr.FieldError{Field: "customer.name", Code: "invalid", Message: "Revisa tu nombre y dirección"})
 	}
-	if !strings.HasPrefix(req.PaymentMethod, "pm_") && len(req.GiftCards) == 0 && req.PaymentMethod != "credit" {
+	if _, voucher := payments.VoucherMethods[req.PaymentMethod]; !voucher && !strings.HasPrefix(req.PaymentMethod, "pm_") && len(req.GiftCards) == 0 && req.PaymentMethod != "credit" {
 		errs = append(errs, apierr.FieldError{Field: "paymentMethod", Code: "invalid", Message: "Método de pago inválido"})
 	}
 	errs = append(errs, validateCartExtras(&cart.Request{Coupons: req.Coupons})...)

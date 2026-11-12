@@ -193,6 +193,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesFees(handle)
 	s.routesCarriers(handle)
 	s.routesReturnsPolicy(handle)
+	s.routesPayMethods(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

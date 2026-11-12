@@ -97,6 +97,12 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
         )}
       </div>
 
+      {o.status === "pending_payment" && o.voucher && (
+        <Notice tone="warn">
+          <strong>Esperando el pago {o.voucher.kind === "oxxo" ? "en OXXO" : "por SPEI"}.</strong> {o.voucher.kind === "oxxo" ? `Referencia ${o.voucher.reference}` : `CLABE ${o.voucher.clabe}${o.voucher.reference ? `, referencia ${o.voucher.reference}` : ""}`}; vence {dateTime(o.voucher.expiresAt)}. El stock está apartado y el pedido se confirma solo al llegar el dinero; si vence, se cancela.
+          {canEdit && <> <Button size="sm" variant="outline" className="ml-2" onClick={() => act(sale.payVoucher(o.id), "Pago simulado. El pedido quedó pagado.")}>Simular pago (modo de prueba)</Button></>}
+        </Notice>
+      )}
       {o.risk?.level === "review" && (
         <Notice tone="warn">
           <strong>Revisa este pedido antes de enviarlo.</strong> Tus reglas antifraude lo marcaron: {(o.risk.reasons ?? []).join("; ")}.{" "}

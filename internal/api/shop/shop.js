@@ -219,11 +219,13 @@
     function paintWallet() {
       if (!last) return;
       const cur = last.totals.grand.currency, g = last.totals.grand.amount, w = walletOf(), due = g - w;
+      if (kindBox.dataset.cur !== cur) { kindBox.dataset.cur = cur; paintKinds(); }
       if (gcList) gcList.innerHTML = cards.map((c, i) => "<li>Tarjeta ••••" + esc(c.last4) + " · saldo " + money({ amount: c.balance, currency: cur }) + " <button type='button' class='linkbtn' data-gc-del='" + i + "'>Quitar</button></li>").join("");
       const old = $("[data-wallet-rows]", summary); if (old) old.remove();
       if (w > 0) summary.insertAdjacentHTML("beforeend", "<table class='totals' data-wallet-rows><tr><td>Tarjeta de regalo o saldo</td><td class='num'>−" + money({ amount: w, currency: cur }) + "</td></tr><tr class='grand'><td>A pagar</td><td class='num'>" + money({ amount: due, currency: cur }) + "</td></tr></table>");
-      payBtn.textContent = due > 0 ? "Pagar " + money({ amount: due, currency: cur }) : "Confirmar pedido";
-      payBox.hidden = due === 0 || onCredit();
+      payBtn.textContent = due > 0 ? (voucherKind() ? "Generar referencia de " + money({ amount: due, currency: cur }) : "Pagar " + money({ amount: due, currency: cur })) : "Confirmar pedido";
+      payBox.hidden = due === 0 || onCredit() || voucherKind();
+      if (voucherKind() && instBox) { instBox.innerHTML = ""; return; }
       const ins = cfg.installments;
       if (instBox) {
         const keep = instCount();
@@ -234,6 +236,20 @@
     // Signed-in buyers of a company: company price, and credit when the store gives it.
     let company = null;
     const coBox = $("[data-company]"), onCredit = () => !!(company && $("#paycredit") && $("#paycredit").checked);
+    // Cash at OXXO or SPEI transfer, when the store offers them (pesos only).
+    const kindBox = document.createElement("div"); kindBox.dataset.paykinds = ""; payBox.before(kindBox);
+    const payKind = () => { const r = kindBox.querySelector("input[name=paykind]:checked"); return r ? r.value : "card"; };
+    const voucherKind = () => !onCredit() && (payKind() === "oxxo" || payKind() === "spei");
+    let methods = {};
+    const paintKinds = () => {
+      const mxn = !last || last.totals.grand.currency === "MXN";
+      const opts = [["oxxo", "Efectivo en OXXO", "Te damos una referencia; pagas en tienda en 3 días."], ["spei", "Transferencia SPEI", "Te damos una CLABE; tu pedido se confirma al llegar el dinero."]].filter((o) => methods[o[0]] && mxn);
+      const keep = payKind();
+      kindBox.innerHTML = opts.length ? "<div class='testcards' role='radiogroup' aria-label='Forma de pago'><label><input type='radio' name='paykind' value='card'" + (keep === "card" ? " checked" : "") + "> Tarjeta</label>" +
+        opts.map((o) => "<label><input type='radio' name='paykind' value='" + o[0] + "'" + (keep === o[0] ? " checked" : "") + "> " + o[1] + " <span class='muted'>" + o[2] + "</span></label>").join("") + "</div>" : "";
+    };
+    kindBox.addEventListener("change", () => { paintWallet(); });
+    fetch(api + "/payment-methods").then((x) => (x.ok ? x.json() : {})).then((m) => { methods = m || {}; paintKinds(); }).catch(() => {});
     const TERMS = { net15: "15 días", net30: "30 días", net60: "60 días" };
     fetch(api + "/company").then((x) => (x.status === 200 ? x.json() : null)).then((c) => {
       if (!c || !coBox) return;
@@ -295,8 +311,8 @@
       if (!(pickup() && !String(f.get("postal"))) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
       const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount); // credit or gift cards pay it all: no card needed
-      let pm = onCredit() ? "credit" : covered ? "pm_gift_card" : String(f.get("pm") || "");
-      if (stripe && !covered) {
+      let pm = onCredit() ? "credit" : covered ? "pm_gift_card" : voucherKind() ? payKind() : String(f.get("pm") || "");
+      if (stripe && !covered && !voucherKind()) {
         const sub = await elements.submit();
         if (sub.error) { errBox.textContent = sub.error.message; payBtn.disabled = false; refresh(); return; }
         const r = await stripe.createPaymentMethod({ elements, params: { billing_details: { email: f.get("email"), name: f.get("name") } } });
@@ -375,12 +391,18 @@
     let o = null; try { o = JSON.parse(sessionStorage.getItem("apexx_last_order") || "null"); } catch {}
     if (!o) { thanks.innerHTML = "<h1>¡Gracias!</h1><p>No encontramos un pedido reciente en este navegador.</p>"; return; }
     const m = (v) => money({ amount: v, currency: o.currency });
-    thanks.innerHTML = "<h1>¡Gracias por tu compra!</h1><p>Tu pedido <strong>#" + esc(o.displayNumber || o.number) + "</strong> está confirmado y pagado.</p>" +
+    const v = o.status === "pending_payment" && o.voucher;
+    const until = v ? new Date(v.expiresAt).toLocaleString(document.documentElement.lang || "es-MX", { dateStyle: "long", timeStyle: "short" }) : "";
+    const how = !v ? "" : v.kind === "oxxo"
+      ? "<div class='acct-box' data-voucher><h2>Paga en OXXO</h2><p>Di en caja que vas a pagar un servicio <strong>OXXO Pay</strong> y da esta referencia:</p><p class='big'><strong>" + esc(v.reference) + "</strong></p><p>Monto: <strong>" + m(o.grandTotal) + "</strong>. Paga antes del " + esc(until) + "; después la referencia vence y el pedido se cancela.</p>" + (v.url && v.url.startsWith("https://") ? "<p><a class='btn btn-ghost' href='" + esc(v.url) + "' target='_blank' rel='noopener'>Ver ficha para imprimir</a></p>" : "") + "</div>"
+      : "<div class='acct-box' data-voucher><h2>Paga por transferencia SPEI</h2><p>CLABE: <strong>" + esc(v.clabe) + "</strong>" + (v.bank ? " (" + esc(v.bank) + ")" : "") + "</p>" + (v.reference ? "<p>Referencia: <strong>" + esc(v.reference) + "</strong></p>" : "") + "<p>Monto exacto: <strong>" + m(o.grandTotal) + "</strong>, antes del " + esc(until) + ". Tu pedido se confirma en cuanto llegue el dinero.</p>" + (v.url && v.url.startsWith("https://") ? "<p><a class='btn btn-ghost' href='" + esc(v.url) + "' target='_blank' rel='noopener'>Ver instrucciones</a></p>" : "") + "</div>";
+    thanks.innerHTML = (v ? "<h1>¡Pedido apartado!</h1><p>Tu pedido <strong>#" + esc(o.displayNumber || o.number) + "</strong> está apartado. Lo enviamos cuando recibamos tu pago.</p>" + how
+      : "<h1>¡Gracias por tu compra!</h1><p>Tu pedido <strong>#" + esc(o.displayNumber || o.number) + "</strong> está confirmado y pagado.</p>") +
       (o.shippingMethod ? "<p>" + esc(o.shippingMethod.name) + (o.shippingMethod.estimate ? ": " + esc(o.shippingMethod.estimate.text.toLowerCase()) : "") + (o.shippingMethod.pickupAddress ? " · " + esc(o.shippingMethod.pickupAddress) : "") + ".</p>" : "") +
       "<table><tbody>" + o.lines.map((l) => "<tr><td>" + l.qty + " × " + esc(l.title) + "</td><td class='num'>" + m(l.total) + "</td></tr>").join("") +
       "<tr><td>Envío</td><td class='num'>" + m(o.shipping) + "</td></tr>" + (o.discounts ? "<tr><td>Descuentos</td><td class='num'>−" + m(o.discounts) + "</td></tr>" : "") +
       (o.feeLines || []).map((f) => "<tr><td>" + esc(f.name) + "</td><td class='num'>" + m(f.amount) + "</td></tr>").join("") +
-      "<tr class='grand'><td><strong>Total pagado</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
+      "<tr class='grand'><td><strong>" + (v ? "Total a pagar" : "Total pagado") + "</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
       "<p class='muted'>Te enviaremos la factura por correo en unos minutos.</p>";
   }
 })();

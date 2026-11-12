@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { api, errorMessage, fieldErrors, type Me } from "@/api";
+import { api, errorMessage, fieldErrors, request, type Me } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +60,7 @@ export function Payments({ me }: { me: Me }) {
   return (
     <Page title="Pagos" sub="Cada tienda cobra con su propia cuenta de Stripe. Apexx nunca ve los datos de las tarjetas.">
       <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
+      <LocalMethods canEdit={can(me, "settings", "admin")} />
       <Card>
         <CardHeader>
           <CardTitle>Cuenta conectada</CardTitle>
@@ -147,5 +148,34 @@ export function Payments({ me }: { me: Me }) {
         <p className="text-sm text-muted-foreground">Para cambiar la cuenta de Stripe necesitas nivel Admin en Pagos.</p>
       )}
     </Page>
+  );
+}
+
+/** LocalMethods: cash at OXXO and SPEI transfer, through the same Stripe account. */
+function LocalMethods({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["payment-methods"], queryFn: () => request<{ oxxo: boolean; spei: boolean }>("GET", "/v1/settings/payment-methods") });
+  // The box changes at once; if saving fails it goes back to what is saved.
+  const save = useMutation({
+    mutationFn: (v: { oxxo: boolean; spei: boolean }) => request<{ oxxo: boolean; spei: boolean }>("PUT", "/v1/settings/payment-methods", v),
+    onMutate: (v) => { qc.setQueryData(["payment-methods"], v); },
+    onSuccess: (v) => { qc.setQueryData(["payment-methods"], v); toast.success("Formas de pago guardadas. El checkout ya las ofrece."); },
+    onError: (e) => { void q.refetch(); toast.error(errorMessage(e)); },
+  });
+  const v = q.data;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Efectivo y transferencia</CardTitle>
+        <CardDescription>Además de tarjeta. El pedido aparta el stock hasta que vence la referencia (3 días) y se confirma solo cuando llega el dinero. Solo en pesos; OXXO acepta pedidos de hasta $10,000.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 text-sm">
+        {!v ? <p className="text-muted-foreground">Cargando…</p> : <>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={v.oxxo} disabled={!canEdit} onChange={(e) => save.mutate({ ...v, oxxo: e.target.checked })} /> Efectivo en OXXO</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={v.spei} disabled={!canEdit} onChange={(e) => save.mutate({ ...v, spei: e.target.checked })} /> Transferencia SPEI</label>
+          <p className="text-xs text-muted-foreground">En Stripe activa OXXO y transferencias bancarias (México) en los métodos de pago de tu cuenta.</p>
+        </>}
+      </CardContent>
+    </Card>
   );
 }

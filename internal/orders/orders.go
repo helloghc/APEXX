@@ -189,6 +189,7 @@ type Order struct {
 	PONumber       string               `json:"poNumber,omitempty"`
 	Fees           int64                `json:"fees"` // extra charges and import duties, in the total
 	PostalCode     string               `json:"postalCode,omitempty"`
+	Voucher        *payments.Voucher    `json:"voucher,omitempty"`  // cash or transfer still to be paid
 	FeeLines       []cart.Fee           `json:"feeLines,omitempty"` // each one with its reason
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
 	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`
@@ -492,6 +493,24 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	if subscribed && req.Installments > 1 {
 		return problem(409, "installments_unavailable", "Las suscripciones no se pagan a meses sin intereses", nil), nil
 	}
+	if kind, ok := payments.VoucherMethods[req.PaymentMethod]; ok {
+		pm, err := s.PaymentMethods(ctx, tenant)
+		if err != nil {
+			return Result{}, err
+		}
+		switch {
+		case !pm.Allows(req.PaymentMethod):
+			return problem(409, "payment_method_unavailable", kind+" no está disponible en esta tienda", nil), nil
+		case string(tot.Grand.Currency) != "MXN":
+			return problem(409, "payment_method_unavailable", kind+" solo acepta pesos mexicanos", nil), nil
+		case subscribed:
+			return problem(409, "payment_method_unavailable", "Las suscripciones se pagan con tarjeta", nil), nil
+		case req.Installments > 1:
+			return problem(409, "installments_unavailable", "Los meses sin intereses son solo con tarjeta", nil), nil
+		case req.PaymentMethod == "oxxo" && tot.Grand.Amount > 10_000_00:
+			return problem(409, "payment_method_unavailable", "En OXXO se pagan pedidos de hasta $10,000; elige tarjeta o transferencia", nil), nil
+		}
+	}
 
 	// Store rules: instalments offered and fraud checks.
 	instRules, riskRules, err := s.PaymentRules(ctx, tenant)
@@ -601,7 +620,7 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 		ch, payErr = acct.Provider.Charge(ctx, payments.ChargeRequest{
 			Account: acct.Account, OrderID: id, Amount: due, Currency: string(tot.Grand.Currency),
 			PaymentMethod: req.PaymentMethod, FeeAmount: due * acct.FeeBps / 10000, IdempotencyKey: "charge-" + id, Email: req.Customer.Email,
-			Installments: req.Installments, SaveCard: subscribed && req.Renewal == nil,
+			Installments: req.Installments, SaveCard: subscribed && req.Renewal == nil, Name: req.Customer.Name,
 			Customer: renewalCustomer(req.Renewal), OffSession: req.Renewal != nil,
 		})
 		if payErr != nil {
@@ -616,6 +635,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	o, err := s.Get(ctx, tenant, id, false)
 	if err != nil {
 		return Result{}, err
+	}
+	if ch.Status == "pending" && ch.Voucher != nil {
+		b, _ := json.Marshal(o)
+		return Result{Status: 201, Body: b}, nil // order placed, paid when the voucher is paid
 	}
 	if ch.Status != "captured" {
 		return problem(402, "payment_declined", "El pago fue rechazado: "+ch.Reason, map[string]any{"order": o}), nil
@@ -641,6 +664,30 @@ func (s *Service) settle(ctx context.Context, tenant, actor, id string, acct Acc
 		}
 		if status != StatusPendingPayment {
 			return nil // already settled (reconciler and request raced)
+		}
+		if ch.Status == "pending" && ch.Voucher != nil {
+			// Cash or transfer: the order waits for the money with its stock
+			// kept until the voucher expires (plus an hour of grace).
+			raw, _ := json.Marshal(ch.Voucher)
+			ct, err := tx.Exec(ctx, `UPDATE orders SET voucher=$3, updated_at=now() WHERE tenant_id=$1 AND id=$2 AND voucher IS NULL`, tenant, id, raw)
+			if err != nil || ct.RowsAffected() == 0 {
+				return err // already recorded: nothing new until it is paid
+			}
+			if _, err := tx.Exec(ctx, `UPDATE reservations SET expires_at=$3 WHERE tenant_id=$1 AND holder=$2`, tenant, id, ch.Voucher.ExpiresAt.Add(time.Hour)); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `INSERT INTO payments (tenant_id, id, order_id, provider, provider_ref, status, amount, currency)
+				VALUES ($1,$2,$3,$4,$5,'pending',$6,$7)`, tenant, newID("pay_"), id, acct.Provider.Name(), ch.Ref, grand, cur); err != nil {
+				return err
+			}
+			return s.event(ctx, tx, tenant, id, actor, "payment.voucher_issued", &status, StatusPendingPayment, map[string]any{"kind": ch.Voucher.Kind, "expiresAt": ch.Voucher.ExpiresAt})
+		}
+		if ch.Status == "pending" || ch.Status == "requires_action" {
+			return nil // still waiting
+		}
+		// The voucher row (if any) is replaced by the final payment.
+		if _, err := tx.Exec(ctx, `DELETE FROM payments WHERE tenant_id=$1 AND order_id=$2 AND status='pending'`, tenant, id); err != nil {
+			return err
 		}
 		pstatus := "failed"
 		if ch.Status == "captured" {
@@ -811,7 +858,10 @@ func (s *Service) List(ctx context.Context, tenant string, limit int, before int
 // Reconcile resolves orders stuck in pending_payment for longer than after:
 // it asks the provider whether the charge happened and settles accordingly.
 func (s *Service) Reconcile(ctx context.Context, after time.Duration) (int, error) {
-	rows, err := s.DB.System.Query(ctx, `SELECT tenant_id, id FROM orders WHERE status=$1 AND created_at < now() - $2::interval`,
+	// Orders waiting for a cash or transfer voucher are resolved by the
+	// provider's webhook; they are checked here only once the voucher expired.
+	rows, err := s.DB.System.Query(ctx, `SELECT tenant_id, id FROM orders WHERE status=$1 AND created_at < now() - $2::interval
+		AND (voucher IS NULL OR (voucher->>'expiresAt')::timestamptz < now())`,
 		StatusPendingPayment, fmt.Sprintf("%d seconds", int(after.Seconds())))
 	if err != nil {
 		return 0, err

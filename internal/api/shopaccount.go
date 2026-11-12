@@ -368,6 +368,8 @@ type shopOrderView struct {
 	// Self-service return: lines that can go back, or why not.
 	Returnable []returnableLine
 	ReturnNote string
+	// A cash or transfer voucher still to be paid.
+	VoucherKind, VoucherRef, VoucherCLABE, VoucherBank, VoucherUntil, VoucherURL string
 }
 
 type returnableLine struct {
@@ -438,6 +440,11 @@ var months = []string{"ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "s
 func shortDate(t time.Time) string {
 	t = t.In(mx)
 	return strconv.Itoa(t.Day()) + " " + months[t.Month()-1] + " " + strconv.Itoa(t.Year())
+}
+
+// shortDateTime is shortDate with the time of day in the store's zone.
+func shortDateTime(t time.Time) string {
+	return shortDate(t) + ", " + t.In(mx).Format("15:04")
 }
 
 func mon(n int64, cur string) string { return pesos(money.New(n, money.Currency(cur))) }
@@ -520,6 +527,12 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 			Shipping: mon(o.Shipping, o.Currency), Total: mon(o.GrandTotal, o.Currency)}
 		for _, f := range o.FeeLines {
 			v.Fees = append(v.Fees, struct{ Name, Amount string }{f.Name, mon(f.Amount, o.Currency)})
+		}
+		if vc := o.Voucher; vc != nil {
+			v.VoucherKind, v.VoucherRef, v.VoucherCLABE, v.VoucherBank, v.VoucherUntil = vc.Kind, vc.Reference, vc.CLABE, vc.Bank, shortDateTime(vc.ExpiresAt)
+			if strings.HasPrefix(vc.URL, "https://") {
+				v.VoucherURL = vc.URL
+			}
 		}
 		if o.Discounts > 0 {
 			v.Discounts = mon(o.Discounts, o.Currency)

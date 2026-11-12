@@ -7,10 +7,13 @@ package payments
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Charge is the result of a payment attempt.
@@ -21,7 +24,23 @@ type Charge struct {
 	// Set when the card was saved (ChargeRequest.SaveCard).
 	Customer      string `json:"customer,omitempty"`
 	PaymentMethod string `json:"paymentMethod,omitempty"`
+	// Voucher: cash (OXXO) or bank transfer (SPEI) the buyer pays later;
+	// Status is "pending" until the money arrives.
+	Voucher *Voucher `json:"voucher,omitempty"`
 }
+
+// Voucher is how a buyer pays an order in cash or by transfer.
+type Voucher struct {
+	Kind      string    `json:"kind"`                // oxxo | spei
+	Reference string    `json:"reference,omitempty"` // OXXO barcode number or SPEI reference
+	CLABE     string    `json:"clabe,omitempty"`     // SPEI account to transfer to
+	Bank      string    `json:"bank,omitempty"`
+	URL       string    `json:"url,omitempty"` // printable instructions from the provider
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+// VoucherMethods are the payment methods paid later with a voucher.
+var VoucherMethods = map[string]string{"oxxo": "Efectivo en OXXO", "spei": "Transferencia SPEI"}
 
 // ChargeRequest asks the provider to charge a tokenized payment method.
 type ChargeRequest struct {
@@ -33,7 +52,8 @@ type ChargeRequest struct {
 	FeeAmount      int64  // Apexx application fee
 	IdempotencyKey string
 	Email          string
-	Installments   int // monthly payments without interest (0 or 1 = single payment)
+	Name           string // buyer name (vouchers print it)
+	Installments   int    // monthly payments without interest (0 or 1 = single payment)
 	// SaveCard keeps the payment method for future charges of a subscription.
 	SaveCard bool
 	// Customer and OffSession charge a saved payment method without the shopper present.
@@ -122,6 +142,14 @@ func (s *Sandbox) Charge(_ context.Context, r ChargeRequest) (Charge, error) {
 		return c, nil
 	}
 	c := Charge{Ref: "pi_sbx_" + r.OrderID, Status: "captured"}
+	if _, ok := VoucherMethods[r.PaymentMethod]; ok {
+		sum := sha256.Sum256([]byte(r.OrderID))
+		ref := fmt.Sprintf("%016d", binary.BigEndian.Uint64(sum[:8])%1e16)
+		c.Status, c.Voucher = "pending", &Voucher{Kind: r.PaymentMethod, Reference: ref, ExpiresAt: time.Now().Add(VoucherTTL)}
+		if r.PaymentMethod == "spei" {
+			c.Voucher.CLABE, c.Voucher.Bank = "646180"+ref[:12], "STP (prueba)"
+		}
+	}
 	if r.PaymentMethod == "pm_card_chargeDeclined" {
 		c.Status, c.Reason = "failed", "card_declined"
 	}
@@ -163,7 +191,37 @@ func (s *Sandbox) Lookup(_ context.Context, _, orderID string) (Charge, bool, er
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	c, ok := s.byOrder[orderID]
+	if ok && c.Status == "pending" && c.Voucher != nil && time.Now().After(c.Voucher.ExpiresAt) {
+		c = Charge{Ref: c.Ref, Status: "failed", Reason: "voucher_expired"} // nobody paid it in time
+		s.byOrder[orderID] = c
+	}
 	return c, ok, nil
+}
+
+// VoucherTTL is how long a cash or transfer voucher can be paid.
+var VoucherTTL = 72 * time.Hour
+
+// PayVoucher simulates the buyer paying the voucher of an order (QA and tests).
+func (s *Sandbox) PayVoucher(orderID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c, ok := s.byOrder[orderID]
+	if !ok || c.Status != "pending" {
+		return false
+	}
+	c.Status = "captured"
+	s.byOrder[orderID] = c
+	return true
+}
+
+// ExpireVoucher makes the voucher of an order overdue (tests).
+func (s *Sandbox) ExpireVoucher(orderID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if c, ok := s.byOrder[orderID]; ok && c.Voucher != nil {
+		c.Voucher.ExpiresAt = time.Now().Add(-time.Minute)
+		s.byOrder[orderID] = c
+	}
 }
 
 // Invoice implements Provider.

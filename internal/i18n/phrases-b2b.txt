@@ -79,3 +79,23 @@ Listo: devolución registrada. || Done: return registered. || C'est fait : retou
 Podrás pedir una devolución cuando tu pedido se envíe. || You can request a return once your order ships. || Vous pourrez demander un retour une fois la commande expédiée. || Você poderá solicitar uma devolução quando o pedido for enviado. || Anda dapat mengajukan pengembalian setelah pesanan dikirim. || 発送後に返品を申請できます。
 El plazo para devoluciones de este pedido terminó. || The return window for this order has ended. || Le délai de retour de cette commande est terminé. || O prazo de devolução deste pedido terminou. || Batas waktu pengembalian pesanan ini sudah berakhir. || この注文の返品期限は終了しました。
 Te damos la guía para enviarlo sin costo. || We'll give you a free return label. || Nous vous fournissons une étiquette de retour gratuite. || Enviamos uma etiqueta de devolução sem custo. || Kami berikan label pengembalian gratis. || 無料の返品ラベルをお渡しします。
+Paga en OXXO || Pay at OXXO || Payez chez OXXO || Pague no OXXO || Bayar di OXXO || OXXOでお支払い
+Referencia: || Reference: || Référence : || Referência: || Referensi: || 参照番号：
+. Paga || . Pay || . Payez || . Pague || . Bayar || 。お支払い金額：
+antes del || before || avant le || até || sebelum || 期限：
+Ver ficha para imprimir || View printable voucher || Voir le bon à imprimer || Ver boleto para imprimir || Lihat voucher untuk dicetak || 印刷用の支払票を見る
+Paga por transferencia SPEI || Pay by SPEI transfer || Payez par virement SPEI || Pague por transferência SPEI || Bayar dengan transfer SPEI || SPEI振込でお支払い
+CLABE: || CLABE: || CLABE : || CLABE: || CLABE: || CLABE：
+· referencia || · reference || · référence || · referência || · referensi || ・参照番号
+. Transfiere || . Transfer || . Virez || . Transfira || . Transfer || 。振込金額：
+Ver instrucciones || View instructions || Voir les instructions || Ver instruções || Lihat petunjuk || 手順を見る
+Tarjeta || Card || Carte || Cartão || Kartu || カード
+Efectivo en OXXO || Cash at OXXO || Espèces chez OXXO || Dinheiro no OXXO || Tunai di OXXO || OXXOで現金払い
+Te damos una referencia; pagas en tienda en 3 días. || We give you a reference; pay in store within 3 days. || Nous vous donnons une référence ; payez en magasin sous 3 jours. || Damos uma referência; pague na loja em até 3 dias. || Kami berikan referensi; bayar di toko dalam 3 hari. || 参照番号をお渡しします。3日以内に店舗でお支払いください。
+Transferencia SPEI || SPEI transfer || Virement SPEI || Transferência SPEI || Transfer SPEI || SPEI振込
+Te damos una CLABE; tu pedido se confirma al llegar el dinero. || We give you a CLABE; your order is confirmed when the money arrives. || Nous vous donnons une CLABE ; la commande est confirmée à réception. || Damos uma CLABE; seu pedido é confirmado quando o dinheiro chegar. || Kami berikan CLABE; pesanan dikonfirmasi saat dana masuk. || CLABEをお渡しします。入金を確認後に注文が確定します。
+Generar referencia de || Get a payment reference for || Obtenir une référence de paiement de || Gerar referência de pagamento de || Buat referensi pembayaran sebesar || 支払い参照番号を発行：
+¡Pedido apartado! || Order reserved! || Commande réservée ! || Pedido reservado! || Pesanan dipesan! || ご注文を確保しました！
+Total a pagar || Total to pay || Total à payer || Total a pagar || Total yang harus dibayar || お支払い合計
+Monto exacto: || Exact amount: || Montant exact : || Valor exato: || Jumlah tepat: || 正確な金額：
+Monto: || Amount: || Montant : || Valor: || Jumlah: || 金額：

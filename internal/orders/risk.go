@@ -223,3 +223,21 @@ func (s *Service) ClearRisk(ctx context.Context, tenant, actor, actorName, id st
 		return s.event(ctx, tx, tenant, id, actor, "risk.cleared", &o.Status, o.Status, map[string]any{"by": actorName})
 	})
 }
+
+// PaymentMethodSettings are the payment methods besides card a store accepts.
+type PaymentMethodSettings struct {
+	OXXO bool `json:"oxxo"`
+	SPEI bool `json:"spei"`
+}
+
+// Allows tells whether a voucher method is on.
+func (p PaymentMethodSettings) Allows(method string) bool {
+	return (method == "oxxo" && p.OXXO) || (method == "spei" && p.SPEI)
+}
+
+// PaymentMethods reads the store's methods (all off by default).
+func (s *Service) PaymentMethods(ctx context.Context, tenant string) (PaymentMethodSettings, error) {
+	var p PaymentMethodSettings
+	_, err := s.DB.GetDoc(ctx, tenant, "payments", "methods", &p)
+	return p, err
+}
