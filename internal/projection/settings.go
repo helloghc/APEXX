@@ -156,6 +156,17 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 		t.Cart.QtyRules = rules
 		t.mu.Unlock()
 	}
+	if key == "" || key == store.KeyCheckoutBlocks {
+		var d struct {
+			Blocks []cart.CheckoutBlock `json:"blocks"`
+		}
+		if _, err := p.db.GetDoc(ctx, t.ID, "checkout_blocks", "config", &d); err != nil {
+			return err
+		}
+		t.mu.Lock()
+		t.Cart.CheckoutBlocks = d.Blocks
+		t.mu.Unlock()
+	}
 	if key == "" || key == store.KeyCheckoutRules {
 		var d struct {
 			Rules []cart.CheckoutRule `json:"rules"`

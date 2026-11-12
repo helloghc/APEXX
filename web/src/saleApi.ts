@@ -35,6 +35,8 @@ export interface Order {
   fees?: number;
   feeLines?: { id: string; kind: string; name: string; amount: number; reason: string }[];
   downloads?: Download[];
+  checkoutFields?: { id: string; label: string; value: string }[];
+  deferred?: number;
   voucher?: { kind: string; reference?: string; clabe?: string; bank?: string; url?: string; expiresAt: string };
 }
 export interface OrderQuery { review?: string; q?: string; status?: string; payment?: string; fulfillment?: string; from?: string; to?: string; customer?: string; cursor?: string; limit?: number }

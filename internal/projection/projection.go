@@ -636,6 +636,13 @@ func (p *Projector) listenLoop(ctx context.Context) {
 	}
 }
 
+// CheckoutBlocks returns the blocks of the store's payment page.
+func (t *Tenant) CheckoutBlocks() []cart.CheckoutBlock {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return append([]cart.CheckoutBlock(nil), t.Cart.CheckoutBlocks...)
+}
+
 // CustomsOf returns the personalization fields of a product.
 func (t *Tenant) CustomsOf(productID string) []cart.CustomField {
 	t.mu.RLock()

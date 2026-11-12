@@ -163,3 +163,4 @@ Guardar || Save || Enregistrer || Salvar || Simpan || 保存
 Solo necesarias || Necessary only || Nécessaires uniquement || Somente necessários || Hanya yang diperlukan || 必須のみ
 Aceptar todo || Accept all || Tout accepter || Aceitar tudo || Terima semua || すべて許可
 Preferencias de cookies || Cookie preferences || Préférences de cookies || Preferências de cookies || Preferensi cookie || Cookieの設定
+Falta aceptar: || Please accept: || Veuillez accepter : || Falta aceitar: || Harap setujui: || 同意が必要です：

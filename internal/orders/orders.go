@@ -104,6 +104,16 @@ type CheckoutRequest struct {
 	ShippingOption string `json:"shippingOption,omitempty"`
 	// AcceptedTerms must be true when the store asks to accept its terms.
 	AcceptedTerms bool `json:"acceptedTerms,omitempty"`
+	// Blocks answers the store's checkout blocks (block id -> value).
+	Blocks map[string]string `json:"blocks,omitempty"`
+}
+
+func blocksJSON(a []cart.BlockAnswer) []byte {
+	if len(a) == 0 {
+		return nil
+	}
+	b, _ := json.Marshal(a)
+	return b
 }
 
 // ShippingMethod is the delivery option stored with the order.
@@ -199,10 +209,11 @@ type Order struct {
 	PONumber       string               `json:"poNumber,omitempty"`
 	Fees           int64                `json:"fees"` // extra charges and import duties, in the total
 	PostalCode     string               `json:"postalCode,omitempty"`
-	Voucher        *payments.Voucher    `json:"voucher,omitempty"`   // cash or transfer still to be paid
-	FeeLines       []cart.Fee           `json:"feeLines,omitempty"`  // each one with its reason
-	Downloads      []Download           `json:"downloads,omitempty"` // files of digital products, with signed links
-	Deferred       int64                `json:"deferred,omitempty"`  // preorder balance left to pay later
+	Voucher        *payments.Voucher    `json:"voucher,omitempty"`        // cash or transfer still to be paid
+	FeeLines       []cart.Fee           `json:"feeLines,omitempty"`       // each one with its reason
+	Downloads      []Download           `json:"downloads,omitempty"`      // files of digital products, with signed links
+	Deferred       int64                `json:"deferred,omitempty"`       // preorder balance left to pay later
+	CheckoutFields []cart.BlockAnswer   `json:"checkoutFields,omitempty"` // answers to the store's checkout blocks
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
 	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`
 }
@@ -394,6 +405,14 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	if rules.Checkout.TermsCheckbox && !req.AcceptedTerms {
 		fieldErrs = append(fieldErrs, map[string]string{"field": "acceptedTerms", "code": "required", "message": "Acepta los términos y condiciones para continuar"})
 	}
+	var blockAnswers []cart.BlockAnswer
+	if blocks := t.CheckoutBlocks(); len(blocks) > 0 || len(req.Blocks) > 0 {
+		ans, bad := cart.CheckBlocks(blocks, req.Blocks)
+		if bad != "" {
+			fieldErrs = append(fieldErrs, map[string]string{"field": "blocks", "code": "invalid", "message": bad})
+		}
+		blockAnswers = ans
+	}
 	if len(req.Customer.Notes) > 500 {
 		fieldErrs = append(fieldErrs, map[string]string{"field": "customer.notes", "code": "too_long", "message": "La nota admite hasta 500 caracteres"})
 	}
@@ -576,11 +595,11 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code,
-				shipping_method, tax_detail, display_number, tax_adjust, po_number, fees, fee_lines, deferred)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+				shipping_method, tax_detail, display_number, tax_adjust, po_number, fees, fee_lines, deferred, checkout_fields)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`,
 			tenant, id, number, req.Channel, StatusPendingPayment, string(tot.Grand.Currency), tot.Items.Amount, tot.Discounts.Amount,
 			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number), tot.TaxAdjust.Amount, req.PONumber,
-			tot.Fees.Amount, feeJSON(sim.Fees), deferred); err != nil {
+			tot.Fees.Amount, feeJSON(sim.Fees), deferred, blocksJSON(blockAnswers)); err != nil {
 			return err
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {

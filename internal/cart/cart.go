@@ -199,9 +199,10 @@ type Service struct {
 	Customs   map[string][]CustomField // product id -> personalization fields
 	// CheckoutRules hide payment methods or delivery options; ExternalRules
 	// asks the store's app (nil: none). It must answer within its own limit.
-	CheckoutRules []CheckoutRule
-	ExternalRules func(RulesInput) (RulesResult, bool)
-	FeeRules      []FeeRule // extra charges per order (handling, packaging, small order)
+	CheckoutRules  []CheckoutRule
+	CheckoutBlocks []CheckoutBlock // notices, required checkboxes and extra fields of the payment page
+	ExternalRules  func(RulesInput) (RulesResult, bool)
+	FeeRules       []FeeRule // extra charges per order (handling, packaging, small order)
 	// LiveRate asks a connected carrier for its price, in the store currency
 	// (nil: no connected carriers). It must answer within its own time limit.
 	LiveRate func(carrierID, country, postalCode string, weightGrams, value int64) (amount int64, days int, ok bool)

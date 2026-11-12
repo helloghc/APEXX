@@ -342,6 +342,15 @@ function downloadsBox(ds) {
       if (co.phoneRequired) { const l = $("label[for=phone]"); if (l) l.textContent = "Teléfono"; $("#phone").required = true; }
       if (extras) extras.innerHTML = (co.notesField ? "<div class='field'><label for='notes'>Nota para la tienda (opcional)</label><textarea id='notes' name='notes' maxlength='500' rows='2'></textarea></div>" : "") +
         (co.termsCheckbox ? "<label class='shipopt'><input type='checkbox' name='terms' id='terms' required> <span>Acepto los " + (co.termsPolicy ? "<a href='" + base + "/politicas/" + esc(co.termsPolicy) + "' target='_blank' rel='noopener'>" + esc((co.termsTitle || "términos y condiciones").toLowerCase()) + "</a>" : "términos y condiciones") + "</span></label>" : "");
+      // The store's checkout blocks: notices, required checkboxes and extra fields, drawn by Apexx.
+      try {
+        const bl = (await (await fetch(api + "/checkout-blocks")).json()).blocks || [];
+        if (extras && bl.length) extras.insertAdjacentHTML("beforeend", bl.map((b) => b.kind === "notice"
+          ? "<div class='note' data-block='" + esc(b.id) + "'><strong>" + esc(b.label) + "</strong>" + (b.text ? "<br>" + esc(b.text) : "") + "</div>"
+          : b.kind === "checkbox"
+            ? "<label class='shipopt' data-block='" + esc(b.id) + "'><input type='checkbox' name='blk." + esc(b.id) + "'" + (b.required ? " data-required" : "") + "> <span>" + esc(b.label) + (b.text ? " <span class='muted'>" + esc(b.text) + "</span>" : "") + "</span></label>"
+            : "<div class='field' data-block='" + esc(b.id) + "'><label for='blk-" + esc(b.id) + "'>" + esc(b.label) + (b.required ? "" : " (opcional)") + "</label><input id='blk-" + esc(b.id) + "' name='blk." + esc(b.id) + "' maxlength='" + (b.maxLength || 80) + "'" + (b.required ? " data-required" : "") + ">" + (b.text ? "<small class='muted'>" + esc(b.text) + "</small>" : "") + "</div>").join(""));
+      } catch {}
       await refresh();
       if (cfg.mode === "stripe" && cfg.publishableKey) {
         await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
@@ -362,6 +371,12 @@ function downloadsBox(ds) {
         if (!String(f.get(k) || "").trim()) { errBox.textContent = "Falta " + label + "."; form.elements[k].focus(); return; }
       }
       if (co.termsCheckbox && !f.get("terms")) { errBox.textContent = "Acepta los términos y condiciones para continuar."; $("#terms").focus(); return; }
+      const blocks = {};
+      for (const el of form.querySelectorAll("[name^='blk.']")) {
+        const v = el.type === "checkbox" ? (el.checked ? "true" : "") : el.value.trim();
+        if (v) blocks[el.name.slice(4)] = v;
+        else if (el.hasAttribute("data-required")) { errBox.textContent = (el.type === "checkbox" ? "Falta aceptar: " : "Falta: ") + (el.closest("[data-block]").querySelector("span, label").textContent.trim()); el.focus(); return; }
+      }
       if (!(pickup() && !String(f.get("postal"))) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
       const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount - (voucherKind() ? 0 : (last.totals.dueLater && last.totals.dueLater.amount) || 0)); // credit or gift cards pay it all: no card needed
@@ -379,7 +394,7 @@ function downloadsBox(ds) {
       if (!key) { key = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9-]/gi, ""); sessionStorage.setItem("apexx_idem", key); }
       const res = await post("/checkout", {
         channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined, custom: l.custom || undefined, ref: keyOf(l) })),
-        shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined,
+        shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined, blocks: Object.keys(blocks).length ? blocks : undefined,
         customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, poNumber: company ? String(f.get("po") || "").trim() || undefined : undefined, paymentMethod: pm,
         coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,
         savedCard: kept || undefined, saveCard: !kept && signedIn && !!f.get("savecard") || undefined,

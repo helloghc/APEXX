@@ -400,6 +400,9 @@ func (d *DB) SellerNames(ctx context.Context, tenant string) (map[string]string,
 // KeyLanguages is the TopicSettings key of the storefront languages.
 const KeyLanguages = "languages"
 
+// KeyCheckoutBlocks is the TopicSettings key of checkout blocks.
+const KeyCheckoutBlocks = "checkout_blocks"
+
 // KeyCheckoutRules is the TopicSettings key of checkout rules.
 const KeyCheckoutRules = "checkout_rules"
 

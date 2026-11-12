@@ -99,6 +99,10 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
 
       <WarehouseStatus id={o.id} />
       {!!o.downloads?.length && <Downloads order={o} canEdit={can(me, "orders", "edit")} />}
+      {!!o.checkoutFields?.length && (
+        <Card data-checkout-fields><CardHeader><CardTitle className="text-base">Datos del pago</CardTitle></CardHeader>
+          <CardContent className="grid gap-1 text-sm">{o.checkoutFields.map((f) => <p key={f.id}><span className="text-muted-foreground">{f.label}:</span> {f.value}</p>)}</CardContent></Card>
+      )}
       {o.status === "pending_payment" && o.voucher && (
         <Notice tone="warn">
           <strong>Esperando el pago {o.voucher.kind === "oxxo" ? "en OXXO" : "por SPEI"}.</strong> {o.voucher.kind === "oxxo" ? `Referencia ${o.voucher.reference}` : `CLABE ${o.voucher.clabe}${o.voucher.reference ? `, referencia ${o.voucher.reference}` : ""}`}; vence {dateTime(o.voucher.expiresAt)}. El stock está apartado y el pedido se confirma solo al llegar el dinero; si vence, se cancela.

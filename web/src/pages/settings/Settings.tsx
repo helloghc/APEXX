@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -20,6 +20,7 @@ const Fields = lazy(() => import("./Fields").then((m) => ({ default: m.Fields })
 const CatalogSource = lazy(() => import("./CatalogSource").then((m) => ({ default: m.CatalogSource })));
 const ReturnsPolicy = lazy(() => import("./ReturnsPolicy").then((m) => ({ default: m.ReturnsPolicy })));
 const Fees = lazy(() => import("./Fees").then((m) => ({ default: m.Fees })));
+const CheckoutBlocks = lazy(() => import("./CheckoutBlocks").then((m) => ({ default: m.CheckoutBlocks })));
 const SSO = lazy(() => import("./SSO").then((m) => ({ default: m.SSO })));
 const Bulk = lazy(() => import("./Bulk").then((m) => ({ default: m.Bulk })));
 const Scripts = lazy(() => import("./Scripts").then((m) => ({ default: m.Scripts })));
@@ -32,6 +33,7 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
   { id: "tienda", label: "Tienda", icon: Store, group: "General" },
   { id: "checkout", label: "Checkout", icon: ShoppingBag, group: "General" },
   { id: "reglas-pago", label: "Reglas de pago y envío", icon: Filter, group: "General" },
+  { id: "bloques-pago", label: "Bloques del pago", icon: SquarePlus, group: "General" },
   { id: "canales", label: "Canales", icon: ArrowLeftRight, group: "General" },
   { id: "catalogo-maestro", label: "Catálogo maestro", icon: Copy, group: "General" },
   { id: "campos", label: "Campos propios", icon: ListPlus, group: "General" },
@@ -97,6 +99,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "devoluciones":
       body = <ReturnsPolicy me={me} />;
+      break;
+    case "bloques-pago":
+      body = <CheckoutBlocks me={me} />;
       break;
     case "sso":
       body = <SSO me={me} />;
