@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 	"sync"
@@ -97,15 +98,16 @@ type MediaVariant struct {
 
 // Media is an image of the media library.
 type Media struct {
-	ID          string         `json:"id"`
-	Filename    string         `json:"filename"`
-	ContentType string         `json:"contentType"`
-	Bytes       int64          `json:"bytes"`
-	Width       int            `json:"width"`
-	Height      int            `json:"height"`
-	Alt         string         `json:"alt"`
-	Variants    []MediaVariant `json:"variants"`
-	CreatedAt   time.Time      `json:"createdAt"`
+	ID          string          `json:"id"`
+	Filename    string          `json:"filename"`
+	ContentType string          `json:"contentType"`
+	Bytes       int64           `json:"bytes"`
+	Width       int             `json:"width"`
+	Height      int             `json:"height"`
+	Alt         string          `json:"alt"`
+	Variants    []MediaVariant  `json:"variants"`
+	CreatedAt   time.Time       `json:"createdAt"`
+	Edits       json.RawMessage `json:"edits,omitempty"` // non-destructive edits over the original
 }
 
 // Taxonomy is the in-memory read model of everything that organizes

@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ImageIcon, Search, Trash2 } from "lucide-react";
+import { ImageIcon, PencilRuler, Search, Trash2 } from "lucide-react";
+import { MediaEditor } from "./MediaEditor";
 import { ApiError, errorMessage, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -69,6 +70,7 @@ export function MediaLibrary({ me }: { me: Me }) {
 function MediaDetail({ media, canEdit, onClose, onChanged }: { media: MediaItem; canEdit: boolean; onClose: () => void; onChanged: () => void }) {
   const detail = useQuery({ queryKey: ["media-detail", media.id], queryFn: () => cat.mediaDetail(media.id) });
   const [alt, setAlt] = useState(media.alt);
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<null | "plain" | "force">(null);
   useEffect(() => setAlt(media.alt), [media]);
@@ -137,12 +139,13 @@ function MediaDetail({ media, canEdit, onClose, onChanged }: { media: MediaItem;
           </div>
         </div>
         <DialogFooter className="sm:justify-between">
-          {canEdit ? <Button variant="outline" onClick={() => setConfirm("plain")}><Trash2 aria-hidden="true" /> Eliminar</Button> : <span />}
+          {canEdit ? <div className="flex gap-2"><Button variant="outline" onClick={() => setConfirm("plain")}><Trash2 aria-hidden="true" /> Eliminar</Button><Button variant="outline" onClick={() => setEditing(true)}><PencilRuler aria-hidden="true" /> Editar imagen</Button></div> : <span />}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Cerrar</Button>
             {canEdit && <Button onClick={() => void saveAlt()} disabled={busy || alt === media.alt}>Guardar</Button>}
           </div>
         </DialogFooter>
+        {editing && <MediaEditor media={media} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); onChanged(); }} />}
         <Confirm
           open={!!confirm}
           title={confirm === "force" ? "Esta imagen está en uso" : "¿Eliminar esta imagen?"}

@@ -65,6 +65,8 @@ func (s *Server) routesCatalog(handle func(string, http.HandlerFunc)) {
 	handle("POST /v1/catalog/media", s.authed("catalog", auth.Edit, s.uploadMedia))
 	handle("GET /v1/catalog/media/{id}", s.authed("catalog", auth.Read, s.getMedia))
 	handle("PATCH /v1/catalog/media/{id}", s.authed("catalog", auth.Edit, s.patchMedia))
+	handle("POST /v1/catalog/media/{id}/edit", s.authed("catalog", auth.Edit, s.editMedia))
+	handle("GET /v1/catalog/media/{id}/original", s.authed("catalog", auth.Read, noStorefront(s.mediaOriginal)))
 	handle("DELETE /v1/catalog/media/{id}", s.authed("catalog", auth.Edit, s.deleteMedia))
 	handle("GET /media/{tenant}/{id}/{file}", s.serveMedia)
 

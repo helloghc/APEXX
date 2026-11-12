@@ -939,14 +939,18 @@ func (d *DB) DeleteTerm(ctx context.Context, tenant, actor, kind, name string) (
 func scanMedia(r pgx.CollectableRow) (catalog.Media, error) {
 	var m catalog.Media
 	var vs []byte
-	if err := r.Scan(&m.ID, &m.Filename, &m.ContentType, &m.Bytes, &m.Width, &m.Height, &m.Alt, &vs, &m.CreatedAt); err != nil {
+	var ed []byte
+	if err := r.Scan(&m.ID, &m.Filename, &m.ContentType, &m.Bytes, &m.Width, &m.Height, &m.Alt, &vs, &m.CreatedAt, &ed); err != nil {
 		return m, err
+	}
+	if len(ed) > 0 {
+		m.Edits = ed
 	}
 	_ = json.Unmarshal(vs, &m.Variants)
 	return m, nil
 }
 
-const mediaCols = `id, filename, content_type, bytes, width, height, alt, variants, created_at`
+const mediaCols = `id, filename, content_type, bytes, width, height, alt, variants, created_at, edits`
 
 // Media lists the media of a tenant; id != "" selects one (system pool).
 func (d *DB) Media(ctx context.Context, tenant, id string) ([]catalog.Media, error) {
@@ -988,6 +992,32 @@ func (d *DB) InsertMedia(ctx context.Context, tenant, actor string, m catalog.Me
 		}
 		return Audit(ctx, tx, tenant, actor, "media.upload", m.ID, map[string]any{"filename": m.Filename, "bytes": m.Bytes, "width": m.Width, "height": m.Height})
 	})
+}
+
+// SetMediaEdit records new renditions made from the original with edits
+// (nil edits: the original as it was).
+func (d *DB) SetMediaEdit(ctx context.Context, tenant, actor, id string, edits []byte, w, h int, variants []catalog.MediaVariant) error {
+	vs, _ := json.Marshal(variants)
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		ct, err := tx.Exec(ctx, `UPDATE media SET edits=$3, width=$4, height=$5, variants=$6 WHERE tenant_id=$1 AND id=$2`, tenant, id, edits, w, h, vs)
+		if err != nil {
+			return err
+		}
+		if ct.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		if err := Emit(ctx, tx, tenant, TopicMedia, id, nil); err != nil {
+			return err
+		}
+		return Audit(ctx, tx, tenant, actor, "media.edit", id, map[string]any{"edits": json.RawMessage(rawOrNull(edits)), "width": w, "height": h})
+	})
+}
+
+func rawOrNull(b []byte) []byte {
+	if len(b) == 0 {
+		return []byte("null")
+	}
+	return b
 }
 
 // SetMediaAlt changes the alt text of an image.

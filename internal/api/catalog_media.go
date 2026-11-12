@@ -22,10 +22,11 @@ import (
 // mediaView is a media item with ready-to-use URLs.
 type mediaView struct {
 	catalog.Media
-	URL        string `json:"url"`        // largest fallback rendition
-	Thumb      string `json:"thumb"`      // about 320 px wide
-	Srcset     string `json:"srcset"`     // fallback format (JPEG or PNG)
-	WebpSrcset string `json:"webpSrcset"` // empty when WebP would not be smaller
+	URL        string `json:"url"`                // largest fallback rendition
+	Thumb      string `json:"thumb"`              // about 320 px wide
+	Srcset     string `json:"srcset"`             // fallback format (JPEG or PNG)
+	WebpSrcset string `json:"webpSrcset"`         // empty when WebP would not be smaller
+	Original   string `json:"original,omitempty"` // the untouched upload, for the editor (panel only)
 }
 
 func mediaURL(tenant, key string) string { return "/media/" + tenant + "/" + key }
@@ -67,6 +68,7 @@ func viewMedia(tenant string, m catalog.Media) mediaView {
 	if v.Variants == nil {
 		v.Variants = []catalog.MediaVariant{}
 	}
+	v.Original = "/v1/catalog/media/" + m.ID + "/original"
 	return v
 }
 
@@ -183,31 +185,49 @@ func (s *Server) uploadMedia(w http.ResponseWriter, r *http.Request) {
 		apierr.BadRequest(w, "Falta el texto alternativo", *altErr)
 		return
 	}
-	pr := principal(r)
-	sum := sha256.Sum256(data)
-	if dup, found, err := s.DB.MediaBySHA(r.Context(), pr.Tenant, sum[:]); err != nil {
-		internalError(w, s.Log, err)
-		return
-	} else if found {
-		// The same file is already in the library: reuse it instead of storing a copy.
-		httpx.JSON(w, r, http.StatusOK, map[string]any{"media": viewMedia(pr.Tenant, dup), "duplicate": true})
-		return
-	}
-	// Decoding and resizing hold tens of megabytes; only two run at a time per node.
-	select {
-	case s.uploadSlots <- struct{}{}:
-		defer func() { <-s.uploadSlots }()
-	case <-r.Context().Done():
+	m, dup, err := s.saveImage(r, data, hdr.Filename, alt)
+	if errors.Is(err, errBusy) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusServiceUnavailable, Code: "busy", Detail: "Hay muchas imágenes procesándose; intenta de nuevo en unos segundos"})
 		return
 	}
-	proc, err := media.Process(data)
 	if err != nil {
 		s.mediaProblem(w, err)
 		return
 	}
+	status := http.StatusCreated
+	if dup {
+		status = http.StatusOK
+	}
+	httpx.JSON(w, r, status, map[string]any{"media": viewMedia(principal(r).Tenant, m), "duplicate": dup})
+}
+
+var errBusy = errors.New("media: busy")
+
+// saveImage stores a new image of the library (or finds the identical one).
+func (s *Server) saveImage(r *http.Request, data []byte, filename, alt string) (catalog.Media, bool, error) {
+	pr := principal(r)
+	sum := sha256.Sum256(data)
+	if dup, found, err := s.DB.MediaBySHA(r.Context(), pr.Tenant, sum[:]); err != nil {
+		return catalog.Media{}, false, err
+	} else if found {
+		// The same file is already in the library: reuse it instead of storing a copy.
+		return dup, true, nil
+	}
+	// Decoding and resizing hold tens of megabytes; only two run at a time per node.
+	if r.URL.Path != "" && !strings.HasSuffix(r.URL.Path, "/edit") {
+		select {
+		case s.uploadSlots <- struct{}{}:
+			defer func() { <-s.uploadSlots }()
+		case <-r.Context().Done():
+			return catalog.Media{}, false, errBusy
+		}
+	}
+	proc, err := media.Process(data)
+	if err != nil {
+		return catalog.Media{}, false, err
+	}
 	id := store.NewID("m_")
-	name := filepath.Base(strings.ReplaceAll(hdr.Filename, "\\", "/"))
+	name := filepath.Base(strings.ReplaceAll(filename, "\\", "/"))
 	if len(name) > 200 {
 		name = name[len(name)-200:]
 	}
@@ -217,28 +237,25 @@ func (s *Server) uploadMedia(w http.ResponseWriter, r *http.Request) {
 	m := catalog.Media{ID: id, Filename: name, ContentType: proc.ContentType, Bytes: int64(len(data)), Width: proc.Width, Height: proc.Height,
 		Alt: alt, CreatedAt: time.Now().UTC().Truncate(time.Microsecond)}
 	ctx := r.Context()
-	fail := func(err error) {
+	fail := func(err error) (catalog.Media, bool, error) {
 		_ = s.Media.DeletePrefix(ctx, pr.Tenant, id)
-		internalError(w, s.Log, err)
+		return catalog.Media{}, false, err
 	}
 	if err := s.Media.Put(ctx, pr.Tenant, id+"/original."+proc.Ext, data, proc.ContentType); err != nil {
-		fail(err)
-		return
+		return fail(err)
 	}
 	for _, rd := range proc.Renditions {
 		key := fmt.Sprintf("%s/%d.%s", id, rd.Width, rd.Ext)
 		if err := s.Media.Put(ctx, pr.Tenant, key, rd.Data, rd.ContentType); err != nil {
-			fail(err)
-			return
+			return fail(err)
 		}
 		m.Variants = append(m.Variants, catalog.MediaVariant{Width: rd.Width, Height: rd.Height, Format: rd.Format, Key: key, Bytes: int64(len(rd.Data))})
 	}
 	if err := s.DB.InsertMedia(ctx, pr.Tenant, pr.Actor(), m, sum[:]); err != nil {
-		fail(err)
-		return
+		return fail(err)
 	}
 	s.settle(ctx)
-	httpx.JSON(w, r, http.StatusCreated, map[string]any{"media": viewMedia(pr.Tenant, m), "duplicate": false})
+	return m, false, nil
 }
 
 func (s *Server) mediaProblem(w http.ResponseWriter, err error) {

@@ -27,6 +27,8 @@ export interface MediaItem {
   thumb: string;
   srcset: string;
   webpSrcset: string;
+  original?: string;
+  edits?: { rotate?: number; flipH?: boolean; flipV?: boolean; crop?: { x: number; y: number; w: number; h: number } | null; brightness?: number; contrast?: number; saturation?: number } | null;
 }
 
 export interface Option {
