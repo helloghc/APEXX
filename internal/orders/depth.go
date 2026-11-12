@@ -64,6 +64,12 @@ type Fulfillment struct {
 	ShippedAt      *time.Time        `json:"shippedAt,omitempty"`
 	DeliveredAt    *time.Time        `json:"deliveredAt,omitempty"`
 	CancelledAt    *time.Time        `json:"cancelledAt,omitempty"`
+	// Bought from a connected carrier: its id, the label and what it cost the
+	// store; TrackingStatus is the last word of the carrier.
+	CarrierID      string `json:"carrierId,omitempty"`
+	LabelURL       string `json:"labelUrl,omitempty"`
+	LabelCost      int64  `json:"labelCost,omitempty"`
+	TrackingStatus string `json:"trackingStatus,omitempty"`
 }
 
 // FulfillmentItem is a line inside a shipment.
@@ -143,6 +149,12 @@ type Return struct {
 	CreatedAt      time.Time      `json:"createdAt"`
 	ReceivedAt     *time.Time     `json:"receivedAt,omitempty"`
 	ClosedAt       *time.Time     `json:"closedAt,omitempty"`
+	// Prepaid return label, if one was bought, and who asked for the return.
+	CarrierID     string `json:"carrierId,omitempty"`
+	LabelTracking string `json:"labelTracking,omitempty"`
+	LabelURL      string `json:"labelUrl,omitempty"`
+	LabelCost     int64  `json:"labelCost,omitempty"`
+	RequestedBy   string `json:"requestedBy"`
 }
 
 // ReasonCodes are the accepted return reasons.
@@ -415,10 +427,10 @@ func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Ord
 		var methodJSON, taxJSON, riskJSON []byte
 		err := tx.QueryRow(ctx, `SELECT id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, created_at,
 				COALESCE(customer_id,''), payment_status, fulfillment_status, refunded_total, source,
-				shipping_method, tax_detail, display_number, risk, installments, po_number, fees, fee_lines
+				shipping_method, tax_detail, display_number, risk, installments, po_number, fees, fee_lines, COALESCE(postal_code,'')
 			FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, id).
 			Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.ItemsTotal, &o.Discounts, &o.Shipping, &o.TaxIncluded, &o.GrandTotal, &enc, &o.CreatedAt,
-				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber, &riskJSON, &o.Installments, &o.PONumber, &o.Fees, &o.FeeLines)
+				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber, &riskJSON, &o.Installments, &o.PONumber, &o.Fees, &o.FeeLines, &o.PostalCode)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}

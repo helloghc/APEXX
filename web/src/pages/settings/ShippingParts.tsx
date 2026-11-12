@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { CalendarDays, Map as MapIcon, Plus, Trash2, Truck } from "lucide-react";
-import { errorMessage, fieldErrors } from "@/api";
+import { errorMessage, fieldErrors, request } from "@/api";
+import { formatMoney } from "@/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -511,7 +512,7 @@ function CarrierDialog({ carrier, onClose }: { carrier: Carrier | null; onClose:
   const [c, setC] = useState<Carrier>(carrier ?? { id: "", name: "", trackingUrl: "", active: true });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const save = useMutation({
-    mutationFn: () => sapi.saveShipping("carriers", { ...c, name: c.name.trim(), trackingUrl: c.trackingUrl.trim() }),
+    mutationFn: () => sapi.saveShipping("carriers", { ...c, name: c.name.trim(), trackingUrl: c.trackingUrl.trim(), endpoint: (c.endpoint ?? "").trim() }),
     onSuccess: () => {
       refresh();
       toast.success(carrier ? "Paquetería guardada" : "Paquetería creada");
@@ -554,6 +555,19 @@ function CarrierDialog({ carrier, onClose }: { carrier: Carrier | null; onClose:
             <Input value={c.trackingUrl} className="font-mono text-xs" placeholder="https://rastreo.paqueteria.mx/?guia={tracking}" onChange={(e) => setC({ ...c, trackingUrl: e.target.value })} />
           </FormField>
           {sample && <p className="break-all text-xs text-muted-foreground">Ejemplo con la guía 1234567890: {sample}</p>}
+          <FormField id="car-provider" label="Conexión" error={errors.provider} description="Conectada, Apexx cotiza en vivo, compra guías desde el pedido y sigue el rastreo solo.">
+            <select id="car-provider" className="h-9 rounded-md border bg-background px-2 text-sm" value={c.provider ?? ""} onChange={(e) => setC({ ...c, provider: e.target.value as Carrier["provider"] })}>
+              <option value="">Manual: capturo la guía a mano</option>
+              <option value="sandbox">De prueba (sin costo real)</option>
+              <option value="http">App de la paquetería o agregador</option>
+            </select>
+          </FormField>
+          {c.provider === "http" && (
+            <FormField id="car-endpoint" label="Dirección de la app" error={errors.endpoint} description="La app recibe /rates, /labels, /track y /cancel firmados por Apexx.">
+              <Input value={c.endpoint ?? ""} className="font-mono text-xs" placeholder="https://app.paqueteria.mx/apexx" onChange={(e) => setC({ ...c, endpoint: e.target.value })} />
+            </FormField>
+          )}
+          {carrier?.id && carrier.provider && <CarrierConnection id={carrier.id} />}
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm font-medium">Paquetería activa</span>
             <Switch checked={c.active} onChange={(v) => setC({ ...c, active: v })} label="Paquetería activa" />
@@ -569,6 +583,36 @@ function CarrierDialog({ carrier, onClose }: { carrier: Carrier | null; onClose:
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** CarrierConnection: the signing secret for the app, and a live test. */
+function CarrierConnection({ id }: { id: string }) {
+  const [info, setInfo] = useState<{ secret: string; contract: string } | null>(null);
+  const [cp, setCp] = useState("64000");
+  const [result, setResult] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function test() {
+    setBusy(true); setResult("");
+    try {
+      const r = await request<{ rates: { service: string; amount: number; days: number }[]; ms: number }>("POST", `/v1/shipping/carriers/${encodeURIComponent(id)}/test`, { postalCode: cp, weightGrams: 1000 });
+      setResult(`Respondió en ${r.ms} ms: ` + r.rates.map((x) => `${x.service} ${formatMoney(x.amount)} (${x.days} días)`).join(" · "));
+    } catch (e) {
+      setResult(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="grid gap-2 rounded-md border p-3 text-sm">
+      <div className="flex flex-wrap items-end gap-2">
+        <FormField id="car-test-cp" label="Probar con el código postal" className="w-44"><Input value={cp} inputMode="numeric" onChange={(e) => setCp(e.target.value)} /></FormField>
+        <Button type="button" variant="outline" onClick={() => void test()} disabled={busy}>{busy ? "Probando…" : "Probar conexión"}</Button>
+        <Button type="button" variant="ghost" onClick={() => void request<{ secret: string; contract: string }>("GET", `/v1/shipping/carriers/${encodeURIComponent(id)}/connection`).then(setInfo).catch((e) => setResult(errorMessage(e)))}>Datos para la app</Button>
+      </div>
+      {result && <p role="status" data-testid="carrier-test">{result}</p>}
+      {info && <div className="grid gap-1"><span className="font-medium">Secreto de firma</span><code className="break-all rounded bg-muted px-2 py-1 text-xs">{info.secret}</code><span className="text-muted-foreground">{info.contract}</span></div>}
+    </div>
   );
 }
 

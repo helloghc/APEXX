@@ -126,6 +126,10 @@ type Projector struct {
 
 	hostIdx hostIndex
 
+	// liveRates answers carrier rates for a store (set by the server; nil
+	// until then, and carts fall back to their fixed rates).
+	liveRates atomic.Pointer[LiveRateFunc]
+
 	hooksMu sync.RWMutex
 	hooks   map[string][]func(tenant, key string)
 }
@@ -201,6 +205,12 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 		return err
 	}
 	t.Cart = &cart.Service{Catalog: t.Catalog, Inventory: t.Inventory, Pricing: t.Pricing, Channels: map[string]cart.Channel{}, Promos: promo.NewEngine(), Taxo: t.Taxo}
+	t.Cart.LiveRate = func(carrierID, country, postal string, weight, value int64) (int64, int, bool) {
+		if fn := p.liveRates.Load(); fn != nil {
+			return (*fn)(id, carrierID, country, postal, weight, value)
+		}
+		return 0, 0, false
+	}
 	pids, err := p.db.ProductIDs(ctx, id)
 	if err != nil {
 		return err
@@ -579,3 +589,9 @@ func (t *Tenant) QtyRulesOf(productID string) []cart.QtyRule {
 	defer t.mu.RUnlock()
 	return append([]cart.QtyRule(nil), t.Cart.QtyRules[productID]...)
 }
+
+// LiveRateFunc prices a parcel with a store's connected carrier.
+type LiveRateFunc func(tenant, carrierID, country, postal string, weightGrams, value int64) (amount int64, days int, ok bool)
+
+// SetLiveRates installs the carrier rate function for every store.
+func (p *Projector) SetLiveRates(fn LiveRateFunc) { p.liveRates.Store(&fn) }

@@ -17,6 +17,8 @@ type QuoteInput struct {
 	Profiles    []string // shipping profile of every line ("" = default)
 	Currency    string
 	Now         time.Time
+	// Live asks a connected carrier for its price (ok=false: use the fallback).
+	Live func(carrierID string) (amount int64, days int, ok bool)
 }
 
 // Estimate is a delivery promise with the reasons behind it.
@@ -364,6 +366,20 @@ func (c *Config) Quotes(in QuoteInput) []Quote {
 		if !ok {
 			fail(why)
 			continue
+		}
+		if o.Rate.Type == RateLive {
+			why = "Tarifa de respaldo: la paquetería no respondió a tiempo"
+			if in.Live != nil {
+				if amount, days, ok := in.Live(o.CarrierID); ok {
+					price, why = amount, "Tarifa en vivo de "+q.Carrier
+					if days > 0 {
+						q.EstimateDays = days
+					}
+				}
+			}
+			if o.Rate.FreeOver > 0 && in.Subtotal >= o.Rate.FreeOver {
+				price, why = 0, "Gratis: el pedido alcanza el mínimo de "+FormatMoney(o.Rate.FreeOver)
+			}
 		}
 		q.Available, q.Price, q.PriceReason, q.Free = true, price, why, price == 0
 		if o.Rate.FreeOver > 0 && in.Subtotal < o.Rate.FreeOver && price > 0 {

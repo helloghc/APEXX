@@ -821,3 +821,22 @@
     out.textContent = r.body.detail || "No pudimos guardar la tarjeta. Intenta de nuevo."; btn.disabled = false;
   });
 })();
+
+/* ==== self-service returns from the account ==== */
+(() => {
+  const f = document.querySelector("[data-return-form]"); if (!f) return;
+  const tenant = document.body.dataset.tenant, out = f.querySelector("[data-return-status]"), btn = f.querySelector("button[type=submit]");
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const reason = f.querySelector("[name=reason]").value;
+    const items = [...f.querySelectorAll("input[data-line]")].map((i) => ({ line: Number(i.dataset.line), qty: Number(i.value) || 0, reason })).filter((x) => x.qty > 0);
+    if (!items.length) { out.textContent = "Escribe cuántas piezas quieres devolver."; return; }
+    btn.disabled = true; out.textContent = "Un momento…";
+    const r = await fetch("/s/" + tenant + "/api/account/orders/" + encodeURIComponent(f.dataset.returnForm) + "/returns", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, note: f.querySelector("[name=note]").value.trim() }) }).then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    btn.disabled = false;
+    if (!r.ok) { out.textContent = r.body.detail || "No pudimos registrar la devolución. Intenta de nuevo."; return; }
+    out.textContent = "Listo: devolución registrada." + (r.body.labelTracking ? " Tu guía es " + r.body.labelTracking + "." : " Te escribiremos con las instrucciones.");
+    setTimeout(() => location.reload(), 1500);
+  });
+})();

@@ -363,8 +363,17 @@ type shopOrderView struct {
 	}
 	Shipments []shopShipment
 	Notes     []struct{ Body, Date string }
-	Returns   []struct{ Number, Status string }
+	Returns   []struct{ Number, Status, LabelURL, LabelTracking string }
 	Fees      []struct{ Name, Amount string }
+	// Self-service return: lines that can go back, or why not.
+	Returnable []returnableLine
+	ReturnNote string
+}
+
+type returnableLine struct {
+	Line  int
+	Title string
+	Max   int64
 }
 
 type accountData struct {
@@ -556,8 +565,35 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 			v.Notes = append(v.Notes, struct{ Body, Date string }{n.Body, shortDate(n.CreatedAt)})
 		}
 		for _, ret := range o.Returns {
-			v.Returns = append(v.Returns, struct{ Number, Status string }{orders.RMA(ret.Number),
-				map[string]string{"requested": "Esperando tus productos", "received": "Recibida", "completed": "Completada", "cancelled": "Cancelada"}[ret.Status]})
+			lu := ""
+			if strings.HasPrefix(ret.LabelURL, "https://") {
+				lu = ret.LabelURL
+			}
+			v.Returns = append(v.Returns, struct{ Number, Status, LabelURL, LabelTracking string }{orders.RMA(ret.Number),
+				map[string]string{"requested": "Esperando tus productos", "received": "Recibida", "completed": "Completada", "cancelled": "Cancelada"}[ret.Status], lu, ret.LabelTracking})
+		}
+		if pol := s.returnsPolicy(r.Context(), tenant); pol.SelfService {
+			var last *time.Time
+			for _, f := range o.Fulfillments {
+				if f.ShippedAt != nil && (last == nil || f.ShippedAt.After(*last)) {
+					last = f.ShippedAt
+				}
+			}
+			switch {
+			case last == nil:
+				v.ReturnNote = "Podrás pedir una devolución cuando tu pedido se envíe."
+			case time.Since(*last) > time.Duration(pol.WindowDays)*24*time.Hour:
+				v.ReturnNote = "El plazo para devoluciones de este pedido terminó."
+			default:
+				for _, l := range o.Lines {
+					if n := l.FulfilledQty - l.ReturnedQty; n > 0 {
+						v.Returnable = append(v.Returnable, returnableLine{l.Line, l.Title, n})
+					}
+				}
+				if pol.CarrierID != "" {
+					v.ReturnNote = "Te damos la guía para enviarlo sin costo."
+				}
+			}
 		}
 		d.View, d.Order, d.Title = "order", v, "Pedido #"+strconv.FormatInt(o.Number, 10)
 	case q.Get("ver") == "direcciones":

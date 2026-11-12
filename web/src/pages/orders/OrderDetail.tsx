@@ -159,6 +159,9 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
                     <p className="text-muted-foreground">
                       {f.carrier || "Sin transportista"}{f.trackingNumber ? ` · guía ${f.trackingNumber}` : ""}{" "}
                       {f.trackingUrl && <a className="inline-flex items-center gap-1 text-primary underline" href={f.trackingUrl} target="_blank" rel="noreferrer">Rastrear <ExternalLink className="size-3" aria-hidden="true" /></a>}
+                      {f.labelUrl?.startsWith("https://") && <> · <a className="text-primary underline" href={f.labelUrl} target="_blank" rel="noreferrer">Imprimir guía</a></>}
+                      {f.labelCost ? ` · guía comprada por ${formatMoney(f.labelCost, cur)}` : ""}
+                      {f.trackingStatus === "exception" && <span className="text-bad"> · la paquetería reporta un problema</span>}
                     </p>
                     <p>{f.items.map((i) => `${i.qty} × ${i.title}`).join(" · ")}</p>
                   </div>
@@ -173,7 +176,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
               <CardContent className="grid gap-2 text-sm">
                 {(o.returns ?? []).map((r) => (
                   <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
-                    <span>Devolución {r.number} · {r.items.map((i) => `${i.qty} × ${i.title} (${REASONS[i.reason] ?? i.reason})`).join(", ")}</span>
+                    <span>Devolución {r.number}{r.requestedBy === "customer" ? " (la pidió el cliente)" : ""} · {r.items.map((i) => `${i.qty} × ${i.title} (${REASONS[i.reason] ?? i.reason})`).join(", ")}{r.labelTracking ? ` · guía de regreso ${r.labelTracking}` : ""}</span>
                     <span className="flex items-center gap-2"><StatusPill status={r.status} /><a className="text-primary underline" href={href("pedidos", "devoluciones")}>Gestionar</a></span>
                   </div>
                 ))}
@@ -302,12 +305,14 @@ function ShipDialog({ order, onClose, onDone }: DP) {
   const [tracking, setTracking] = useState("");
   const [notify, setNotify] = useState(true);
   const [busy, setBusy] = useState(false);
+  const connected = useQuery({ queryKey: ["connected-carriers"], queryFn: sale.connectedCarriers, staleTime: 60_000 });
+  const [label, setLabel] = useState("");
   const items = picked(qty);
   async function go() {
     setBusy(true);
     try {
-      await sale.fulfill(order.id, { items, carrier: carrier === "Otro" ? "" : carrier, trackingNumber: tracking.trim(), notify });
-      toast.success(notify ? "Envío creado. Le avisamos al cliente por correo." : "Envío creado.");
+      await sale.fulfill(order.id, label ? { items, carrier: "", trackingNumber: "", notify, buyLabel: true, carrierId: label } : { items, carrier: carrier === "Otro" ? "" : carrier, trackingNumber: tracking.trim(), notify });
+      toast.success(label ? "Guía comprada y envío creado." + (notify ? " Le avisamos al cliente." : "") : notify ? "Envío creado. Le avisamos al cliente por correo." : "Envío creado.");
       onDone();
       onClose();
     } catch (e) {
@@ -320,12 +325,20 @@ function ShipDialog({ order, onClose, onDone }: DP) {
     <Shell title="Enviar productos" description="Puedes enviar todo o solo una parte. El stock ya está apartado para este pedido." onClose={onClose}
       footer={<Button onClick={() => void go()} disabled={busy || !items.length}>{busy ? "Guardando…" : "Crear envío"}</Button>}>
       <QtyPicker lines={order.lines} max={left} value={qty} onChange={setQty} />
-      <div className="grid gap-4 sm:grid-cols-2">
+      {(connected.data ?? []).length > 0 && (
+        <div className="grid gap-1.5"><Label htmlFor="sh-label">Guía</Label>
+          <select id="sh-label" className="h-9 rounded-md border bg-background px-2 text-sm" value={label} onChange={(e) => setLabel(e.target.value)}>
+            <option value="">Ya tengo la guía (la capturo)</option>
+            {(connected.data ?? []).map((c) => <option key={c.id} value={c.id}>Comprar guía con {c.name}</option>)}
+          </select>
+        </div>
+      )}
+      {!label && <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5"><Label htmlFor="sh-carrier">Transportista</Label>
           <Select value={carrier} onValueChange={setCarrier}><SelectTrigger id="sh-carrier"><SelectValue /></SelectTrigger><SelectContent>{CARRIERS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
         </div>
         <div className="grid gap-1.5"><Label htmlFor="sh-track">Número de guía</Label><Input id="sh-track" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Opcional" /></div>
-      </div>
+      </div>}
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={notify} onCheckedChange={(c) => setNotify(!!c)} /> Avisar al cliente por correo con el enlace de rastreo</label>
     </Shell>
   );
@@ -395,12 +408,14 @@ function ReturnDialog({ order, onClose, onDone }: DP) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [swap, setSwap] = useState(false);
+  const [retLabel, setRetLabel] = useState("");
+  const connected = useQuery({ queryKey: ["connected-carriers"], queryFn: sale.connectedCarriers, staleTime: 60_000 });
   const [newItems, setNewItems] = useState<NewItem[]>([]);
   const items = picked(qty).map((i) => ({ ...i, reason }));
   async function go() {
     setBusy(true);
     try {
-      const r = await sale.createReturn(order.id, { items, note: note.trim(), exchange: swap ? newItems.filter((x) => x.sku && x.qty > 0) : undefined });
+      const r = await sale.createReturn(order.id, { items, note: note.trim(), exchange: swap ? newItems.filter((x) => x.sku && x.qty > 0) : undefined, returnLabel: !!retLabel, carrierId: retLabel || undefined });
       toast.success(swap ? `Cambio ${r.number} creado. El producto nuevo ya está apartado; se envía cuando registres la devolución.` : `Devolución ${r.number} creada. Cuando llegue el paquete, márcala como recibida.`);
       onDone();
       onClose();
@@ -417,6 +432,14 @@ function ReturnDialog({ order, onClose, onDone }: DP) {
       <div className="grid gap-1.5"><Label htmlFor="rt-reason">Motivo</Label>
         <Select value={reason} onValueChange={setReason}><SelectTrigger id="rt-reason"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(REASONS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
       </div>
+      {(connected.data ?? []).length > 0 && (
+        <div className="grid gap-1.5"><Label htmlFor="rt-label">Guía de devolución</Label>
+          <select id="rt-label" className="h-9 rounded-md border bg-background px-2 text-sm" value={retLabel} onChange={(e) => setRetLabel(e.target.value)}>
+            <option value="">El cliente envía por su cuenta</option>
+            {(connected.data ?? []).map((c) => <option key={c.id} value={c.id}>Guía prepagada con {c.name}</option>)}
+          </select>
+        </div>
+      )}
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={swap} onCheckedChange={(c) => setSwap(!!c)} /> Cambiar por otro producto en lugar de reembolsar</label>
       {swap && <><p className="text-xs text-muted-foreground">El valor de lo devuelto paga lo nuevo. Si lo nuevo cuesta más, el pedido queda con saldo por cobrar; si cuesta menos, la diferencia se reembolsa al recibir la devolución.</p>
         <SkuLines value={newItems} onChange={setNewItems} idPrefix="ex" /></>}

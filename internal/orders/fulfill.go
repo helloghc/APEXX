@@ -21,6 +21,17 @@ type FulfillmentInput struct {
 	Note           string       `json:"note"`
 	Pending        bool         `json:"pending"` // prepare the package now, mark it shipped later
 	Notify         *bool        `json:"notify"`
+	// CarrierID with BuyLabel buys the label from that connected carrier
+	// (the API does it and fills Label); a client never sets Label itself.
+	CarrierID string `json:"carrierId"`
+	BuyLabel  bool   `json:"buyLabel"`
+	Label     *Label `json:"-"`
+}
+
+// Label is a label bought from a connected carrier.
+type Label struct {
+	CarrierID, Carrier, TrackingNumber, TrackingURL, URL string
+	Cost                                                 int64
 }
 
 // Carriers with a known tracking page; the URL is filled in when missing.
@@ -60,14 +71,16 @@ func (in *FulfillmentInput) clean() error {
 }
 
 func fulfillmentsTx(ctx context.Context, tx pgx.Tx, tenant, orderID string) ([]Fulfillment, error) {
-	rows, err := tx.Query(ctx, `SELECT id, number, status, carrier, tracking_number, tracking_url, note, created_at, shipped_at, delivered_at, cancelled_at
+	rows, err := tx.Query(ctx, `SELECT id, number, status, carrier, tracking_number, tracking_url, note, created_at, shipped_at, delivered_at, cancelled_at,
+			carrier_id, label_url, label_cost, tracking_status
 		FROM fulfillments WHERE tenant_id=$1 AND order_id=$2 ORDER BY number`, tenant, orderID)
 	if err != nil {
 		return nil, err
 	}
 	fs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Fulfillment, error) {
 		var f Fulfillment
-		return f, r.Scan(&f.ID, &f.Number, &f.Status, &f.Carrier, &f.TrackingNumber, &f.TrackingURL, &f.Note, &f.CreatedAt, &f.ShippedAt, &f.DeliveredAt, &f.CancelledAt)
+		return f, r.Scan(&f.ID, &f.Number, &f.Status, &f.Carrier, &f.TrackingNumber, &f.TrackingURL, &f.Note, &f.CreatedAt, &f.ShippedAt, &f.DeliveredAt, &f.CancelledAt,
+			&f.CarrierID, &f.LabelURL, &f.LabelCost, &f.TrackingStatus)
 	})
 	if err != nil {
 		return nil, err
@@ -106,6 +119,9 @@ func (s *Service) CreateFulfillment(ctx context.Context, tenant, actor, orderID 
 		return Fulfillment{}, err
 	}
 	f := Fulfillment{ID: newID("ful_"), Status: "shipped", Carrier: in.Carrier, TrackingNumber: in.TrackingNumber, TrackingURL: in.TrackingURL, Note: in.Note}
+	if l := in.Label; l != nil {
+		f.Carrier, f.TrackingNumber, f.TrackingURL, f.CarrierID, f.LabelURL, f.LabelCost = l.Carrier, l.TrackingNumber, l.TrackingURL, l.CarrierID, l.URL, l.Cost
+	}
 	if in.Pending {
 		f.Status = "pending"
 	}
@@ -155,9 +171,9 @@ func (s *Service) CreateFulfillment(ctx context.Context, tenant, actor, orderID 
 		if err := tx.QueryRow(ctx, `SELECT COALESCE(max(number),0)+1 FROM fulfillments WHERE tenant_id=$1 AND order_id=$2`, tenant, orderID).Scan(&f.Number); err != nil {
 			return err
 		}
-		if err := tx.QueryRow(ctx, `INSERT INTO fulfillments (tenant_id, id, order_id, number, status, carrier, tracking_number, tracking_url, note, created_by, shipped_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, CASE WHEN $5='shipped' THEN now() END) RETURNING created_at, shipped_at`,
-			tenant, f.ID, orderID, f.Number, f.Status, f.Carrier, f.TrackingNumber, f.TrackingURL, f.Note, actor).Scan(&f.CreatedAt, &f.ShippedAt); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO fulfillments (tenant_id, id, order_id, number, status, carrier, tracking_number, tracking_url, note, created_by, shipped_at, carrier_id, label_url, label_cost)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, CASE WHEN $5='shipped' THEN now() END, $11, $12, $13) RETURNING created_at, shipped_at`,
+			tenant, f.ID, orderID, f.Number, f.Status, f.Carrier, f.TrackingNumber, f.TrackingURL, f.Note, actor, f.CarrierID, f.LabelURL, f.LabelCost).Scan(&f.CreatedAt, &f.ShippedAt); err != nil {
 			return err
 		}
 		for _, it := range f.Items {

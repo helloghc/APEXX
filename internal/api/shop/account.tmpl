@@ -136,7 +136,19 @@
 {{if .Notes}}<section class="acct-box" aria-label="Mensajes de la tienda"><h2>Mensajes de la tienda</h2>
 {{range .Notes}}<p>{{.Body}}<br><span class="muted">{{.Date}}</span></p>{{end}}</section>{{end}}
 {{if .Returns}}<section class="acct-box" aria-label="Devoluciones"><h2>Devoluciones</h2>
-{{range .Returns}}<p>{{.Number}} · {{.Status}}</p>{{end}}</section>{{end}}
+{{range .Returns}}<p>{{.Number}} · {{.Status}}{{with .LabelTracking}} · guía {{.}}{{end}}{{with .LabelURL}} · <a href="{{.}}" target="_blank" rel="noopener noreferrer">Imprimir guía</a>{{end}}</p>{{end}}</section>{{end}}
+{{if .Returnable}}<section class="acct-box" aria-label="Devolver productos"><h2>Devolver productos</h2>
+{{with .ReturnNote}}<p class="muted">{{.}}</p>{{end}}
+<form data-return-form="{{.ID}}">
+<table><thead><tr><th>Producto</th><th class="num">Cantidad</th></tr></thead><tbody>
+{{range .Returnable}}<tr><td>{{.Title}}</td><td class="num"><input type="number" min="0" max="{{.Max}}" value="0" data-line="{{.Line}}" aria-label="Cantidad a devolver de {{.Title}}" style="width:5rem"></td></tr>{{end}}
+</tbody></table>
+<div class="field"><label for="ret-reason">Motivo</label><select id="ret-reason" name="reason"><option value="size">Talla o medida</option><option value="defective">Defectuoso o dañado</option><option value="not_as_described">No es como se describe</option><option value="wrong_item">Producto equivocado</option><option value="changed_mind">Cambié de opinión</option><option value="other">Otro</option></select></div>
+<div class="field"><label for="ret-note">Comentario (opcional)</label><textarea id="ret-note" name="note" rows="2" maxlength="500"></textarea></div>
+<button class="btn" type="submit">Pedir devolución</button>
+<p class="note" role="status" data-return-status></p>
+</form></section>
+{{else}}{{with .ReturnNote}}<p class="muted">{{.}}</p>{{end}}{{end}}
 </div>
 <aside class="summary" aria-label="Resumen del pedido"><h2>Resumen</h2>
 <table class="totals"><tbody>

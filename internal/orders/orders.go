@@ -188,6 +188,7 @@ type Order struct {
 	DisplayNumber  string               `json:"displayNumber"`
 	PONumber       string               `json:"poNumber,omitempty"`
 	Fees           int64                `json:"fees"`               // extra charges and import duties, in the total
+	PostalCode     string               `json:"postalCode,omitempty"`
 	FeeLines       []cart.Fee           `json:"feeLines,omitempty"` // each one with its reason
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
 	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`

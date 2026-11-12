@@ -79,10 +79,16 @@ type ReturnInput struct {
 	Note           string            `json:"note"`
 	RefundShipping int64             `json:"refundShipping"`
 	Exchange       []ItemInput       `json:"exchange"`
+	// ReturnLabel with CarrierID buys a prepaid label for the customer (the
+	// API buys it and fills Label). RequestedBy is set by the server.
+	CarrierID   string `json:"carrierId"`
+	ReturnLabel bool   `json:"returnLabel"`
+	Label       *Label `json:"-"`
+	RequestedBy string `json:"-"` // store | customer
 }
 
 const returnCols = `r.id, r.order_id, r.number, r.kind, r.status, r.note, r.refund_shipping, r.credit, r.credit_applied, r.refund_amount, COALESCE(r.refund_id,''),
-	r.new_items, r.created_by, r.created_at, r.received_at, r.closed_at, o.number, o.currency`
+	r.new_items, r.created_by, r.created_at, r.received_at, r.closed_at, o.number, o.currency, r.carrier_id, r.label_tracking, r.label_url, r.label_cost, r.requested_by`
 
 func returnsTx(ctx context.Context, tx pgx.Tx, tenant, cond string, args ...any) ([]Return, error) {
 	rows, err := tx.Query(ctx, `SELECT `+returnCols+` FROM returns r JOIN orders o ON o.tenant_id=r.tenant_id AND o.id=r.order_id
@@ -94,7 +100,7 @@ func returnsTx(ctx context.Context, tx pgx.Tx, tenant, cond string, args ...any)
 		var x Return
 		var items []byte
 		err := r.Scan(&x.ID, &x.OrderID, &x.Number, &x.Kind, &x.Status, &x.Note, &x.RefundShipping, &x.Credit, &x.CreditApplied, &x.RefundAmount, &x.RefundID,
-			&items, &x.CreatedBy, &x.CreatedAt, &x.ReceivedAt, &x.ClosedAt, &x.OrderNumber, &x.Currency)
+			&items, &x.CreatedBy, &x.CreatedAt, &x.ReceivedAt, &x.ClosedAt, &x.OrderNumber, &x.Currency, &x.CarrierID, &x.LabelTracking, &x.LabelURL, &x.LabelCost, &x.RequestedBy)
 		_ = json.Unmarshal(items, &x.NewItems)
 		if x.NewItems == nil {
 			x.NewItems = []ExchangeItem{}
@@ -302,8 +308,14 @@ func (s *Service) CreateReturn(ctx context.Context, tenant, actor, orderID strin
 		if newItems == nil {
 			raw = []byte("[]")
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO returns (tenant_id, id, order_id, number, kind, status, note, refund_shipping, credit, credit_applied, new_items, created_by)
-			VALUES ($1,$2,$3,$4,$5,'requested',$6,$7,$8,$9,$10,$11)`, tenant, id, orderID, number, kind, strings.TrimSpace(in.Note), in.RefundShipping, credit, applied, raw, actor); err != nil {
+		lb := in.Label
+		if lb == nil {
+			lb = &Label{}
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO returns (tenant_id, id, order_id, number, kind, status, note, refund_shipping, credit, credit_applied, new_items, created_by,
+				carrier_id, label_tracking, label_url, label_cost, requested_by)
+			VALUES ($1,$2,$3,$4,$5,'requested',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`, tenant, id, orderID, number, kind, strings.TrimSpace(in.Note), in.RefundShipping, credit, applied, raw, actor,
+			lb.CarrierID, lb.TrackingNumber, lb.URL, lb.Cost, firstNonEmpty(in.RequestedBy, "store")); err != nil {
 			return err
 		}
 		for _, it := range items {
@@ -510,4 +522,11 @@ func (s *Service) CancelReturn(ctx context.Context, tenant, actor, returnID stri
 		}
 		return s.syncStatusTx(ctx, tx, tenant, actor, orderID, "return.cancelled", map[string]any{"return": returnID, "number": RMA(r.Number)})
 	})
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }

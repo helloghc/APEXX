@@ -96,6 +96,18 @@ func (c *Carrier) Validate() []apierr.FieldError {
 			errs = append(errs, fe("trackingUrl", "too_long", "La URL admite hasta 500 caracteres"))
 		}
 	}
+	c.Endpoint = strings.TrimSpace(c.Endpoint)
+	switch c.Provider {
+	case "", "sandbox":
+		c.Endpoint = ""
+	case "http":
+		u, err := url.Parse(c.Endpoint)
+		if err != nil || u.Scheme != "https" || u.Host == "" || len(c.Endpoint) > 300 {
+			errs = append(errs, fe("endpoint", "invalid", "Escribe la dirección https de la app de la paquetería"))
+		}
+	default:
+		errs = append(errs, fe("provider", "invalid", "Conexión: manual, de prueba o app (https)"))
+	}
 	return errs
 }
 
@@ -111,7 +123,7 @@ func (r *Rate) Validate() []apierr.FieldError {
 		errs = append(errs, fe("rate.amount", "out_of_range", "Los montos no pueden ser negativos"))
 	}
 	switch r.Type {
-	case RateFlat:
+	case RateFlat, RateLive:
 		r.Brackets, r.PerKg = []Bracket{}, 0
 	case RateWeight, RateSubtotal:
 		if r.Type == RateSubtotal && len(r.Brackets) == 0 {
@@ -137,7 +149,7 @@ func (r *Rate) Validate() []apierr.FieldError {
 			}
 		}
 	default:
-		errs = append(errs, fe("rate.type", "invalid", "Tipo de tarifa: flat, weight o subtotal"))
+		errs = append(errs, fe("rate.type", "invalid", "Tipo de tarifa: flat, weight, subtotal o live"))
 	}
 	return errs
 }

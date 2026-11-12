@@ -349,6 +349,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		MetricsToken:  os.Getenv("APEXX_METRICS_TOKEN"),
 		Media:         mediaStore,
 	}
+	// Carriers: parcels with a bought label are tracked until delivered.
+	resilience.Every(ctx, log, "carrier-tracking", 15*time.Minute, func(ctx context.Context) error {
+		_, err := srv.RunTracking(ctx)
+		return err
+	})
 	// Searches are counted in memory and saved in batches.
 	// Subscriptions: deliveries that are due are charged and ordered.
 	resilience.Every(ctx, log, "subscriptions", time.Minute, func(ctx context.Context) error {

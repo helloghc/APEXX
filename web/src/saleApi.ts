@@ -12,10 +12,10 @@ export interface OTotals { itemsTotal: number; discounts: number; shipping: numb
 export interface OLine { line: number; sku: string; title: string; qty: number; unit: number; total: number; fulfilledQty: number; returnedQty: number; refundedQty: number; cancelledQty: number }
 export interface OEvent { seq: number; at: string; actor: string; type: string; from: string | null; to: string; data?: Record<string, unknown> }
 export interface OPayment { provider: string; ref: string; status: string; amount: number; refunded: number }
-export interface Fulfillment { id: string; number: number; status: "pending" | "shipped" | "delivered" | "cancelled"; carrier: string; trackingNumber: string; trackingUrl: string; note?: string; items: { line: number; sku: string; title: string; qty: number }[]; createdAt: string; shippedAt?: string; deliveredAt?: string }
+export interface Fulfillment { id: string; number: number; status: "pending" | "shipped" | "delivered" | "cancelled"; carrier: string; trackingNumber: string; trackingUrl: string; note?: string; items: { line: number; sku: string; title: string; qty: number }[]; createdAt: string; shippedAt?: string; deliveredAt?: string; labelUrl?: string; labelCost?: number; trackingStatus?: string }
 export interface Refund { id: string; kind: string; status: string; amount: number; reason?: string; items: { line: number; sku: string; qty: number; amount: number }[]; lastError?: string; createdBy: string; createdAt: string }
 export interface ReturnItem { line: number; sku: string; title: string; qty: number; reason: string; receivedQty: number; restock?: boolean }
-export interface Return { id: string; orderId: string; orderNumber?: number; currency?: string; number: number; kind: string; status: "requested" | "received" | "completed" | "cancelled"; note?: string; refundAmount: number; credit: number; items: ReturnItem[]; createdAt: string; receivedAt?: string }
+export interface Return { id: string; orderId: string; orderNumber?: number; currency?: string; number: number; kind: string; status: "requested" | "received" | "completed" | "cancelled"; note?: string; refundAmount: number; credit: number; items: ReturnItem[]; createdAt: string; receivedAt?: string; labelUrl?: string; labelTracking?: string; requestedBy?: string }
 export interface ONote { id: string; visibility: "internal" | "customer"; body: string; author: string; authorName: string; createdAt: string }
 export interface ShippingMethod { id: string; name: string; kind: string; carrier?: string; zone?: string; locationName?: string; pickupAddress?: string; instructions?: string; price: number; priceReason?: string; estimate?: { text: string } }
 export interface Order {
@@ -62,16 +62,17 @@ export const sale = {
   views: () => request<{ items: OrderView[] }>("GET", "/v1/order-views").then((r) => r.items),
   saveView: (name: string, filters: OrderQuery) => request<OrderView>("POST", "/v1/order-views", { name, filters }),
   deleteView: (id: string) => request<void>("DELETE", `/v1/order-views/${enc(id)}`, undefined, { as: "none" }),
-  fulfill: (id: string, b: { items: { line: number; qty: number }[]; carrier: string; trackingNumber: string; trackingUrl?: string; note?: string; pending?: boolean; notify?: boolean }) =>
+  fulfill: (id: string, b: { items: { line: number; qty: number }[]; carrier: string; trackingNumber: string; trackingUrl?: string; note?: string; pending?: boolean; notify?: boolean; buyLabel?: boolean; carrierId?: string }) =>
     request<Order>("POST", `/v1/orders/${enc(id)}/fulfillments`, b),
   updateFulfillment: (id: string, fid: string, b: { status?: string; carrier?: string; trackingNumber?: string; trackingUrl?: string }) =>
     request<Order>("PATCH", `/v1/orders/${enc(id)}/fulfillments/${enc(fid)}`, b),
   refundQuote: (id: string, b: { lines: { line: number; qty: number }[]; shipping: number; restock: boolean }) => request<Quote>("POST", `/v1/orders/${enc(id)}/refunds/quote`, b),
   refund: (id: string, b: { lines: { line: number; qty: number }[]; shipping: number; amount?: number; reason: string; restock: boolean; notify?: boolean; toCredit?: boolean }, key: string) =>
     request<Refund>("POST", `/v1/orders/${enc(id)}/refunds`, b, { headers: { "Idempotency-Key": key } }),
-  createReturn: (id: string, b: { items: { line: number; qty: number; reason: string }[]; note: string; exchange?: { sku: string; qty: number }[] }) => request<Return>("POST", `/v1/orders/${enc(id)}/returns`, b),
+  createReturn: (id: string, b: { items: { line: number; qty: number; reason: string }[]; note: string; exchange?: { sku: string; qty: number }[]; returnLabel?: boolean; carrierId?: string }) => request<Return>("POST", `/v1/orders/${enc(id)}/returns`, b),
   editOrder: (id: string, b: { add: { sku: string; qty: number }[]; remove: { line: number; qty: number }[]; reason: string; dryRun: boolean }) =>
     request<{ before: OTotals; after: OTotals; difference: number; refundError?: string }>("POST", `/v1/orders/${enc(id)}/edit`, b),
+  connectedCarriers: () => request<{ carriers: { id: string; name: string; active: boolean; provider?: string }[] }>("GET", "/v1/shipping").then((r) => r.carriers.filter((c) => c.active && c.provider)),
   productSearch: (q: string) => request<{ items: { id: string; title: string; skus: string[] }[] }>("GET", `/v1/product-search?q=${enc(q)}`).then((r) => r.items),
   addNote: (id: string, body: string, visibility: "internal" | "customer") => request<ONote>("POST", `/v1/orders/${enc(id)}/notes`, { body, visibility }),
   deleteNote: (id: string, note: string) => request<void>("DELETE", `/v1/orders/${enc(id)}/notes/${enc(note)}`, undefined, { as: "none" }),

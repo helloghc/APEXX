@@ -96,6 +96,8 @@ export interface Carrier {
   name: string;
   trackingUrl: string;
   active: boolean;
+  provider?: "" | "sandbox" | "http";
+  endpoint?: string;
 }
 
 export interface Bracket {
@@ -104,7 +106,7 @@ export interface Bracket {
 }
 
 export interface Rate {
-  type: "flat" | "weight" | "subtotal";
+  type: "flat" | "weight" | "subtotal" | "live";
   amount: number;
   perKg: number;
   brackets: Bracket[];

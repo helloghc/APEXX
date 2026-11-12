@@ -260,12 +260,13 @@ function OptionsTab({ cfg, canEdit }: { cfg: ShippingConfig; canEdit: boolean })
   );
 }
 
-type RateMode = "flat" | "weight-formula" | "weight" | "subtotal" | "free";
+type RateMode = "flat" | "weight-formula" | "weight" | "subtotal" | "free" | "live";
 
 function modeOf(o: ShippingOption): RateMode {
   const r = o.rate;
   if (r.type === "weight") return r.brackets.length ? "weight" : "weight-formula";
   if (r.type === "subtotal") return "subtotal";
+  if (r.type === "live") return "live";
   return r.amount === 0 && r.freeOver === 0 ? "free" : "flat";
 }
 
@@ -318,6 +319,7 @@ function OptionSheet({ cfg, option, onClose }: { cfg: ShippingConfig; option: Sh
     setMode(m);
     if (m === "flat") setRate({ type: "flat", brackets: [], perKg: 0, amount: o.rate.amount || 9900 });
     if (m === "free") setRate({ type: "flat", brackets: [], perKg: 0, amount: 0, freeOver: 0 });
+    if (m === "live") setRate({ type: "live", brackets: [], perKg: 0, amount: o.rate.amount || 14900 });
     if (m === "weight-formula") setRate({ type: "weight", brackets: [], amount: o.rate.amount || 9900, perKg: o.rate.perKg || 1500 });
     if (m === "weight")
       setRate({ type: "weight", amount: 0, brackets: o.rate.type === "weight" && o.rate.brackets.length ? o.rate.brackets : [{ upTo: 1000, amount: 9900 }, { upTo: 5000, amount: 14900 }] });
@@ -466,9 +468,19 @@ function OptionSheet({ cfg, option, onClose }: { cfg: ShippingConfig; option: Sh
                 <SelectItem value="weight">Por tramos de peso</SelectItem>
                 <SelectItem value="weight-formula">Base + precio por kg</SelectItem>
                 <SelectItem value="subtotal">Por monto del pedido</SelectItem>
+                <SelectItem value="live">En vivo de la paquetería</SelectItem>
               </SelectContent>
             </Select>
           </FormField>
+          {mode === "live" && (
+            <div className="grid gap-3 rounded-md border p-3">
+              <p className="text-sm text-muted-foreground">El carrito pregunta el precio a la paquetería de esta opción (debe estar conectada). Si no responde en menos de un segundo, se cobra la tarifa de respaldo y la venta sigue.</p>
+              {!cfg.carriers.some((c) => c.id === o.carrierId && c.provider) && <p className="text-sm text-bad">Elige arriba una paquetería conectada (en Paqueterías, «Conexión»).</p>}
+              <FormField id="op-fallback" label="Tarifa de respaldo" error={errors["rate.amount"]}>
+                <MoneyInput cents={o.rate.amount} onChange={(c) => c !== null && setRate({ amount: c })} />
+              </FormField>
+            </div>
+          )}
           {(mode === "flat" || mode === "weight-formula") && (
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField id="op-amount" label={mode === "flat" ? "Precio" : "Precio base"} error={errors["rate.amount"]}>

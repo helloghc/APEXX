@@ -2,12 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/helloghc/apexx/internal/apierr"
+	"github.com/helloghc/apexx/internal/carriers"
 	"github.com/helloghc/apexx/internal/httpx"
 	"github.com/helloghc/apexx/internal/orders"
 )
@@ -155,7 +157,25 @@ func (s *Server) createFulfillment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := principal(r)
+	in.Label = nil // only set here, from the carrier
+	if in.BuyLabel {
+		o, err := s.Orders.Get(r.Context(), p.Tenant, r.PathValue("id"), true)
+		if err != nil {
+			s.fail(w, err)
+			return
+		}
+		to, weight, value := s.parcelOf(p.Tenant, o, in.Items)
+		label, err := s.buyLabel(r.Context(), p.Tenant, in.CarrierID, fmt.Sprintf("%s-%d", o.ID, len(o.Fulfillments)+1), carriers.Address{}, to, weight, value, false)
+		if err != nil {
+			s.carrierFail(w, err)
+			return
+		}
+		in.Label = label
+	}
 	_, err := s.Orders.CreateFulfillment(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), in)
+	if err != nil && in.Label != nil {
+		s.cancelLabel(p.Tenant, in.Label.CarrierID, in.Label.TrackingNumber) // reversal: the label is not paid for nothing
+	}
 	s.orderResult(w, r, http.StatusCreated, err)
 }
 
@@ -202,9 +222,10 @@ func (s *Server) createReturn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := principal(r)
-	ret, err := s.Orders.CreateReturn(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), in)
+	in.RequestedBy = "store"
+	ret, err := s.openReturn(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), in)
 	if err != nil {
-		s.fail(w, err)
+		s.carrierFail(w, err)
 		return
 	}
 	httpx.JSON(w, r, http.StatusCreated, ret)

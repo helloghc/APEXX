@@ -50,7 +50,15 @@ type Carrier struct {
 	Name        string `json:"name"`
 	TrackingURL string `json:"trackingUrl"` // template with {tracking}
 	Active      bool   `json:"active"`
+	// Connection: "" (manual: tracking typed by hand), "sandbox" (test
+	// carrier) or "http" (a carrier app at Endpoint speaking Apexx's contract).
+	// Connected carriers give live rates, labels and automatic tracking.
+	Provider string `json:"provider,omitempty"`
+	Endpoint string `json:"endpoint,omitempty"`
 }
+
+// Connected tells whether Apexx can ask this carrier for rates and labels.
+func (c Carrier) Connected() bool { return c.Provider == "sandbox" || (c.Provider == "http" && c.Endpoint != "") }
 
 // TrackingLink fills the carrier template for a tracking number.
 func (c Carrier) TrackingLink(tracking string) string {
@@ -71,6 +79,9 @@ const (
 	RateFlat     = "flat"
 	RateWeight   = "weight"
 	RateSubtotal = "subtotal"
+	// RateLive asks the option's carrier at checkout; Amount is the fallback
+	// charged when the carrier does not answer in time.
+	RateLive = "live"
 )
 
 // Rate prices one shipment. Amounts are minor units of the channel currency.

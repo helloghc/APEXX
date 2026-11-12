@@ -178,6 +178,9 @@ type Service struct {
 	Taxo      *catalog.Taxonomy    // attribute names, for promotions that target attribute values
 	QtyRules  map[string][]QtyRule // product id -> quantity rules (general and per customer group)
 	FeeRules  []FeeRule            // extra charges per order (handling, packaging, small order)
+	// LiveRate asks a connected carrier for its price, in the store currency
+	// (nil: no connected carriers). It must answer within its own time limit.
+	LiveRate func(carrierID, country, postalCode string, weightGrams, value int64) (amount int64, days int, ok bool)
 	Now       func() time.Time
 }
 
@@ -373,7 +376,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	case s.Logistics.HasOptions():
 		res.ShippingOptions = s.Logistics.Quotes(logistics.QuoteInput{
 			Country: ch.Country, PostalCode: req.PostalCode, Subtotal: baseSubtotal, WeightGrams: weight,
-			Profiles: profiles, Currency: string(cur), Now: now,
+			Profiles: profiles, Currency: string(cur), Now: now, Live: s.liveFor(ch.Country, req.PostalCode, weight, baseSubtotal),
 		})
 		for i := range res.ShippingOptions {
 			res.ShippingOptions[i].Price = shipCur(res.ShippingOptions[i].Price)
@@ -595,4 +598,14 @@ func (s *Service) qtyRule(productID, group string) (QtyRule, bool) {
 		return *general, true
 	}
 	return QtyRule{}, false
+}
+
+// liveFor binds the cart to the carrier rate function (nil without postal code).
+func (s *Service) liveFor(country, postal string, weight, value int64) func(string) (int64, int, bool) {
+	if s.LiveRate == nil || postal == "" {
+		return nil
+	}
+	return func(carrierID string) (int64, int, bool) {
+		return s.LiveRate(carrierID, country, postal, weight, value)
+	}
 }

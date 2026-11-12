@@ -58,3 +58,24 @@ No pudimos apagarlo. Intenta de nuevo. || We couldn't turn it off. Please try ag
 No pudimos guardar la tarjeta. Intenta de nuevo. || We couldn't save the card. Please try again. || Nous n'avons pas pu enregistrer la carte. Réessayez. || Não foi possível salvar o cartão. Tente novamente. || Kami tidak dapat menyimpan kartu. Coba lagi. || カードを保存できませんでした。もう一度お試しください。
 Impuestos de importación || Import duties || Droits d'importation || Impostos de importação || Bea masuk || 輸入関税
 Cargo fijo por pedido || Fixed charge per order || Frais fixes par commande || Taxa fixa por pedido || Biaya tetap per pesanan || 注文ごとの固定料金
+Cambié de opinión || I changed my mind || J'ai changé d'avis || Mudei de ideia || Saya berubah pikiran || 気が変わった
+Cantidad a devolver de || Quantity to return of || Quantité à retourner de || Quantidade a devolver de || Jumlah yang dikembalikan untuk || 返品数量：
+Comentario (opcional) || Comment (optional) || Commentaire (facultatif) || Comentário (opcional) || Komentar (opsional) || コメント（任意）
+Defectuoso o dañado || Defective or damaged || Défectueux ou endommagé || Com defeito ou danificado || Cacat atau rusak || 不良品・破損
+Devolver productos || Return items || Retourner des articles || Devolver produtos || Kembalikan produk || 商品を返品する
+Imprimir guía || Print label || Imprimer l'étiquette || Imprimir etiqueta || Cetak label || 配送ラベルを印刷
+No es como se describe || Not as described || Non conforme à la description || Não é como descrito || Tidak sesuai deskripsi || 説明と異なる
+Otro || Other || Autre || Outro || Lainnya || その他
+Pedir devolución || Request a return || Demander un retour || Solicitar devolução || Ajukan pengembalian || 返品を申請する
+Producto equivocado || Wrong item || Mauvais article || Produto errado || Produk salah || 誤った商品
+Talla o medida || Size or fit || Taille ou mesure || Tamanho ou medida || Ukuran || サイズ・寸法
+· guía || · label || · étiquette || · etiqueta || · label || ・ラベル
+Escribe cuántas piezas quieres devolver. || Enter how many items you want to return. || Indiquez combien d'articles vous voulez retourner. || Informe quantas peças deseja devolver. || Tulis berapa banyak barang yang ingin dikembalikan. || 返品する数量を入力してください。
+Un momento… || One moment… || Un instant… || Um momento… || Sebentar… || 少々お待ちください…
+No pudimos registrar la devolución. Intenta de nuevo. || We couldn't register the return. Please try again. || Nous n'avons pas pu enregistrer le retour. Réessayez. || Não foi possível registrar a devolução. Tente novamente. || Kami tidak dapat mencatat pengembalian. Coba lagi. || 返品を登録できませんでした。もう一度お試しください。
+Listo: devolución registrada. || Done: return registered. || C'est fait : retour enregistré. || Pronto: devolução registrada. || Selesai: pengembalian tercatat. || 返品を登録しました。
+ Tu guía es ||  Your tracking number is ||  Votre numéro de suivi est ||  Seu código de rastreio é ||  Nomor resi Anda ||  追跡番号：
+ Te escribiremos con las instrucciones. ||  We'll email you the instructions. ||  Nous vous enverrons les instructions. ||  Enviaremos as instruções por e-mail. ||  Kami akan mengirimkan petunjuknya. ||  手順をメールでお送りします。
+Podrás pedir una devolución cuando tu pedido se envíe. || You can request a return once your order ships. || Vous pourrez demander un retour une fois la commande expédiée. || Você poderá solicitar uma devolução quando o pedido for enviado. || Anda dapat mengajukan pengembalian setelah pesanan dikirim. || 発送後に返品を申請できます。
+El plazo para devoluciones de este pedido terminó. || The return window for this order has ended. || Le délai de retour de cette commande est terminé. || O prazo de devolução deste pedido terminou. || Batas waktu pengembalian pesanan ini sudah berakhir. || この注文の返品期限は終了しました。
+Te damos la guía para enviarlo sin costo. || We'll give you a free return label. || Nous vous fournissons une étiquette de retour gratuite. || Enviamos uma etiqueta de devolução sem custo. || Kami berikan label pengembalian gratis. || 無料の返品ラベルをお渡しします。
