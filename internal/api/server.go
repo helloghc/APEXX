@@ -244,6 +244,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesCompanyInvoices(handle)
 	s.routesCompanyFiles(handle)
 	s.routesCompanyImport(handle)
+	s.routesPunchout(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

@@ -509,3 +509,47 @@ export function ImportCompanies({ onClose, onDone }: { onClose: () => void; onDo
     </Dialog>
   );
 }
+
+interface Punchout { enabled: boolean; identity: string; buyerEmail: string; hasSecret: boolean; secret?: string; setupUrl: string; orderUrl: string }
+
+/** Punchout (cXML): the company's purchasing system opens the store, gets the cart back and sends the purchase order. */
+export function PunchoutCard({ id, buyers, canEdit }: { id: string; buyers: string[]; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["company-punchout", id], queryFn: () => request<Punchout>("GET", `/v1/companies/${enc(id)}/punchout`) });
+  const [form, setForm] = useState<{ enabled: boolean; identity: string; buyerEmail: string } | null>(null);
+  const [secret, setSecret] = useState("");
+  const save = useMutation({
+    mutationFn: (regenerate: boolean) => request<Punchout>("PUT", `/v1/companies/${enc(id)}/punchout`, { ...cur!, regenerate }),
+    onSuccess: (r) => { toast.success("Punchout guardado."); setForm(null); if (r.secret) setSecret(r.secret); void qc.invalidateQueries({ queryKey: ["company-punchout", id] }); },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+  const p = q.data;
+  const cur = form ?? (p ? { enabled: p.enabled || !p.hasSecret, identity: p.identity, buyerEmail: p.buyerEmail || buyers[0] || "" } : null);
+  const set = (k: Partial<NonNullable<typeof cur>>) => cur && setForm({ ...cur, ...k });
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Punchout (cXML)</CardTitle>
+        <CardDescription>Conecta el sistema de compras de la empresa (Ariba, Coupa, Jaggaer u otro con cXML). Su gente entra a tu tienda desde ese sistema, ve sus precios, regresa el carrito para aprobarlo allá y la orden de compra llega aquí como pedido a crédito con su número de OC.</CardDescription></CardHeader>
+      <CardContent className="grid gap-3 text-sm">
+        {!cur || !p ? <p className="text-muted-foreground">Cargando…</p> : <>
+          <p>{p.hasSecret ? (p.enabled ? <Badge variant="ok">Activo</Badge> : <Badge variant="outline">Apagado</Badge>) : <Badge variant="outline">Sin configurar</Badge>}</p>
+          <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e: FormEvent) => { e.preventDefault(); save.mutate(false); }}>
+            <div className="grid gap-1"><Label htmlFor="po-id">Identidad del sistema de compras</Label><Input id="po-id" value={cur.identity} onChange={(e) => set({ identity: e.target.value })} placeholder="AN01000000001" disabled={!canEdit} /></div>
+            <div className="grid gap-1"><Label htmlFor="po-buyer">Compra a nombre de</Label>
+              <select id="po-buyer" className="h-9 rounded-md border bg-background px-2" value={cur.buyerEmail} onChange={(e) => set({ buyerEmail: e.target.value })} disabled={!canEdit}>
+                {buyers.length === 0 && <option value="">Agrega primero a quien compra</option>}
+                {buyers.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select></div>
+            <label className="flex items-center gap-2 sm:col-span-2"><input type="checkbox" checked={cur.enabled} onChange={(e) => set({ enabled: e.target.checked })} disabled={!canEdit} /> Recibir pedidos de este sistema</label>
+            {canEdit && <div className="flex flex-wrap gap-2 sm:col-span-2">
+              <Button type="submit" disabled={save.isPending || !cur.identity || !cur.buyerEmail}>Guardar</Button>
+              {p.hasSecret && <Button type="button" variant="outline" disabled={save.isPending} onClick={() => { if (confirm("¿Crear una clave nueva? La actual deja de funcionar en cuanto guardes.")) save.mutate(true); }}>Nueva clave compartida</Button>}
+            </div>}
+          </form>
+          {secret && <div className="rounded-md border border-warn/40 bg-warn/10 p-3"><p className="font-medium">Clave compartida (solo se muestra esta vez)</p><code className="break-all">{secret}</code><p className="text-muted-foreground">Cópiala en el sistema de compras como SharedSecret.</p></div>}
+          <div className="grid gap-1 text-muted-foreground"><p className="min-w-0 break-all">Dirección de inicio (PunchOutSetupRequest): <code>{p.setupUrl}</code></p><p className="min-w-0 break-all">Órdenes de compra (OrderRequest): <code>{p.orderUrl}</code></p></div>
+        </>}
+      </CardContent>
+    </Card>
+  );
+}

@@ -111,3 +111,47 @@ func (s *Service) SessionActing(ctx context.Context, tenant, token string) (stri
 	}
 	return id, &Acting{MemberID: *member, Name: *name}, nil
 }
+
+// PunchoutSession opens a session for a company buyer coming from their
+// purchasing system; the session carries the punchout it belongs to.
+func (s *Service) PunchoutSession(ctx context.Context, tenant, email, punchoutID string) (string, error) {
+	e, ok := NormalizeEmail(email)
+	if !ok {
+		return "", FieldError{"email", "Correo inválido"}
+	}
+	var token string
+	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		cid, _, err := UpsertByEmailTx(ctx, tx, s.Keys, tenant, e, "", "")
+		if err != nil {
+			return err
+		}
+		tok, sum := newToken()
+		if _, err := tx.Exec(ctx, `INSERT INTO shopper_sessions (tenant_id, token_hash, customer_id, expires_at, punchout_id) VALUES ($1,$2,$3,$4,$5)`,
+			tenant, sum, cid, s.now().Add(RepSessionTTL), punchoutID); err != nil {
+			return err
+		}
+		token = tok
+		return store.Audit(ctx, tx, tenant, "punchout", "customer.punchout_session", cid, map[string]any{"punchout": punchoutID})
+	})
+	return token, err
+}
+
+// SessionPunchout returns the punchout of a session ("" when none).
+func (s *Service) SessionPunchout(ctx context.Context, tenant, token string) (string, error) {
+	if !strings.HasPrefix(token, "apc_") {
+		return "", ErrNotFound
+	}
+	sum := sha256.Sum256([]byte(token))
+	var id *string
+	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `SELECT punchout_id FROM shopper_sessions WHERE tenant_id=$1 AND token_hash=$2 AND expires_at > $3`, tenant, sum[:], s.now()).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	})
+	if err != nil || id == nil {
+		return "", err
+	}
+	return *id, nil
+}

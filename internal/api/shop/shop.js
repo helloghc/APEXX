@@ -1424,3 +1424,29 @@ function downloadsBox(ds) {
   };
   paint();
 })();
+
+/* ==== punchout: the cart goes back to the company's purchasing system ==== */
+(() => {
+  if (!/(?:^|; )apexx_punchout=1/.test(document.cookie)) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2];
+  const bar = document.createElement("div");
+  bar.className = "rep-bar"; bar.setAttribute("role", "status");
+  bar.textContent = "Compras desde el sistema de tu empresa: al terminar, el carrito vuelve a ese sistema para su aprobación.";
+  document.body.prepend(bar);
+  const go = document.querySelector("[data-to-checkout]"); if (!go) return;
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "btn"; btn.dataset.punchoutTransfer = ""; btn.textContent = "Transferir al sistema de compras";
+  const msg = document.createElement("span"); msg.className = "muted"; msg.setAttribute("role", "status");
+  go.replaceWith(btn); btn.after(" ", msg);
+  btn.addEventListener("click", async () => {
+    let cart = []; try { cart = JSON.parse(localStorage.getItem("apexx_cart_" + tenant) || "[]") || []; } catch (e) { cart = []; }
+    const items = cart.filter((l) => !l.plan).map((l) => ({ sku: l.sku, qty: l.qty }));
+    if (!items.length) { msg.textContent = "Tu carrito está vacío."; return; }
+    btn.disabled = true; msg.textContent = "Enviando…";
+    const r = await fetch("/s/" + tenant + "/api/punchout/transfer", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ items }) })
+      .then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    if (!r.ok) { btn.disabled = false; msg.textContent = r.body.detail || "No se pudo transferir. Intenta de nuevo."; return; }
+    try { localStorage.removeItem("apexx_cart_" + tenant); } catch (e) { /* nothing to clear */ }
+    location.href = r.body.next;
+  });
+})();
