@@ -369,7 +369,9 @@ func (s *Server) shopSuggest(w http.ResponseWriter, r *http.Request) {
 		q := catalog.BrowseQuery{Q: text, Limit: 6}
 		s.searchQuery(t, &q)
 		of := offerOf(t, pd.Channel)
-		res := catalog.Browse(t.Catalog.Products(), t.Taxo, of, q)
+		res := s.browse.browse(t.ID, t.Version(), "s\x00"+pd.Channel+"\x00"+text+"\x00r="+ruleKey(q), func() catalog.BrowseResult {
+			return catalog.Browse(t.Catalog.Products(), t.Taxo, of, q)
+		})
 		cards := make([]cardJSON, 0, len(res.Items))
 		for i, p := range res.Items {
 			cards = append(cards, cardJSONOf(t, pd, p, res.Offers[i]))

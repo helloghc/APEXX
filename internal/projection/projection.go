@@ -41,7 +41,13 @@ type Tenant struct {
 
 	mu sync.RWMutex // guards Cart.Channels, Cart.Promos and Cart.Logistics swaps
 	siteState
+
+	version atomic.Uint64 // grows with every event applied to the tenant
 }
+
+// Version grows every time an event of the tenant is applied. A reader can
+// keep a result computed at one version and reuse it until the number moves.
+func (t *Tenant) Version() uint64 { return t.version.Load() }
 
 // Promos returns the promotion engine of the tenant. The engine is safe for
 // concurrent use and is updated promotion by promotion as events arrive.
@@ -619,6 +625,7 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 	if !ok {
 		return p.loadTenant(ctx, e.Tenant)
 	}
+	defer t.version.Add(1)
 	switch e.Topic {
 	case store.TopicProduct:
 		return p.applyProduct(ctx, t, e.Key)

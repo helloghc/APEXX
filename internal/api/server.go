@@ -38,6 +38,7 @@ import (
 
 // Server holds every dependency of the HTTP layer.
 type Server struct {
+	browse browseCache // shared catalog, search and suggestion results by projection version
 	// ChannelEndpoints and ChannelHTTP reach Mercado Libre and Amazon (zero: production hosts).
 	ChannelEndpoints saleschannels.Endpoints
 	ChannelHTTP      *http.Client

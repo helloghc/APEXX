@@ -150,6 +150,35 @@ type browseState struct {
 	page   int
 }
 
+// key identifies what the shopper asked for, for the browse cache: every
+// filter, the order and the page, in a fixed order.
+func (st browseState) key() string {
+	var b strings.Builder
+	b.WriteString(st.q)
+	b.WriteString("\x00")
+	bs := append([]string(nil), st.brands...)
+	sort.Strings(bs)
+	b.WriteString(strings.Join(bs, "\x01"))
+	ids := make([]string, 0, len(st.attrs))
+	for id := range st.attrs {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		vs := append([]string(nil), st.attrs[id]...)
+		sort.Strings(vs)
+		b.WriteString("\x00a=" + id + "=" + strings.Join(vs, "\x01"))
+	}
+	if st.min != nil {
+		b.WriteString("\x00min=" + strconv.FormatInt(*st.min, 10))
+	}
+	if st.max != nil {
+		b.WriteString("\x00max=" + strconv.FormatInt(*st.max, 10))
+	}
+	b.WriteString("\x00s=" + st.sort + "\x00p=" + strconv.Itoa(st.page))
+	return b.String()
+}
+
 func parseBrowse(r *http.Request, path string, t *projection.Tenant) browseState {
 	v := r.URL.Query()
 	st := browseState{path: path, attrs: map[string][]string{}, page: 1}
@@ -291,7 +320,16 @@ func (s *Server) renderBrowse(w http.ResponseWriter, r *http.Request, t *project
 			return
 		}
 	}
-	res := catalog.Browse(t.Catalog.Products(), t.Taxo, offerOf(t, pd.Channel), q)
+	key := "b\x00" + pd.Channel + "\x00" + st.key() + "\x00r=" + ruleKey(q)
+	if cat != nil {
+		key += "\x00c=" + cat.ID
+	}
+	if col != nil {
+		key += "\x00k=" + col.ID
+	}
+	res := s.browse.browse(t.ID, t.Version(), key, func() catalog.BrowseResult {
+		return catalog.Browse(t.Catalog.Products(), t.Taxo, offerOf(t, pd.Channel), q)
+	})
 	if st.q != "" && st.page == 1 && !st.filtered() {
 		s.noteSearch(t.ID, st.q, res.Total)
 	}

@@ -174,6 +174,7 @@ func cmdSeed(ctx context.Context, log *slog.Logger, args []string) {
 }
 
 func cmdServe(ctx context.Context, log *slog.Logger) {
+	startProfiler(log)
 	db, keys := open(ctx, log)
 	defer db.Close()
 	tenants, err := db.Tenants(ctx)
