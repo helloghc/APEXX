@@ -238,3 +238,104 @@ Sin comentarios todavía. || No comments yet. || Pas encore de commentaires. || 
 Comentario || Comment || Commentaire || Comentário || Komentar || コメント
 Enviar comentario || Send comment || Envoyer le commentaire || Enviar comentário || Kirim komentar || コメントを送信
 Otros clientes también eligieron || Other customers also chose || D'autres clients ont aussi choisi || Outros clientes também escolheram || Pelanggan lain juga memilih || ほかのお客様はこちらも選んでいます
+Un asistente de IA preparó este carrito. Revísalo antes de pagar: nada se compra hasta que tú lo confirmes. || An AI assistant prepared this cart. Review it before paying: nothing is bought until you confirm. || Un assistant IA a préparé ce panier. Vérifiez-le avant de payer : rien n'est acheté tant que vous ne confirmez pas. || Um assistente de IA preparou este carrinho. Revise antes de pagar: nada é comprado até você confirmar. || Asisten AI menyiapkan keranjang ini. Periksa sebelum membayar: tidak ada yang dibeli sampai Anda mengonfirmasi. || AIアシスタントがこのカートを用意しました。お支払い前にご確認ください。確定するまで購入されません。
+Forma de pago || Payment method || Moyen de paiement || Forma de pagamento || Metode pembayaran || お支払い方法
+· disponible || · available || · disponible || · disponível || · tersedia || · 利用可能
+Compras para la mesa de regalos || Buying for the gift registry || Achat pour la liste de cadeaux || Compras para a lista de presentes || Membeli untuk daftar hadiah || ギフトリスト用のご購入
+Enviar a la dirección de los festejados || Ship to the honorees' address || Envoyer à l'adresse des personnes fêtées || Enviar ao endereço dos homenageados || Kirim ke alamat yang dirayakan || 主役のご住所へ配送
+No es para esta mesa || Not for this registry || Pas pour cette liste || Não é para esta lista || Bukan untuk daftar ini || このギフトリスト用ではない
+Es para regalo || It's a gift || C'est un cadeau || É para presente || Ini untuk hadiah || ギフト用
+Envolver para regalo || Gift wrap || Emballage cadeau || Embrulhar para presente || Bungkus kado || ギフト包装
+(sin costo) || (no cost) || (gratuit) || (sem custo) || (gratis) || （無料）
+Mensaje para la tarjeta (opcional) || Card message (optional) || Message pour la carte (facultatif) || Mensagem para o cartão (opcional) || Pesan kartu (opsional) || カードのメッセージ（任意）
+Ticket de regalo: el paquete va sin precios || Gift receipt: the package goes without prices || Ticket cadeau : le colis part sans prix || Recibo de presente: o pacote vai sem preços || Struk hadiah: paket dikirim tanpa harga || ギフトレシート：価格を記載せずにお届けします
+Di en caja que vas a pagar un servicio || Tell the cashier you're paying for a service || Dites en caisse que vous payez un service || Diga no caixa que vai pagar um serviço || Katakan di kasir bahwa Anda akan membayar layanan || レジでサービスの支払いとお伝えください
+y da esta referencia: || and give this reference: || et donnez cette référence : || e informe esta referência: || dan berikan referensi ini: || 次の参照番号をお伝えください：
+está apartado. Lo enviamos cuando recibamos tu pago. || is reserved. We ship it when we receive your payment. || est réservé. Nous l'expédions à réception de votre paiement. || está reservado. Enviamos quando recebermos seu pagamento. || sudah dipesan. Kami kirim setelah pembayaran diterima. || は確保済みです。お支払いを確認後に発送します。
+Pagaste el anticipo. Quedan || You paid the deposit. Remaining || Vous avez payé l'acompte. Il reste || Você pagou o sinal. Restam || Anda sudah membayar uang muka. Sisa || 前払い金をお支払いいただきました。残り
+por pagar: te enviaremos un enlace por correo cuando tu pedido esté listo para enviarse. || to pay: we'll email you a link when your order is ready to ship. || à payer : nous vous enverrons un lien par e-mail quand votre commande sera prête à partir. || a pagar: enviaremos um link por e-mail quando seu pedido estiver pronto para envio. || yang harus dibayar: kami akan mengirim tautan lewat email saat pesanan siap dikirim. || のお支払い：発送準備ができたらメールでリンクをお送りします。
+Recibimos tu solicitud de cotización # || We received your quote request # || Nous avons reçu votre demande de devis n° # || Recebemos sua solicitação de cotação # || Kami menerima permintaan penawaran Anda # || 見積もり依頼を受け付けました #
+productos listos para agregar. || products ready to add. || produits prêts à ajouter. || produtos prontos para adicionar. || produk siap ditambahkan. || 件の商品を追加できます。
+Mi lista || My list || Ma liste || Minha lista || Daftar saya || マイリスト
+Lista guardada. Encuéntrala en || List saved. Find it in || Liste enregistrée. Retrouvez-la dans || Lista salva. Encontre em || Daftar disimpan. Temukan di || リストを保存しました。次の場所で確認できます：
+(envío || (shipping || (livraison || (frete || (ongkir || （送料
+Comparar ( || Compare ( || Comparer ( || Comparar ( || Bandingkan ( || 比較（
+Cookies y privacidad || Cookies and privacy || Cookies et confidentialité || Cookies e privacidade || Cookie dan privasi || Cookieとプライバシー
+No se pudo canjear. || Couldn't redeem. || Échange impossible. || Não foi possível resgatar. || Tidak dapat ditukar. || 引き換えできませんでした。
+Listo: tu saldo a favor es || Done: your store credit is || C'est fait : votre avoir est de || Pronto: seu crédito na loja é || Selesai: saldo toko Anda || 完了しました。ストアクレジット残高：
+(también te lo enviamos por correo). Úsalo en el pago. || (we also emailed it to you). Use it at checkout. || (nous vous l'avons aussi envoyé par e-mail). Utilisez-le au paiement. || (também enviamos por e-mail). Use no pagamento. || (juga kami kirim lewat email). Gunakan saat pembayaran. || （メールでもお送りしました）。お支払い時にご利用ください。
+No se pudo canjear. Intenta de nuevo. || Couldn't redeem. Try again. || Échange impossible. Réessayez. || Não foi possível resgatar. Tente de novo. || Tidak dapat ditukar. Coba lagi. || 引き換えできませんでした。もう一度お試しください。
+Tu carrito tiene regalos de otra mesa. ¿Cambiar a esta mesa? || Your cart has gifts from another registry. Switch to this registry? || Votre panier contient des cadeaux d'une autre liste. Passer à cette liste ? || Seu carrinho tem presentes de outra lista. Mudar para esta lista? || Keranjang Anda berisi hadiah dari daftar lain. Beralih ke daftar ini? || カートに別のギフトリストの商品があります。このリストに切り替えますか？
+Ya tienes en tu carrito todas las piezas que faltan de este regalo. || You already have all the missing items of this gift in your cart. || Vous avez déjà dans votre panier tous les articles manquants de ce cadeau. || Você já tem no carrinho todas as peças que faltam deste presente. || Semua barang yang kurang dari hadiah ini sudah ada di keranjang Anda. || このギフトの残りの数量はすべてカートに入っています。
+Pagar el regalo || Pay for the gift || Payer le cadeau || Pagar o presente || Bayar hadiah || ギフトを購入
+Bebé || Baby || Bébé || Bebê || Bayi || ベビー
+Otra celebración || Other celebration || Autre célébration || Outra celebração || Perayaan lain || その他のお祝い
+Datos de la mesa || Registry details || Informations de la liste || Dados da lista || Data daftar hadiah || ギフトリストの情報
+Crear mi mesa de regalos || Create my gift registry || Créer ma liste de cadeaux || Criar minha lista de presentes || Buat daftar hadiah saya || ギフトリストを作成
+Celebración || Celebration || Célébration || Celebração || Perayaan || お祝いの種類
+Fecha del evento || Event date || Date de l'événement || Data do evento || Tanggal acara || イベントの日付
+Mensaje para tus invitados (opcional) || Message for your guests (optional) || Message pour vos invités (facultatif) || Mensagem para seus convidados (opcional) || Pesan untuk tamu Anda (opsional) || ゲストへのメッセージ（任意）
+Dirección para recibir los regalos (opcional, tus invitados no la ven) || Address to receive the gifts (optional, your guests don't see it) || Adresse de réception des cadeaux (facultatif, vos invités ne la voient pas) || Endereço para receber os presentes (opcional, seus convidados não veem) || Alamat penerimaan hadiah (opsional, tamu tidak melihatnya) || ギフトの受け取り住所（任意、ゲストには表示されません）
+Que mis invitados la encuentren buscando por nombre || Let my guests find it by searching by name || Mes invités peuvent la trouver en cherchant par nom || Meus convidados podem encontrá-la buscando pelo nome || Tamu saya bisa menemukannya dengan mencari nama || ゲストが名前で検索して見つけられるようにする
+Cerrar la mesa (ya no recibe regalos) || Close the registry (no longer receives gifts) || Fermer la liste (ne reçoit plus de cadeaux) || Encerrar a lista (não recebe mais presentes) || Tutup daftar (tidak menerima hadiah lagi) || ギフトリストを終了（今後はギフトを受け付けません）
+Crear mesa || Create registry || Créer la liste || Criar lista || Buat daftar || ギフトリストを作成
+regalos comprados || gifts bought || cadeaux achetés || presentes comprados || hadiah dibeli || 件のギフトが購入済み
+· Cerrada || · Closed || · Fermée || · Encerrada || · Ditutup || · 終了
+Comparte este enlace: || Share this link: || Partagez ce lien : || Compartilhe este link: || Bagikan tautan ini: || このリンクを共有：
+Piezas que quieres de || Items you want of || Articles souhaités de || Peças que você quer de || Jumlah yang Anda inginkan dari || 希望数：
+Agrega productos desde su página con el botón «Agregar a mi mesa de regalos». || Add products from their page with the “Add to my gift registry” button. || Ajoutez des produits depuis leur page avec le bouton « Ajouter à ma liste de cadeaux ». || Adicione produtos pela página deles com o botão “Adicionar à minha lista de presentes”. || Tambahkan produk dari halamannya dengan tombol “Tambahkan ke daftar hadiah saya”. || 商品ページの「ギフトリストに追加」ボタンから商品を追加してください。
+Editar datos de la mesa || Edit registry details || Modifier les informations de la liste || Editar dados da lista || Edit data daftar hadiah || ギフトリストの情報を編集
+No pudimos cargar tus mesas. || We couldn't load your registries. || Impossible de charger vos listes. || Não conseguimos carregar suas listas. || Kami tidak dapat memuat daftar hadiah Anda. || ギフトリストを読み込めませんでした。
+Crear otra mesa || Create another registry || Créer une autre liste || Criar outra lista || Buat daftar lain || 別のギフトリストを作成
+Cambios guardados. || Changes saved. || Modifications enregistrées. || Alterações salvas. || Perubahan disimpan. || 変更を保存しました。
+Tu mesa está lista. Agrega productos y comparte el enlace. || Your registry is ready. Add products and share the link. || Votre liste est prête. Ajoutez des produits et partagez le lien. || Sua lista está pronta. Adicione produtos e compartilhe o link. || Daftar Anda siap. Tambahkan produk dan bagikan tautannya. || ギフトリストの準備ができました。商品を追加してリンクを共有しましょう。
+No se pudo guardar. || Couldn't save. || Enregistrement impossible. || Não foi possível salvar. || Tidak dapat menyimpan. || 保存できませんでした。
+Agregar a mi mesa de regalos || Add to my gift registry || Ajouter à ma liste de cadeaux || Adicionar à minha lista de presentes || Tambahkan ke daftar hadiah saya || ギフトリストに追加
+Agregado a « || Added to “ || Ajouté à « || Adicionado a “ || Ditambahkan ke “ || 「
+Ver mi mesa || See my registry || Voir ma liste || Ver minha lista || Lihat daftar saya || ギフトリストを見る
+No se pudo agregar. || Couldn't add. || Ajout impossible. || Não foi possível adicionar. || Tidak dapat menambahkan. || 追加できませんでした。
+Estás comprando como || You're buying as || Vous achetez en tant que || Você está comprando como || Anda membeli sebagai || 次の名義で購入中：
+· representante || · representative || · représentant || · representante || · perwakilan || · 担当者
+Listo: tu representante puede hacer pedidos por tu empresa. || Done: your representative can place orders for your company. || C'est fait : votre représentant peut passer des commandes pour votre entreprise. || Pronto: seu representante pode fazer pedidos pela sua empresa. || Selesai: perwakilan Anda bisa memesan untuk perusahaan Anda. || 完了しました。担当者が貴社の代わりに注文できます。
+Listo: tu representante ya no puede hacer pedidos por tu empresa. || Done: your representative can no longer place orders for your company. || C'est fait : votre représentant ne peut plus passer de commandes pour votre entreprise. || Pronto: seu representante não pode mais fazer pedidos pela sua empresa. || Selesai: perwakilan Anda tidak bisa lagi memesan untuk perusahaan Anda. || 完了しました。担当者は貴社の代わりに注文できなくなりました。
+No se pudo guardar. Intenta de nuevo. || Couldn't save. Try again. || Enregistrement impossible. Réessayez. || Não foi possível salvar. Tente de novo. || Tidak dapat menyimpan. Coba lagi. || 保存できませんでした。もう一度お試しください。
+Acuerdos de compra || Purchase agreements || Accords d'achat || Acordos de compra || Perjanjian pembelian || 購買契約
+Vigente hasta || Valid until || Valable jusqu'au || Vigente até || Berlaku hingga || 有効期限
+· pedido mínimo || · minimum order || · commande minimale || · pedido mínimo || · pesanan minimum || · 最低注文額
+· usado || · used || · utilisé || · usado || · terpakai || · 使用済み
+en adelante || and up || et plus || em diante || ke atas || 以上
+Cantidad de || Quantity of || Quantité de || Quantidade de || Jumlah || 数量：
+Pedir a crédito || Order on credit || Commander à crédit || Pedir a crédito || Pesan secara kredit || 掛けで注文
+Pedir y pagar || Order and pay || Commander et payer || Pedir e pagar || Pesan dan bayar || 注文して支払う
+No se pudo hacer el pedido. || Couldn't place the order. || Impossible de passer la commande. || Não foi possível fazer o pedido. || Tidak dapat membuat pesanan. || 注文できませんでした。
+hecho a crédito por || placed on credit for || passée à crédit pour || feito a crédito por || dibuat secara kredit sebesar || の掛け注文：
+No se pudo enviar. || Couldn't send. || Envoi impossible. || Não foi possível enviar. || Tidak dapat mengirim. || 送信できませんでした。
+Por pagar || To pay || À payer || A pagar || Perlu dibayar || 未払い
+Pagar el pedido || Pay the order || Payer la commande || Pagar o pedido || Bayar pesanan || 注文の支払い
+Total a pagar: || Total to pay: || Total à payer : || Total a pagar: || Total yang dibayar: || お支払い合計：
+Pagar facturas || Pay invoices || Payer les factures || Pagar faturas || Bayar faktur || 請求書を支払う
+No tienes facturas por pagar. || You have no invoices to pay. || Vous n'avez aucune facture à payer. || Você não tem faturas a pagar. || Anda tidak punya faktur yang harus dibayar. || 未払いの請求書はありません。
+Descargar recibo || Download receipt || Télécharger le reçu || Baixar recibo || Unduh kuitansi || 領収書をダウンロード
+Elige al menos una factura. || Choose at least one invoice. || Choisissez au moins une facture. || Escolha pelo menos uma fatura. || Pilih minimal satu faktur. || 請求書を1件以上選んでください。
+No se pudo cobrar. Intenta de nuevo. || Couldn't charge. Try again. || Encaissement impossible. Réessayez. || Não foi possível cobrar. Tente de novo. || Tidak dapat menagih. Coba lagi. || 決済できませんでした。もう一度お試しください。
+Pago recibido por || Payment received for || Paiement reçu pour || Pagamento recebido de || Pembayaran diterima sebesar || 入金を受け付けました：
+Documentos de la empresa || Company documents || Documents de l'entreprise || Documentos da empresa || Dokumen perusahaan || 会社の書類
+Aún no hay documentos. || No documents yet. || Pas encore de documents. || Ainda não há documentos. || Belum ada dokumen. || 書類はまだありません。
+Subir documento || Upload document || Importer un document || Enviar documento || Unggah dokumen || 書類をアップロード
+Constancia fiscal, contrato u otros. Se guardan cifrados. || Tax certificate, contract or others. They're stored encrypted. || Attestation fiscale, contrat ou autres. Stockés chiffrés. || Constância fiscal, contrato ou outros. São guardados criptografados. || Sertifikat pajak, kontrak, atau lainnya. Disimpan terenkripsi. || 税務証明書、契約書など。暗号化して保存されます。
+No se pudo subir. || Couldn't upload. || Import impossible. || Não foi possível enviar. || Tidak dapat mengunggah. || アップロードできませんでした。
+Compras desde el sistema de tu empresa: al terminar, el carrito vuelve a ese sistema para su aprobación. || You're shopping from your company's system: when you finish, the cart goes back to that system for approval. || Vous achetez depuis le système de votre entreprise : à la fin, le panier retourne à ce système pour approbation. || Você compra pelo sistema da sua empresa: ao terminar, o carrinho volta a esse sistema para aprovação. || Anda berbelanja dari sistem perusahaan: setelah selesai, keranjang kembali ke sistem itu untuk disetujui. || 会社の購買システムからご購入中です。完了するとカートは承認のためそのシステムに戻ります。
+Transferir al sistema de compras || Transfer to purchasing system || Transférer au système d'achat || Transferir ao sistema de compras || Transfer ke sistem pengadaan || 購買システムへ送信
+No se pudo transferir. Intenta de nuevo. || Couldn't transfer. Try again. || Transfert impossible. Réessayez. || Não foi possível transferir. Tente de novo. || Tidak dapat mentransfer. Coba lagi. || 送信できませんでした。もう一度お試しください。
+Tu carrito está vacío. || Your cart is empty. || Votre panier est vide. || Seu carrinho está vazio. || Keranjang Anda kosong. || カートは空です。
+Enviando… || Sending… || Envoi… || Enviando… || Mengirim… || 送信中…
+» está en tu carrito. || ” is in your cart. || » est dans votre panier. || ” está no seu carrinho. || ” ada di keranjang Anda. || 」はカートに入っています。
+· de || · of || · de || · de || · dari || · ／
+Cumpleaños || Birthday || Anniversaire || Aniversário || Ulang tahun || 誕生日
+. Tu recibo está abajo. || . Your receipt is below. || . Votre reçu est ci-dessous. || . Seu recibo está abaixo. || . Kuitansi Anda ada di bawah. || 。領収書は下にあります。
+. Tu pedido se confirma en cuanto llegue el dinero. || . Your order is confirmed as soon as the money arrives. || . Votre commande est confirmée dès réception des fonds. || . Seu pedido é confirmado assim que o dinheiro chegar. || . Pesanan Anda dikonfirmasi begitu uang masuk. || 。入金が確認され次第、ご注文が確定します。
+. Todo queda registrado con tu nombre. || . Everything is recorded under your name. || . Tout est enregistré à votre nom. || . Tudo fica registrado com seu nome. || . Semua tercatat atas nama Anda. || 。すべてあなたの名前で記録されます。
+. Te escribiremos a tu correo con la oferta. || . We'll email you with the offer. || . Nous vous écrirons par e-mail avec l'offre. || . Escreveremos para seu e-mail com a oferta. || . Kami akan mengirim penawaran ke email Anda. || 。オファーをメールでお送りします。
+. Paga antes del || . Pay before || . Payez avant le || . Pague antes de || . Bayar sebelum || 。お支払い期限：
+. Código: || . Code: || . Code : || . Código: || . Kode: || 。コード：
+, antes del || , before || , avant le || , antes de || , sebelum || 、期限：

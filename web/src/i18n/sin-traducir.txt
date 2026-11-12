@@ -1,0 +1,67 @@
+Android
+Apexx
+Apps
+Backspace
+Bahasa Indonesia
+Blog
+Buen Fin
+Buen Fin 2026
+Button
+Card
+Chrome
+Correos de México
+Edge
+End
+English
+English (US)
+Enter
+Escape
+Español
+Español (México)
+Estafeta
+Facebook
+Firefox
+Google Analytics 4
+Google Merchant Center
+Home
+Idioma del panel / Panel language
+Idioma · Language
+Input
+Instagram
+Linux
+Mac
+Mi Tienda S.A. de C.V.
+Paquetexpress
+Outlet
+Português (Brasil)
+Redpack
+Safari
+Settings x delete
+SKU-000001-1, 999.00\nSKU-000001-1, 899.00, 12
+Stripe Connect
+Table
+Tablet
+Textarea
+Tienda México
+Tienda Norte
+Windows
+Webhooks
+User-agent: GPTBot\nDisallow: /
+bad path
+doc.id ? request
+input, textarea, select
+mt-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
+r.id ? request
+r.items ?? []), saveGroup: (g: Partial
+r.items), createAttribute: (a: Partial
+r.items), createBrand: (b: Partial
+r.items), createCategory: (c: Partial
+radial-gradient(900px 500px at 50% -10%, var(--accent-soft), transparent 70%), var(--bg)
+remove the setting
+test failed
+useSidebar must be used inside SidebarProvider
+void request
+what would this cart pay, and why?
+when X happens to an order, do Y
+whole country
+iPhone o iPad

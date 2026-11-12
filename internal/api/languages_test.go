@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -153,5 +154,27 @@ func TestProductTranslations(t *testing.T) {
 	}
 	if st, _ := e.do("PUT", "/v1/products/P1/translations", e.adminB, m{"en": m{"title": "Hack"}}); st != 404 {
 		t.Fatalf("another store wrote translations: %d", st)
+	}
+}
+
+// Every message the store's script shows a shopper has its translation in
+// every language: a phrase added to shop.js without one fails here.
+func TestStorefrontScriptHasEveryPhrase(t *testing.T) {
+	src, _ := shopFS.ReadFile("shop/shop.js")
+	codeLike := regexp.MustCompile(`[;={}+]|=>|\(\)|\.\w+\(|\w\(|\(const |\? \(|^//|^(btn|pcard|muted|note|field|linkbtn|rep-bar|sr|cmp|pgrid|num|wish|div|span|strong|button|input)\b`)
+	spanish := regexp.MustCompile(`[áéíóúñ¿¡]|\b(de|la|el|tu|tus|para|con|los|las|del|que|por|una|en|no|se|mi|al)\b`)
+	seen := map[string]bool{}
+	for _, l := range i18n.Languages[1:] {
+		look := i18n.Builtin(l.Code)
+		for _, p := range i18n.ScriptPhrases(string(src)) {
+			if codeLike.MatchString(p) || !spanish.MatchString(p) || len(strings.Fields(p)) < 2 && !strings.ContainsAny(p, "áéíóúñ") {
+				continue
+			}
+			_, known := look(strings.TrimSpace(p))
+			if !known && i18n.Phrase(p, look) == p && !seen[l.Code+p] {
+				seen[l.Code+p] = true
+				t.Errorf("%s: sin traducción en la tienda: %q", l.Code, p)
+			}
+		}
 	}
 }
