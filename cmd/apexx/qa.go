@@ -15,6 +15,7 @@ import (
 	"github.com/helloghc/apexx/internal/customers"
 	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/money"
+	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/pricing"
 	"github.com/helloghc/apexx/internal/projection"
 	"github.com/helloghc/apexx/internal/seed"
@@ -190,6 +191,50 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 		fmt.Printf("  %-34s %s@%s\n", x.who, x.email, *domain)
 	}
 	fmt.Printf("\nLlave storefront para pruebas de API: %s\n", sf)
+	qaRoles(ctx, log, a, &orders.Service{DB: db, Keys: keys, Projector: proj, Log: log}, *tenant, *domain, *pass)
+}
+
+// qaRoles adds the roles that live outside the team screen, so QA can test
+// every portal from the first command: a sales rep who serves a B2B company,
+// a marketplace seller with its own person, and a company buyer who signs in
+// to the store with a code.
+func qaRoles(ctx context.Context, log *slog.Logger, a *auth.Service, ord *orders.Service, tenant, domain, pass string) {
+	members, _ := a.Members(ctx, tenant)
+	byEmail := map[string]auth.Member{}
+	for _, m := range members {
+		byEmail[m.Email] = m
+	}
+	repEmail := "representante@" + domain
+	rep, ok := byEmail[repEmail]
+	if !ok {
+		var err error
+		rep, err = a.CreateMember(ctx, tenant, "qa-setup", repEmail, "Representante de ventas", pass, auth.Permissions{"customers": "edit", "orders": "edit", "catalog": "read"}, false)
+		must(log, err, "member "+repEmail)
+	}
+	sellerEmail := "vendedor@" + domain
+	if _, ok := byEmail[sellerEmail]; !ok {
+		sel, err := ord.SaveSeller(ctx, tenant, "qa-setup", orders.Seller{Name: "Vendedor QA", Email: sellerEmail, CommissionBps: 1500, Status: "active"})
+		must(log, err, "seller")
+		must(log, ord.SetSellerProducts(ctx, tenant, "qa-setup", sel.ID, []string{"QA-00001", "QA-00002", "QA-00004", "QA-00005", "QA-00006"}), "seller products")
+		_, token, err := a.Invite(ctx, tenant, "qa-setup", sellerEmail, "Vendedor QA", auth.Permissions{}, sel.ID)
+		must(log, err, "seller invite")
+		_, _, err = a.AcceptInvitation(ctx, token, "Vendedor QA", pass)
+		must(log, err, "seller person")
+	}
+	cos, _ := ord.Companies(ctx, tenant)
+	found := false
+	for _, c := range cos {
+		found = found || c.Name == "Ferretería QA"
+	}
+	if !found {
+		_, err := ord.SaveCompany(ctx, tenant, "qa-setup", orders.Company{Name: "Ferretería QA", Terms: "net30", CreditLimit: 5000000, Status: "active", SalesRep: rep.ID, RepAccess: true},
+			[]string{"compras@" + domain})
+		must(log, err, "company")
+	}
+	fmt.Printf("\nRoles fuera del equipo:\n")
+	fmt.Printf("  %-34s %s (entra al panel; atiende a Ferretería QA)\n", "Representante de ventas", repEmail)
+	fmt.Printf("  %-34s %s (portal de vendedor, 5 productos)\n", "Vendedor del marketplace", sellerEmail)
+	fmt.Printf("  %-34s compras@%s (entra a la tienda con código; crédito a 30 días, $50,000)\n", "Comprador B2B", domain)
 }
 
 // qaSettings gives the QA store a complete configuration: a warehouse with

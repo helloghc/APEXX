@@ -116,7 +116,7 @@ function TemplateEditor({ t, canEdit, onSaved }: { t: MailTemplate; canEdit: boo
             {[["es", "Español"], ["en", "English"], ["fr", "Français"], ["pt", "Português"], ["id", "Bahasa Indonesia"], ["ja", "日本語"]].map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></label></CardHeader>
         <CardContent className="pb-0"><p className="text-sm text-muted-foreground">Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.</p></CardContent>
         <CardContent>
-          {preview.error ? <ErrorBox error={preview.error} /> : <iframe title="Vista previa del correo" sandbox="" srcDoc={preview.data?.html ?? ""} className="h-[560px] w-full rounded-md border bg-white" />}
+          {preview.error ? <ErrorBox error={preview.error} /> : <iframe title="Vista previa del correo" sandbox="" srcDoc={preview.data?.html ?? ""} className="h-[560px] w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md border bg-white" />}
         </CardContent>
       </Card>
     </div>

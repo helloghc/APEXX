@@ -131,10 +131,26 @@ Evidencia: captura o video, hora exacta (para buscar en los logs)
 
 ## 6. Límites conocidos de esta versión
 
-- Las imágenes de producto son marcadores de color; todavía no hay carga de imágenes.
-- No hay cuentas de comprador (historial de pedidos del cliente); la confirmación llega en la página de gracias y la factura por correo vía Stripe.
-- La factura de Stripe no es CFDI; el CFDI llegará con el conector de Facturapi.
-- En modo sandbox no se envían correos.
+- La factura de Stripe no es CFDI; el CFDI llega con el conector de Facturapi.
+- En modo `outbox` (desarrollo y QA) los correos no salen: se leen en Correos › Enviados. Ahí, y solo ahí, se ven los códigos de acceso para poder probar. Con un proveedor real (SMTP o SendGrid) el registro guarda el correo sin códigos ni enlaces secretos.
+- Los campos de fecha usan el control del navegador, y su formato sigue el idioma del navegador (mm/dd/aaaa en un navegador en inglés).
+- Probado en Chromium (escritorio y emulación de iPhone 13). Falta una pasada en Safari y Firefox reales.
+
+### Matriz de roles a probar
+
+| Rol | Cuenta en la tienda `audit` | Debe poder | No debe poder |
+|---|---|---|---|
+| Dueño | dueno@ | todo | — |
+| Lector | lector@ | ver todo | guardar nada (controles desactivados, aviso de solo lectura) |
+| Catálogo | catalogo@ | productos, precios, inventario | pedidos (solo ver), equipo, pagos, configuración |
+| Pedidos | pedidos@ | atender pedidos, Caja | editar productos o diseño |
+| Diseñador | disenador@ | editar el diseño | publicar |
+| Publicador | publicador@ | editar y publicar el diseño | catálogo (solo ver) |
+| Representante | representante@ | abrir la tienda como el comprador de *su* empresa, si la empresa lo permite | hacerlo con otra empresa (403) |
+| Vendedor (marketplace) | vendedor@ | su portal: pedidos por enviar, estado de cuenta, sus productos | cualquier otra sección (Sin acceso) |
+| Comprador B2B | compras@ (entra con código) | comprar a crédito, ver Mi empresa, facturas y aprobaciones | ver otras empresas |
+
+Contraseña de todas las cuentas del panel: la que pusiste en `qa-setup`. El recorrido automático de todas las pantallas por rol está en `docs/audit/auditoria-exhaustiva-panel.md`.
 
 ## 7. Casos de las sub-fases A a L
 
