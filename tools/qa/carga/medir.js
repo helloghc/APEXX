@@ -97,5 +97,8 @@ const now = () => Number(process.hrtime.bigint() / 1000n) / 1000; // ms
   fs.writeFileSync(OUT, JSON.stringify(res, null, 1));
   console.log(JSON.stringify({ cold: { ms: res.cold.ms, jsKB: res.cold.jsKB }, ...res.summary }));
   for (const r of res.routes.slice(0, 25)) console.log(String(r.ms).padStart(6), 'ms', r.route.padEnd(42), 'api máx', String(r.apiMaxMs).padStart(5), 'ms', r.calls, 'llamadas', r.jsKB ? r.jsKB + ' KB JS' : '', r.slowest[0] ? '· ' + r.slowest[0].api + ' ' + r.slowest[0].ms + ' ms' : '');
+  // Sign out, so the measurement leaves no session behind (the scale run
+  // compares every table with its starting snapshot).
+  await p.request.post(BASE + '/v1/auth/logout', { headers: { Authorization: 'Bearer ' + tok } }).catch(() => {});
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });

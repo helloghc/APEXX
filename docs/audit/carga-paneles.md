@@ -48,6 +48,23 @@ Las vistas lentas aparecieron solo con volumen. La tienda `escala` tenía 50 000
 | Operación › Actividad (filtros) | 307 ms | **3 ms** |
 | Catálogo (resumen) | 194 ms | **1 ms** (~60 ms la primera vez después de un cambio) |
 
+Recorrido completo del panel con la tienda llena, dentro del ciclo de escala (`APEXX_QA_WITH_LOAD`). Son 107 vistas y una ficha por lista:
+
+| Condición | Mediana | p95 | Máximo | Vistas > 200 ms |
+|---|---|---|---|---|
+| Local, antes | 18 ms | 86 ms | 1 597 ms | 4 |
+| Local, después | **20 ms** | **79 ms** | **172 ms** | **0** |
+| Red real, antes | 98 ms | 214 ms | 1 385 ms | 11 |
+| Red real, después | **100 ms** | **205 ms** | **289 ms** | 8 |
+
+Con red real, las vistas que pasan de 200 ms hacen dos viajes. Son el catálogo la primera vez (la lista y el resumen, recién calculado tras la importación) y el builder (borrador y vista previa).
+
+El mismo ciclo verificó la reversión:
+- la reversión de precios fue exacta (0 líneas distintas);
+- después del borrado total, ninguna tabla de la tienda difiere de la foto inicial, salvo el historial que crece a propósito.
+
+En la primera corrida la tabla de sesiones quedó con 2 de más. Eran los inicios de sesión del propio medidor; ahora cierra su sesión al terminar.
+
 ## Qué se cambió y por qué
 
 1. **Configuración tardaba 300 ms con una API de 3 ms.** Cada sección de Configuración se cargaba aparte dentro de la página. React revela un Suspense anidado en tandas de 300 ms, así que la sección esperaba aunque su código llegara en 5 ms. Ahora la página y la sección abierta se cargan juntas, y las demás secciones se precargan en segundo plano (`web/src/lib/lazy.ts`).
