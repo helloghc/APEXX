@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { Boxes, Filter as FilterIcon, LineChart, Megaphone, Package, Users } from "lucide-react";
+import { Boxes, Filter as FilterIcon, LineChart, Megaphone, Package, SlidersHorizontal, Users } from "lucide-react";
+import { Custom } from "./Custom";
 import { useState, type ReactNode } from "react";
 import type { Me } from "@/api";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ export const REPORTS = [
   { id: "embudo", label: "Embudo", icon: FilterIcon },
   { id: "promociones", label: "Promociones", icon: Megaphone },
   { id: "inventario", label: "Inventario", icon: Boxes },
+  { id: "personalizados", label: "Personalizados", icon: SlidersHorizontal },
 ] as const;
 
 export function SubNav({ base, items, active, label }: { base: string; items: readonly { id: string; label: string; icon?: typeof Boxes }[]; active: string; label: string }) {
@@ -823,6 +825,7 @@ export function Reports({ me, report }: { me: Me; report?: string }) {
       {active === "embudo" && <Embudo me={me} />}
       {active === "promociones" && <Promociones />}
       {active === "inventario" && <Inventario me={me} />}
+      {active === "personalizados" && <Custom me={me} />}
     </Page>
   );
 }

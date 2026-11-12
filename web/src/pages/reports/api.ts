@@ -323,10 +323,11 @@ export const reportsApi = {
 };
 
 /** download fetches a CSV with the session (or API key) and hands it to the browser as a file. */
-export async function download(path: string, fallbackName: string): Promise<void> {
+export async function download(path: string, fallbackName: string, body?: unknown): Promise<void> {
   const headers: Record<string, string> = { Accept: "text/csv" };
   if (credentials.key) headers.Authorization = `Bearer ${credentials.key}`;
-  const res = await fetch(path, { headers, credentials: "same-origin" });
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const res = await fetch(path, { method: body === undefined ? "GET" : "POST", headers, credentials: "same-origin", body: body === undefined ? undefined : JSON.stringify(body) });
   if (!res.ok) {
     if (res.status === 401) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     let detail = "No se pudo exportar";
