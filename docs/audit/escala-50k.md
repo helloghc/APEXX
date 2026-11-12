@@ -31,20 +31,28 @@ Cada producto tiene 2 variantes, precio, precio anterior, existencias, marca, ca
 
 ## Resultados con 50 000 productos (100 000 variantes)
 
+Medición de referencia. El servidor confía en `X-Forwarded-For`, como detrás de Caddy, y cada petición llega con una IP distinta, como compradores distintos. Cualquier respuesta que no sea 2xx se cuenta como error y no se cronometra. Errores: 0.
+
+En mediciones anteriores el limitador por IP (300 por minuto) respondía 429 a parte de las peticiones del arnés, y esas respuestas instantáneas abarataban algunas cifras. Las de esta tabla no tienen ese problema.
+
 | Ruta | Antes | Después | 16 a la vez, p95 |
 |---|---|---|---|
-| Tienda: portada | 1,3 ms | 1,7 ms | 20 ms |
-| Tienda: catálogo, página 1 | 340 ms | 3 ms | 29 ms |
-| Tienda: categoría | 77 ms | 0,7 ms | 10 ms |
-| Tienda: búsqueda con error de dedo | 0,7 ms | 0,6 ms | 12 ms |
-| Tienda: sugerencias | 97 ms | 0,9 ms | 6 ms |
-| Tienda: ficha | 2,0 ms | 1,7 ms | 13 ms |
-| API: simular carrito | 1,5 ms | 1,6 ms | 19 ms |
-| Panel: lista de productos | 7 ms | 2,7 ms | 27 ms |
-| Panel: buscar producto | 46 ms | 0,9 ms | 14 ms |
-| Panel: abrir producto | 31 ms | 1,5 ms | 14 ms |
-| Panel: inicio | 102 ms | 3,3 ms | 20 ms |
-| Cambio de precio masivo → visible | 2 000 ms | 15 ms | — |
+| Tienda: portada | 1,3 ms | 1,6 ms | 17 ms |
+| Tienda: catálogo, página 1 | 340 ms | 3,3 ms | 34 ms |
+| Tienda: catálogo, página 40 | 375 ms | 3,1 ms | 25 ms |
+| Tienda: categoría | 77 ms | 2,9 ms | 23 ms |
+| Tienda: filtro marca y precio | — | 3,1 ms | 54 ms |
+| Tienda: búsqueda con error de dedo | — | 1,8 ms | 18 ms |
+| Tienda: sugerencias | 97 ms | 0,9 ms | 13 ms |
+| Tienda: ficha | 2,0 ms | 1,9 ms | 34 ms |
+| API: simular carrito | 1,5 ms | 1,8 ms | 17 ms |
+| Panel: lista de productos | 7 ms | 3,1 ms | 33 ms |
+| Panel: buscar producto | 46 ms | 1,2 ms | 13 ms |
+| Panel: abrir producto | 31 ms | 2,4 ms | 24 ms |
+| Panel: inicio | 102 ms | 3,9 ms | 30 ms |
+| Cambio de precio masivo → visible en la ficha | 2 000 ms | 16 ms | — |
+| Importar 50 000 productos (CSV) | 270 s (185/s) | 39 s (1 279/s) | — |
+| Borrar 50 000 productos | 280–550 s, con fallos | 22 s (2 258/s) | — |
 | Arranque del servidor | 44 s | 0,45 a 1,9 s | — |
 
 ## Reversión
@@ -57,15 +65,14 @@ Cada producto tiene 2 variantes, precio, precio anterior, existencias, marca, ca
 
 \* En la corrida de 50 000 con el borrado anterior quedaron 5 500 productos completos (defecto #10). Se borraron con el borrado por conjuntos y entonces todas las tablas volvieron a la foto inicial. La única diferencia fue la sesión de inicio del script de limpieza.
 
-Solo crece el historial, a propósito: auditoría, outbox, historial de precios y registros de importación y de operaciones masivas.
+Solo crece el historial, a propósito: auditoría, outbox, historial de precios, registros de importación y de operaciones masivas, y la analítica de búsquedas (`search_terms_daily`).
 
 ## Lo que sigue
 
-- **Importación: 185 productos/s, unos 4,5 min para 50 000.** El costo son las idas y vueltas a la base, no el cálculo. Plan:
-  - carga por conjuntos con `COPY` a tablas temporales y fusión con `INSERT … SELECT … ON CONFLICT`;
-  - un evento por lote;
-  - auditoría por lote con huella de cada producto;
-  - archivo procesado mientras sube, sin el límite de 5 MB.
+- **Importación: hecha la carga por conjuntos.** Los productos nuevos entran por `INSERT … SELECT FROM unnest`, en bloques de 2 000. No se usa `COPY` porque no respeta la seguridad por fila. Resultado: 185 → 1 279 productos/s, con resultado idéntico al camino de uno en uno (`TestImportSetPathEqualsOneByOne`). Lo que queda en el perfil:
+  - leer el CSV (normalizar acentos): 19 %;
+  - aplicar los eventos en la proyección: 16 %.
+  Siguientes pasos: un evento por lote, leer el CSV en varios núcleos y procesar el archivo mientras sube, sin el límite de 5 MB.
 - **Arranque sin corte:**
   - foto de la proyección en disco con su posición del outbox; se atiende de inmediato y se pone al día en segundo plano;
   - relevo de versiones con `/readyz`, para que un despliegue nunca deje la tienda sin servicio.
