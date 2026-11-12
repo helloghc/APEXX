@@ -8,6 +8,7 @@ package payments
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 )
@@ -215,4 +216,18 @@ func (s *Sandbox) Transferred() int64 {
 		n += v
 	}
 	return n
+}
+
+// CardSaver is a provider that keeps a card for later charges without a
+// purchase (a company that pays its credit automatically at the due date).
+type CardSaver interface {
+	SaveCard(ctx context.Context, account, paymentMethod, email, idem string) (customer, method string, err error)
+}
+
+// SaveCard implements CardSaver. The declining test card is refused.
+func (s *Sandbox) SaveCard(_ context.Context, _, pm, _, idem string) (string, string, error) {
+	if pm == "" || pm == "pm_card_chargeDeclined" {
+		return "", "", fmt.Errorf("%w: card_declined", ErrDeclined)
+	}
+	return "cus_sbx_" + idem, pm, nil
 }

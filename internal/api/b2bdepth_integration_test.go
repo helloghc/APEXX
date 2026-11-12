@@ -328,3 +328,132 @@ func TestCompanyRestrictedCatalog(t *testing.T) {
 		t.Fatalf("a regular shopper = %d %s", res.Status, res.Body)
 	}
 }
+
+// A company pays its credit automatically: reminder before the due date, one
+// charge on it (never twice), three declines turn it off; only its
+// administrator saves the card.
+func TestCompanyAutopay(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	co := e.must(201, "POST", "/v1/companies", e.adminA, m{"name": "Paga Sola", "terms": "net30", "creditLimit": 1000000, "buyerEmails": []string{"admin@pagasola.example", "compras@pagasola.example"}})
+	id := co["id"].(string)
+	e.must(200, "PUT", "/v1/companies/"+id+"/members", e.adminA, m{"items": []m{{"email": "admin@pagasola.example", "admin": true}, {"email": "compras@pagasola.example"}}})
+	a, _ := e.orders.CompanyForEmail(ctx, "store-a", "compras@pagasola.example")
+	req := orders.CheckoutRequest{Channel: "mx", PostalCode: "53129", Items: []cart.Item{{SKU: "S1", Qty: 1}}, Customer: orders.Customer{Email: "compras@pagasola.example", Name: "Compras"}, PaymentMethod: "credit", Company: a}
+	if res, _ := e.orders.Checkout(ctx, "store-a", "storefront:web", "ap-1", req); res.Status != 201 {
+		t.Fatalf("credit order = %d %s", res.Status, res.Body)
+	}
+	// Reminder: the charge falls due in two days.
+	if _, err := e.db.System.Exec(ctx, `UPDATE company_entries SET due_at=now() + interval '2 days' WHERE company_id=$1 AND kind='charge'`, id); err != nil {
+		t.Fatal(err)
+	}
+	adminHash, _ := e.orders.Keys.Blind("store-a", "email", "admin@pagasola.example")
+	buyerHash, _ := e.orders.Keys.Blind("store-a", "email", "compras@pagasola.example")
+	count := func(tpl string, h []byte) int {
+		var n int
+		_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM notification_messages WHERE template=$1 AND to_hash=$2`, tpl, h).Scan(&n)
+		return n
+	}
+	for i := 0; i < 2; i++ {
+		if _, err := e.orders.RemindCompanyDues(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if count("company_due", adminHash) != 1 || count("company_due", buyerHash) != 0 {
+		t.Fatalf("reminders: admin %d buyer %d", count("company_due", adminHash), count("company_due", buyerHash))
+	}
+	// Only the administrator saves the card, from the store.
+	session := func(email string) func(method, path string, body any, hdr ...string) (int, m) {
+		e.drain()
+		c, err := e.server.Customers.Create(ctx, "store-a", "test", customers.Input{Email: &email})
+		cid := c.ID
+		if err != nil {
+			cid = e.must(200, "GET", "/v1/customers?q="+email, e.adminA, nil)["items"].([]any)[0].(map[string]any)["id"].(string)
+		}
+		_, _ = e.db.System.Exec(ctx, `UPDATE customers SET verified_at=now() WHERE id=$1`, cid)
+		if err := e.server.Customers.SetPassword(ctx, "store-a", cid, "Una-clave-larga-2026", ""); err != nil {
+			t.Fatal(err)
+		}
+		token, _, err := e.server.Customers.LoginPassword(ctx, "store-a", email, "Una-clave-larga-2026")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return func(method, path string, body any, hdr ...string) (int, m) {
+			h := append([]string{"Cookie", "apexx_shopper=" + token}, hdr...)
+			if len(hdr) == 0 {
+				h = append(h, "Origin", e.srv.URL)
+			}
+			return e.do(method, path, "", body, h...)
+		}
+	}
+	asAdmin, asBuyer := session("admin@pagasola.example"), session("compras@pagasola.example")
+	if st, _ := asBuyer("PUT", "/s/store-a/api/account/company/autopay", m{"paymentMethod": "pm_card_visa"}); st != 403 {
+		t.Fatalf("a buyer saved the company card = %d", st)
+	}
+	if st, _ := asAdmin("PUT", "/s/store-a/api/account/company/autopay", m{"paymentMethod": "pm_card_visa"}, "Origin", "https://evil.example"); st != 403 {
+		t.Fatalf("cross-site save = %d", st)
+	}
+	if st, _ := asAdmin("PUT", "/s/store-a/api/account/company/autopay", m{"paymentMethod": "pm_card_chargeDeclined"}); st != 400 {
+		t.Fatalf("declined card saved = %d", st)
+	}
+	if st, b := asAdmin("PUT", "/s/store-a/api/account/company/autopay", m{"paymentMethod": "pm_card_visa"}); st != 200 || b["on"] != true {
+		t.Fatalf("save card = %d %v", st, b)
+	}
+	// Not due yet: nothing is charged.
+	if n, _ := e.orders.RunAutopay(ctx); n != 0 {
+		t.Fatalf("charged before the due date: %d", n)
+	}
+	// Due date passed: one charge, and the balance is paid.
+	if _, err := e.db.System.Exec(ctx, `UPDATE company_entries SET due_at=now() - interval '1 hour' WHERE company_id=$1 AND kind='charge'`, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.System.Exec(ctx, `UPDATE companies SET autopay_last_try=NULL WHERE id=$1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := e.orders.RunAutopay(ctx); err != nil || n != 1 {
+		t.Fatalf("autopay = %d %v", n, err)
+	}
+	if _, err := e.db.System.Exec(ctx, `UPDATE companies SET autopay_last_try=NULL WHERE id=$1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := e.orders.RunAutopay(ctx); n != 0 {
+		t.Fatal("charged twice")
+	}
+	got := e.must(200, "GET", "/v1/companies/"+id, e.adminA, nil)["company"].(map[string]any)
+	if got["balance"].(float64) != 0 || got["overdue"].(float64) != 0 {
+		t.Fatalf("after autopay: balance %v overdue %v", got["balance"], got["overdue"])
+	}
+	// A card that stops passing: three declines turn it off and tell the admin.
+	if res, _ := e.orders.Checkout(ctx, "store-a", "storefront:web", "ap-2", req); res.Status != 201 {
+		t.Fatalf("second order = %d", res.Status)
+	}
+	if _, err := e.db.System.Exec(ctx, `UPDATE company_entries SET due_at=now() - interval '1 hour' WHERE company_id=$1 AND kind='charge'`, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.db.System.Exec(ctx, `UPDATE companies SET autopay_method='pm_card_chargeDeclined' WHERE id=$1`, id); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 4; i++ {
+		_, _ = e.db.System.Exec(ctx, `UPDATE companies SET autopay_last_try=NULL WHERE id=$1`, id)
+		if _, err := e.orders.RunAutopay(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ap := e.must(200, "GET", "/v1/companies/"+id+"/autopay", e.adminA, nil)
+	if ap["on"] != false || ap["failures"].(float64) != 3 || count("company_autopay_failed", adminHash) != 3 {
+		t.Fatalf("after declines: %v, emails %d", ap, count("company_autopay_failed", adminHash))
+	}
+	if b := e.must(200, "GET", "/v1/companies/"+id, e.adminA, nil)["company"].(map[string]any); b["overdue"].(float64) <= 0 {
+		t.Fatal("a declined charge lowered the balance")
+	}
+	// The store turns it off; another store cannot see it.
+	if st, _ := e.do("GET", "/v1/companies/"+id+"/autopay", e.adminB, nil); st != 404 {
+		t.Fatalf("store B reads autopay = %d", st)
+	}
+	e.must(204, "DELETE", "/v1/companies/"+id+"/autopay", e.adminA, nil)
+	var unbalanced int
+	_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM (SELECT tx_id FROM ledger_entries GROUP BY tx_id HAVING sum(amount) <> 0) x`).Scan(&unbalanced)
+	if unbalanced != 0 {
+		t.Fatalf("unbalanced ledger transactions: %d", unbalanced)
+	}
+}

@@ -239,6 +239,14 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		_, err := ord.ExpireQuotes(ctx)
 		return err
 	})
+	resilience.Every(ctx, log, "company-due-reminders", 15*time.Minute, func(ctx context.Context) error {
+		_, err := ord.RemindCompanyDues(ctx)
+		return err
+	})
+	resilience.Every(ctx, log, "company-autopay", 15*time.Minute, func(ctx context.Context) error {
+		_, err := ord.RunAutopay(ctx)
+		return err
+	})
 	resilience.Every(ctx, log, "purchase-request-expiry", time.Minute, func(ctx context.Context) error {
 		_, err := ord.ExpirePurchaseRequests(ctx)
 		return err

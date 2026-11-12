@@ -161,3 +161,26 @@ func (bp breakerProvider) Transfer(ctx context.Context, account, destination str
 	}
 	return ref, err
 }
+
+// SaveCard lets saving a company's card through the same breaker.
+func (bp breakerProvider) SaveCard(ctx context.Context, account, pm, email, key string) (string, string, error) {
+	cs, ok := bp.Provider.(payments.CardSaver)
+	if !ok {
+		return "", "", payments.ErrDeclined
+	}
+	var cus, method string
+	var declined error
+	err := bp.b.Do(func() error {
+		var e error
+		cus, method, e = cs.SaveCard(ctx, account, pm, email, key)
+		if errors.Is(e, payments.ErrDeclined) {
+			declined = e
+			return nil
+		}
+		return e
+	})
+	if declined != nil {
+		return "", "", declined
+	}
+	return cus, method, err
+}

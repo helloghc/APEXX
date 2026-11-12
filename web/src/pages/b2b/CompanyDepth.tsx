@@ -227,3 +227,36 @@ export function RulesEditor({ rules, days, branches, onChange, onDays }: { rules
     </div>
   );
 }
+
+interface AutopayState { on: boolean; savedAt?: string; lastTry?: string; failures: number; error?: string; reminderDays: number }
+
+/** Automatic payment: the company saves its card from the store; the store sees it, sets the reminder and can turn it off. */
+export function AutopayCard({ id, isAdmin, credit }: { id: string; isAdmin: boolean; credit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["company-autopay", id], queryFn: () => request<AutopayState>("GET", `/v1/companies/${enc(id)}/autopay`), enabled: credit });
+  const [days, setDays] = useState<string | null>(null);
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["company-autopay", id] });
+  const saveDays = useMutation({ mutationFn: (d: number) => request<AutopayState>("PUT", `/v1/companies/${enc(id)}/autopay`, { reminderDays: d }), onSuccess: () => { toast.success("Aviso guardado."); setDays(null); refresh(); }, onError: (e) => toast.error(errorMessage(e)) });
+  const stop = useMutation({ mutationFn: () => request<void>("DELETE", `/v1/companies/${enc(id)}/autopay`, undefined, { as: "none" }), onSuccess: () => { toast.success("Pago automático apagado."); refresh(); }, onError: (e) => toast.error(errorMessage(e)) });
+  if (!credit) return null;
+  const a = q.data;
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Pago automático y avisos</CardTitle>
+        <CardDescription>Quien administra la empresa guarda su tarjeta desde “Mi empresa” en tu tienda. Cobramos lo vencido el día que vence; tres rechazos seguidos lo apagan y le avisamos.</CardDescription></CardHeader>
+      <CardContent className="grid gap-3 text-sm">
+        {!a ? <p className="text-muted-foreground">Cargando…</p> : <>
+          <p>{a.on ? <Badge variant="ok">Activo</Badge> : <Badge variant="outline">Apagado</Badge>}
+            {a.savedAt && <span className="ml-2 text-muted-foreground">Tarjeta guardada {dateTime(a.savedAt)}</span>}
+            {a.lastTry && <span className="ml-2 text-muted-foreground">· último intento {dateTime(a.lastTry)}</span>}</p>
+          {a.error && <p className="text-bad">{a.error}{a.failures ? ` (${a.failures} de 3)` : ""}</p>}
+          <form className="flex flex-wrap items-end gap-2" onSubmit={(e: FormEvent) => { e.preventDefault(); saveDays.mutate(Number(days ?? a.reminderDays)); }}>
+            <div className="grid gap-1"><Label htmlFor="ap-days">Aviso antes de cada vencimiento (días, 0 = sin aviso)</Label><Input id="ap-days" className="w-28" type="number" min={0} max={30} value={days ?? String(a.reminderDays)} onChange={(e) => setDays(e.target.value)} disabled={!isAdmin} /></div>
+            {isAdmin && <Button type="submit" variant="outline" disabled={saveDays.isPending || days === null}>Guardar aviso</Button>}
+            {isAdmin && a.on && <Button type="button" variant="outline" onClick={() => { if (confirm("¿Apagar el pago automático de esta empresa? Se borra su tarjeta guardada.")) stop.mutate(); }} disabled={stop.isPending}>Apagar pago automático</Button>}
+          </form>
+        </>}
+      </CardContent>
+    </Card>
+  );
+}

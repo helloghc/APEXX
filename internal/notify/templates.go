@@ -21,6 +21,8 @@ const (
 	TplGiftCard            = "gift_card"
 	TplPurchaseApproval    = "purchase_approval"
 	TplQuoteOffered        = "quote_offered"
+	TplCompanyDue          = "company_due"
+	TplCompanyAutopayFail  = "company_autopay_failed"
 	TplTeamInvite          = "team_invite"
 	TplSubscriptionCreated = "subscription_created"
 	TplSubscriptionFailed  = "subscription_failed"
@@ -184,6 +186,20 @@ var Definitions = []Definition{
 			Body: "Hola {{cliente.nombre}}, preparamos la cotización #{{cotizacion.numero}} por {{cotizacion.total}}.\n\nPuedes aceptarla, pedir cambios o rechazarla. Vale hasta el {{cotizacion.vence}}.",
 			CTA:  "Ver la cotización", Footer: "Recibes este correo porque pediste una cotización en esta tienda."},
 		Variables: append(append([]Variable{}, common...), Variable{"cotizacion.numero", "Número de cotización", "17"}, Variable{"cotizacion.total", "Total", "$24,800.00 MXN"}, Variable{"cotizacion.vence", "Vigente hasta", "30 de noviembre"})},
+	{Key: TplCompanyDue, Name: "Saldo de empresa por vencer", Description: "Se envía a quien administra una empresa unos días antes de que venza un cargo a crédito.",
+		Subject: "{{empresa.nombre}}: {{saldo.monto}} vence el {{saldo.vence}}",
+		Blocks: Blocks{Heading: "Tu saldo está por vencer",
+			Body: "El saldo de {{empresa.nombre}} por {{saldo.monto}} vence el {{saldo.vence}}.\n\n{{saldo.cobro}}",
+			CTA:  "Ver mi empresa", Footer: "Recibes este correo porque administras la cuenta de tu empresa en esta tienda."},
+		Variables: append(append([]Variable{}, common...), Variable{"empresa.nombre", "Empresa", "ACME Industrial"}, Variable{"saldo.monto", "Monto", "$8,200.00 MXN"}, Variable{"saldo.vence", "Vence", "20 de noviembre"},
+			Variable{"saldo.cobro", "Cómo se paga", "Lo cobraremos automáticamente a la tarjeta guardada de tu empresa."})},
+	{Key: TplCompanyAutopayFail, Name: "Cobro automático rechazado", Description: "Se envía a quien administra una empresa cuando no se pudo cobrar su saldo vencido a la tarjeta guardada.",
+		Subject: "No pudimos cobrar el saldo de {{empresa.nombre}}",
+		Blocks: Blocks{Heading: "Tu tarjeta no pasó",
+			Body: "Intentamos cobrar {{saldo.monto}} del saldo vencido de {{empresa.nombre}} y el banco lo rechazó.\n\n{{saldo.cobro}}",
+			CTA:  "Actualizar la tarjeta", Footer: "Recibes este correo porque administras la cuenta de tu empresa en esta tienda."},
+		Variables: append(append([]Variable{}, common...), Variable{"empresa.nombre", "Empresa", "ACME Industrial"}, Variable{"saldo.monto", "Monto", "$8,200.00 MXN"},
+			Variable{"saldo.cobro", "Qué sigue", "Lo intentaremos de nuevo mañana."})},
 	{Key: TplPaymentLink, Name: "Enlace de pago", Description: "Se envía al mandar un pedido borrador o un saldo pendiente para que el cliente pague.",
 		Subject: "Completa el pago de tu pedido en {{tienda.nombre}}",
 		Blocks: Blocks{Heading: "Tu pedido está listo para pagar",

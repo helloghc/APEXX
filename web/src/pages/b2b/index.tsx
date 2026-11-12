@@ -1,6 +1,6 @@
 import { ProductPicker } from "../catalog/ProductPicker";
 import { CustomFields } from "@/components/CustomFields";
-import { Branches, Members, Requests, RulesEditor, type Branch, type Rule } from "./CompanyDepth";
+import { AutopayCard, Branches, Members, Requests, RulesEditor, type Branch, type Rule } from "./CompanyDepth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Building2, Copy, Database, Download, Plus, Trash2 } from "lucide-react";
@@ -169,6 +169,7 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
       <Members id={id} canEdit={isAdmin} onChanged={refresh} />
       <Branches id={id} canEdit={isAdmin} />
       <Requests id={id} />
+      <AutopayCard id={id} isAdmin={isAdmin} credit={c.terms !== "prepaid"} />
       {edit && <CompanyDialog company={c} buyers={buyers} approvers={approvers} onClose={() => setEdit(false)} onDone={refresh} />}
       {pay && <PayDialog id={id} kind={pay} balance={c.balance} onClose={() => setPay(null)} onDone={refresh} />}
     </Page>

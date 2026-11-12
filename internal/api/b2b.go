@@ -24,12 +24,17 @@ func (s *Server) routesB2B(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/companies/{id}/locations", s.authed(mod, auth.Read, s.companyLocations))
 	handle("PUT /v1/companies/{id}/locations", s.authed(mod, auth.Admin, s.saveCompanyLocations))
 	handle("GET /v1/companies/{id}/requests", s.authed(mod, auth.Read, s.companyRequests))
+	handle("GET /v1/companies/{id}/autopay", s.authed(mod, auth.Read, s.companyAutopay))
+	handle("PUT /v1/companies/{id}/autopay", s.authed(mod, auth.Admin, s.companyAutopaySettings))
+	handle("DELETE /v1/companies/{id}/autopay", s.authed(mod, auth.Admin, s.companyAutopayStop))
 
 	// The company's own portal in the store: its administrators manage buyers;
 	// every buyer sees their requests and month.
 	handle("GET /s/{tenant}/api/account/company", s.shopCompanyPortal)
 	handle("PUT /s/{tenant}/api/account/company/members", s.shopCompanyMembers)
 	handle("POST /s/{tenant}/api/account/company/requests/{id}/cancel", s.shopCancelRequest)
+	handle("PUT /s/{tenant}/api/account/company/autopay", s.shopAutopaySave)
+	handle("DELETE /s/{tenant}/api/account/company/autopay", s.shopAutopayStop)
 
 	handle("GET /s/{tenant}/api/company", s.shopCompany)
 	handle("GET /s/{tenant}/api/company/prices", s.shopCompanyPrices)
@@ -325,6 +330,9 @@ func (s *Server) shopCompanyPortal(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out["members"], out["locations"] = nonNil(members), nonNil(locs)
+		if ap, err := s.Orders.CompanyAutopay(r.Context(), tenant, c.ID); err == nil {
+			out["autopay"] = ap
+		}
 	}
 	httpx.JSON(w, r, http.StatusOK, out)
 }
@@ -429,4 +437,90 @@ func (s *Server) shopCompanyPrices(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	httpx.JSON(w, r, http.StatusOK, map[string]any{"handles": handles, "skus": skus})
+}
+
+func (s *Server) companyAutopay(w http.ResponseWriter, r *http.Request) {
+	a, err := s.Orders.CompanyAutopay(r.Context(), principal(r).Tenant, r.PathValue("id"))
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, a)
+}
+
+func (s *Server) companyAutopaySettings(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ReminderDays int `json:"reminderDays"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	p := principal(r)
+	if err := s.Orders.SetReminderDays(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), body.ReminderDays); err != nil {
+		s.fail(w, err)
+		return
+	}
+	s.companyAutopay(w, r)
+}
+
+func (s *Server) companyAutopayStop(w http.ResponseWriter, r *http.Request) {
+	p := principal(r)
+	if err := s.Orders.StopAutopay(r.Context(), p.Tenant, p.Actor(), r.PathValue("id")); err != nil {
+		s.fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// portalAdmin is the company of a signed-in company administrator, for a
+// change from the store (same origin only), or the reason written.
+func (s *Server) portalAdmin(w http.ResponseWriter, r *http.Request) (*orders.CompanyAccess, string, bool) {
+	if !sameOrigin(r) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Origen no permitido"})
+		return nil, "", false
+	}
+	c, email, ok := s.portalCompany(w, r)
+	if !ok {
+		return nil, "", false
+	}
+	if !c.Admin {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "not_company_admin", Detail: "Solo quien administra la empresa puede hacer esto"})
+		return nil, "", false
+	}
+	return c, email, true
+}
+
+func (s *Server) shopAutopaySave(w http.ResponseWriter, r *http.Request) {
+	c, email, ok := s.portalAdmin(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		PaymentMethod string `json:"paymentMethod"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if err := s.Orders.SaveAutopay(r.Context(), r.PathValue("tenant"), "company-admin:"+c.ID, c.ID, body.PaymentMethod, email); err != nil {
+		s.fail(w, err)
+		return
+	}
+	a, err := s.Orders.CompanyAutopay(r.Context(), r.PathValue("tenant"), c.ID)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, a)
+}
+
+func (s *Server) shopAutopayStop(w http.ResponseWriter, r *http.Request) {
+	c, _, ok := s.portalAdmin(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Orders.StopAutopay(r.Context(), r.PathValue("tenant"), "company-admin:"+c.ID, c.ID); err != nil {
+		s.fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

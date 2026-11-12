@@ -318,3 +318,26 @@ func (s *Stripe) Transfer(ctx context.Context, account, destination string, amou
 	}
 	return out.ID, nil
 }
+
+// SaveCard implements CardSaver: a customer with the card as its default, on
+// the store's connected account, so later charges go off session.
+func (s *Stripe) SaveCard(ctx context.Context, account, pm, email, idem string) (string, string, error) {
+	f := url.Values{}
+	f.Set("payment_method", pm)
+	f.Set("invoice_settings[default_payment_method]", pm)
+	if email != "" {
+		f.Set("email", email)
+	}
+	var cus struct {
+		ID string `json:"id"`
+	}
+	if err := s.call(ctx, http.MethodPost, "/v1/customers", account, idem, f, &cus); err != nil {
+		for _, code := range []string{": 400 ", ": 402 "} {
+			if strings.Contains(err.Error(), code) {
+				return "", "", fmt.Errorf("%w: %s", ErrDeclined, err.Error())
+			}
+		}
+		return "", "", err
+	}
+	return cus.ID, pm, nil
+}

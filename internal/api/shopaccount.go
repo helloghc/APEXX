@@ -389,6 +389,8 @@ type companyPortal struct {
 	Requests                                      []portalRequest
 	Members                                       []orders.Member
 	Locations                                     []orders.Location
+	Autopay                                       *orders.Autopay
+	Credit                                        bool // the company buys on credit (autopay applies)
 }
 
 type portalRequest struct {
@@ -486,6 +488,11 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 		if a.Admin {
 			if p.Members, err = s.Orders.Members(r.Context(), tenant, a.ID); err == nil {
 				p.Locations, err = s.Orders.Locations(r.Context(), tenant, a.ID)
+			}
+			if err == nil {
+				var ap orders.Autopay
+				ap, err = s.Orders.CompanyAutopay(r.Context(), tenant, a.ID)
+				p.Autopay, p.Credit = &ap, a.Terms != "prepaid"
 			}
 			if err != nil {
 				internalError(w, s.Log, err)

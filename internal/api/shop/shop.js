@@ -776,3 +776,46 @@
     apply(c);
   }).catch(() => {});
 })();
+
+/* ==== company autopay: the company administrator saves a card ==== */
+(() => {
+  const box = document.querySelector("[data-autopay]"); if (!box) return;
+  const tenant = document.body.dataset.tenant, api = "/s/" + tenant + "/api", out = box.querySelector("[data-autopay-status]");
+  const call = (method, body) => fetch(api + "/account/company/autopay", { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+    .then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+  const stop = box.querySelector("[data-autopay-stop]");
+  if (stop) stop.addEventListener("click", async () => {
+    if (!confirm(stop.dataset.confirm)) return;
+    const r = await call("DELETE"); if (r.ok) location.reload(); else out.textContent = r.body.detail || "No pudimos apagarlo. Intenta de nuevo.";
+  });
+  const f = box.querySelector("[data-autopay-form]"); if (!f) return;
+  const slot = f.querySelector("[data-autopay-card]"), btn = f.querySelector("button[type=submit]");
+  let stripe = null, elements = null;
+  (async () => {
+    let cfg = { mode: "sandbox" }; try { cfg = await (await fetch(api + "/config")).json(); } catch (e) { /* sandbox */ }
+    if (cfg.mode === "stripe" && cfg.publishableKey) {
+      await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+      stripe = window.Stripe(cfg.publishableKey, cfg.stripeAccount ? { stripeAccount: cfg.stripeAccount } : {});
+      elements = stripe.elements({ mode: "setup", currency: (cfg.currency || "mxn").toLowerCase(), paymentMethodCreation: "manual" });
+      slot.innerHTML = "<div id='ap-pe'></div>"; elements.create("payment").mount("#ap-pe");
+    } else if (cfg.mode === "unavailable") {
+      slot.innerHTML = "<p class='error'>La tienda todavía no puede recibir pagos.</p>"; btn.disabled = true;
+    } else {
+      slot.innerHTML = "<p class='testnote'>Modo de prueba: no se hace ningún cargo real.</p><div class='testcards'>" +
+        "<label><input type='radio' name='pm' value='pm_card_visa' checked> Tarjeta de prueba que se aprueba</label>" +
+        "<label><input type='radio' name='pm' value='pm_card_chargeDeclined'> Tarjeta de prueba que se rechaza</label></div>";
+    }
+  })();
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault(); btn.disabled = true; out.textContent = "Guardando…";
+    let pm = String(new FormData(f).get("pm") || "");
+    if (stripe) {
+      const sub = await elements.submit(); const r = sub.error ? sub : await stripe.createPaymentMethod({ elements });
+      if (r.error) { out.textContent = r.error.message; btn.disabled = false; return; }
+      pm = r.paymentMethod.id;
+    }
+    const r = await call("PUT", { paymentMethod: pm });
+    if (r.ok) { location.reload(); return; }
+    out.textContent = r.body.detail || "No pudimos guardar la tarjeta. Intenta de nuevo."; btn.disabled = false;
+  });
+})();
