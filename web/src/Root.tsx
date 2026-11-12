@@ -25,6 +25,18 @@ import { Notice, Page } from "@/pages/common";
 import { Home } from "@/pages/Home";
 
 // Each section loads on demand so the login screen and home stay light.
+// Every screen of the panel, loaded in the background once the person is in,
+// so moving between screens never waits for a download.
+const SCREENS = [() => import("@/pages/Connectors"), () => import("@/pages/Payments"), () => import("@/pages/Team"), () => import("@/pages/account/index"), () => import("@/pages/b2b/index"), () => import("@/pages/catalog/index"), () => import("@/pages/customers/index"), () => import("@/pages/engage/index"), () => import("@/pages/marketplace/index"), () => import("@/pages/notifications/index"), () => import("@/pages/orders/index"), () => import("@/pages/promotions/index"), () => import("@/pages/reports/Ops"), () => import("@/pages/reports/Reports"), () => import("@/pages/settings/Settings"), () => import("@/pages/subscriptions/index"), () => import("@/pages/wallet/index"), () => import("@/pages/settings/Fees"), () => import("@/pages/settings/Channels"), () => import("@/pages/settings/Shipping"), () => import("@/pages/settings/Taxes")];
+let preloaded = false;
+export function preloadScreens() {
+  if (preloaded) return;
+  preloaded = true;
+  const run = () => SCREENS.forEach((load, i) => setTimeout(() => void load().catch(() => {}), i * 40));
+  const w = window as Window & { requestIdleCallback?: (cb: () => void) => void };
+  if (w.requestIdleCallback) w.requestIdleCallback(run); else setTimeout(run, 300);
+}
+
 const Editor = lazy(() => import("@/App").then((m) => ({ default: m.Editor })));
 const Catalog = lazy(() => import("@/pages/catalog/index").then((m) => ({ default: m.Catalog })));
 const Promotions = lazy(() => import("@/pages/promotions/index").then((m) => ({ default: m.Promotions })));
@@ -381,6 +393,7 @@ const ICONS: Record<string, typeof HomeIcon> = {
 };
 
 function Shell({ me }: { me: Me }) {
+  useEffect(() => preloadScreens(), []);
   const qc = useQueryClient();
   const route = useRoute();
   // A seller's person only has the seller portal (as "inicio") and their own account.
