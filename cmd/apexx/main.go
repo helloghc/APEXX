@@ -350,6 +350,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		MetricsToken:  os.Getenv("APEXX_METRICS_TOKEN"),
 		Media:         mediaStore,
 	}
+	mail.Phrases = srv.NotifyPhrases
 	// Third-party warehouses get their paid orders, with retries.
 	// Operators can point Mercado Libre and Amazon at a local stand-in (QA only).
 	if h := os.Getenv("APEXX_SALESCHANNELS_TEST_HOST"); h != "" {

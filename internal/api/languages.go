@@ -15,6 +15,7 @@ import (
 	"github.com/helloghc/apexx/internal/apierr"
 	"github.com/helloghc/apexx/internal/httpx"
 	"github.com/helloghc/apexx/internal/i18n"
+	"github.com/helloghc/apexx/internal/notify"
 	"github.com/helloghc/apexx/internal/store"
 )
 
@@ -85,6 +86,7 @@ func (s *Server) localized(next http.Handler) http.Handler {
 		if hl := r.Header.Get("X-Apexx-Lang"); hl != "" && len(parts) >= 2 && parts[1] == "api" {
 			if t, ok := s.Proj.Tenant(parts[0]); ok && t.Languages().Has(hl) {
 				lw := &langWriter{ResponseWriter: w, lang: hl, status: http.StatusOK}
+				r = r.WithContext(notify.WithLang(r.Context(), hl))
 				next.ServeHTTP(lw, r)
 				body := lw.buf.Bytes()
 				if strings.Contains(w.Header().Get("Content-Type"), "json") {
@@ -531,4 +533,15 @@ func (s *Server) putProductTexts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// NotifyPhrases translates the fixed words of a buyer email into a language
+// with the store's own translations first and Apexx's after.
+func (s *Server) NotifyPhrases(tenant, lang string) func(string) string {
+	t, ok := s.Proj.Tenant(tenant)
+	if !ok || !i18n.Known(lang) || lang == i18n.Default {
+		return nil
+	}
+	look := i18n.With(lang, t.Languages().Own[lang])
+	return func(x string) string { return i18n.Phrase(x, look) }
 }

@@ -69,8 +69,9 @@ function TemplateEditor({ t, canEdit, onSaved }: { t: MailTemplate; canEdit: boo
   const [enabled, setEnabled] = useState(t.enabled);
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lang, setLang] = useState("es");
   const draft = useDebounced(JSON.stringify({ subject, blocks }), 500);
-  const preview = useQuery({ queryKey: ["mail-preview", t.key, draft], queryFn: () => mail.preview(t.key, JSON.parse(draft) as { subject: string; blocks: Blocks }) });
+  const preview = useQuery({ queryKey: ["mail-preview", t.key, draft, lang], queryFn: () => mail.preview(t.key, { ...(JSON.parse(draft) as { subject: string; blocks: Blocks }), lang }) });
   const dirty = subject !== t.subject || JSON.stringify(blocks) !== JSON.stringify(t.blocks) || enabled !== t.enabled;
   const save = (reset = false) => {
     setBusy(true);
@@ -110,7 +111,10 @@ function TemplateEditor({ t, canEdit, onSaved }: { t: MailTemplate; canEdit: boo
         </CardContent>
       </Card>
       <Card>
-        <CardHeader><CardTitle className="text-base">Vista previa</CardTitle><CardDescription>Asunto: {preview.data?.subject ?? "…"}</CardDescription></CardHeader>
+        <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Vista previa</CardTitle><CardDescription>Asunto: {preview.data?.subject ?? "…"}</CardDescription></div>
+          <label className="grid gap-1 text-sm"><span>Idioma del comprador</span><select data-mail-lang className="h-9 rounded-md border bg-background px-2" value={lang} onChange={(e) => setLang(e.target.value)}>
+            {[["es", "Español"], ["en", "English"], ["fr", "Français"], ["pt", "Português"], ["id", "Bahasa Indonesia"], ["ja", "日本語"]].map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select></label></CardHeader>
+        <CardContent className="pb-0"><p className="text-sm text-muted-foreground">Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.</p></CardContent>
         <CardContent>
           {preview.error ? <ErrorBox error={preview.error} /> : <iframe title="Vista previa del correo" sandbox="" srcDoc={preview.data?.html ?? ""} className="h-[560px] w-full rounded-md border bg-white" />}
         </CardContent>

@@ -19,6 +19,7 @@ import (
 	"github.com/helloghc/apexx/internal/cart"
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/money"
+	"github.com/helloghc/apexx/internal/notify"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/projection"
@@ -373,7 +374,7 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.ClientIP = s.clientIP(r)
-	req.Lang = pageLang(w)
+	req.Lang = notify.LangFrom(r.Context())
 	// A shopper gets company price and credit only from their signed-in account.
 	req.CompanyID = ""
 	if c, email := s.shopperCompany(r); c != nil {

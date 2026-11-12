@@ -135,6 +135,7 @@ func setup(t *testing.T) *env {
 			Orders:   &orders.Service{DB: db, Keys: keys, Projector: proj, Accounts: pa.Resolve, Notify: mail},
 			Webhooks: &webhooks.Service{DB: db, Keys: keys, Proj: proj, AllowPrivate: true}}
 		e.orders, e.server = s.Orders, s
+		mail.Phrases = s.NotifyPhrases
 		srv := httptest.NewServer(s.Routes())
 		t.Cleanup(srv.Close)
 		return srv

@@ -3571,5 +3571,7 @@
 "#x# en {} (la de menor precio).": "Beli # bayar # untuk {} (yang termurah).",
 "POST {endpoint}/rules con JSON {channel, currency, subtotal, postalCode, group, lines:[{sku, qty, unit}]}; responde {hidePayments:[card|oxxo|spei|credit|gift_card], hideShipping:[id de opción], messages:[texto]} en menos de 600 ms. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/rules dengan JSON {channel, currency, subtotal, postalCode, group, lines:[{sku, qty, unit}]}; jawab {hidePayments:[card|oxxo|spei|credit|gift_card], hideShipping:[id opsi], messages:[teks]} dalam kurang dari 600 md. Tanda tangan: X-Apexx-Signature = hex(HMAC-SHA256(rahasia, timestamp + \".\" + isi)).",
 "POST {endpoint}/tax con JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; responde {lines:[{class, label, rateBps, tax}]}. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/tax dengan JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; jawab {lines:[{class, label, rateBps, tax}]}. Tanda tangan: X-Apexx-Signature = hex(HMAC-SHA256(rahasia, timestamp + \".\" + isi)).",
-"{} · # disponibles": "{} · # tersedia"
+"{} · # disponibles": "{} · # tersedia",
+"Idioma del comprador": "Bahasa pembeli",
+"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "Setiap pelanggan menerima email dalam bahasa saat ia membeli. Jika Anda mengubah teks templat ini, email dikirim sesuai tulisan Anda, dengan terjemahan sendiri dari Pengaturan › Bahasa."
 }

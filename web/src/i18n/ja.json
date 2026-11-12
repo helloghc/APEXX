@@ -3571,5 +3571,7 @@
 "#x# en {} (la de menor precio).": "{} が#個で#個分（最も安い商品）。",
 "POST {endpoint}/rules con JSON {channel, currency, subtotal, postalCode, group, lines:[{sku, qty, unit}]}; responde {hidePayments:[card|oxxo|spei|credit|gift_card], hideShipping:[id de opción], messages:[texto]} en menos de 600 ms. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/rules に JSON {channel, currency, subtotal, postalCode, group, lines:[{sku, qty, unit}]} を送信し、{hidePayments:[card|oxxo|spei|credit|gift_card], hideShipping:[配送方法ID], messages:[テキスト]} を600ミリ秒以内に返します。 署名： X-Apexx-Signature = hex(HMAC-SHA256(シークレット, timestamp + \".\" + 本文)).",
 "POST {endpoint}/tax con JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; responde {lines:[{class, label, rateBps, tax}]}. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/tax に JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]} を送信し、{lines:[{class, label, rateBps, tax}]}. 署名： X-Apexx-Signature = hex(HMAC-SHA256(シークレット, timestamp + \".\" + 本文)).",
-"{} · # disponibles": "{} · 在庫#個"
+"{} · # disponibles": "{} · 在庫#個",
+"Idioma del comprador": "購入者の言語",
+"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "お客様は購入時の言語でメールを受け取ります。このテンプレートの文面を変更した場合は、入力したとおりに、設定 › 言語の独自翻訳を使って送信されます。"
 }

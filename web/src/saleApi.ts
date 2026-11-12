@@ -141,7 +141,7 @@ export interface MailSettings { provider: string; senderName: string; senderEmai
 export const mail = {
   templates: () => request<{ items: MailTemplate[] }>("GET", "/v1/notifications/templates").then((r) => r.items),
   save: (key: string, b: { subject?: string; blocks?: Blocks; enabled?: boolean; reset?: boolean }) => request<MailTemplate>("PUT", `/v1/notifications/templates/${enc(key)}`, b),
-  preview: (key: string, b: { subject?: string; blocks?: Blocks }) => request<{ subject: string; html: string; text: string }>("POST", `/v1/notifications/templates/${enc(key)}/preview`, b),
+  preview: (key: string, b: { subject?: string; blocks?: Blocks; lang?: string }) => request<{ subject: string; html: string; text: string }>("POST", `/v1/notifications/templates/${enc(key)}/preview`, b),
   test: (key: string, to: string) => request<{ id: string }>("POST", `/v1/notifications/templates/${enc(key)}/test`, { to }),
   messages: (f: { status?: string; template?: string; q?: string; cursor?: string }) => request<{ items: MailEntry[] | null; nextCursor: string; stats?: Record<string, number> }>("GET", "/v1/notifications/messages" + qs({ ...f })),
   message: (id: string) => request<MailEntry>("GET", `/v1/notifications/messages/${enc(id)}`),

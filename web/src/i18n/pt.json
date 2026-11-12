@@ -3571,5 +3571,7 @@
 "#x# en {} (la de menor precio).": "Leve # pague # em {} (o de menor preço).",
 "POST {endpoint}/rules con JSON {channel, currency, subtotal, postalCode, group, lines:[{sku, qty, unit}]}; responde {hidePayments:[card|oxxo|spei|credit|gift_card], hideShipping:[id de opción], messages:[texto]} en menos de 600 ms. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/rules com JSON {channel, currency, subtotal, postalCode, group, lines:[{sku, qty, unit}]}; responda {hidePayments:[card|oxxo|spei|credit|gift_card], hideShipping:[id da opção], messages:[texto]} em menos de 600 ms. Assinatura: X-Apexx-Signature = hex(HMAC-SHA256(segredo, timestamp + \".\" + corpo)).",
 "POST {endpoint}/tax con JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; responde {lines:[{class, label, rateBps, tax}]}. Firma: X-Apexx-Signature = hex(HMAC-SHA256(secreto, timestamp + \".\" + cuerpo)).": "POST {endpoint}/tax com JSON {country, postalCode, currency, pricesIncludeTax, parts:[{class, amount}]}; responda {lines:[{class, label, rateBps, tax}]}. Assinatura: X-Apexx-Signature = hex(HMAC-SHA256(segredo, timestamp + \".\" + corpo)).",
-"{} · # disponibles": "{} · # disponíveis"
+"{} · # disponibles": "{} · # disponíveis",
+"Idioma del comprador": "Idioma do comprador",
+"Cada cliente recibe sus correos en el idioma en que compró. Si cambias el texto de esta plantilla, se envía tal como lo escribas, con tus propias traducciones de Configuración › Idiomas.": "Cada cliente recebe os e-mails no idioma em que comprou. Se você mudar o texto deste modelo, ele é enviado como você escrever, com suas próprias traduções de Configurações › Idiomas."
 }

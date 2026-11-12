@@ -49,6 +49,7 @@ type templateBody struct {
 	Reset   bool           `json:"reset"`
 	Brand   *notify.Brand  `json:"brand"`
 	To      string         `json:"to"`
+	Lang    string         `json:"lang"`
 }
 
 func (s *Server) putNotifyTemplate(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +97,7 @@ func (s *Server) previewNotifyTemplate(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &b) {
 		return
 	}
-	out, err := s.Notify.Preview(r.Context(), principal(r).Tenant, r.PathValue("key"), b.Subject, b.Blocks, b.Brand)
+	out, err := s.Notify.Preview(r.Context(), principal(r).Tenant, r.PathValue("key"), b.Subject, b.Blocks, b.Brand, b.Lang)
 	if err != nil {
 		s.fail(w, err)
 		return

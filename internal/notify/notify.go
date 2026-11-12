@@ -336,7 +336,7 @@ func (s *Service) SaveTemplate(ctx context.Context, tenant, actor, key, subject 
 }
 
 // Preview renders a template (optionally with unsaved edits) using sample data.
-func (s *Service) Preview(ctx context.Context, tenant, key string, subject *string, b *Blocks, brand *Brand) (Rendered, error) {
+func (s *Service) Preview(ctx context.Context, tenant, key string, subject *string, b *Blocks, brand *Brand, lang ...string) (Rendered, error) {
 	var out Rendered
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		t, err := s.templateTx(ctx, tx, tenant, key)
@@ -363,7 +363,13 @@ func (s *Service) Preview(ctx context.Context, tenant, key string, subject *stri
 			}
 			br.LogoURL, br.Footer = brand.LogoURL, brand.Footer
 		}
-		out = Render(t.Subject, t.Blocks, Sample(t.Definition), br, t.ShowItems)
+		d := Sample(t.Definition)
+		l := "es"
+		if len(lang) > 0 && lang[0] != "" {
+			l = lang[0]
+		}
+		s.localize(tenant, l, &t, &d)
+		out = RenderLang(t.Subject, t.Blocks, d, br, t.ShowItems, l)
 		return nil
 	})
 	return out, err
@@ -411,6 +417,9 @@ func (s *Service) EnqueueTx(ctx context.Context, tx pgx.Tx, tenant string, m Mes
 	}
 	id := newID("msg_")
 	lang := m.Lang
+	if lang == "" {
+		lang = langFrom(ctx)
+	}
 	if lang == "" && m.OrderID != "" {
 		_ = tx.QueryRow(ctx, `SELECT lang FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, m.OrderID).Scan(&lang)
 	}
