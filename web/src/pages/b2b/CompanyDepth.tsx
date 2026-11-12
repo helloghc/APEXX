@@ -391,3 +391,37 @@ export function Agreements({ id, canEdit }: { id: string; canEdit: boolean }) {
     </Card>
   );
 }
+
+interface Inv { orderId: string; number: number; amount: number; paid: number; open: number; dueAt: string; overdue: boolean }
+interface Rcp { id: string; amount: number; ref: string; paidBy: string; at: string; invoices: { number: number; amount: number }[] }
+
+/** Invoices: orders on credit with what is still owed, and the receipts of online payments. */
+export function Invoices({ id }: { id: string }) {
+  const q = useQuery({ queryKey: ["company-invoices", id], queryFn: () => request<{ items: Inv[]; receipts: Rcp[]; open: number }>("GET", `/v1/companies/${enc(id)}/invoices`) });
+  const [all, setAll] = useState(false);
+  if (!q.data) return null;
+  const rows = all ? q.data.items : q.data.items.filter((x) => x.open > 0);
+  return (
+    <Card data-company-invoices>
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Facturas y recibos</CardTitle><CardDescription>Cada pedido a crédito es una factura. La empresa puede pagarlas en línea desde «Mi empresa»; los pagos sin factura cubren primero las más antiguas.</CardDescription></div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> Ver también las pagadas</label></CardHeader>
+      <CardContent className="grid gap-4">
+        {rows.length === 0 ? <p className="text-sm text-muted-foreground">Sin facturas por pagar.</p> : (
+          <Table><TableHeader><TableRow><TableHead>Pedido</TableHead><TableHead>Vence</TableHead><TableHead className="text-right">Monto</TableHead><TableHead className="text-right">Por pagar</TableHead></TableRow></TableHeader>
+            <TableBody>{rows.map((x) => <TableRow key={x.orderId}><TableCell>#{x.number}</TableCell><TableCell>{dateTime(x.dueAt)}{x.overdue && <Badge variant="bad" className="ml-2">Vencida</Badge>}</TableCell>
+              <TableCell className="text-right tabular-nums">{formatMoney(x.amount)}</TableCell><TableCell className="text-right tabular-nums">{formatMoney(x.open)}</TableCell></TableRow>)}</TableBody></Table>
+        )}
+        {q.data.receipts.length > 0 && <div className="grid gap-1 text-sm"><span className="font-medium">Pagos en línea</span>
+          {q.data.receipts.map((r) => <div key={r.id} className="flex flex-wrap items-center gap-2"><span className="text-muted-foreground">{dateTime(r.at)}</span><span className="tabular-nums">{formatMoney(r.amount)}</span><span>· {r.invoices.length} facturas · {r.paidBy}</span>
+            <Button size="sm" variant="ghost" onClick={() => void downloadPDF(`/v1/companies/${enc(id)}/receipts/${enc(r.id)}/pdf`, `recibo-${r.id}.pdf`)}>Recibo</Button></div>)}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
+async function downloadPDF(path: string, name: string) {
+  try {
+    const { download } = await import("../reports/api");
+    await download(path, name);
+  } catch (e) { toast.error(errorMessage(e)); }
+}

@@ -1343,3 +1343,61 @@ function downloadsBox(ds) {
     st.textContent = r.body.detail || (r.body.errors && r.body.errors[0] && r.body.errors[0].message) || "No se pudo enviar.";
   });
 })();
+
+/* ==== company invoices: pay online, receipts ==== */
+(() => {
+  const box = document.querySelector("[data-invoices-portal]"); if (!box) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2], api = "/s/" + tenant + "/api";
+  const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = (c) => "$" + (c / 100).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " MXN";
+  const day = (s) => new Date(s).toLocaleDateString(document.documentElement.lang || "es-MX", { dateStyle: "medium" });
+  let stripe = null, elements = null;
+  const paint = async () => {
+    const r = await fetch(api + "/account/company/invoices", { credentials: "same-origin" }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+    if (!r) { box.innerHTML = ""; return; }
+    const open = r.items.filter((x) => x.open > 0);
+    box.innerHTML = "<h2>Facturas</h2>" + (open.length ? "<form class='acct-box' data-pay-invoices><div class='scrollx'><table><thead><tr><th></th><th>Pedido</th><th>Vence</th><th class='num'>Por pagar</th></tr></thead><tbody>" +
+      open.map((x) => "<tr><td><input type='checkbox' name='inv' value='" + esc(x.orderId) + "' data-open='" + x.open + "' checked aria-label='Pagar el pedido " + x.number + "'></td><td>#" + x.number + "</td><td>" + day(x.dueAt) + (x.overdue ? " <strong class='error'>vencida</strong>" : "") + "</td><td class='num'>" + money(x.open) + "</td></tr>").join("") +
+      "</tbody></table></div><p>Total a pagar: <strong data-inv-total></strong></p><div data-inv-card></div><button class='btn' type='submit'>Pagar facturas</button><p class='note' role='status' data-inv-status></p></form>"
+      : "<p class='muted'>No tienes facturas por pagar.</p>") +
+      (r.receipts.length ? "<h3>Recibos</h3><ul class='history'>" + r.receipts.map((x) => "<li>" + day(x.at) + " · " + money(x.amount) + " · <a href='" + api + "/account/company/receipts/" + encodeURIComponent(x.id) + "/pdf' download>Descargar recibo</a></li>").join("") + "</ul>" : "");
+    const f = box.querySelector("[data-pay-invoices]"); if (!f) return;
+    const total = () => [...f.querySelectorAll("input[name=inv]:checked")].reduce((a, i) => a + Number(i.dataset.open), 0);
+    const showTotal = () => { f.querySelector("[data-inv-total]").textContent = money(total()); if (elements) elements.update({ amount: Math.max(total(), 100) }); };
+    f.addEventListener("change", showTotal); showTotal();
+    const card = f.querySelector("[data-inv-card]");
+    const cfg = await fetch(api + "/config").then((x) => x.json()).catch(() => ({}));
+    if (cfg.mode === "stripe" && cfg.publishableKey) {
+      if (!window.Stripe) await new Promise((ok, bad) => { const s = document.createElement("script"); s.src = "https://js.stripe.com/v3/"; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+      stripe = window.Stripe(cfg.publishableKey, cfg.stripeAccount ? { stripeAccount: cfg.stripeAccount } : {});
+      elements = stripe.elements({ mode: "payment", amount: Math.max(total(), 100), currency: "mxn", paymentMethodCreation: "manual" });
+      card.innerHTML = "<div id='inv-pe'></div>"; elements.create("payment").mount("#inv-pe");
+    } else {
+      card.innerHTML = "<p class='testnote'>Modo de prueba: no se hace ningún cargo real.</p><div class='testcards'><label><input type='radio' name='pm' value='pm_card_visa' checked> Tarjeta de prueba que se aprueba</label><label><input type='radio' name='pm' value='pm_card_chargeDeclined'> Tarjeta de prueba que se rechaza</label></div>";
+    }
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const st = f.querySelector("[data-inv-status]"), b = f.querySelector("button[type=submit]");
+      const ids = [...f.querySelectorAll("input[name=inv]:checked")].map((i) => i.value);
+      if (!ids.length) { st.textContent = "Elige al menos una factura."; return; }
+      b.disabled = true; st.textContent = "Procesando…";
+      let pm = (f.querySelector("input[name=pm]:checked") || {}).value || "";
+      if (stripe) {
+        const sub = await elements.submit(); if (sub.error) { st.textContent = sub.error.message; b.disabled = false; return; }
+        const r2 = await stripe.createPaymentMethod({ elements }); if (r2.error) { st.textContent = r2.error.message; b.disabled = false; return; }
+        pm = r2.paymentMethod.id;
+      }
+      let key = sessionStorage.getItem("apexx_inv_idem");
+      if (!key) { key = "inv-" + (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9-]/gi, ""); sessionStorage.setItem("apexx_inv_idem", key); }
+      const r3 = await fetch(api + "/account/company/invoices/pay", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "Idempotency-Key": key }, body: JSON.stringify({ orders: ids, paymentMethod: pm }) })
+        .then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+      sessionStorage.removeItem("apexx_inv_idem");
+      b.disabled = false;
+      if (!r3.ok) { st.textContent = r3.body.detail || "No se pudo cobrar. Intenta de nuevo."; return; }
+      await paint();
+      const ok = document.createElement("p"); ok.className = "acct-ok"; ok.setAttribute("role", "status"); ok.textContent = "Pago recibido por " + money(r3.body.amount) + ". Tu recibo está abajo.";
+      box.prepend(ok);
+    });
+  };
+  paint();
+})();
