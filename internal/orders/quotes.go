@@ -32,20 +32,31 @@ type QuoteEvent struct {
 
 // PriceQuote is one negotiation.
 type PriceQuote struct {
-	ID        string       `json:"id"`
-	Number    int64        `json:"number"`
-	Status    string       `json:"status"`
-	Channel   string       `json:"channel"`
-	CompanyID string       `json:"companyId,omitempty"`
-	Customer  *Customer    `json:"customer,omitempty"`
-	Items     []ItemInput  `json:"items"`
-	Offer     *Draft       `json:"offer,omitempty"`
-	OrderID   string       `json:"orderId,omitempty"`
-	ExpiresAt *time.Time   `json:"expiresAt,omitempty"`
-	History   []QuoteEvent `json:"history"`
-	CreatedAt time.Time    `json:"createdAt"`
-	UpdatedAt time.Time    `json:"updatedAt"`
-	URL       string       `json:"url,omitempty"` // the buyer's link, only right after creating or offering
+	ID        string        `json:"id"`
+	Number    int64         `json:"number"`
+	Status    string        `json:"status"`
+	Channel   string        `json:"channel"`
+	CompanyID string        `json:"companyId,omitempty"`
+	Customer  *Customer     `json:"customer,omitempty"`
+	Items     []ItemInput   `json:"items"`
+	Offer     *Draft        `json:"offer,omitempty"`
+	OrderID   string        `json:"orderId,omitempty"`
+	ExpiresAt *time.Time    `json:"expiresAt,omitempty"`
+	History   []QuoteEvent  `json:"history"`
+	CreatedAt time.Time     `json:"createdAt"`
+	UpdatedAt time.Time     `json:"updatedAt"`
+	URL       string        `json:"url,omitempty"` // the buyer's link, only right after creating or offering
+	Comments  []LineComment `json:"comments"`      // per line, from the buyer or the store
+}
+
+// LineComment is a comment about one line of a quote.
+type LineComment struct {
+	ID     string    `json:"id"`
+	SKU    string    `json:"sku"`
+	Who    string    `json:"who"` // buyer | store
+	Author string    `json:"author"`
+	Body   string    `json:"body"`
+	At     time.Time `json:"at"`
 }
 
 // QuoteRequest is what a buyer sends.
@@ -113,7 +124,71 @@ func (s *Service) finishQuote(ctx context.Context, tx pgx.Tx, tenant string, x q
 	if q.History == nil {
 		q.History = []QuoteEvent{}
 	}
+	q.Comments = []LineComment{}
+	if rows, err := tx.Query(ctx, `SELECT id, sku, who, author, body, created_at FROM quote_comments WHERE tenant_id=$1 AND quote_id=$2 ORDER BY created_at LIMIT 500`, tenant, q.ID); err == nil {
+		for rows.Next() {
+			var c LineComment
+			var enc []byte
+			if rows.Scan(&c.ID, &c.SKU, &c.Who, &c.Author, &enc, &c.At) != nil {
+				continue
+			}
+			if plain, err := s.Keys.Decrypt(tenant, enc, "qcomment:"+c.ID); err == nil {
+				c.Body = string(plain)
+				q.Comments = append(q.Comments, c)
+			}
+		}
+		rows.Close()
+	}
 	return q
+}
+
+// CommentQuoteLine adds a comment to one line of an open quote.
+func (s *Service) CommentQuoteLine(ctx context.Context, tenant, id, who, author, sku, body string) (LineComment, error) {
+	body = strings.TrimSpace(body)
+	c := LineComment{ID: newID("qcm_"), SKU: strings.TrimSpace(sku), Who: who, Author: strings.TrimSpace(author), Body: body, At: time.Now().UTC()}
+	if body == "" || len([]rune(body)) > 1000 {
+		return c, FieldError{"body", "Escribe un comentario de hasta 1000 caracteres"}
+	}
+	enc, err := s.Keys.Encrypt(tenant, []byte(body), "qcomment:"+c.ID)
+	if err != nil {
+		return c, err
+	}
+	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		var status string
+		var items []byte
+		if err := tx.QueryRow(ctx, `SELECT status, items FROM quotes WHERE tenant_id=$1 AND id=$2 FOR UPDATE`, tenant, id).Scan(&status, &items); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		if status != "requested" && status != "offered" {
+			return FieldError{"body", "La cotización ya se cerró; no admite comentarios"}
+		}
+		var list []ItemInput
+		_ = json.Unmarshal(items, &list)
+		found := false
+		for _, it := range list {
+			found = found || it.SKU == c.SKU
+		}
+		if !found {
+			return FieldError{"sku", "Ese producto no está en la cotización"}
+		}
+		var n int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM quote_comments WHERE tenant_id=$1 AND quote_id=$2`, tenant, id).Scan(&n); err != nil {
+			return err
+		}
+		if n >= 300 {
+			return FieldError{"body", "La cotización ya tiene demasiados comentarios"}
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO quote_comments (tenant_id, id, quote_id, sku, who, author, body, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+			tenant, c.ID, id, c.SKU, who, c.Author, enc, c.At); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `UPDATE quotes SET updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, id)
+		return err
+	})
+	return c, err
 }
 
 // RequestQuote stores a buyer's request and returns the buyer's link.

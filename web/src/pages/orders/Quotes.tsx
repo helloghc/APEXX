@@ -14,11 +14,12 @@ import { can } from "@/perms";
 import { href } from "@/router";
 import { dateTime, ErrorBox, StatusPill } from "../common";
 import { EmptyState, SkeletonRows } from "../promotions/shared";
+import { download } from "../reports/api";
 
 interface Item { sku: string; qty: number; unit?: number }
 interface Event { at: string; who: string; kind: string; message?: string; total?: number }
 interface Offer { id: string; items: { sku: string; title: string; qty: number; unit: number; total: number }[]; itemsTotal: number; discount: number; shipping: number; grandTotal: number; currency: string; postalCode: string }
-interface Quote { id: string; number: number; status: string; channel: string; companyId?: string; customer?: { email: string; name: string; phone?: string }; items: Item[]; offer?: Offer; orderId?: string; expiresAt?: string; history: Event[]; createdAt: string }
+interface Quote { id: string; number: number; status: string; channel: string; companyId?: string; customer?: { email: string; name: string; phone?: string }; items: Item[]; offer?: Offer; orderId?: string; expiresAt?: string; history: Event[]; createdAt: string; comments?: { id: string; sku: string; who: "buyer" | "store"; author: string; body: string; at: string }[] }
 
 const STATUS: Record<string, string> = { requested: "Por responder", offered: "Oferta enviada", accepted: "Aceptada", rejected: "Rechazada", expired: "Vencida", cancelled: "Cancelada" };
 const KIND: Record<string, string> = { requested: "pidió cotización", offered: "envió oferta", changes: "pidió cambios", accepted: "aceptó", rejected: "rechazó", expired: "venció", cancelled: "canceló" };
@@ -131,11 +132,38 @@ function QuoteDetail({ me, id }: { me: Me; id: string }) {
             {d.companyId && <a className="text-primary hover:underline" href={href("empresas", d.companyId)}>Ver empresa</a>}
             {d.expiresAt && d.status === "offered" && <span className="text-muted-foreground">Vigente hasta {dateTime(d.expiresAt)}</span>}
           </CardContent></Card>
+          <Button variant="outline" onClick={() => void download(`/v1/quotes/${encodeURIComponent(d.id)}/pdf`, `cotizacion-${d.number}.pdf`).catch((e: unknown) => toast.error(errorMessage(e)))}>Descargar PDF</Button>
+          <LineComments quote={d} canEdit={canEdit && (d.status === "requested" || d.status === "offered")} titles={Object.fromEntries((titles.data?.lines ?? []).map((l) => [l.sku, l.title]))} onDone={() => void qc.invalidateQueries({ queryKey: ["quote", id] })} />
           <Card><CardHeader><CardTitle className="text-base">Historial</CardTitle></CardHeader><CardContent><ol className="grid gap-2 text-sm">
             {d.history.map((h, i) => <li key={i}><span className="text-muted-foreground">{dateTime(h.at)}</span> · {h.who === "buyer" ? "Cliente" : "Tienda"} {KIND[h.kind] ?? h.kind}{h.total ? ` (${formatMoney(h.total)})` : ""}{h.message && <span className="block rounded bg-muted px-2 py-1">“{h.message}”</span>}</li>)}
           </ol></CardContent></Card>
         </div>
       </div>
     </div>
+  );
+}
+
+/** LineComments: questions and answers about one product of the quote, from either side. */
+function LineComments({ quote, canEdit, titles, onDone }: { quote: Quote; canEdit: boolean; titles: Record<string, string>; onDone: () => void }) {
+  const [sku, setSku] = useState(quote.items[0]?.sku ?? "");
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function send() {
+    setBusy(true);
+    try { await request("POST", `/v1/quotes/${encodeURIComponent(quote.id)}/comments`, { sku, body }); setBody(""); onDone(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
+  }
+  const list = quote.comments ?? [];
+  return (
+    <Card data-line-comments><CardHeader><CardTitle className="text-base">Comentarios por producto</CardTitle></CardHeader>
+      <CardContent className="grid gap-3 text-sm">
+        {list.length === 0 ? <p className="text-muted-foreground">Sin comentarios.</p> : <ol className="grid gap-2">{list.map((c) => (
+          <li key={c.id}><span className="text-muted-foreground">{dateTime(c.at)} · {titles[c.sku] ?? c.sku}</span><span className="block rounded bg-muted px-2 py-1"><strong>{c.who === "buyer" ? "Cliente" : "Tienda"}{c.author ? ` (${c.author})` : ""}:</strong> {c.body}</span></li>
+        ))}</ol>}
+        {canEdit && <div className="grid gap-2">
+          <select aria-label="Producto" className="h-9 rounded-md border bg-background px-2" value={sku} onChange={(e) => setSku(e.target.value)}>{quote.items.map((i) => <option key={i.sku} value={i.sku}>{titles[i.sku] ?? i.sku}</option>)}</select>
+          <Textarea aria-label="Comentario" rows={2} maxLength={1000} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Responde sobre este producto" />
+          <Button size="sm" variant="outline" disabled={busy || !body.trim()} onClick={() => void send()}>Comentar</Button>
+        </div>}
+      </CardContent></Card>
   );
 }

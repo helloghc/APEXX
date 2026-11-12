@@ -240,6 +240,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesCompanyRoles(handle)
 	s.routesSalesReps(handle)
 	s.routesQuoteTemplates(handle)
+	s.routesQuoteDocs(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

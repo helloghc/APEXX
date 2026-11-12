@@ -139,7 +139,10 @@ type quotePage struct {
 	Token  string
 	Q      *orders.PriceQuote
 	Titles []string
+	Lines  []quoteLine // products of the quote, for line comments
 }
+
+type quoteLine struct{ SKU, Title string }
 
 func (s *Server) shopQuotePage(w http.ResponseWriter, r *http.Request) {
 	t, pd, ok := s.shopContext(w, r)
@@ -156,6 +159,7 @@ func (s *Server) shopQuotePage(w http.ResponseWriter, r *http.Request) {
 		for _, it := range q.Items {
 			if v, p, err := t.Catalog.VariantBySKU(it.SKU); err == nil {
 				pg.Titles = append(pg.Titles, strings.TrimSpace(p.Title+" "+v.Title)+" × "+itoaInt(it.Qty))
+				pg.Lines = append(pg.Lines, quoteLine{it.SKU, strings.TrimSpace(p.Title + " " + v.Title)})
 			}
 		}
 	} else {

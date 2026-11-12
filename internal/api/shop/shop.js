@@ -1328,3 +1328,18 @@ function downloadsBox(ds) {
     });
   }).catch(() => {});
 })();
+
+/* ==== quote: comment on one product ==== */
+(() => {
+  const f = document.querySelector("[data-line-comment]"); if (!f) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2];
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const st = f.querySelector("[data-lc-status]"), b = f.querySelector("button"); b.disabled = true;
+    const r = await fetch("/s/" + tenant + "/api/quotes/" + encodeURIComponent(f.dataset.lineComment) + "/comments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sku: f.sku.value, body: f.body.value }) })
+      .then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    b.disabled = false;
+    if (r.ok) { location.reload(); return; }
+    st.textContent = r.body.detail || (r.body.errors && r.body.errors[0] && r.body.errors[0].message) || "No se pudo enviar.";
+  });
+})();

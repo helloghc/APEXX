@@ -25,6 +25,11 @@
 {{else if eq .Status "rejected"}}<p class="muted">Rechazaste esta cotización.</p>
 {{else if eq .Status "expired"}}<p class="muted">Esta cotización venció. Pide una nueva desde tu carrito.</p>
 {{else}}<p class="muted">Esta cotización se canceló.</p>{{end}}
+<p><a class="btn ghost" href="/s/{{$.Tenant}}/api/quotes/{{$.Token}}/pdf" download>Descargar PDF</a></p>
+<h2>Comentarios por producto</h2>
+{{if .Comments}}<ul class="history" data-line-comments>{{range .Comments}}<li><span class="muted">{{day .At}} · {{.SKU}}</span> · {{if eq .Who "buyer"}}Tú{{else}}La tienda{{end}}{{with .Author}} ({{.}}){{end}}: “{{.Body}}”</li>{{end}}</ul>{{else}}<p class="muted">Sin comentarios todavía.</p>{{end}}
+{{if or (eq .Status "requested") (eq .Status "offered")}}<form class="acct-box" data-line-comment="{{$.Token}}"><div class="field"><label for="lc-sku">Producto</label><select id="lc-sku" name="sku">{{range $.Lines}}<option value="{{.SKU}}">{{.Title}}</option>{{end}}</select></div>
+<div class="field"><label for="lc-body">Comentario</label><textarea id="lc-body" name="body" rows="2" maxlength="1000" required></textarea></div><button class="btn ghost" type="submit">Enviar comentario</button><p class="note" role="status" data-lc-status></p></form>{{end}}
 {{if .History}}<h2>Historial</h2><ul class="history">{{range .History}}<li><span class="muted">{{day .At}}</span> · {{if eq .Who "buyer"}}Tú{{else}}La tienda{{end}}: {{if eq .Kind "requested"}}pediste la cotización{{else if eq .Kind "offered"}}envió una oferta{{else if eq .Kind "changes"}}pediste cambios{{else if eq .Kind "accepted"}}aceptaste{{else if eq .Kind "rejected"}}rechazaste{{else if eq .Kind "expired"}}venció{{else}}la canceló{{end}}{{with .Message}}: “{{.}}”{{end}}</li>{{end}}</ul>{{end}}
 </div>
 {{else}}
