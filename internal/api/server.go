@@ -227,6 +227,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesBlog(handle)
 	s.routesDesignSchedule(handle)
 	s.routesMailCampaigns(handle)
+	s.routesConversions(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

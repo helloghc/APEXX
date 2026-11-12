@@ -1,3 +1,7 @@
+// Whether the shopper accepted advertising in the cookie notice.
+function adsConsent() {
+  try { const c = JSON.parse(localStorage.getItem("apexx_consent_" + (document.body.dataset.tenant || location.pathname.split("/")[2])) || "null"); return !!(c && c.marketing); } catch { return false; }
+}
 // Email campaign attribution: the last campaign link clicked, for 7 days.
 function campaignClick() {
   try {
@@ -405,7 +409,7 @@ function downloadsBox(ds) {
       if (!key) { key = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9-]/gi, ""); sessionStorage.setItem("apexx_idem", key); }
       const res = await post("/checkout", {
         channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined, custom: l.custom || undefined, ref: keyOf(l) })),
-        shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined, blocks: Object.keys(blocks).length ? blocks : undefined, campaign: campaignClick(),
+        shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined, blocks: Object.keys(blocks).length ? blocks : undefined, campaign: campaignClick(), adsConsent: adsConsent() || undefined,
         customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, poNumber: company ? String(f.get("po") || "").trim() || undefined : undefined, paymentMethod: pm,
         coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,
         savedCard: kept || undefined, saveCard: !kept && signedIn && !!f.get("savecard") || undefined,

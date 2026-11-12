@@ -354,6 +354,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		_, err := srv.RunWarehouseRequests(ctx)
 		return err
 	})
+	// Purchases reported to ad platforms from the server.
+	resilience.Every(ctx, log, "ad-conversions", 15*time.Second, func(ctx context.Context) error {
+		_, err := srv.RunConversions(ctx)
+		return err
+	})
 	// Email campaigns due to go out.
 	resilience.Every(ctx, log, "campaigns", 30*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunCampaigns(ctx)

@@ -108,6 +108,9 @@ type CheckoutRequest struct {
 	Blocks map[string]string `json:"blocks,omitempty"`
 	// Campaign is the email campaign whose link brought the shopper (attribution).
 	Campaign string `json:"campaign,omitempty"`
+	// AdsConsent: the shopper accepted advertising cookies; the purchase may be
+	// reported to the store's ad platforms from the server.
+	AdsConsent bool `json:"adsConsent,omitempty"`
 }
 
 func blocksJSON(a []cart.BlockAnswer) []byte {
@@ -606,6 +609,11 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
 			return err
+		}
+		if req.AdsConsent {
+			if _, err := tx.Exec(ctx, `UPDATE orders SET ads_consent=true WHERE tenant_id=$1 AND id=$2`, tenant, id); err != nil {
+				return err
+			}
 		}
 		// Attribution: only a campaign of this store that was really sent counts.
 		if strings.HasPrefix(req.Campaign, "cmp_") && len(req.Campaign) <= 40 {

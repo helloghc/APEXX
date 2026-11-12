@@ -317,6 +317,15 @@ func (s *Service) afterPaidTx(ctx context.Context, tx pgx.Tx, tenant, id string)
 			return err
 		}
 	}
+	// Ad platforms the store connected hear about the purchase, if the shopper agreed.
+	if _, err := tx.Exec(ctx, `INSERT INTO conversion_jobs (tenant_id, id, order_id, platform)
+		SELECT $1, 'cvj_' || replace(gen_random_uuid()::text, '-', ''), $2, p.key
+		FROM tenant_docs d, jsonb_each(d.data) p, orders o
+		WHERE d.tenant_id=$1 AND d.kind='ads_conversions' AND d.id='config' AND (p.value->>'active')::boolean
+		  AND p.key IN ('meta','ga4') AND o.tenant_id=$1 AND o.id=$2 AND o.ads_consent
+		ON CONFLICT DO NOTHING`, tenant, id); err != nil {
+		return err
+	}
 	return s.notifyTx(ctx, tx, tenant, id, notify.TplOrderConfirmed, nil, "", "confirmed:"+id)
 }
 

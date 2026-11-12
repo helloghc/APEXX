@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus, Award, Newspaper, CalendarClock, MailPlus } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus, Award, Newspaper, CalendarClock, MailPlus, Target } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -20,6 +20,7 @@ const Fields = lazy(() => import("./Fields").then((m) => ({ default: m.Fields })
 const CatalogSource = lazy(() => import("./CatalogSource").then((m) => ({ default: m.CatalogSource })));
 const ReturnsPolicy = lazy(() => import("./ReturnsPolicy").then((m) => ({ default: m.ReturnsPolicy })));
 const Fees = lazy(() => import("./Fees").then((m) => ({ default: m.Fees })));
+const AdConversions = lazy(() => import("./AdConversions").then((m) => ({ default: m.AdConversions })));
 const MailCampaigns = lazy(() => import("./MailCampaigns").then((m) => ({ default: m.MailCampaigns })));
 const DesignSchedules = lazy(() => import("./DesignSchedules").then((m) => ({ default: m.DesignSchedules })));
 const Blog = lazy(() => import("./Blog").then((m) => ({ default: m.Blog })));
@@ -61,6 +62,7 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
   { id: "blog", label: "Blog", icon: Newspaper, group: "Tienda en línea" },
   { id: "diseno-programado", label: "Diseño programado", icon: CalendarClock, group: "Tienda en línea" },
   { id: "anuncios", label: "Anuncios y catálogos", icon: Megaphone, group: "Tienda en línea" },
+  { id: "conversiones", label: "Conversiones para anuncios", icon: Target, group: "Tienda en línea" },
 ];
 
 /** Settings is the Configuración area: a sub-navigation plus one screen per topic. */
@@ -107,6 +109,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "devoluciones":
       body = <ReturnsPolicy me={me} />;
+      break;
+    case "conversiones":
+      body = <AdConversions me={me} />;
       break;
     case "campanas-correo":
       body = <MailCampaigns me={me} />;
