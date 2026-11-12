@@ -28,20 +28,24 @@ import (
 type EntityField struct {
 	Key      string   `json:"key"`
 	Label    string   `json:"label"`
-	Type     string   `json:"type"` // text | textarea | email | phone | number | select | checkbox
+	Type     string   `json:"type"` // text | textarea | email | phone | number | select | checkbox | product
 	Required bool     `json:"required"`
 	Options  []string `json:"options,omitempty"`
 }
 
 // Entity is a kind of record defined by the store.
 type Entity struct {
-	ID          string        `json:"id"`
-	Name        string        `json:"name"`
-	Description string        `json:"description"`
-	Public      bool          `json:"public"`  // accepts submissions from the storefront form
-	Success     string        `json:"success"` // message after a public submission
-	Fields      []EntityField `json:"fields"`
-	Records     int           `json:"records"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Public      bool   `json:"public"` // accepts submissions from the storefront form
+	// ShowOnProduct shows the records on the page of the product they point
+	// to (a size guide, care instructions, a warranty). Email and phone
+	// fields are never shown.
+	ShowOnProduct bool          `json:"showOnProduct"`
+	Success       string        `json:"success"` // message after a public submission
+	Fields        []EntityField `json:"fields"`
+	Records       int           `json:"records"`
 }
 
 // EntityRecord is one stored record.
@@ -55,7 +59,7 @@ type EntityRecord struct {
 var (
 	entityID    = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 	fieldKey    = regexp.MustCompile(`^[a-z][a-z0-9_]{0,39}$`)
-	fieldTypes  = map[string]bool{"text": true, "textarea": true, "email": true, "phone": true, "number": true, "select": true, "checkbox": true}
+	fieldTypes  = map[string]bool{"text": true, "textarea": true, "email": true, "phone": true, "number": true, "select": true, "checkbox": true, "product": true}
 	formLimiter = &shopLimiter{n: 5}
 )
 
@@ -84,6 +88,18 @@ func (e *Entity) normalize() string {
 		return "La descripción y el mensaje de confirmación admiten hasta 300 caracteres"
 	case len(e.Fields) == 0 || len(e.Fields) > 30:
 		return "Agrega entre 1 y 30 campos"
+	}
+	if e.ShowOnProduct {
+		hasProduct := false
+		for _, f := range e.Fields {
+			hasProduct = hasProduct || f.Type == "product"
+		}
+		switch {
+		case e.Public:
+			return "Un registro que se muestra en la tienda no puede recibir envíos del público: pueden traer datos personales"
+		case !hasProduct:
+			return "Para mostrarlo en la ficha agrega un campo de tipo producto"
+		}
 	}
 	seen := map[string]bool{}
 	for i := range e.Fields {
@@ -245,6 +261,7 @@ func (s *Server) putEntity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := principal(r)
+	dropProductExtras(p.Tenant)
 	if err := s.DB.SetDoc(r.Context(), p.Tenant, p.Actor(), "entities", e.ID, "", e); err != nil {
 		internalError(w, s.Log, err)
 		return
@@ -270,6 +287,7 @@ func (s *Server) deleteEntity(w http.ResponseWriter, r *http.Request) {
 		internalError(w, s.Log, err)
 		return
 	}
+	dropProductExtras(principal(r).Tenant)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -291,6 +309,9 @@ func (s *Server) insertRecord(r *http.Request, tenant, entity, source string, da
 		return tx.QueryRow(r.Context(), `INSERT INTO entity_records (tenant_id, entity, id, data, source) VALUES ($1,$2,$3,$4,$5) RETURNING created_at`,
 			tenant, entity, rec.ID, enc, source).Scan(&rec.CreatedAt)
 	})
+	if err == nil {
+		dropProductExtras(tenant)
+	}
 	return rec, err
 }
 
@@ -399,6 +420,7 @@ func (s *Server) deleteRecord(w http.ResponseWriter, r *http.Request) {
 		apierr.NotFound(w, "Registro no encontrado")
 		return
 	}
+	dropProductExtras(principal(r).Tenant)
 	w.WriteHeader(http.StatusNoContent)
 }
 

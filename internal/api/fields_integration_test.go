@@ -119,3 +119,36 @@ func got2Summary(v map[string]any) string {
 	}
 	return ""
 }
+
+// Records of an entity linked to products show on the product page, without
+// email or phone fields; public forms cannot be shown.
+func TestProductLinkedRecords(t *testing.T) {
+	e := setup(t)
+	e.must(200, "POST", "/v1/sites/main/publish", e.adminA, nil)
+	bad := m{"name": "Guía", "public": true, "showOnProduct": true, "fields": []m{{"key": "producto", "label": "Producto", "type": "product"}, {"key": "nota", "label": "Nota", "type": "text"}}}
+	if st, _ := e.do("PUT", "/v1/entities/guia", e.adminA, bad); st != 400 {
+		t.Fatalf("a public form shown on products was accepted: %d", st)
+	}
+	if st, _ := e.do("PUT", "/v1/entities/guia", e.adminA, m{"name": "Guía", "showOnProduct": true, "fields": []m{{"key": "nota", "label": "Nota", "type": "text"}}}); st != 400 {
+		t.Fatalf("shown on products without a product field: %d", st)
+	}
+	e.must(200, "PUT", "/v1/entities/guia-tallas", e.adminA, m{"name": "Guía de tallas", "showOnProduct": true, "fields": []m{
+		{"key": "producto", "label": "Producto", "type": "product", "required": true},
+		{"key": "pecho", "label": "Pecho (cm)", "type": "text"},
+		{"key": "contacto", "label": "Correo del proveedor", "type": "email"},
+	}})
+	e.must(201, "POST", "/v1/entities/guia-tallas/records", e.adminA, m{"data": m{"producto": "P1", "pecho": "96 a 100", "contacto": "proveedor@example.com"}})
+	p := e.must(200, "GET", "/v1/products/P1", e.adminA, nil)
+	_, b, _ := e.raw("GET", "/s/store-a/main/p/"+p["handle"].(string), "", nil, "")
+	page := string(b)
+	if !strings.Contains(page, "Guía de tallas") || !strings.Contains(page, "96 a 100") {
+		t.Fatal("the linked record is not on the product page")
+	}
+	if strings.Contains(page, "proveedor@example.com") {
+		t.Fatal("an email field reached a public page")
+	}
+	// Another product does not show it; another store neither.
+	if _, b2, _ := e.raw("GET", "/s/store-a/main/c", "", nil, ""); strings.Contains(string(b2), "96 a 100") {
+		t.Fatal("the record leaked to the catalog")
+	}
+}

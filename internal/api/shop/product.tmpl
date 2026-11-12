@@ -26,6 +26,7 @@
 <ul class="perks"><li>Envío gratis desde $1,499</li><li>Cambios sin costo durante 30 días</li><li>Pago seguro con Stripe</li></ul>
 {{with .P.Description}}<div class="desc"><h2>Descripción</h2><p>{{.}}</p></div>{{end}}
 {{if .Specs}}<div class="desc"><h2>Especificaciones</h2><table class="specs"><tbody>{{range .Specs}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}
+{{range .Extras}}<div class="desc"><h2>{{.Title}}</h2><table class="specs"><tbody>{{range .Rows}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}
 </div></div>
 <section class="reviews" id="opiniones" aria-labelledby="rv-h">
 <h2 id="rv-h">Opiniones</h2>

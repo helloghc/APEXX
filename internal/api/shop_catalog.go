@@ -533,6 +533,7 @@ type productPage struct {
 	Cover            template.HTML
 	Gallery          []template.HTML
 	Specs            []specView
+	Extras           []extraSection // records of the store's own entities linked to this product
 	Similar          []cardView
 	Accessories      []cardView
 	Price, CompareAt string
@@ -615,6 +616,7 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 			pg.Specs = append(pg.Specs, specView{a.Name, label})
 		}
 	}
+	pg.Extras = s.extrasFor(r.Context(), t.ID, p.ID, p.Handle)
 	of := offerOf(t, pd.Channel)
 	related := func(ids []string) []cardView {
 		var out []cardView

@@ -1,3 +1,4 @@
+import { ProductPicker } from "../catalog/ProductPicker";
 import { CustomFields } from "@/components/CustomFields";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
@@ -24,7 +25,7 @@ const enc = encodeURIComponent;
 interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; approvalThreshold: number }
 interface CEntry { id: string; kind: string; amount: number; orderId?: string; orderNumber?: number; dueAt?: string; note?: string; at: string }
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[] }
-interface Entity { id: string; name: string; description: string; public: boolean; success: string; fields: Field[]; records: number }
+interface Entity { id: string; name: string; description: string; public: boolean; showOnProduct?: boolean; success: string; fields: Field[]; records: number }
 interface Rec { id: string; data: Record<string, string>; source: string; createdAt: string }
 
 const api = {
@@ -184,7 +185,7 @@ function PayDialog({ id, kind, balance, onClose, onDone }: { id: string; kind: "
 
 // ---------- custom data ----------
 
-const FTYPES: [string, string][] = [["text", "Texto corto"], ["textarea", "Texto largo"], ["email", "Correo"], ["phone", "Teléfono"], ["number", "Número"], ["select", "Lista de opciones"], ["checkbox", "Casilla"]];
+const FTYPES: [string, string][] = [["text", "Texto corto"], ["textarea", "Texto largo"], ["email", "Correo"], ["phone", "Teléfono"], ["number", "Número"], ["select", "Lista de opciones"], ["checkbox", "Casilla"], ["product", "Producto"]];
 const slug = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 const keyOf = (s: string) => slug(s).replace(/-/g, "_").replace(/^[^a-z]+/, "").slice(0, 40);
 
@@ -236,7 +237,8 @@ function EntityDialog({ entity, onClose, onDone }: { entity?: Entity; onClose: (
             <div className="grid gap-1.5"><Label htmlFor="en-ok">Mensaje al enviar</Label><Input id="en-ok" value={e.success} onChange={(ev) => setE({ ...e, success: ev.target.value })} placeholder="¡Gracias! Te contactamos en 24 horas." /></div>
             <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="en-desc">Texto de introducción</Label><Input id="en-desc" value={e.description} onChange={(ev) => setE({ ...e, description: ev.target.value })} /></div>
           </div>
-          <label className="flex items-center gap-2 text-sm"><Checkbox checked={e.public} onCheckedChange={(c) => setE({ ...e, public: !!c })} /> Abrir el formulario en mi tienda (cualquier visitante puede enviarlo)</label>
+          <label className="flex items-center gap-2 text-sm"><Checkbox checked={e.public} onCheckedChange={(c) => setE({ ...e, public: !!c, showOnProduct: c ? false : e.showOnProduct })} /> Abrir el formulario en mi tienda (cualquier visitante puede enviarlo)</label>
+          <label className="flex items-start gap-2 text-sm"><Checkbox className="mt-0.5" checked={!!e.showOnProduct} onCheckedChange={(c) => setE({ ...e, showOnProduct: !!c, public: c ? false : e.public })} /><span>Mostrar en la ficha del producto<span className="block text-muted-foreground">Para guías de tallas, cuidados o garantías: cada registro aparece en el producto que elijas. Necesita un campo de tipo Producto; correos y teléfonos nunca se muestran.</span></span></label>
           <div className="grid gap-2"><span className="text-sm font-medium">Campos</span>
             {e.fields.map((f, i) => (
               <div key={i} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_170px_auto_auto] sm:items-center">
@@ -258,22 +260,77 @@ function EntityDialog({ entity, onClose, onDone }: { entity?: Entity; onClose: (
 
 function Records({ id, canEdit }: { id: string; canEdit: boolean }) {
   const qc = useQueryClient();
+  const [addOpen, setAddOpen] = useState(false);
   const q = useQuery({ queryKey: ["records", id], queryFn: () => api.records(id), enabled: canEdit });
   const del = useMutation({ mutationFn: (rec: string) => api.deleteRecord(id, rec), onSuccess: () => { toast.success("Registro eliminado."); void qc.invalidateQueries({ queryKey: ["records", id] }); }, onError: (e) => toast.error(errorMessage(e)) });
   if (!canEdit) return <Page title="Registros"><Notice tone="warn">Ver las respuestas requiere permiso de edición en Configuración, porque contienen datos personales.</Notice></Page>;
   if (q.error || !q.data) return <Page title="Registros"><ErrorBox error={q.error} onRetry={() => void q.refetch()} />{!q.error && <p className="text-sm text-muted-foreground">Cargando…</p>}</Page>;
   const { entity: e, items } = q.data;
+  const [adding, setAdding] = [addOpen, setAddOpen];
   const exportCsv = () => void request<string>("GET", `/v1/entities/${enc(id)}/export`, undefined, { as: "text" }).then((t) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([t], { type: "text/csv;charset=utf-8" })); a.download = id + ".csv"; a.click(); URL.revokeObjectURL(a.href); }).catch((er) => toast.error(errorMessage(er)));
   return (
-    <Page title={e.name} sub={<><a className="hover:underline" href={href("datos")}>← Datos y formularios</a> · {items.length} registro(s)</>} actions={<Button variant="outline" onClick={exportCsv}><Download aria-hidden="true" /> Exportar CSV</Button>}>
-      {items.length === 0 ? <EmptyState icon={<Database />} title="Sin registros todavía" text="Cuando alguien envíe el formulario, su respuesta aparecerá aquí." /> : (
+    <Page title={e.name} sub={<><a className="hover:underline" href={href("datos")}>← Datos y formularios</a> · {items.length} registro(s)</>} actions={<div className="flex gap-2"><Button variant="outline" onClick={exportCsv}><Download aria-hidden="true" /> Exportar CSV</Button><Button onClick={() => setAdding(true)}><Plus aria-hidden="true" /> Agregar registro</Button></div>}>
+      {adding && <RecordDialog entity={e} onClose={() => setAdding(false)} onDone={() => { setAdding(false); void qc.invalidateQueries({ queryKey: ["records", id] }); }} />}
+      {items.length === 0 ? <EmptyState icon={<Database />} title="Sin registros todavía" text={e.public ? "Cuando alguien envíe el formulario, su respuesta aparecerá aquí." : "Agrega el primero con el botón Agregar registro."} /> : (
         <div className="overflow-x-auto rounded-lg border bg-card"><Table>
           <TableHeader><TableRow><TableHead>Fecha</TableHead>{e.fields.map((f) => <TableHead key={f.key}>{f.label}</TableHead>)}<TableHead><span className="sr-only">Acciones</span></TableHead></TableRow></TableHeader>
           <TableBody>{items.map((r) => (
-            <TableRow key={r.id}><TableCell className="whitespace-nowrap text-muted-foreground">{dateTime(r.createdAt)}</TableCell>{e.fields.map((f) => <TableCell key={f.key} className="max-w-64 truncate" title={r.data[f.key]}>{r.data[f.key] || "—"}</TableCell>)}
+            <TableRow key={r.id}><TableCell className="whitespace-nowrap text-muted-foreground">{dateTime(r.createdAt)}</TableCell>{e.fields.map((f) => <TableCell key={f.key} className="max-w-64 truncate" title={r.data[f.key]}>{f.type === "product" && r.data[f.key] ? <ProductName id={r.data[f.key]!} /> : r.data[f.key] || "—"}</TableCell>)}
               <TableCell><Button size="icon" variant="ghost" aria-label="Eliminar registro" onClick={() => window.confirm("¿Eliminar este registro?") && del.mutate(r.id)}><Trash2 aria-hidden="true" /></Button></TableCell></TableRow>
           ))}</TableBody></Table></div>
       )}
     </Page>
   );
+}
+
+/** Adds one record by hand; a product field is chosen from the catalog. */
+function RecordDialog({ entity, onClose, onDone }: { entity: Entity; onClose: () => void; onDone: () => void }) {
+  const [data, setData] = useState<Record<string, string>>({});
+  const [names, setNames] = useState<Record<string, string>>({});
+  const [pick, setPick] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const save = useMutation({
+    mutationFn: () => request<unknown>("POST", `/v1/entities/${enc(entity.id)}/records`, { data }),
+    onSuccess: () => { toast.success("Registro agregado."); onDone(); },
+    onError: (e) => { setErrors(fieldErrors(e)); toast.error(errorMessage(e)); },
+  });
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+        <DialogHeader><DialogTitle>Agregar registro a {entity.name}</DialogTitle><DialogDescription>Los datos se guardan cifrados.</DialogDescription></DialogHeader>
+        <form id="rec-form" className="grid gap-3" onSubmit={(ev) => { ev.preventDefault(); save.mutate(); }}>
+          {entity.fields.map((f) => {
+            const set = (v: string) => setData((d) => ({ ...d, [f.key]: v }));
+            const fid = `rec-${f.key}`;
+            return (
+              <div key={f.key} className="grid gap-1.5">
+                <Label htmlFor={fid}>{f.label}{f.required ? " *" : ""}</Label>
+                {f.type === "product" ? (
+                  <div className="flex items-center gap-2"><span id={fid} className="text-sm">{names[f.key] ?? "Ningún producto elegido"}</span><Button type="button" size="sm" variant="outline" onClick={() => setPick(f.key)}>Elegir producto</Button></div>
+                ) : f.type === "select" ? (
+                  <select id={fid} className="h-9 rounded-md border bg-card px-2 text-sm" value={data[f.key] ?? ""} onChange={(ev) => set(ev.target.value)}><option value="">—</option>{(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}</select>
+                ) : f.type === "checkbox" ? (
+                  <input id={fid} type="checkbox" className="size-4" checked={data[f.key] === "true"} onChange={(ev) => set(ev.target.checked ? "true" : "false")} />
+                ) : f.type === "textarea" ? (
+                  <Textarea id={fid} rows={3} value={data[f.key] ?? ""} onChange={(ev) => set(ev.target.value)} />
+                ) : (
+                  <Input id={fid} type={f.type === "email" ? "email" : f.type === "phone" ? "tel" : "text"} inputMode={f.type === "number" ? "decimal" : undefined} value={data[f.key] ?? ""} onChange={(ev) => set(ev.target.value)} />
+                )}
+                {errors[f.key] && <p className="text-sm text-bad">{errors[f.key]}</p>}
+              </div>
+            );
+          })}
+        </form>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" form="rec-form" disabled={save.isPending}>{save.isPending ? "Guardando…" : "Agregar"}</Button></DialogFooter>
+        <ProductPicker open={pick !== null} title="Elegir producto" exclude={[]} onClose={() => setPick(null)} onPick={(ps) => { const p = ps[0]; if (p && pick) { setData((d) => ({ ...d, [pick]: p.id })); setNames((n) => ({ ...n, [pick]: p.title })); } setPick(null); }} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Shows the product's current name instead of its id (cached per product). */
+function ProductName({ id }: { id: string }) {
+  const q = useQuery({ queryKey: ["product-name", id], queryFn: () => request<{ title: string }>("GET", `/v1/products/${enc(id)}`), staleTime: 60_000, retry: false });
+  if (q.isError) return <span className="text-muted-foreground">Producto eliminado ({id})</span>;
+  return <a className="text-primary hover:underline" href={href("catalogo", "productos", id)}>{q.data?.title ?? id}</a>;
 }
