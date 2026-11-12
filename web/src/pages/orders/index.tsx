@@ -1,3 +1,4 @@
+import { Quotes } from "./Quotes";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Bookmark, Download, FilePlus2, Inbox, Plus, Search, Trash2, Undo2, X } from "lucide-react";
@@ -23,16 +24,18 @@ const TABS = [
   { key: "", label: "Pedidos", route: ["pedidos"] },
   { key: "devoluciones", label: "Devoluciones", route: ["pedidos", "devoluciones"] },
   { key: "borradores", label: "Pedidos borrador", route: ["pedidos", "borradores"] },
+  { key: "cotizaciones", label: "Cotizaciones", route: ["pedidos", "cotizaciones"] },
 ];
 
 /** Routes: #pedidos, #pedidos/{id}, #pedidos/devoluciones, #pedidos/borradores. */
 export function Orders({ me, route }: { me: Me; route: string[] }) {
   const section = route[1] ?? "";
-  if (section && section !== "devoluciones" && section !== "borradores") return <OrderDetail key={section} me={me} id={section} />;
+  const rest = section === "cotizaciones" ? route[2] : undefined;
+  if (section && section !== "devoluciones" && section !== "borradores" && section !== "cotizaciones") return <OrderDetail key={section} me={me} id={section} />;
   return (
     <Page title="Pedidos" sub="Todo el ciclo del pedido: pago, envío, devoluciones y reembolsos, con historial completo.">
       <SubNav items={TABS} active={section} label="Secciones de pedidos" />
-      {section === "devoluciones" ? <Returns me={me} /> : section === "borradores" ? <Drafts me={me} /> : <OrderList />}
+      {section === "devoluciones" ? <Returns me={me} /> : section === "borradores" ? <Drafts me={me} /> : section === "cotizaciones" ? <Quotes me={me} id={rest} /> : <OrderList />}
     </Page>
   );
 }

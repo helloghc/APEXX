@@ -8,5 +8,16 @@
 <input id="coupon" name="coupon" autocomplete="off" autocapitalize="characters" maxlength="40" placeholder="Código"><button class="btn btn-ghost" type="submit">Aplicar</button>
 <p class="note" role="status" aria-live="polite" data-coupon-status></p></form>
 <p class="cart-actions"><a class="btn" href="{{.Base}}/checkout" data-to-checkout>Continuar al pago</a></p>
+<details class="quote-req"><summary class="btn btn-ghost">¿Compras en volumen? Pide una cotización</summary>
+<form data-quote-request novalidate>
+<p class="muted">Te enviamos un precio especial por correo para los productos de tu carrito.</p>
+<div class="field"><label for="qr-name">Nombre</label><input id="qr-name" name="name" autocomplete="name" required maxlength="200"></div>
+<div class="field"><label for="qr-email">Correo</label><input id="qr-email" name="email" type="email" autocomplete="email" required maxlength="200"></div>
+<div class="field"><label for="qr-phone">Teléfono (opcional)</label><input id="qr-phone" name="phone" type="tel" autocomplete="tel" maxlength="30"></div>
+<div class="field"><label for="qr-msg">Mensaje (opcional)</label><textarea id="qr-msg" name="message" rows="3" maxlength="2000"></textarea></div>
+<div class="sr" aria-hidden="true"><label>No llenes este campo <input name="website" tabindex="-1" autocomplete="off"></label></div>
+<button class="btn" type="submit">Pedir cotización</button>
+<p class="note" role="status" data-quote-request-status></p>
+</form></details>
 </div>
 {{end}}

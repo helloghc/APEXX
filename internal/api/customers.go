@@ -19,7 +19,10 @@ func (s *Server) fail(w http.ResponseWriter, err error) {
 	var cf customers.FieldError
 	var of orders.FieldError
 	var nf notify.FieldError
+	var ce *orders.CreditError
 	switch {
+	case errors.As(err, &ce):
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: ce.Code, Detail: ce.Message})
 	case errors.As(err, &cf):
 		apierr.BadRequest(w, cf.Message, apierr.FieldError{Field: cf.Field, Code: "invalid", Message: cf.Message})
 	case errors.As(err, &of):

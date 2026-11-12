@@ -550,3 +550,42 @@
     else { out.textContent = r.body.detail || "No pudimos registrar tu decisión. Intenta de nuevo."; box.querySelectorAll("[data-approval-act]").forEach((x) => (x.disabled = false)); }
   });
 })();
+
+/* ==== quotes (B2B) ==== */
+(() => {
+  const box = document.querySelector("[data-quote]"); if (!box) return;
+  const tenant = document.body.dataset.tenant, out = box.querySelector("[data-quote-status]");
+  box.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-quote-act]"); if (!b) return;
+    if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
+    const msg = (document.getElementById("quote-msg") || {}).value || "";
+    if (b.dataset.quoteAct === "changes" && !msg.trim()) { out.textContent = "Escribe qué te gustaría cambiar."; return; }
+    box.querySelectorAll("[data-quote-act]").forEach((x) => (x.disabled = true)); out.textContent = "Un momento…";
+    const r = await fetch("/s/" + tenant + "/api/quotes/" + encodeURIComponent(box.dataset.quote) + "/" + b.dataset.quoteAct, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg }) })
+      .then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    if (r.ok && r.body.payUrl) { location.href = r.body.payUrl; return; }
+    if (r.ok) { location.reload(); return; }
+    out.textContent = r.body.detail || "No pudimos registrar tu respuesta. Intenta de nuevo."; box.querySelectorAll("[data-quote-act]").forEach((x) => (x.disabled = false));
+  });
+})();
+
+/* ==== quote request from the cart ==== */
+(() => {
+  const f = document.querySelector("[data-quote-request]"); if (!f) return;
+  const tenant = document.body.dataset.tenant, out = f.querySelector("[data-quote-request-status]");
+  const mk = document.documentElement.getAttribute("data-mk") || "";
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    let items = [];
+    try { items = (JSON.parse(localStorage.getItem("apexx_cart_" + tenant) || "[]") || []).map((x) => ({ sku: x.sku, qty: x.qty })); } catch (err) { items = []; }
+    if (!items.length) { out.textContent = "Agrega productos antes de pedir una cotización."; return; }
+    const d = new FormData(f);
+    if (!String(d.get("email") || "").includes("@") || !String(d.get("name") || "").trim()) { out.textContent = "Escribe tu nombre y tu correo."; return; }
+    f.querySelector("button[type=submit]").disabled = true; out.textContent = "Un momento…";
+    const r = await fetch("/s/" + tenant + "/api/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: mk || document.body.dataset.channel || "mx", items, customer: { name: d.get("name"), email: d.get("email"), phone: d.get("phone") || "" }, message: d.get("message") || "", website: d.get("website") || "" }) })
+      .then(async (x) => ({ ok: x.ok, status: x.status, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    if (r.ok) { f.innerHTML = "<p class='acct-ok'>Recibimos tu solicitud de cotización #" + (r.body.number || "") + ". Te escribiremos a tu correo con la oferta.</p>" + (r.body.url ? "<p><a href='" + r.body.url + "'>Ver mi cotización</a></p>" : ""); return; }
+    f.querySelector("button[type=submit]").disabled = false;
+    out.textContent = r.status === 429 ? "Enviaste varias solicitudes seguidas. Espera un minuto." : (r.body.detail || "No pudimos enviar tu solicitud. Intenta de nuevo.");
+  });
+})();

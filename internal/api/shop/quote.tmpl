@@ -1,0 +1,35 @@
+{{define "content"}}
+<div class="policy">
+{{with .Q}}
+<h1>Cotización #{{.Number}}</h1>
+<div class="acct-box" data-quote="{{$.Token}}">
+{{if .Offer}}
+<table><thead><tr><th>Producto</th><th>Cantidad</th><th class="num">Precio</th><th class="num">Total</th></tr></thead><tbody>{{range .Offer.Items}}<tr><td>{{.Title}}</td><td>{{.Qty}}</td><td class="num">{{cents .Unit}}</td><td class="num">{{cents .Total}}</td></tr>{{end}}</tbody></table>
+<table class="totals"><tbody>
+<tr><td>Productos</td><td class="num">{{cents .Offer.ItemsTotal}}</td></tr>
+{{if .Offer.Discount}}<tr><td>Descuento</td><td class="num">−{{cents .Offer.Discount}}</td></tr>{{end}}
+<tr><td>Envío</td><td class="num">{{cents .Offer.Shipping}}</td></tr>
+<tr class="grand"><td>Total</td><td class="num">{{cents .Offer.GrandTotal}}</td></tr>
+</tbody></table>
+{{else}}
+<p class="muted">Recibimos tu solicitud. La tienda te enviará su oferta por correo.</p>
+<ul>{{range $.Titles}}<li>{{.}}</li>{{end}}</ul>
+{{end}}
+{{if eq .Status "offered"}}
+{{with .ExpiresAt}}<p class="muted">Vigente hasta el {{day .}}.</p>{{end}}
+<div class="field"><label for="quote-msg">Mensaje (opcional)</label><textarea id="quote-msg" rows="3" maxlength="2000"></textarea></div>
+<p class="note" role="status" data-quote-status></p>
+<div class="subactions"><button class="btn" type="button" data-quote-act="accept">Aceptar cotización</button><button class="btn ghost" type="button" data-quote-act="changes">Pedir cambios</button><button class="btn ghost" type="button" data-quote-act="reject" data-confirm="¿Rechazar esta cotización?">Rechazar</button></div>
+{{else if eq .Status "accepted"}}<p class="acct-ok">{{if .OrderID}}Aceptada. Tu pedido ya se colocó.{{else}}Aceptada. Completa el pago con el enlace que te enviamos.{{end}}</p>
+{{else if eq .Status "requested"}}<p class="muted">La tienda está preparando tu cotización.</p>
+{{else if eq .Status "rejected"}}<p class="muted">Rechazaste esta cotización.</p>
+{{else if eq .Status "expired"}}<p class="muted">Esta cotización venció. Pide una nueva desde tu carrito.</p>
+{{else}}<p class="muted">Esta cotización se canceló.</p>{{end}}
+{{if .History}}<h2>Historial</h2><ul class="history">{{range .History}}<li><span class="muted">{{day .At}}</span> · {{if eq .Who "buyer"}}Tú{{else}}La tienda{{end}}: {{if eq .Kind "requested"}}pediste la cotización{{else if eq .Kind "offered"}}envió una oferta{{else if eq .Kind "changes"}}pediste cambios{{else if eq .Kind "accepted"}}aceptaste{{else if eq .Kind "rejected"}}rechazaste{{else if eq .Kind "expired"}}venció{{else}}la canceló{{end}}{{with .Message}}: “{{.}}”{{end}}</li>{{end}}</ul>{{end}}
+</div>
+{{else}}
+<h1>Cotización no encontrada</h1>
+<p class="muted">Este enlace no es válido. Usa el botón del correo que recibiste.</p>
+{{end}}
+</div>
+{{end}}

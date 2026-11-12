@@ -64,3 +64,38 @@ Orden de compra || Purchase order || Bon de commande || Ordem de compra || Nomor
 Escribe el número de orden de compra de tu empresa || Enter your company's purchase order number || Saisissez le numéro de bon de commande de votre entreprise || Digite o número da ordem de compra da sua empresa || Tulis nomor PO perusahaan Anda || 会社の発注番号を入力してください
 Tu empresa compra a crédito; elige pagar a crédito || Your company buys on credit; choose to pay on credit || Votre entreprise achète à crédit ; choisissez le paiement à crédit || Sua empresa compra a crédito; escolha pagar a crédito || Perusahaan Anda membeli secara kredit; pilih bayar dengan kredit || 御社は掛け払いでの購入です。掛け払いを選択してください
 La orden de compra admite hasta 60 caracteres || The purchase order allows up to 60 characters || Le bon de commande accepte jusqu'à 60 caractères || A ordem de compra aceita até 60 caracteres || Nomor PO maksimal 60 karakter || 発注番号は60文字までです
+Aceptada. Completa el pago con el enlace que te enviamos. || Accepted. Complete the payment with the link we sent you. || Acceptée. Finalisez le paiement avec le lien que nous vous avons envoyé. || Aceita. Conclua o pagamento com o link que enviamos. || Diterima. Selesaikan pembayaran dengan tautan yang kami kirim. || 承認済みです。お送りしたリンクからお支払いを完了してください。
+Aceptada. Tu pedido ya se colocó. || Accepted. Your order has been placed. || Acceptée. Votre commande a été passée. || Aceita. Seu pedido já foi feito. || Diterima. Pesanan Anda sudah dibuat. || 承認済みです。ご注文が確定しました。
+Aceptar cotización || Accept quote || Accepter le devis || Aceitar cotação || Terima penawaran || 見積もりを承認
+Cotización # || Quote # || Devis n° # || Cotação # || Penawaran # || 見積もり #
+Cotización no encontrada || Quote not found || Devis introuvable || Cotação não encontrada || Penawaran tidak ditemukan || 見積もりが見つかりません
+Descuento || Discount || Remise || Desconto || Diskon || 割引
+Esta cotización se canceló. || This quote was cancelled. || Ce devis a été annulé. || Esta cotação foi cancelada. || Penawaran ini dibatalkan. || この見積もりはキャンセルされました。
+Esta cotización venció. Pide una nueva desde tu carrito. || This quote expired. Ask for a new one from your cart. || Ce devis a expiré. Demandez-en un nouveau depuis votre panier. || Esta cotação venceu. Peça uma nova pelo seu carrinho. || Penawaran ini sudah kedaluwarsa. Minta yang baru dari keranjang Anda. || この見積もりは期限切れです。カートから新しく依頼してください。
+Historial || History || Historique || Histórico || Riwayat || 履歴
+La tienda está preparando tu cotización. || The store is preparing your quote. || La boutique prépare votre devis. || A loja está preparando sua cotação. || Toko sedang menyiapkan penawaran Anda. || ショップが見積もりを準備しています。
+La tienda || The store || La boutique || A loja || Toko || ショップ
+Mensaje (opcional) || Message (optional) || Message (facultatif) || Mensagem (opcional) || Pesan (opsional) || メッセージ（任意）
+Nombre || Name || Nom || Nome || Nama || お名前
+Pedir cambios || Ask for changes || Demander des modifications || Pedir alterações || Minta perubahan || 変更を依頼
+Pedir cotización || Request a quote || Demander un devis || Pedir cotação || Minta penawaran || 見積もりを依頼
+Rechazaste esta cotización. || You rejected this quote. || Vous avez refusé ce devis. || Você recusou esta cotação. || Anda menolak penawaran ini. || この見積もりを却下しました。
+Recibimos tu solicitud. La tienda te enviará su oferta por correo. || We received your request. The store will email you its offer. || Nous avons reçu votre demande. La boutique vous enverra son offre par e-mail. || Recebemos sua solicitação. A loja enviará a oferta por e-mail. || Kami menerima permintaan Anda. Toko akan mengirim penawarannya lewat email. || ご依頼を受け付けました。ショップからメールで見積もりが届きます。
+Te enviamos un precio especial por correo para los productos de tu carrito. || We will email you a special price for the products in your cart. || Nous vous enverrons par e-mail un prix spécial pour les produits de votre panier. || Enviaremos por e-mail um preço especial para os produtos do seu carrinho. || Kami akan mengirim harga khusus lewat email untuk produk di keranjang Anda. || カート内の商品の特別価格をメールでお送りします。
+Tú || You || Vous || Você || Anda || あなた
+Vigente hasta el || Valid until || Valable jusqu'au || Válida até || Berlaku sampai || 有効期限：
+aceptaste || you accepted || vous avez accepté || você aceitou || Anda menerima || 承認しました
+envió una oferta || sent an offer || a envoyé une offre || enviou uma oferta || mengirim penawaran || 見積もりを送信しました
+la canceló || cancelled it || l'a annulé || cancelou || membatalkannya || キャンセルしました
+pediste cambios || you asked for changes || vous avez demandé des modifications || você pediu alterações || Anda meminta perubahan || 変更を依頼しました
+pediste la cotización || you requested the quote || vous avez demandé le devis || você pediu a cotação || Anda meminta penawaran || 見積もりを依頼しました
+rechazaste || you rejected || vous avez refusé || você recusou || Anda menolak || 却下しました
+venció || expired || a expiré || venceu || kedaluwarsa || 期限切れ
+¿Compras en volumen? Pide una cotización || Buying in volume? Ask for a quote || Vous achetez en volume ? Demandez un devis || Comprando em volume? Peça uma cotação || Beli dalam jumlah besar? Minta penawaran || 大量購入ですか？見積もりを依頼
+Escribe qué te gustaría cambiar. || Tell us what you would like to change. || Dites-nous ce que vous souhaitez modifier. || Diga o que gostaria de mudar. || Tulis apa yang ingin Anda ubah. || 変更したい内容を入力してください。
+No pudimos registrar tu respuesta. Intenta de nuevo. || We could not record your answer. Try again. || Nous n'avons pas pu enregistrer votre réponse. Réessayez. || Não conseguimos registrar sua resposta. Tente de novo. || Kami tidak dapat mencatat jawaban Anda. Coba lagi. || 回答を記録できませんでした。もう一度お試しください。
+Agrega productos antes de pedir una cotización. || Add products before asking for a quote. || Ajoutez des produits avant de demander un devis. || Adicione produtos antes de pedir uma cotação. || Tambahkan produk sebelum meminta penawaran. || 見積もりを依頼する前に商品を追加してください。
+Escribe tu nombre y tu correo. || Enter your name and email. || Saisissez votre nom et votre e-mail. || Digite seu nome e e-mail. || Tulis nama dan email Anda. || お名前とメールアドレスを入力してください。
+Enviaste varias solicitudes seguidas. Espera un minuto. || You sent several requests in a row. Wait a minute. || Vous avez envoyé plusieurs demandes à la suite. Attendez une minute. || Você enviou várias solicitações seguidas. Espere um minuto. || Anda mengirim beberapa permintaan berturut-turut. Tunggu satu menit. || 続けて依頼が送信されました。1分ほどお待ちください。
+No pudimos enviar tu solicitud. Intenta de nuevo. || We could not send your request. Try again. || Nous n'avons pas pu envoyer votre demande. Réessayez. || Não conseguimos enviar sua solicitação. Tente de novo. || Kami tidak dapat mengirim permintaan Anda. Coba lagi. || 依頼を送信できませんでした。もう一度お試しください。
+Ver mi cotización || See my quote || Voir mon devis || Ver minha cotação || Lihat penawaran saya || 見積もりを見る

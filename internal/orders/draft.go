@@ -313,9 +313,19 @@ func (manual) Invoice(context.Context, payments.InvoiceRequest) (payments.Invoic
 // a payment received outside the platform; anything else is a pm_… token that
 // is charged through the store's provider (payment link page).
 func (s *Service) CompleteDraft(ctx context.Context, tenant, actor, id, paymentMethod string) (Order, error) {
+	return s.completeDraft(ctx, tenant, actor, id, paymentMethod, nil)
+}
+
+// CompleteDraftOnCredit places the draft as an order charged to a company's
+// credit (an accepted quote of a company with payment terms).
+func (s *Service) CompleteDraftOnCredit(ctx context.Context, tenant, actor, id string, company *CompanyAccess) (Order, error) {
+	return s.completeDraft(ctx, tenant, actor, id, "credit", company)
+}
+
+func (s *Service) completeDraft(ctx context.Context, tenant, actor, id, paymentMethod string, company *CompanyAccess) (Order, error) {
 	var d Draft
 	var orderID string
-	isManual := paymentMethod == "manual"
+	isManual := paymentMethod == "manual" || paymentMethod == "credit"
 	acct := Account{Provider: manual{}}
 	if !isManual {
 		var err error
@@ -373,6 +383,11 @@ func (s *Service) CompleteDraft(ctx context.Context, tenant, actor, id, paymentM
 				return err
 			}
 			if err := store.ReserveTx(ctx, tx, tenant, orderID, it.SKU, it.Qty, s.ttl()); err != nil {
+				return err
+			}
+		}
+		if company != nil {
+			if err := creditChargeTx(ctx, tx, tenant, actor, orderID, company, d.GrandTotal); err != nil {
 				return err
 			}
 		}

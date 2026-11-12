@@ -233,6 +233,10 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		_, err := ord.ReconcileRefunds(ctx, 2*time.Minute)
 		return err
 	})
+	resilience.Every(ctx, log, "quote-expiry", time.Minute, func(ctx context.Context) error {
+		_, err := ord.ExpireQuotes(ctx)
+		return err
+	})
 	resilience.Every(ctx, log, "seller-payouts", 10*time.Minute, func(ctx context.Context) error {
 		_, err := ord.RunPayouts(ctx)
 		return err

@@ -20,6 +20,7 @@ const (
 	TplPaymentLink         = "payment_link"
 	TplGiftCard            = "gift_card"
 	TplPurchaseApproval    = "purchase_approval"
+	TplQuoteOffered        = "quote_offered"
 	TplTeamInvite          = "team_invite"
 	TplSubscriptionCreated = "subscription_created"
 	TplSubscriptionFailed  = "subscription_failed"
@@ -177,6 +178,12 @@ var Definitions = []Definition{
 			Body: "{{solicitud.quien}} quiere comprar a crédito de {{empresa.nombre}} por {{solicitud.total}}.\n\nRevisa los productos y aprueba o rechaza. El pedido solo se coloca si lo apruebas.",
 			CTA:  "Revisar la compra", Footer: "Recibes este correo porque apruebas las compras de tu empresa en esta tienda."},
 		Variables: append(append([]Variable{}, common...), Variable{"empresa.nombre", "Empresa", "ACME Industrial"}, Variable{"solicitud.total", "Total", "$12,400.00 MXN"}, Variable{"solicitud.quien", "Quién compra", "Luis Pérez"})},
+	{Key: TplQuoteOffered, Name: "Cotización lista", Description: "Se envía cuando la tienda responde una solicitud de cotización con su oferta.",
+		Subject: "Tu cotización #{{cotizacion.numero}} está lista",
+		Blocks: Blocks{Heading: "Tenemos tu cotización",
+			Body: "Hola {{cliente.nombre}}, preparamos la cotización #{{cotizacion.numero}} por {{cotizacion.total}}.\n\nPuedes aceptarla, pedir cambios o rechazarla. Vale hasta el {{cotizacion.vence}}.",
+			CTA:  "Ver la cotización", Footer: "Recibes este correo porque pediste una cotización en esta tienda."},
+		Variables: append(append([]Variable{}, common...), Variable{"cotizacion.numero", "Número de cotización", "17"}, Variable{"cotizacion.total", "Total", "$24,800.00 MXN"}, Variable{"cotizacion.vence", "Vigente hasta", "30 de noviembre"})},
 	{Key: TplPaymentLink, Name: "Enlace de pago", Description: "Se envía al mandar un pedido borrador o un saldo pendiente para que el cliente pague.",
 		Subject: "Completa el pago de tu pedido en {{tienda.nombre}}",
 		Blocks: Blocks{Heading: "Tu pedido está listo para pagar",
