@@ -187,7 +187,7 @@ type Order struct {
 	// DisplayNumber is what the shopper sees: store prefix + number.
 	DisplayNumber  string               `json:"displayNumber"`
 	PONumber       string               `json:"poNumber,omitempty"`
-	Fees           int64                `json:"fees"`               // extra charges and import duties, in the total
+	Fees           int64                `json:"fees"` // extra charges and import duties, in the total
 	PostalCode     string               `json:"postalCode,omitempty"`
 	FeeLines       []cart.Fee           `json:"feeLines,omitempty"` // each one with its reason
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`

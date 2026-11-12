@@ -58,7 +58,9 @@ type Carrier struct {
 }
 
 // Connected tells whether Apexx can ask this carrier for rates and labels.
-func (c Carrier) Connected() bool { return c.Provider == "sandbox" || (c.Provider == "http" && c.Endpoint != "") }
+func (c Carrier) Connected() bool {
+	return c.Provider == "sandbox" || (c.Provider == "http" && c.Endpoint != "")
+}
 
 // TrackingLink fills the carrier template for a tracking number.
 func (c Carrier) TrackingLink(tracking string) string {

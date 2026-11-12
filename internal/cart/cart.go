@@ -181,7 +181,7 @@ type Service struct {
 	// LiveRate asks a connected carrier for its price, in the store currency
 	// (nil: no connected carriers). It must answer within its own time limit.
 	LiveRate func(carrierID, country, postalCode string, weightGrams, value int64) (amount int64, days int, ok bool)
-	Now       func() time.Time
+	Now      func() time.Time
 }
 
 // ErrUnknownChannel is returned for a channel that is not configured.
