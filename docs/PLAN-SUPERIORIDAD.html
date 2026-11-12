@@ -45,7 +45,7 @@ a{color:var(--accent)}
 
 <div class="wrap">
 <header>
-  <span class="eyebrow">Plan de construcción · actualizado el 12 de noviembre de 2026 · etapas 1 a 4 terminadas</span>
+  <span class="eyebrow">Plan de construcción · actualizado el 12 de noviembre de 2026 · etapas 1 a 7 terminadas</span>
   <h1>Plan Apexx para superar el benchmark</h1>
   <p>Cierra las 53 funciones que la <a href="https://claude.ai/artifact/JcFjejmyApsAjre77N2a51">auditoría comparativa</a> marca hoy como faltantes o a medias frente a Shopify, Magento, Adobe Commerce, BigCommerce, Tiendanube y Medusa, más lo pendiente frente a VTEX. Cada función se rediseña en Go para ser más rápida y más simple que la original, y ninguna etapa se da por terminada sin pasar las mismas auditorías, incluida reversión y prueba como humano.</p>
   <div class="note"><p><strong>Qué significa «superior» aquí.</strong> No es una opinión: una función cuenta como superior cuando hace lo mismo que la mejor de las plataformas comparadas, cumple su meta de velocidad medida, y pasa las ocho auditorías de abajo. Lo que no se pueda medir dentro de este entorno (carga real, intrusión externa, Stripe en vivo) queda listado al final como validación externa, no se da por hecho.</p></div>
@@ -185,5 +185,5 @@ const S=[
  better:["Todo corre en memoria sobre las proyecciones existentes, sin un servicio aparte que sincronizar.","El agente no puede pagar solo: el cliente confirma en el checkout de siempre, con los mismos límites y antifraude."],
  done:["Una recomendación nueva se refleja en menos de un minuto tras las compras que la generan.","Un agente sin confirmación del cliente no puede crear un pedido."]}
 ];
-document.getElementById("stages").innerHTML=S.map(s=>`<article class="stage"><header><span class="n">${s.n}</span><h3>${s.t}</h3><span class="tag">Tamaño ${s.size}</span>${[1,2,3,4,5,6].includes(s.n)?'<span class="tag" style="background:var(--ok-bg);color:var(--ok)">Terminada</span>':''}<span class="muted small">${s.why}</span></header><div class="cols"><div><h4>Qué se construye</h4><ul>${s.scope.map(x=>`<li>${x}</li>`).join("")}</ul></div><div><h4>En qué será mejor</h4><ul>${s.better.map(x=>`<li>${x}</li>`).join("")}</ul><h4 style="margin-top:8px">Prueba de terminado, además de las ocho auditorías</h4><ul>${s.done.map(x=>`<li>${x}</li>`).join("")}</ul></div></div></article>`).join("");
+document.getElementById("stages").innerHTML=S.map(s=>`<article class="stage"><header><span class="n">${s.n}</span><h3>${s.t}</h3><span class="tag">Tamaño ${s.size}</span>${[1,2,3,4,5,6,7].includes(s.n)?'<span class="tag" style="background:var(--ok-bg);color:var(--ok)">Terminada</span>':''}<span class="muted small">${s.why}</span></header><div class="cols"><div><h4>Qué se construye</h4><ul>${s.scope.map(x=>`<li>${x}</li>`).join("")}</ul></div><div><h4>En qué será mejor</h4><ul>${s.better.map(x=>`<li>${x}</li>`).join("")}</ul><h4 style="margin-top:8px">Prueba de terminado, además de las ocho auditorías</h4><ul>${s.done.map(x=>`<li>${x}</li>`).join("")}</ul></div></div></article>`).join("");
 </script>
