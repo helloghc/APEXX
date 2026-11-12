@@ -39,3 +39,8 @@ Siguiente etapa: ver `docs/audit/benchmark-shopify-magento-medusa.html`, que com
 con Shopify, Magento y Medusa y ordena lo que falta en siete etapas.
 
 Plan de las etapas 0 a 7 con metas de velocidad y auditorías: `docs/PLAN-SUPERIORIDAD.html`.
+
+## Etapas del plan de superioridad
+
+- Etapa 1 (mercados): hecha.
+- Etapa 3 (B2B profundo): hecha; detalle y auditorías en [`docs/fases/etapa-3-b2b.md`](fases/etapa-3-b2b.md).
