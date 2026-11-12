@@ -13,12 +13,13 @@ import { toast } from "@/components/ui/sonner";
 import { can } from "@/perms";
 import { href } from "@/router";
 import { ProductPicker } from "../catalog/ProductPicker";
+import { AIPanel } from "./AI";
 import { dateTime, ErrorBox, Notice, Page, StatusPill } from "../common";
 import { ChipInput, EmptyState, SkeletonRows, SubNav, useDebounced } from "../promotions/shared";
 
 const enc = encodeURIComponent;
 interface Ref { id: string; title: string; handle: string }
-interface Config { synonyms: string[][]; redirects: { term: string; url: string }[]; pins: { term: string; productIds: string[] }[]; hidden: string[] }
+interface Config { synonyms: string[][]; redirects: { term: string; url: string }[]; pins: { term: string; productIds: string[] }[]; hidden: string[]; noLearning?: boolean }
 interface Term { term: string; searches: number; results: number }
 interface Review { id: string; productId: string; productTitle: string; productHandle: string; rating: number; title: string; body: string; author: string; verified: boolean; status: string; reply: string; createdAt: string }
 interface Preview { total: number; items: { id: string; title: string; brand: string; pinned: boolean }[]; alternatives: string[]; redirect: string }
@@ -28,6 +29,7 @@ const api = {
   save: (c: Config) => request<{ config: Config }>("PUT", "/v1/search/config", c),
   terms: (days: number) => request<{ top: Term[]; noResults: Term[] }>("GET", `/v1/search/terms?days=${days}`),
   preview: (q: string) => request<Preview>("GET", `/v1/search/preview?q=${enc(q)}`),
+  learned: (q: string) => request<{ items: { id: string; clicks: number; carts: number; boost: number }[] }>("GET", `/v1/search/learned?q=${enc(q)}`),
   reviews: (status: string) => request<{ items: Review[]; counts: Record<string, number> }>("GET", `/v1/reviews?status=${enc(status)}&limit=50`),
   moderate: (id: string, b: { status?: string; reply?: string }) => request<Review>("POST", `/v1/reviews/${enc(id)}/moderate`, b),
   remove: (id: string) => request<void>("DELETE", `/v1/reviews/${enc(id)}`, undefined, { as: "none" }),
@@ -39,6 +41,7 @@ const TABS = [
   { key: "terminos", label: "Qué buscan", route: ["busqueda", "terminos"] },
   { key: "opiniones", label: "Opiniones", route: ["busqueda", "opiniones"] },
   { key: "favoritos", label: "Favoritos", route: ["busqueda", "favoritos"] },
+  { key: "ia", label: "Recomendaciones e IA", route: ["busqueda", "ia"] },
 ];
 
 /** Routes: #busqueda, #busqueda/terminos, #busqueda/opiniones, #busqueda/favoritos. */
@@ -48,7 +51,7 @@ export function Engage({ me, route }: { me: Me; route: string[] }) {
   return (
     <Page title="Búsqueda y opiniones" sub="Decide qué encuentran tus clientes, mira qué buscan y modera lo que opinan. Los cambios aplican al instante, sin reindexar.">
       <SubNav items={TABS} active={section} label="Secciones" />
-      {section === "terminos" ? <Terms /> : section === "opiniones" ? <Reviews canEdit={canEdit} canDelete={can(me, "catalog", "admin")} /> : section === "favoritos" ? <Wishes /> : <Rules canEdit={canEdit} />}
+      {section === "terminos" ? <Terms /> : section === "opiniones" ? <Reviews canEdit={canEdit} canDelete={can(me, "catalog", "admin")} /> : section === "favoritos" ? <Wishes /> : section === "ia" ? <AIPanel canEdit={canEdit} canAdmin={can(me, "catalog", "admin")} /> : <Rules canEdit={canEdit} />}
     </Page>
   );
 }
@@ -69,6 +72,8 @@ function Rules({ canEdit }: { canEdit: boolean }) {
   }, [q.data, cfg]);
   const dirty = !!cfg && !!q.data && JSON.stringify(cfg) !== JSON.stringify(q.data.config);
   const preview = useQuery({ queryKey: ["search-preview", dtest, q.dataUpdatedAt], queryFn: () => api.preview(dtest), enabled: dtest.length >= 2 });
+  const learned = useQuery({ queryKey: ["search-learned", dtest], queryFn: () => api.learned(dtest), enabled: dtest.length >= 2 });
+  const lmap = Object.fromEntries((learned.data?.items ?? []).filter((x) => x.boost > 0).map((x) => [x.id, x]));
   const save = useMutation({
     mutationFn: () => api.save({ ...(cfg as Config), synonyms: (cfg as Config).synonyms.filter((g) => g.length > 0) }),
     onSuccess: (r) => { toast.success("Reglas guardadas. Ya aplican en tu tienda."); qc.setQueryData(["search-config"], (old: typeof q.data) => (old ? { ...old, config: r.config } : old)); setCfg(r.config); void qc.invalidateQueries({ queryKey: ["search-preview"] }); },
@@ -125,6 +130,10 @@ function Rules({ canEdit }: { canEdit: boolean }) {
             <div><Button type="button" variant="outline" onClick={() => set({ redirects: [...cfg.redirects, { term: "", url: "" }] })}><Plus aria-hidden="true" /> Agregar redirección</Button></div>
           </CardContent>
         </Card>
+        <Card data-search-learning>
+          <CardHeader><CardTitle className="text-base">Aprender de tus clientes</CardTitle><CardDescription>Los productos que tus clientes abren y agregan al carrito después de buscar un término suben en los resultados de ese término. Lo que fijas sigue saliendo primero y lo oculto sigue oculto.</CardDescription></CardHeader>
+          <CardContent><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!cfg.noLearning} onChange={(e) => set({ noLearning: !e.target.checked })} /> Ordenar los resultados con lo que eligen tus clientes</label></CardContent>
+        </Card>
         <Card>
           <CardHeader><CardTitle className="text-base">Ocultos en la búsqueda</CardTitle><CardDescription>Productos que no aparecen al buscar ni en el catálogo general (siguen disponibles con su enlace directo).</CardDescription></CardHeader>
           <CardContent className="grid gap-3">
@@ -144,7 +153,7 @@ function Rules({ canEdit }: { canEdit: boolean }) {
               {preview.data.redirect && <Notice tone="ok">Lleva directo a <code>{preview.data.redirect}</code></Notice>}
               {preview.data.alternatives.length > 0 && <p className="text-muted-foreground">También busca: {preview.data.alternatives.join(", ")}</p>}
               <p className="font-medium">{preview.data.total} resultados</p>
-              <ol className="grid gap-1">{preview.data.items.map((p) => <li key={p.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5"><span className="truncate">{p.title}</span>{p.pinned && <Badge variant="secondary">Fijado</Badge>}</li>)}</ol>
+              <ol className="grid gap-1">{preview.data.items.map((p) => <li key={p.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1.5"><span className="truncate">{p.title}</span>{p.pinned ? <Badge variant="secondary">Fijado</Badge> : lmap[p.id] && !cfg.noLearning ? <Badge variant="outline" title={`${lmap[p.id]!.clicks} clics y ${lmap[p.id]!.carts} veces al carrito desde esta búsqueda`}>Elegido {lmap[p.id]!.clicks + lmap[p.id]!.carts}×</Badge> : null}</li>)}</ol>
               {preview.data.total === 0 && <p className="text-muted-foreground">Sin resultados. Agrega un sinónimo o una redirección para este término.</p>}
             </div>
           )}

@@ -72,6 +72,7 @@ type Server struct {
 	scripts       scriptsCache  // third-party scripts of each store
 	sso           ssoProviders  // identity providers already discovered
 	engage        engageState   // search terms and review cache
+	learn         learnState    // recommendations and learning search
 	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
 }
@@ -245,6 +246,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesCompanyFiles(handle)
 	s.routesCompanyImport(handle)
 	s.routesPunchout(handle)
+	s.routesLearning(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

@@ -397,6 +397,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		return err
 	})
 	resilience.Every(ctx, log, "search-terms", 15*time.Second, srv.FlushSearchTerms)
+	// Recommendations and learning search: rebuilt from orders, visits and clicks.
+	resilience.Every(ctx, log, "learning", 20*time.Second, func(ctx context.Context) error {
+		_, err := srv.RunLearning(ctx)
+		return err
+	})
 	resilience.Every(ctx, log, "catalog-sync", time.Minute, srv.SyncCatalogs)
 	hs := &http.Server{
 		Addr: env("APEXX_ADDR", ":8080"), Handler: srv.Routes(),

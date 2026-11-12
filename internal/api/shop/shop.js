@@ -1450,3 +1450,45 @@ function downloadsBox(ds) {
     location.href = r.body.next;
   });
 })();
+
+/* ==== learning: products seen together, choices after a search, cart suggestions ==== */
+(() => {
+  const d = document, body = d.body, parts = location.pathname.split("/");
+  const tenant = body.dataset.tenant || parts[2]; if (!tenant) return;
+  const api = "/s/" + tenant + "/api/";
+  // Only counts leave the browser: no id, no cookie, nothing about the shopper.
+  const beacon = (path, data) => { try { const b = new Blob([JSON.stringify(data)], { type: "application/json" }); if (!navigator.sendBeacon || !navigator.sendBeacon(api + path, b)) fetch(api + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data), keepalive: true }).catch(() => {}); } catch (e) { /* never block the page */ } };
+  const ss = { get(k, v) { try { return JSON.parse(sessionStorage.getItem(k) || "null") || v; } catch (e) { return v; } }, set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } } };
+  const SEEN = "apexx_seen_" + tenant, FROM = "apexx_sq_" + tenant;
+  const pi = parts.indexOf("p"), handle = pi > 0 && parts[pi + 1] ? decodeURIComponent(parts[pi + 1]) : "";
+  if (handle && d.querySelector("[data-buy]")) {
+    const seen = ss.get(SEEN, []).filter((h) => h !== handle);
+    if (seen.length) beacon("views", { p: handle, seen: seen.slice(0, 8) });
+    ss.set(SEEN, [handle, ...seen].slice(0, 8));
+    const term = ss.get(FROM, {})[handle];
+    if (term) d.querySelector("[data-buy]").addEventListener("submit", () => beacon("search-click", { q: term, p: handle, kind: "cart" }));
+  }
+  const q = new URLSearchParams(location.search).get("q");
+  if (q && parts[parts.length - 1] === "c") {
+    d.addEventListener("click", (e) => {
+      const a = e.target.closest && e.target.closest("a.pcard-link"); if (!a) return;
+      const m = (a.getAttribute("href") || "").match(/\/p\/([^/?#]+)/); if (!m) return;
+      const h = decodeURIComponent(m[1]), from = ss.get(FROM, {});
+      from[h] = q; ss.set(FROM, from);
+      beacon("search-click", { q, p: h, kind: "click" });
+    });
+  }
+  const box = d.querySelector("[data-cart-recs]");
+  if (box) {
+    let cart = []; try { cart = JSON.parse(localStorage.getItem("apexx_cart_" + tenant) || "[]") || []; } catch (e) { cart = []; }
+    const skus = cart.map((l) => l.sku).filter(Boolean).slice(0, 20);
+    if (!skus.length) return;
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    fetch(api + "recommendations?sku=" + skus.map(encodeURIComponent).join(",")).then((r) => (r.ok ? r.json() : null)).then((j) => {
+      if (!j || !j.items || !j.items.length) return;
+      box.querySelector("ul").innerHTML = j.items.map((c) => "<li class='pcard'><a class='pcard-link' href='" + esc(c.url) + "'>" + (c.img || "<div class='pcard-media ph ph-" + (Number(c.tone) || 0) + "' aria-hidden='true'><span>" + esc(c.initial) + "</span></div>") +
+        "<div class='pcard-body'>" + (c.brand ? "<p class='pcard-brand'>" + esc(c.brand) + "</p>" : "") + "<h3 class='pcard-title'>" + esc(c.title) + "</h3><p class='pcard-price'>" + esc(c.price) + "</p></div></a></li>").join("");
+      box.hidden = false;
+    }).catch(() => {});
+  }
+})();

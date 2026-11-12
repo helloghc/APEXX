@@ -20,6 +20,8 @@ type SearchConfig struct {
 	Pins []TermPins `json:"pins"`
 	// Hidden product ids never show in search results.
 	Hidden []string `json:"hidden"`
+	// NoLearning keeps the order fixed: results do not rise with clicks.
+	NoLearning bool `json:"noLearning,omitempty"`
 }
 
 // TermRedirect sends Term to URL.

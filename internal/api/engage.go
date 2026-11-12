@@ -105,7 +105,7 @@ func (s *Server) FlushSearchTerms(ctx context.Context) error {
 }
 
 // searchQuery applies the store's search rules to a browse query.
-func searchQuery(t *projection.Tenant, q *catalog.BrowseQuery) {
+func (s *Server) searchQuery(t *projection.Tenant, q *catalog.BrowseQuery) {
 	cfg := t.Search()
 	q.Exclude = cfg.HiddenSet()
 	if q.Q != "" {
@@ -115,6 +115,9 @@ func searchQuery(t *projection.Tenant, q *catalog.BrowseQuery) {
 			// A synonym of a pinned term gets the same pinned products.
 			for i := 0; len(q.Pinned) == 0 && i < len(q.Alt); i++ {
 				q.Pinned = cfg.PinsFor(q.Alt[i])
+			}
+			if !cfg.NoLearning {
+				q.Boost = s.learnedBoost(t.ID, q.Q)
 			}
 		}
 	}
@@ -200,7 +203,7 @@ func (s *Server) searchPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := catalog.BrowseQuery{Q: r.URL.Query().Get("q"), Limit: 12}
-	searchQuery(t, &q)
+	s.searchQuery(t, &q)
 	res := catalog.Browse(t.Catalog.Products(), t.Taxo, offerOf(t, "mx"), q)
 	items := make([]map[string]any, 0, len(res.Items))
 	pinned := map[string]bool{}
@@ -364,7 +367,7 @@ func (s *Server) shopSuggest(w http.ResponseWriter, r *http.Request) {
 	out := map[string]any{"products": []cardJSON{}, "categories": []map[string]string{}, "total": 0}
 	if utf8.RuneCountInString(text) >= 2 && len(text) <= 80 {
 		q := catalog.BrowseQuery{Q: text, Limit: 6}
-		searchQuery(t, &q)
+		s.searchQuery(t, &q)
 		of := offerOf(t, pd.Channel)
 		res := catalog.Browse(t.Catalog.Products(), t.Taxo, of, q)
 		cards := make([]cardJSON, 0, len(res.Items))

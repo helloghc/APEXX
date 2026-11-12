@@ -237,3 +237,4 @@ Comentarios por producto || Comments per product || Commentaires par produit || 
 Sin comentarios todavía. || No comments yet. || Pas encore de commentaires. || Ainda sem comentários. || Belum ada komentar. || まだコメントはありません。
 Comentario || Comment || Commentaire || Comentário || Komentar || コメント
 Enviar comentario || Send comment || Envoyer le commentaire || Enviar comentário || Kirim komentar || コメントを送信
+Otros clientes también eligieron || Other customers also chose || D'autres clients ont aussi choisi || Outros clientes também escolheram || Pelanggan lain juga memilih || ほかのお客様はこちらも選んでいます

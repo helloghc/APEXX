@@ -280,7 +280,7 @@ func (s *Server) renderBrowse(w http.ResponseWriter, r *http.Request, t *project
 	if cat != nil {
 		q.CategoryID = cat.ID
 	}
-	searchQuery(t, &q)
+	s.searchQuery(t, &q)
 	// A term can lead straight to a page (campaign, policy) instead of results.
 	if st.q != "" && cat == nil && col == nil && !st.filtered() && st.page == 1 {
 		if u, ok := t.Search().RedirectFor(st.q); ok {
@@ -552,6 +552,7 @@ type productPage struct {
 	PreShips         string       // first available variant on preorder: ship date
 	PreDeposit       string       // and the deposit paid now ("20"), empty when paid in full
 	Similar          []cardView
+	AlsoBought       []cardView // learned from orders and visits
 	Accessories      []cardView
 	Price, CompareAt string
 	FirstAvailable   int
@@ -697,6 +698,15 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		return out
 	}
 	pg.Similar, pg.Accessories = related(p.Related.Similar), related(p.Related.Accessories)
+	skip := map[string]bool{}
+	for _, id := range append(append([]string{}, p.Related.Similar...), p.Related.Accessories...) {
+		skip[id] = true
+	}
+	var learned []string
+	for _, rec := range s.recsFor(t.ID, []string{p.ID}, skip, 4) {
+		learned = append(learned, rec.ID)
+	}
+	pg.AlsoBought = related(learned)
 
 	ld := map[string]any{
 		"@context": "https://schema.org", "@type": "Product", "name": p.Title, "brand": map[string]any{"@type": "Brand", "name": p.Brand},

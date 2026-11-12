@@ -45,6 +45,8 @@ type BrowseQuery struct {
 	Exclude map[string]bool
 	// Pinned product ids come first, in this order, when no sort is chosen.
 	Pinned []string
+	// Boost raises products shoppers chose for this search, below the pins.
+	Boost map[string]int
 }
 
 // FacetValue is one choice of a facet with the number of products it would show.
@@ -333,7 +335,7 @@ func Browse(products []*Product, t *Taxonomy, offer OfferFunc, q BrowseQuery) Br
 				}
 			}
 		}
-		c.score += pinPos[p.ID] * 1000
+		c.score += pinPos[p.ID]*1000 + q.Boost[p.ID]
 		if pos, ok := manualPos[p.ID]; ok {
 			c.order = pos
 		}
