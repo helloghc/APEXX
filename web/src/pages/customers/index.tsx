@@ -207,6 +207,7 @@ function CustomerDetail({ me, id }: { me: Me; id: string }) {
               )}
             </CardContent>
           </Card>
+          <LoyaltyCard id={id} canEdit={canEdit} />
           <CustomFields resource="customer" id={id} canEdit={canEdit} />
           {can(me, "customers", "admin") && <PrivacyCard id={id} name={c.name || c.email} />}
           <Card>
@@ -492,6 +493,43 @@ function PrivacyCard({ id, name }: { id: string; name: string }) {
           <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button variant="destructive" disabled={typed.trim().toUpperCase() !== "BORRAR" || busy} onClick={() => void erase()}>{busy ? "Borrando…" : "Borrar para siempre"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+    </Card>
+  );
+}
+
+interface LoyaltyAccount { points: number; value: number; tier?: string; nextTier?: string; toNext?: number; entries: { id: string; orderId?: string; kind: string; points: number; note?: string; createdAt: string }[] }
+
+/** LoyaltyCard: the customer's points, tier, history and a manual adjustment. */
+function LoyaltyCard({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["loyalty", id], queryFn: () => request<LoyaltyAccount>("GET", `/v1/customers/${encodeURIComponent(id)}/loyalty`) });
+  const [pts, setPts] = useState("");
+  const [note, setNote] = useState("");
+  if (!q.data) return null;
+  const a = q.data;
+  async function adjust() {
+    try {
+      await request("POST", `/v1/customers/${encodeURIComponent(id)}/loyalty/adjust`, { points: Number(pts), note });
+      toast.success("Puntos ajustados."); setPts(""); setNote("");
+      void qc.invalidateQueries({ queryKey: ["loyalty", id] });
+    } catch (e) {
+      toast.error(errorMessage(e));
+    }
+  }
+  return (
+    <Card data-loyalty-card>
+      <CardHeader><CardTitle className="text-base">Puntos de lealtad</CardTitle></CardHeader>
+      <CardContent className="grid gap-3 text-sm">
+        <p><strong className="text-2xl tabular-nums">{a.points}</strong> puntos · valen {formatMoney(a.value, "MXN")}{a.tier ? ` · nivel ${a.tier}` : ""}{a.nextTier ? ` · le faltan ${formatMoney(a.toNext ?? 0, "MXN")} para ${a.nextTier}` : ""}</p>
+        {a.entries.length > 0 && <ul className="divide-y">{a.entries.slice(0, 8).map((e) => <li key={e.id} className="flex justify-between gap-2 py-1.5"><span>{e.note || e.kind}{e.orderId ? <> · <a className="text-primary hover:underline" href={href("pedidos", e.orderId)}>pedido</a></> : null}</span><span className={`tabular-nums ${e.points < 0 ? "text-bad" : ""}`}>{e.points > 0 ? "+" : ""}{e.points}</span></li>)}</ul>}
+        {canEdit && (
+          <div className="grid gap-2 sm:grid-cols-[7rem_1fr_auto] sm:items-end">
+            <div className="grid gap-1"><Label htmlFor="ly-pts">Puntos (+/−)</Label><Input id="ly-pts" inputMode="numeric" value={pts} onChange={(e) => setPts(e.target.value.replace(/[^\d-]/g, ""))} /></div>
+            <div className="grid gap-1"><Label htmlFor="ly-note">Motivo</Label><Input id="ly-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Compensación por retraso" /></div>
+            <Button size="sm" disabled={!pts || !note.trim()} onClick={() => void adjust()}>Ajustar</Button>
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }

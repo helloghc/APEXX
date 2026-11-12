@@ -164,3 +164,19 @@ Solo necesarias || Necessary only || Nécessaires uniquement || Somente necessá
 Aceptar todo || Accept all || Tout accepter || Aceitar tudo || Terima semua || すべて許可
 Preferencias de cookies || Cookie preferences || Préférences de cookies || Preferências de cookies || Preferensi cookie || Cookieの設定
 Falta aceptar: || Please accept: || Veuillez accepter : || Falta aceitar: || Harap setujui: || 同意が必要です：
+Mis puntos || My points || Mes points || Meus pontos || Poin saya || マイポイント
+puntos || points || points || pontos || poin || ポイント
+Valen || Worth || Valent || Valem || Senilai || 価値：
+en saldo a favor. || in store credit. || en avoir. || em crédito na loja. || dalam saldo toko. || のストアクレジット
+Nivel: || Tier: || Niveau : || Nível: || Tingkat: || ランク：
+Te faltan || You need || Il vous manque || Faltam || Anda perlu || あと
+en compras para el nivel || more in purchases to reach || d'achats pour atteindre le niveau || em compras para o nível || belanja lagi untuk tingkat || のお買い物でランク
+Ganas || You earn || Vous gagnez || Você ganha || Anda mendapat || 獲得：
+pagado. || paid. || payé. || pago. || dibayar. || お支払いごと
+Canjear puntos || Redeem points || Échanger des points || Trocar pontos || Tukar poin || ポイント交換
+Puntos a canjear (mínimo || Points to redeem (minimum || Points à échanger (minimum || Pontos para trocar (mínimo || Poin untuk ditukar (minimum || 交換するポイント（最低
+Convertir en saldo a favor || Turn into store credit || Convertir en avoir || Converter em crédito || Ubah menjadi saldo toko || ストアクレジットに交換
+Fecha || Date || Date || Data || Tanggal || 日付
+Movimiento || Activity || Mouvement || Movimento || Aktivitas || 内容
+Puntos || Points || Points || Pontos || Poin || ポイント
+Aún no tienes movimientos. || No activity yet. || Aucun mouvement pour l'instant. || Ainda não há movimentos. || Belum ada aktivitas. || まだ履歴はありません。

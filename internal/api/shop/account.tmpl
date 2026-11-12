@@ -53,12 +53,18 @@
 <a href="{{.Base}}/cuenta?ver=listas"{{if eq .View "lists"}} aria-current="page"{{end}}>Mis listas</a>
 {{with .Company}}<a href="{{$.Base}}/cuenta?ver=empresa"{{if eq $.View "company"}} aria-current="page"{{end}}>Mi empresa</a>{{end}}
 <a href="{{.Base}}/cuenta?ver=tarjetas"{{if eq .View "cards"}} aria-current="page"{{end}}>Mis tarjetas</a>
+<a href="{{.Base}}/cuenta?ver=puntos"{{if eq .View "loyalty"}} aria-current="page"{{end}}>Mis puntos</a>
 <a href="{{.Base}}/cuenta?ver=datos"{{if eq .View "profile"}} aria-current="page"{{end}}>Mis datos</a>
 <form method="post" action="{{.Base}}/cuenta"><input type="hidden" name="accion" value="salir"><button class="linkbtn" type="submit">Cerrar sesión</button></form>
 </nav>
 {{with .Notice}}<p class="acct-ok" role="status">{{.}}</p>{{end}}
 {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
 
+{{if eq .View "loyalty"}}{{with .Loyalty}}
+<div class="acct-box" data-loyalty><p class="big"><strong>{{.Points}}</strong> puntos</p><p class="muted">Valen {{.Value}} en saldo a favor.{{with .Tier}} Nivel: <strong>{{.}}</strong>.{{end}}{{with .NextTier}} Te faltan {{$.Loyalty.ToNext}} en compras para el nivel {{.}}.{{end}}</p>{{with .Rule}}<p class="muted">Ganas {{.}} pagado.</p>{{end}}</div>
+{{if and .Active (ge .Points .MinRedeem)}}<form class="acct-box" data-redeem><h2>Canjear puntos</h2><div class="field"><label for="redeem-points">Puntos a canjear (mínimo {{.MinRedeem}})</label><input id="redeem-points" name="points" type="number" min="{{.MinRedeem}}" max="{{.Points}}" value="{{.Points}}" inputmode="numeric"></div><button class="btn" type="submit">Convertir en saldo a favor</button><p class="note" role="status" data-redeem-status></p></form>{{end}}
+<table><thead><tr><th>Fecha</th><th>Movimiento</th><th class="num">Puntos</th></tr></thead><tbody>{{range .Entries}}<tr><td>{{.Date}}</td><td>{{.Note}}</td><td class="num">{{if gt .Points 0}}+{{end}}{{.Points}}</td></tr>{{else}}<tr><td colspan="3" class="muted">Aún no tienes movimientos.</td></tr>{{end}}</tbody></table>
+{{end}}{{end}}
 {{if eq .View "cards"}}
 <p class="muted">Tarjetas que guardaste al pagar. La tienda solo guarda una referencia segura de tu banco, nunca el número completo.</p>
 {{range .Cards}}<div class="acct-box" data-card="{{.ID}}"><p><strong>{{.Brand}} •••• {{.Last4}}</strong>{{if .ExpYear}} · vence {{.ExpMonth}}/{{.ExpYear}}{{end}}</p><button class="linkbtn" type="button" data-card-delete>Quitar tarjeta</button><p class="note" role="status" data-card-status></p></div>

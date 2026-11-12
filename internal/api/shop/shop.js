@@ -1077,3 +1077,19 @@ function downloadsBox(ds) {
     }
   }).catch(() => {});
 })();
+
+/* ==== loyalty: redeem points into store credit ==== */
+(() => {
+  const f = document.querySelector("[data-redeem]"); if (!f) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2];
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const st = f.querySelector("[data-redeem-status]"), b = f.querySelector("button"); b.disabled = true; st.textContent = "";
+    try {
+      const r = await fetch("/s/" + tenant + "/api/account/loyalty/redeem", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ points: parseInt(f.points.value, 10) || 0 }) });
+      const j = await r.json();
+      if (!r.ok) { st.textContent = j.detail || "No se pudo canjear."; b.disabled = false; return; }
+      st.innerHTML = "Listo: tu saldo a favor es <strong>" + "$" + (j.amount / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",") + " " + j.currency + "</strong>. Código: <strong data-redeem-code>" + String(j.code).replace(/[<>&]/g, "") + "</strong> (también te lo enviamos por correo). Úsalo en el pago.";
+    } catch { st.textContent = "No se pudo canjear. Intenta de nuevo."; b.disabled = false; }
+  });
+})();

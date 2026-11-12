@@ -375,6 +375,19 @@ type shopOrderView struct {
 	Downloads []shopDownload
 }
 
+type loyaltyView struct {
+	Points                              int64
+	Value, Tier, NextTier, ToNext, Rule string
+	Active                              bool
+	MinRedeem                           int64
+	Entries                             []loyaltyLine
+}
+
+type loyaltyLine struct {
+	Date, Note string
+	Points     int64
+}
+
 type shopDownload struct {
 	Filename, URL, Size, Until string
 	Left, Max                  int
@@ -408,6 +421,7 @@ type accountData struct {
 	Lists     []reorderList
 	Company   *orders.CompanyAccess // the company the shopper buys for, if any
 	Cards     []orders.SavedCard
+	Loyalty   *loyaltyView // points, tier and history (?ver=puntos)
 	Portal    *companyPortal
 }
 
@@ -640,6 +654,26 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 			return
 		}
 		d.Cards = cards
+	case q.Get("ver") == "puntos":
+		d.View, d.Title = "loyalty", "Mis puntos"
+		a, err := s.Orders.LoyaltyAccountOf(r.Context(), tenant, customerID)
+		if err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+		var p orders.LoyaltyProgram
+		_, _ = s.DB.GetDoc(r.Context(), tenant, "loyalty", "program", &p)
+		lv := &loyaltyView{Points: a.Points, Value: mon(a.Value, "MXN"), Tier: a.Tier, NextTier: a.NextTier, Active: p.Active, MinRedeem: max(p.MinRedeem, 1)}
+		if a.ToNext > 0 {
+			lv.ToNext = mon(a.ToNext, "MXN")
+		}
+		if p.EarnPer > 0 {
+			lv.Rule = "1 punto por cada " + mon(p.EarnPer, "MXN")
+		}
+		for _, e := range a.Entries {
+			lv.Entries = append(lv.Entries, loyaltyLine{Date: shortDate(e.CreatedAt), Note: e.Note, Points: e.Points})
+		}
+		d.Loyalty = lv
 	case q.Get("ver") == "datos":
 		d.View, d.Title = "profile", "Mis datos"
 	case q.Get("ver") == "listas":

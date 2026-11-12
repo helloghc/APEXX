@@ -223,6 +223,7 @@ func (s *Server) Routes() http.Handler {
 	handle("POST /s/{tenant}/api/graphql", s.shopGraphQL)
 	s.routesSSO(handle)
 	s.routesCheckoutBlocks(handle)
+	s.routesLoyalty(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

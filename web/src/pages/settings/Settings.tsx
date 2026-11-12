@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus, Award } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -20,6 +20,7 @@ const Fields = lazy(() => import("./Fields").then((m) => ({ default: m.Fields })
 const CatalogSource = lazy(() => import("./CatalogSource").then((m) => ({ default: m.CatalogSource })));
 const ReturnsPolicy = lazy(() => import("./ReturnsPolicy").then((m) => ({ default: m.ReturnsPolicy })));
 const Fees = lazy(() => import("./Fees").then((m) => ({ default: m.Fees })));
+const Loyalty = lazy(() => import("./Loyalty").then((m) => ({ default: m.Loyalty })));
 const CheckoutBlocks = lazy(() => import("./CheckoutBlocks").then((m) => ({ default: m.CheckoutBlocks })));
 const SSO = lazy(() => import("./SSO").then((m) => ({ default: m.SSO })));
 const Bulk = lazy(() => import("./Bulk").then((m) => ({ default: m.Bulk })));
@@ -40,6 +41,7 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
   { id: "apps", label: "Apps", icon: Blocks, group: "General" },
   { id: "sso", label: "Inicio de sesión de la empresa", icon: KeyRound, group: "General" },
   { id: "automatizaciones", label: "Automatizaciones", icon: Workflow, group: "General" },
+  { id: "lealtad", label: "Puntos de lealtad", icon: Award, group: "General" },
   { id: "cambios-masivos", label: "Cambios masivos", icon: Layers, group: "General" },
   { id: "ubicaciones", label: "Ubicaciones", icon: MapPin, group: "Logística" },
   { id: "envios", label: "Envíos", icon: Truck, group: "Logística" },
@@ -99,6 +101,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "devoluciones":
       body = <ReturnsPolicy me={me} />;
+      break;
+    case "lealtad":
+      body = <Loyalty me={me} />;
       break;
     case "bloques-pago":
       body = <CheckoutBlocks me={me} />;
