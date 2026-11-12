@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { centsToPesos, parsePesos } from "@/money";
 import { can } from "@/perms";
 import { ErrorBox } from "../common";
 import { sapi, type Channel, type TaxRegion } from "./api";
@@ -77,6 +79,9 @@ function ChannelDialog({ channel, isNew, regions, channels, onClose, onSaved }: 
   const [c, setC] = useState(channel);
   const [rate, setRate] = useState(bpsToPercent(channel.taxBps));
   const [fx, setFx] = useState(channel.rateMicros ? String(channel.rateMicros / 1e6) : "");
+  const [duty, setDuty] = useState(channel.dutyBps ? bpsToPercent(channel.dutyBps) : "");
+  const [minimis, setMinimis] = useState(channel.dutyMinimis ? centsToPesos(channel.dutyMinimis) : "");
+  const [dutyRules, setDutyRules] = useState((channel.dutyRules ?? []).map((r) => `${r.hsPrefix} ${bpsToPercent(r.bps)}`).join("\n"));
   const sources = channels.filter((x) => x.id !== c.id && !x.priceFrom);
   const source = sources.find((x) => x.id === c.priceFrom);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,8 +98,17 @@ function ChannelDialog({ channel, isNew, regions, channels, onClose, onSaved }: 
     if (!(c.maxQtyPerItem >= 1)) e.maxQtyPerItem = "Debe ser al menos 1.";
     const fxN = Number(fx.replace(",", "."));
     if (c.priceFrom && !(fxN > 0)) e.rateMicros = "Escribe cuánto vale 1 unidad de la moneda de origen, por ejemplo 0.058.";
+    const dBps = duty.trim() ? percentToBps(duty) : 0;
+    if (dBps === null) e.dutyBps = "Escribe un porcentaje entre 0 y 100.";
+    const rules: { hsPrefix: string; bps: number }[] = [];
+    for (const line of dutyRules.split("\n").map((x) => x.trim()).filter(Boolean)) {
+      const [code, pct] = line.split(/[\s,;]+/);
+      const b = percentToBps(pct ?? "");
+      if (!code || b === null) { e.dutyRules = `Revisa la línea «${line}»: código y porcentaje, por ejemplo 6109 15`; break; }
+      rules.push({ hsPrefix: code.replace(/\./g, ""), bps: b });
+    }
     setErrors(e);
-    if (Object.keys(e).length === 0 && bps !== null) save.mutate({ ...c, taxBps: bps, rateMicros: c.priceFrom ? Math.round(fxN * 1e6) : 0 });
+    if (Object.keys(e).length === 0 && bps !== null) save.mutate({ ...c, taxBps: bps, rateMicros: c.priceFrom ? Math.round(fxN * 1e6) : 0, dutyBps: dBps ?? 0, dutyMinimis: parsePesos(minimis) ?? 0, dutyRules: rules });
   }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -138,6 +152,13 @@ function ChannelDialog({ channel, isNew, regions, channels, onClose, onSaved }: 
                 <Select value={c.rounding || NONE} onValueChange={(v) => setC({ ...c, rounding: v === NONE ? "" : v })}><SelectTrigger aria-label="Redondeo"><SelectValue /></SelectTrigger><SelectContent>{ROUNDING.map((x) => <SelectItem key={x[0] || NONE} value={x[0] || NONE}>{x[1]}</SelectItem>)}</SelectContent></Select>
               </div>
             </>}
+          </fieldset>
+          <fieldset className="grid gap-4 rounded-md border p-3 sm:col-span-2 sm:grid-cols-2">
+            <legend className="px-1 text-sm font-medium">Impuestos de importación</legend>
+            <p className="text-sm text-muted-foreground sm:col-span-2">Para productos hechos fuera del país de este canal (según el país de origen de cada producto). El comprador los paga al comprar y no le cobran nada al recibir.</p>
+            <FormField id="ch-duty" label="Arancel general (%)" error={errors.dutyBps} description="Vacío o 0: no se cobran."><Input inputMode="decimal" value={duty} onChange={(e) => setDuty(e.target.value)} placeholder="0" /></FormField>
+            <FormField id="ch-minimis" label="Monto exento de importación" error={errors.dutyMinimis} description={`En ${c.currency}. Debajo de este monto no se cobra.`}><Input inputMode="decimal" value={minimis} onChange={(e) => setMinimis(e.target.value)} placeholder="0" /></FormField>
+            <FormField id="ch-duty-rules" label="Tasa por código arancelario" error={errors.dutyRules} description="Una por línea: inicio del código y porcentaje. El código más largo que coincida gana." className="sm:col-span-2"><Textarea rows={3} className="font-mono" value={dutyRules} onChange={(e) => setDutyRules(e.target.value)} placeholder={"6109 15\n8517 0"} /></FormField>
           </fieldset>
         </div>
         <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button onClick={submit} disabled={save.isPending}>{save.isPending ? "Guardando…" : "Guardar"}</Button></DialogFooter>

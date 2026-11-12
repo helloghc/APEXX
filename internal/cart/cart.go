@@ -36,6 +36,19 @@ type Channel struct {
 	Rounding     string `json:"rounding,omitempty"`     // "", unit, 99, ten
 	TaxExclusive bool   `json:"taxExclusive,omitempty"` // prices before tax; tax is added at checkout
 	Language     string `json:"language,omitempty"`     // storefront language of the market (es, en…)
+
+	// Import duties charged at checkout (delivered duty paid) on products
+	// whose origin is another country: DutyBps by default, DutyRules by
+	// tariff code prefix, nothing while the items stay under DutyMinimis.
+	DutyBps     int64      `json:"dutyBps,omitempty"`
+	DutyMinimis int64      `json:"dutyMinimis,omitempty"`
+	DutyRules   []DutyRule `json:"dutyRules,omitempty"`
+}
+
+// DutyRule is the duty rate of the tariff codes that start with HSPrefix.
+type DutyRule struct {
+	HSPrefix string `json:"hsPrefix"`
+	Bps      int64  `json:"bps"`
 }
 
 // ShippingRate is the legacy single rate of a channel. Stores that configure
@@ -122,7 +135,7 @@ type Shipping struct {
 	Quote        *logistics.Quote    `json:"-"`
 }
 
-// Totals always add up: Grand = Items - Discounts + Shipping + TaxAdjust.
+// Totals always add up: Grand = Items - Discounts + Shipping + TaxAdjust + Fees.
 // Shipping is already net of ShippingDiscount, which is reported for
 // information. TaxAdjust is the tax added on top in markets whose prices
 // exclude it, or the tax taken out for an exempt buyer (negative); it is zero
@@ -134,6 +147,7 @@ type Totals struct {
 	ShippingDiscount money.Money `json:"shippingDiscount"`
 	Tax              money.Money `json:"taxIncluded"`
 	TaxAdjust        money.Money `json:"taxAdjust"`
+	Fees             money.Money `json:"fees"` // extra charges and import duties
 	Grand            money.Money `json:"grand"`
 }
 
@@ -148,6 +162,7 @@ type Result struct {
 	// or not, each with its reason.
 	ShippingOptions []logistics.Quote    `json:"shippingOptions"`
 	Tax             *logistics.TaxResult `json:"tax,omitempty"`
+	Fees            []Fee                `json:"fees,omitempty"`
 	Totals          Totals               `json:"totals"`
 	Messages        []Message            `json:"messages"`
 }
@@ -162,6 +177,7 @@ type Service struct {
 	Logistics *logistics.Config    // zones, options, estimates and tax regions; nil = legacy channel rules
 	Taxo      *catalog.Taxonomy    // attribute names, for promotions that target attribute values
 	QtyRules  map[string][]QtyRule // product id -> quantity rules (general and per customer group)
+	FeeRules  []FeeRule            // extra charges per order (handling, packaging, small order)
 	Now       func() time.Time
 }
 
@@ -206,6 +222,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	res := Result{Channel: ch.ID, Lines: []Line{}, Messages: []Message{}, Promotions: []promo.Result{}, Coupons: []promo.CouponResult{}, ShippingOptions: []logistics.Quote{}}
 	var profiles []string
 	var lineClass []string // tax class of each priced line, parallel to promoLines
+	var lineCustoms []logistics.ProductClass // tariff code and origin, parallel to promoLines
 	items := money.Zero(cur)
 	var weight int64
 	var promoLines []promo.Line
@@ -295,6 +312,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		lineOf = append(lineOf, len(res.Lines)-1)
 		profiles = append(profiles, class.ShippingProfile)
 		lineClass = append(lineClass, class.TaxClass)
+		lineCustoms = append(lineCustoms, class)
 	}
 
 	out := promo.Outcome{Discount: money.Zero(cur), ShippingDiscount: money.Zero(cur)}
@@ -445,6 +463,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	// the product and on the region of the destination. Discounts are spread
 	// over the lines in proportion to their totals.
 	parts := make([]logistics.TaxPart, 0, len(promoLines)+1)
+	duty := make([]dutyLine, 0, len(promoLines))
 	left := discounts.Amount
 	for i, pl := range promoLines {
 		share := int64(0)
@@ -456,8 +475,30 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		}
 		left -= share
 		parts = append(parts, logistics.TaxPart{Class: lineClass[i], Gross: pl.LineTotal.Amount - share})
+		duty = append(duty, dutyLine{HSCode: lineCustoms[i].HSCode, Origin: lineCustoms[i].Origin, Net: pl.LineTotal.Amount - share})
 	}
 	parts = append(parts, logistics.TaxPart{Class: logistics.TaxGeneral, Gross: shipping.Amount})
+	// Extra charges of the store carry tax like shipping; import duties do not.
+	delivery := ""
+	if res.Shipping != nil {
+		delivery = res.Shipping.Kind
+	}
+	// Fee rules are in the store currency, like shipping rules: a market that
+	// converts its prices compares thresholds and charges fixed amounts converted.
+	res.Fees = feesFor(s.FeeRules, ch.ID, delivery, req.Group, baseSubtotal)
+	for i := range res.Fees {
+		res.Fees[i].Amount = shipCur(res.Fees[i].Amount)
+	}
+	var feeTotal int64
+	for _, f := range res.Fees {
+		feeTotal += f.Amount
+		parts = append(parts, logistics.TaxPart{Class: logistics.TaxGeneral, Gross: f.Amount})
+	}
+	for _, d := range dutiesFor(ch, duty) {
+		res.Fees = append(res.Fees, d)
+		feeTotal += d.Amount
+	}
+	grand.Amount += feeTotal
 	taxRes := s.Logistics.TaxFor(ch.Country, req.PostalCode, ch.TaxRegion, ch.TaxBps, parts, ch.TaxExclusive)
 	adjust := money.Zero(cur)
 	switch {
@@ -472,7 +513,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	grand.Amount += adjust.Amount
 	res.Tax = &taxRes
 	tax := money.New(taxRes.Total, cur)
-	res.Totals = Totals{Items: items, Discounts: discounts, Shipping: shipping, ShippingDiscount: shipDisc, Tax: tax, TaxAdjust: adjust, Grand: grand}
+	res.Totals = Totals{Items: items, Discounts: discounts, Shipping: shipping, ShippingDiscount: shipDisc, Tax: tax, TaxAdjust: adjust, Fees: money.New(feeTotal, cur), Grand: grand}
 	return res, nil
 }
 

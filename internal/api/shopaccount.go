@@ -364,6 +364,7 @@ type shopOrderView struct {
 	Shipments []shopShipment
 	Notes     []struct{ Body, Date string }
 	Returns   []struct{ Number, Status string }
+	Fees      []struct{ Name, Amount string }
 }
 
 type accountData struct {
@@ -508,6 +509,9 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 		}
 		v := &shopOrderView{ID: o.ID, Number: o.Number, Date: shortDate(o.CreatedAt), Status: shopperStatus(o), Items: mon(o.ItemsTotal, o.Currency),
 			Shipping: mon(o.Shipping, o.Currency), Total: mon(o.GrandTotal, o.Currency)}
+		for _, f := range o.FeeLines {
+			v.Fees = append(v.Fees, struct{ Name, Amount string }{f.Name, mon(f.Amount, o.Currency)})
+		}
 		if o.Discounts > 0 {
 			v.Discounts = mon(o.Discounts, o.Currency)
 		}

@@ -184,6 +184,10 @@ type TaxRegion struct {
 type ProductClass struct {
 	TaxClass        string `json:"taxClass"`
 	ShippingProfile string `json:"shippingProfile"`
+	// Customs: tariff code (HS, 6 to 10 digits) and country of origin, for
+	// import duties when the product is sold into another country.
+	HSCode string `json:"hsCode,omitempty"`
+	Origin string `json:"origin,omitempty"`
 }
 
 // Config is an immutable snapshot of every rule of one store.

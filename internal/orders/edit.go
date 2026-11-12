@@ -177,7 +177,10 @@ func (s *Service) EditOrder(ctx context.Context, tenant, actor, orderID string, 
 			return FieldError{"remove", "El pedido no puede quedar vacío; cancélalo si ya no se va a surtir"}
 		}
 		after.Discounts = min(o.Discounts, after.ItemsTotal)
-		after.GrandTotal = after.ItemsTotal - after.Discounts + after.Shipping
+		// Extra charges, import duties and tax added on top (markets whose
+		// prices exclude it) stay as they were: an edit changes items only.
+		extras := o.GrandTotal - o.ItemsTotal + o.Discounts - o.Shipping
+		after.GrandTotal = after.ItemsTotal - after.Discounts + after.Shipping + extras
 		after.TaxIncluded = scaleTax(o, after.GrandTotal)
 		res.Before, res.After, res.Difference = o.Totals, after, after.GrandTotal-o.GrandTotal
 		if in.DryRun {

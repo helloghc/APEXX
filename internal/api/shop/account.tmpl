@@ -143,6 +143,7 @@
 <tr><td>Productos</td><td class="num">{{.Items}}</td></tr>
 {{with .Discounts}}<tr><td>Descuentos</td><td class="num">−{{.}}</td></tr>{{end}}
 <tr><td>Envío</td><td class="num">{{.Shipping}}</td></tr>
+{{range .Fees}}<tr><td>{{.Name}}</td><td class="num">{{.Amount}}</td></tr>{{end}}
 <tr class="grand"><td>Total</td><td class="num">{{.Total}}</td></tr>
 {{with .Refunded}}<tr><td>Reembolsado</td><td class="num">{{.}}</td></tr>{{end}}
 {{with .Balance}}<tr><td>Saldo por pagar</td><td class="num">{{.}}</td></tr>{{end}}

@@ -229,6 +229,9 @@ export interface Channel {
   rounding?: string;
   taxExclusive?: boolean;
   language?: string;
+  dutyBps?: number;
+  dutyMinimis?: number;
+  dutyRules?: { hsPrefix: string; bps: number }[];
 }
 
 export interface CheckoutRules {

@@ -181,7 +181,7 @@ func (d *DB) LoadLogistics(ctx context.Context, tenant string) (*logistics.Confi
 		}); err != nil {
 			return err
 		}
-		rows, err = tx.Query(ctx, `SELECT product_id, tax_class, shipping_profile FROM product_logistics WHERE tenant_id=$1`, tenant)
+		rows, err = tx.Query(ctx, `SELECT product_id, tax_class, shipping_profile, hs_code, COALESCE(origin,'') FROM product_logistics WHERE tenant_id=$1`, tenant)
 		if err != nil {
 			return err
 		}
@@ -189,7 +189,7 @@ func (d *DB) LoadLogistics(ctx context.Context, tenant string) (*logistics.Confi
 		for rows.Next() {
 			var id string
 			var pc logistics.ProductClass
-			if err := rows.Scan(&id, &pc.TaxClass, &pc.ShippingProfile); err != nil {
+			if err := rows.Scan(&id, &pc.TaxClass, &pc.ShippingProfile, &pc.HSCode, &pc.Origin); err != nil {
 				return err
 			}
 			c.Products[id] = pc
@@ -245,12 +245,12 @@ func (d *DB) DeleteHoliday(ctx context.Context, tenant, actor, date string) erro
 func (d *DB) SetProductClass(ctx context.Context, tenant, actor, productID string, pc logistics.ProductClass) error {
 	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		var err error
-		if pc.TaxClass == logistics.TaxGeneral && pc.ShippingProfile == "" {
+		if pc.TaxClass == logistics.TaxGeneral && pc.ShippingProfile == "" && pc.HSCode == "" && pc.Origin == "" {
 			_, err = tx.Exec(ctx, `DELETE FROM product_logistics WHERE tenant_id=$1 AND product_id=$2`, tenant, productID)
 		} else {
-			_, err = tx.Exec(ctx, `INSERT INTO product_logistics (tenant_id, product_id, tax_class, shipping_profile) VALUES ($1,$2,$3,$4)
-				ON CONFLICT (tenant_id, product_id) DO UPDATE SET tax_class=EXCLUDED.tax_class, shipping_profile=EXCLUDED.shipping_profile, updated_at=now()`,
-				tenant, productID, pc.TaxClass, pc.ShippingProfile)
+			_, err = tx.Exec(ctx, `INSERT INTO product_logistics (tenant_id, product_id, tax_class, shipping_profile, hs_code, origin) VALUES ($1,$2,$3,$4,$5,NULLIF($6,''))
+				ON CONFLICT (tenant_id, product_id) DO UPDATE SET tax_class=EXCLUDED.tax_class, shipping_profile=EXCLUDED.shipping_profile, hs_code=EXCLUDED.hs_code, origin=EXCLUDED.origin, updated_at=now()`,
+				tenant, productID, pc.TaxClass, pc.ShippingProfile, pc.HSCode, pc.Origin)
 		}
 		if err != nil {
 			return err

@@ -56,3 +56,5 @@ Guarda una tarjeta de tu empresa y cobraremos el saldo vencido el día que vence
 Guardar tarjeta y activar || Save card and turn on || Enregistrer la carte et activer || Salvar cartão e ativar || Simpan kartu dan aktifkan || カードを保存して有効にする
 No pudimos apagarlo. Intenta de nuevo. || We couldn't turn it off. Please try again. || Nous n'avons pas pu le désactiver. Réessayez. || Não foi possível desativar. Tente novamente. || Kami tidak dapat mematikannya. Coba lagi. || オフにできませんでした。もう一度お試しください。
 No pudimos guardar la tarjeta. Intenta de nuevo. || We couldn't save the card. Please try again. || Nous n'avons pas pu enregistrer la carte. Réessayez. || Não foi possível salvar o cartão. Tente novamente. || Kami tidak dapat menyimpan kartu. Coba lagi. || カードを保存できませんでした。もう一度お試しください。
+Impuestos de importación || Import duties || Droits d'importation || Impostos de importação || Bea masuk || 輸入関税
+Cargo fijo por pedido || Fixed charge per order || Frais fixes par commande || Taxa fixa por pedido || Biaya tetap per pesanan || 注文ごとの固定料金

@@ -1,7 +1,7 @@
 import { CustomFields } from "@/components/CustomFields";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowLeft, Ban, ExternalLink, PackageCheck, RotateCcw, StickyNote, Truck, Undo2 } from "lucide-react";
+import { ArrowLeft, Ban, ExternalLink, PackageCheck, PencilLine, Plus, RotateCcw, StickyNote, Trash2, Truck, Undo2 } from "lucide-react";
 import { errorMessage, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { toast } from "@/components/ui/sonner";
 import { centsToPesos, formatMoney, parsePesos } from "@/money";
 import { can } from "@/perms";
 import { href } from "@/router";
-import { sale, type Order, type Quote } from "@/saleApi";
+import { sale, type OTotals, type Order, type Quote } from "@/saleApi";
 import { dateTime, ErrorBox, Notice, StatusPill } from "../common";
 
 export const REASONS: Record<string, string> = { size: "Talla o medida", defective: "Defectuoso o dañado", not_as_described: "No es como se describe", wrong_item: "Producto equivocado", changed_mind: "Cambió de opinión", arrived_late: "Llegó tarde", other: "Otro" };
@@ -52,7 +52,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
   const qc = useQueryClient();
   const canEdit = can(me, "orders", "edit");
   const q = useQuery({ queryKey: ["order", id], queryFn: () => sale.order(id) });
-  const [dialog, setDialog] = useState<null | "ship" | "refund" | "return" | "cancel">(null);
+  const [dialog, setDialog] = useState<null | "ship" | "refund" | "return" | "cancel" | "edit">(null);
   const [note, setNote] = useState("");
   const [noteVis, setNoteVis] = useState<"internal" | "customer">("internal");
   const o = q.data;
@@ -69,6 +69,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
   const toShip = (o.lines ?? []).some((l) => l.qty - l.cancelledQty - l.fulfilledQty > 0);
   const refundable = Math.max(o.paidTotal ?? 0, 0) > 0;
   const returnable = (o.lines ?? []).some((l) => l.fulfilledQty - l.returnedQty > 0);
+  const editable = o.status === "paid" && (o.lines ?? []).every((l) => l.fulfilledQty === 0);
   const timeline = [...(o.events ?? [])].reverse();
 
   return (
@@ -88,6 +89,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
         {canEdit && (
           <div className="flex flex-wrap gap-2">
             {open && toShip && <Button onClick={() => setDialog("ship")}><Truck aria-hidden="true" /> Enviar productos</Button>}
+            {editable && <Button variant="outline" onClick={() => setDialog("edit")}><PencilLine aria-hidden="true" /> Editar productos</Button>}
             {open && returnable && <Button variant="outline" onClick={() => setDialog("return")}><Undo2 aria-hidden="true" /> Devolución</Button>}
             {open && refundable && <Button variant="outline" onClick={() => setDialog("refund")}><RotateCcw aria-hidden="true" /> Reembolsar</Button>}
             {(open || o.status === "pending_payment") && <Button variant="outline" className="text-destructive" onClick={() => setDialog("cancel")}><Ban aria-hidden="true" /> Cancelar pedido</Button>}
@@ -126,7 +128,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
                 </Table>
               </div>
               <dl className="ml-auto grid w-full max-w-xs gap-1 text-sm">
-                {([["Productos", o.itemsTotal], o.discounts ? ["Descuentos", -o.discounts] : null, ["Envío", o.shipping]] as ([string, number] | null)[]).filter(Boolean).map((r) => (
+                {([["Productos", o.itemsTotal], o.discounts ? ["Descuentos", -o.discounts] : null, ["Envío", o.shipping], ...(o.feeLines ?? []).map((f) => [f.name, f.amount] as [string, number])] as ([string, number] | null)[]).filter(Boolean).map((r) => (
                   <div key={r![0]} className="flex justify-between"><dt className="text-muted-foreground">{r![0]}</dt><dd className="tabular-nums">{formatMoney(r![1], cur)}</dd></div>
                 ))}
                 <div className="flex justify-between border-t pt-1 font-semibold"><dt>Total</dt><dd className="tabular-nums">{formatMoney(o.grandTotal, cur)}</dd></div>
@@ -274,6 +276,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
       {dialog === "ship" && <ShipDialog order={o} onClose={() => setDialog(null)} onDone={refresh} />}
       {dialog === "refund" && <RefundDialog order={o} onClose={() => setDialog(null)} onDone={refresh} />}
       {dialog === "return" && <ReturnDialog order={o} onClose={() => setDialog(null)} onDone={refresh} />}
+      {dialog === "edit" && <EditDialog order={o} onClose={() => setDialog(null)} onDone={refresh} />}
       {dialog === "cancel" && <CancelDialog order={o} onClose={() => setDialog(null)} onDone={refresh} />}
     </main>
   );
@@ -391,12 +394,14 @@ function ReturnDialog({ order, onClose, onDone }: DP) {
   const [reason, setReason] = useState("size");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [swap, setSwap] = useState(false);
+  const [newItems, setNewItems] = useState<NewItem[]>([]);
   const items = picked(qty).map((i) => ({ ...i, reason }));
   async function go() {
     setBusy(true);
     try {
-      const r = await sale.createReturn(order.id, { items, note: note.trim() });
-      toast.success(`Devolución ${r.number} creada. Cuando llegue el paquete, márcala como recibida.`);
+      const r = await sale.createReturn(order.id, { items, note: note.trim(), exchange: swap ? newItems.filter((x) => x.sku && x.qty > 0) : undefined });
+      toast.success(swap ? `Cambio ${r.number} creado. El producto nuevo ya está apartado; se envía cuando registres la devolución.` : `Devolución ${r.number} creada. Cuando llegue el paquete, márcala como recibida.`);
       onDone();
       onClose();
     } catch (e) {
@@ -412,7 +417,85 @@ function ReturnDialog({ order, onClose, onDone }: DP) {
       <div className="grid gap-1.5"><Label htmlFor="rt-reason">Motivo</Label>
         <Select value={reason} onValueChange={setReason}><SelectTrigger id="rt-reason"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(REASONS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
       </div>
+      <label className="flex items-center gap-2 text-sm"><Checkbox checked={swap} onCheckedChange={(c) => setSwap(!!c)} /> Cambiar por otro producto en lugar de reembolsar</label>
+      {swap && <><p className="text-xs text-muted-foreground">El valor de lo devuelto paga lo nuevo. Si lo nuevo cuesta más, el pedido queda con saldo por cobrar; si cuesta menos, la diferencia se reembolsa al recibir la devolución.</p>
+        <SkuLines value={newItems} onChange={setNewItems} idPrefix="ex" /></>}
       <div className="grid gap-1.5"><Label htmlFor="rt-note">Nota</Label><Textarea id="rt-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></div>
+    </Shell>
+  );
+}
+
+interface NewItem { sku: string; qty: number }
+
+/** SkuLines: rows of SKU and quantity, with suggestions from the catalog. */
+function SkuLines({ value, onChange, idPrefix }: { value: NewItem[]; onChange: (v: NewItem[]) => void; idPrefix: string }) {
+  const [q, setQ] = useState("");
+  const hits = useQuery({ queryKey: ["product-search", q], queryFn: () => sale.productSearch(q), enabled: q.trim().length >= 2, staleTime: 30_000 });
+  const set = (i: number, p: Partial<NewItem>) => onChange(value.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const options = (hits.data ?? []).flatMap((p) => p.skus.map((sku) => ({ sku, title: p.title })));
+  return (
+    <div className="grid gap-2">
+      <datalist id={`${idPrefix}-skus`}>{options.map((o) => <option key={o.sku} value={o.sku}>{o.title}</option>)}</datalist>
+      {value.map((x, i) => (
+        <div key={i} className="flex items-end gap-2">
+          <div className="grid flex-1 gap-1"><Label htmlFor={`${idPrefix}-sku-${i}`}>SKU</Label><Input id={`${idPrefix}-sku-${i}`} className="font-mono" list={`${idPrefix}-skus`} value={x.sku} placeholder="Escribe nombre o SKU"
+            onChange={(e) => { set(i, { sku: e.target.value.trim() }); setQ(e.target.value); }} /></div>
+          <div className="grid w-24 gap-1"><Label htmlFor={`${idPrefix}-qty-${i}`}>Cantidad</Label><Input id={`${idPrefix}-qty-${i}`} inputMode="numeric" value={String(x.qty)} onChange={(e) => set(i, { qty: Math.max(0, Number(e.target.value.replace(/\D/g, "")) || 0) })} /></div>
+          <Button type="button" variant="ghost" size="icon" aria-label={`Quitar ${x.sku || "producto"}`} onClick={() => onChange(value.filter((_, j) => j !== i))}><Trash2 className="size-4" /></Button>
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => onChange([...value, { sku: "", qty: 1 }])}><Plus className="size-4" /> Agregar producto</Button>
+    </div>
+  );
+}
+
+/** EditDialog: take items out of a paid, unshipped order and add new ones, with a preview of the difference. */
+function EditDialog({ order, onClose, onDone }: DP) {
+  const left = (l: NonNullable<Order["lines"]>[number]) => l.qty - l.cancelledQty;
+  const [qty, setQty] = useState<Qty>({});
+  const [add, setAdd] = useState<NewItem[]>([]);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<{ before: OTotals; after: OTotals; difference: number } | null>(null);
+  const [err, setErr] = useState("");
+  const body = (dryRun: boolean) => ({ add: add.filter((x) => x.sku && x.qty > 0), remove: picked(qty), reason: reason.trim(), dryRun });
+  const empty = !body(true).add.length && !body(true).remove.length;
+  const key = JSON.stringify(body(true));
+  useEffect(() => {
+    setPreview(null); setErr("");
+    if (empty) return;
+    const t = setTimeout(() => { sale.editOrder(order.id, body(true)).then(setPreview).catch((e) => setErr(errorMessage(e))); }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  async function go() {
+    setBusy(true);
+    try {
+      const r = await sale.editOrder(order.id, body(false));
+      toast.success(r.difference > 0 ? `Pedido editado. El cliente debe ${formatMoney(r.difference, order.currency)}; envíale el enlace de pago.` : r.difference < 0 ? `Pedido editado. Reembolsamos ${formatMoney(-r.difference, order.currency)} al cliente.` : "Pedido editado.");
+      if (r.refundError) toast.error(`El reembolso no pasó: ${r.refundError}`);
+      onDone(); onClose();
+    } catch (e) {
+      setErr(errorMessage(e)); toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const m = (v: number) => formatMoney(v, order.currency);
+  return (
+    <Shell title={`Editar productos del pedido #${order.number}`} description="Quita o agrega productos antes de enviar. Las piezas que quitas vuelven al inventario; las nuevas se apartan. El envío y el descuento se conservan." onClose={onClose}
+      footer={<Button onClick={() => void go()} disabled={busy || empty || !preview}>{busy ? "Guardando…" : "Guardar cambios"}</Button>}>
+      <h4 className="text-sm font-medium">Quitar</h4>
+      <QtyPicker lines={order.lines} max={left} value={qty} onChange={setQty} />
+      <h4 className="text-sm font-medium">Agregar</h4>
+      <SkuLines value={add} onChange={setAdd} idPrefix="ed" />
+      <div className="grid gap-1.5"><Label htmlFor="ed-reason">Motivo</Label><Input id="ed-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Queda en el historial del pedido" /></div>
+      {err && <Notice tone="bad">{err}</Notice>}
+      {preview && <div className="rounded-md border p-3 text-sm" data-testid="edit-preview">
+        <p>Total: {m(preview.before.grandTotal)} → <strong>{m(preview.after.grandTotal)}</strong></p>
+        <p className={preview.difference > 0 ? "text-warn" : preview.difference < 0 ? "text-ok" : "text-muted-foreground"}>
+          {preview.difference > 0 ? `El cliente pagará ${m(preview.difference)} más (saldo por cobrar).` : preview.difference < 0 ? `Se reembolsan ${m(-preview.difference)} al cliente.` : "Sin diferencia de precio."}</p>
+      </div>}
     </Shell>
   );
 }

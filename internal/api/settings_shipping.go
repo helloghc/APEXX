@@ -622,6 +622,8 @@ type productClassView struct {
 	Handle          string `json:"handle"`
 	TaxClass        string `json:"taxClass"`
 	ShippingProfile string `json:"shippingProfile"`
+	HSCode          string `json:"hsCode,omitempty"`
+	Origin          string `json:"origin,omitempty"`
 	Missing         bool   `json:"missing,omitempty"` // the product no longer exists
 }
 
@@ -635,7 +637,7 @@ func (s *Server) listProductClasses(w http.ResponseWriter, r *http.Request) {
 	t, _ := s.Proj.Tenant(tenant)
 	out := make([]productClassView, 0, len(c.Products))
 	for id, pc := range c.Products {
-		v := productClassView{ProductID: id, TaxClass: pc.TaxClass, ShippingProfile: pc.ShippingProfile, Title: id}
+		v := productClassView{ProductID: id, TaxClass: pc.TaxClass, ShippingProfile: pc.ShippingProfile, HSCode: pc.HSCode, Origin: pc.Origin, Title: id}
 		if t != nil {
 			if p, err := t.Catalog.Get(id); err == nil {
 				v.Title, v.Handle = p.Title, p.Handle
@@ -652,9 +654,30 @@ func (s *Server) listProductClasses(w http.ResponseWriter, r *http.Request) {
 func (s *Server) putProductClass(w http.ResponseWriter, r *http.Request) {
 	pr := principal(r)
 	id := r.PathValue("id")
-	var pc logistics.ProductClass
-	if !decode(w, r, &pc) {
+	// Fields left out keep their value: a screen that edits only the tax
+	// class does not erase the customs data, and the other way round.
+	var in struct {
+		TaxClass        *string `json:"taxClass"`
+		ShippingProfile *string `json:"shippingProfile"`
+		HSCode          *string `json:"hsCode"`
+		Origin          *string `json:"origin"`
+	}
+	if !decode(w, r, &in) {
 		return
+	}
+	c, err := s.DB.LoadLogistics(r.Context(), pr.Tenant)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	pc := c.Products[id]
+	for _, f := range []struct {
+		src *string
+		dst *string
+	}{{in.TaxClass, &pc.TaxClass}, {in.ShippingProfile, &pc.ShippingProfile}, {in.HSCode, &pc.HSCode}, {in.Origin, &pc.Origin}} {
+		if f.src != nil {
+			*f.dst = *f.src
+		}
 	}
 	if pc.TaxClass == "" {
 		pc.TaxClass = logistics.TaxGeneral
@@ -663,10 +686,12 @@ func (s *Server) putProductClass(w http.ResponseWriter, r *http.Request) {
 	if !logistics.ValidTaxClass(pc.TaxClass) {
 		errs = append(errs, apierr.FieldError{Field: "taxClass", Code: "invalid", Message: "Clase: general, exento o tasa0"})
 	}
-	c, err := s.DB.LoadLogistics(r.Context(), pr.Tenant)
-	if err != nil {
-		internalError(w, s.Log, err)
-		return
+	pc.HSCode, pc.Origin = strings.TrimSpace(pc.HSCode), strings.ToUpper(strings.TrimSpace(pc.Origin))
+	if digits := strings.ReplaceAll(pc.HSCode, ".", ""); pc.HSCode != "" && (len(digits) < 6 || len(digits) > 10 || strings.Trim(digits, "0123456789") != "") {
+		errs = append(errs, apierr.FieldError{Field: "hsCode", Code: "invalid", Message: "El código arancelario tiene de 6 a 10 dígitos"})
+	}
+	if pc.Origin != "" && (len(pc.Origin) != 2 || strings.Trim(pc.Origin, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") != "") {
+		errs = append(errs, apierr.FieldError{Field: "origin", Code: "invalid", Message: "El país de origen son dos letras, como MX o CN"})
 	}
 	if pc.ShippingProfile != "" {
 		p, ok := find(c.Profiles, func(x logistics.Profile) bool { return x.ID == pc.ShippingProfile })
@@ -724,4 +749,14 @@ func (s *Server) productSearch(w http.ResponseWriter, r *http.Request) {
 		out = append(out, it)
 	}
 	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": out})
+}
+
+// getProductClass is the class of one product (general and standard when it has none).
+func (s *Server) getProductClass(w http.ResponseWriter, r *http.Request) {
+	c, err := s.DB.LoadLogistics(r.Context(), principal(r).Tenant)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, c.ProductClassOf(r.PathValue("id")))
 }

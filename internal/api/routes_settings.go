@@ -42,6 +42,7 @@ func (s *Server) routesSettings(handle func(string, http.HandlerFunc)) {
 	handle("POST /v1/tax/defaults", s.authed(mod, auth.Admin, s.taxDefaults))
 	handle("POST /v1/tax/preview", s.authed(mod, auth.Read, s.taxPreview))
 	handle("GET /v1/product-classes", s.authed(mod, auth.Read, s.listProductClasses))
+	handle("GET /v1/product-classes/{id}", s.authed(mod, auth.Read, s.getProductClass))
 	handle("PUT /v1/product-classes/{id}", s.authed(mod, auth.Admin, s.putProductClass))
 	handle("GET /v1/product-search", s.authed(mod, auth.Read, s.productSearch))
 

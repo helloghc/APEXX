@@ -580,6 +580,7 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
             </div>
           </Section>
           {!isNew && <QtyRules id={id} canEdit={canEdit} />}
+          {!isNew && <Customs id={id} canEdit={can(me, "settings", "admin")} />}
           {!isNew && <Translations id={id} canEdit={canEdit} />}
         </div>
 
@@ -724,6 +725,40 @@ interface QtyRule { group: string; min: number; max: number; step: number }
 
 /** Quantity rules: minimum, maximum and multiples per order, for everyone or
  *  for the companies of one price group. The cart enforces them. */
+interface CustomsData { hsCode?: string; origin?: string }
+
+/** Customs data for import duties: tariff code and country of origin. */
+function Customs({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["product", id, "customs"], queryFn: () => request<CustomsData>("GET", `/v1/product-classes/${encodeURIComponent(id)}`) });
+  const [v, setV] = useState<CustomsData>({});
+  const [busy, setBusy] = useState(false);
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  useEffect(() => { if (q.data) setV({ hsCode: q.data.hsCode ?? "", origin: q.data.origin ?? "" }); }, [q.data]);
+  if (!q.data) return null;
+  const dirty = (v.hsCode ?? "") !== (q.data.hsCode ?? "") || (v.origin ?? "") !== (q.data.origin ?? "");
+  async function save() {
+    setBusy(true); setErrs({});
+    try {
+      await request("PUT", `/v1/product-classes/${encodeURIComponent(id)}`, { hsCode: v.hsCode ?? "", origin: (v.origin ?? "").toUpperCase() });
+      toast.success("Datos aduanales guardados. Los aranceles ya se calculan con ellos.");
+      void qc.invalidateQueries({ queryKey: ["product", id, "customs"] });
+    } catch (e) {
+      setErrs(fieldErrors(e)); toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Section title="Aduanas" description="Para vender en otros países: con el código arancelario y el país de origen, Apexx calcula los impuestos de importación y el comprador los paga al comprar, no al recibir." actions={canEdit && <Button size="sm" disabled={!dirty || busy} onClick={() => void save()}>{busy ? "Guardando…" : "Guardar"}</Button>}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Código arancelario (HS)" htmlFor="cu-hs" hint={errs.hsCode || "De 6 a 10 dígitos, por ejemplo 6109.10"}><Input id="cu-hs" className="font-mono" value={v.hsCode ?? ""} disabled={!canEdit} onChange={(e) => setV({ ...v, hsCode: e.target.value })} /></Field>
+        <Field label="País de origen" htmlFor="cu-origin" hint={errs.origin || "Dos letras: MX, CN, US"}><Input id="cu-origin" className="font-mono uppercase" maxLength={2} value={v.origin ?? ""} disabled={!canEdit} onChange={(e) => setV({ ...v, origin: e.target.value.toUpperCase() })} /></Field>
+      </div>
+    </Section>
+  );
+}
+
 function QtyRules({ id, canEdit }: { id: string; canEdit: boolean }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["product", id, "qty-rules"], queryFn: () => request<{ rules: QtyRule[] }>("GET", `/v1/products/${encodeURIComponent(id)}/quantity-rules`) });

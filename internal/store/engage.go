@@ -402,3 +402,6 @@ const KeyLanguages = "languages"
 
 // KeyQtyRules is the TopicSettings key of product quantity rules.
 const KeyQtyRules = "qty_rules"
+
+// KeyOrderFees is the TopicSettings key of the extra charges per order.
+const KeyOrderFees = "order_fees"

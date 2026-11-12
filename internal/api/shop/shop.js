@@ -141,6 +141,7 @@
       "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + (r.shipping.estimate ? ". " + esc(r.shipping.estimate.text) : ", " + r.shipping.estimateDays + " días") + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : ((r.messages || []).some((m) => m.code === "no_shipping_option") ? "Sin entrega disponible" : "Ingresa tu código postal")) + "</td></tr>" +
       // Where prices exclude tax it is added before the total; an exempt buyer
       // sees the tax taken out.
+      (r.fees || []).map((f) => "<tr><td>" + esc(f.name) + " <span class='muted'>" + esc(f.reason) + "</span></td><td class='num'>" + money({ amount: f.amount, currency: t.grand.currency }) + "</td></tr>").join("") +
       (adj > 0 ? taxLines.map((x) => "<tr><td>" + esc(x.label) + "</td><td class='num'>" + money({ amount: x.tax, currency: t.grand.currency }) + "</td></tr>").join("") : "") +
       (adj < 0 ? "<tr><td>Impuestos (exento)</td><td class='num'>−" + money({ amount: -adj, currency: t.grand.currency }) + "</td></tr>" : "") +
       "<tr class='grand'><td>Total</td><td class='num'>" + money(t.grand) + "</td></tr>" +
@@ -378,6 +379,7 @@
       (o.shippingMethod ? "<p>" + esc(o.shippingMethod.name) + (o.shippingMethod.estimate ? ": " + esc(o.shippingMethod.estimate.text.toLowerCase()) : "") + (o.shippingMethod.pickupAddress ? " · " + esc(o.shippingMethod.pickupAddress) : "") + ".</p>" : "") +
       "<table><tbody>" + o.lines.map((l) => "<tr><td>" + l.qty + " × " + esc(l.title) + "</td><td class='num'>" + m(l.total) + "</td></tr>").join("") +
       "<tr><td>Envío</td><td class='num'>" + m(o.shipping) + "</td></tr>" + (o.discounts ? "<tr><td>Descuentos</td><td class='num'>−" + m(o.discounts) + "</td></tr>" : "") +
+      (o.feeLines || []).map((f) => "<tr><td>" + esc(f.name) + "</td><td class='num'>" + m(f.amount) + "</td></tr>").join("") +
       "<tr class='grand'><td><strong>Total pagado</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
       "<p class='muted'>Te enviaremos la factura por correo en unos minutos.</p>";
   }

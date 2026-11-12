@@ -548,3 +548,10 @@ func (c *Config) TaxFor(country, cp, channelRegion string, fallbackBps int64, pa
 	}
 	return res
 }
+
+// FormatBps writes basis points as a percent: 250 -> "2.5".
+func FormatBps(bps int64) string {
+	s := fmt.Sprintf("%d.%02d", bps/100, bps%100)
+	s = strings.TrimRight(strings.TrimRight(s, "0"), ".")
+	return s
+}

@@ -142,6 +142,24 @@ func (s *Server) validateChannel(r *http.Request, c *cart.Channel) ([]apierr.Fie
 	if c.Market && c.Country == "" {
 		add("country", "required", "Un mercado necesita su país")
 	}
+	// Import duties.
+	if c.DutyBps < 0 || c.DutyBps > 10000 || c.DutyMinimis < 0 {
+		add("dutyBps", "out_of_range", "El arancel va de 0% a 100% y el monto exento no puede ser negativo")
+	}
+	if len(c.DutyRules) > 100 {
+		add("dutyRules", "too_many", "Máximo 100 tasas por código arancelario")
+	}
+	for i := range c.DutyRules {
+		d := &c.DutyRules[i]
+		d.HSPrefix = strings.ReplaceAll(strings.TrimSpace(d.HSPrefix), ".", "")
+		if d.HSPrefix == "" || len(d.HSPrefix) > 10 || strings.Trim(d.HSPrefix, "0123456789") != "" || d.Bps < 0 || d.Bps > 10000 {
+			add("dutyRules", "invalid", "Cada tasa lleva el inicio del código arancelario (solo dígitos) y un porcentaje de 0 a 100")
+			break
+		}
+	}
+	if (c.DutyBps > 0 || len(c.DutyRules) > 0) && c.Country == "" {
+		add("country", "required", "Para cobrar aranceles el canal necesita su país")
+	}
 	return errs, nil
 }
 

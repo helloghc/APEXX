@@ -8,6 +8,7 @@ function qs(params: Record<string, string | number | undefined | null>): string 
 
 // ---------- orders ----------
 
+export interface OTotals { itemsTotal: number; discounts: number; shipping: number; taxIncluded: number; grandTotal: number }
 export interface OLine { line: number; sku: string; title: string; qty: number; unit: number; total: number; fulfilledQty: number; returnedQty: number; refundedQty: number; cancelledQty: number }
 export interface OEvent { seq: number; at: string; actor: string; type: string; from: string | null; to: string; data?: Record<string, unknown> }
 export interface OPayment { provider: string; ref: string; status: string; amount: number; refunded: number }
@@ -31,6 +32,8 @@ export interface Order {
   fulfillments?: Fulfillment[]; refunds?: Refund[]; returns?: Return[]; notes?: ONote[];
   promotions?: { promotionId: string; promotionName: string; coupon?: string; amount: number; status: string }[];
   createdAt: string;
+  fees?: number;
+  feeLines?: { id: string; kind: string; name: string; amount: number; reason: string }[];
 }
 export interface OrderQuery { review?: string; q?: string; status?: string; payment?: string; fulfillment?: string; from?: string; to?: string; customer?: string; cursor?: string; limit?: number }
 export interface Quote { items: { line: number; sku: string; qty: number; amount: number }[]; itemsAmount: number; shipping: number; suggested: number; maxRefundable: number; shippingLeft: number; tax: number }
@@ -66,7 +69,10 @@ export const sale = {
   refundQuote: (id: string, b: { lines: { line: number; qty: number }[]; shipping: number; restock: boolean }) => request<Quote>("POST", `/v1/orders/${enc(id)}/refunds/quote`, b),
   refund: (id: string, b: { lines: { line: number; qty: number }[]; shipping: number; amount?: number; reason: string; restock: boolean; notify?: boolean; toCredit?: boolean }, key: string) =>
     request<Refund>("POST", `/v1/orders/${enc(id)}/refunds`, b, { headers: { "Idempotency-Key": key } }),
-  createReturn: (id: string, b: { items: { line: number; qty: number; reason: string }[]; note: string }) => request<Return>("POST", `/v1/orders/${enc(id)}/returns`, b),
+  createReturn: (id: string, b: { items: { line: number; qty: number; reason: string }[]; note: string; exchange?: { sku: string; qty: number }[] }) => request<Return>("POST", `/v1/orders/${enc(id)}/returns`, b),
+  editOrder: (id: string, b: { add: { sku: string; qty: number }[]; remove: { line: number; qty: number }[]; reason: string; dryRun: boolean }) =>
+    request<{ before: OTotals; after: OTotals; difference: number; refundError?: string }>("POST", `/v1/orders/${enc(id)}/edit`, b),
+  productSearch: (q: string) => request<{ items: { id: string; title: string; skus: string[] }[] }>("GET", `/v1/product-search?q=${enc(q)}`).then((r) => r.items),
   addNote: (id: string, body: string, visibility: "internal" | "customer") => request<ONote>("POST", `/v1/orders/${enc(id)}/notes`, { body, visibility }),
   deleteNote: (id: string, note: string) => request<void>("DELETE", `/v1/orders/${enc(id)}/notes/${enc(note)}`, undefined, { as: "none" }),
   cancel: (id: string, reason: string) => request<Order>("POST", `/v1/orders/${enc(id)}/cancel`, { reason }),

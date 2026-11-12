@@ -187,6 +187,8 @@ type Order struct {
 	// DisplayNumber is what the shopper sees: store prefix + number.
 	DisplayNumber  string               `json:"displayNumber"`
 	PONumber       string               `json:"poNumber,omitempty"`
+	Fees           int64                `json:"fees"`               // extra charges and import duties, in the total
+	FeeLines       []cart.Fee           `json:"feeLines,omitempty"` // each one with its reason
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
 	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`
 }
@@ -525,10 +527,11 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code,
-				shipping_method, tax_detail, display_number, tax_adjust, po_number)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+				shipping_method, tax_detail, display_number, tax_adjust, po_number, fees, fee_lines)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
 			tenant, id, number, req.Channel, StatusPendingPayment, string(tot.Grand.Currency), tot.Items.Amount, tot.Discounts.Amount,
-			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number), tot.TaxAdjust.Amount, req.PONumber); err != nil {
+			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number), tot.TaxAdjust.Amount, req.PONumber,
+			tot.Fees.Amount, feeJSON(sim.Fees)); err != nil {
 			return err
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
@@ -927,4 +930,13 @@ func renewalCustomer(r *Renewal) string {
 		return ""
 	}
 	return r.PaymentCustomer
+}
+
+// feeJSON is the extra charges of an order as stored ([] when none).
+func feeJSON(f []cart.Fee) []byte {
+	if len(f) == 0 {
+		return []byte("[]")
+	}
+	b, _ := json.Marshal(f)
+	return b
 }

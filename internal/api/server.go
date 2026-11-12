@@ -189,6 +189,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesFeeds(handle)
 	s.routesMarketplace(handle)
 	s.routesB2B(handle)
+	s.routesFees(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 
