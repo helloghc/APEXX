@@ -81,14 +81,14 @@ type CompanyAccess struct {
 	CreditOnly        bool   `json:"creditOnly"`
 	// The buyer: approval level (when Approver), monthly cap and what they
 	// used this month, branch, and whether they manage the company's buyers.
-	ApproverLevel int            `json:"approverLevel,omitempty"`
-	MonthlyLimit  int64          `json:"monthlyLimit,omitempty"`
-	MonthSpent    int64          `json:"monthSpent,omitempty"`
-	Location      string         `json:"location,omitempty"`
-	LocationName  string         `json:"locationName,omitempty"`
-	LocationLimit int64          `json:"locationLimit,omitempty"`
-	LocationSpent int64          `json:"locationSpent,omitempty"`
-	Admin         bool           `json:"admin,omitempty"`
+	ApproverLevel     int            `json:"approverLevel,omitempty"`
+	MonthlyLimit      int64          `json:"monthlyLimit,omitempty"`
+	MonthSpent        int64          `json:"monthSpent,omitempty"`
+	Location          string         `json:"location,omitempty"`
+	LocationName      string         `json:"locationName,omitempty"`
+	LocationLimit     int64          `json:"locationLimit,omitempty"`
+	LocationSpent     int64          `json:"locationSpent,omitempty"`
+	Admin             bool           `json:"admin,omitempty"`
 	Rules             []ApprovalRule `json:"-"`
 	BuyerHash         []byte         `json:"-"`
 	CatalogRestricted bool           `json:"catalogRestricted,omitempty"`
