@@ -116,7 +116,7 @@ func (s *Server) localized(next http.Handler) http.Handler {
 			return
 		}
 		q := r.URL.Query()
-		mk := marketParam(t, q.Get("mk"))
+		mk := s.marketFor(r, t, parts[0], parts[1])
 		lang := q.Get("hl")
 		if lang == "" && mk != "" {
 			if c, _ := t.Channel(mk); c.Language != "" {
@@ -159,6 +159,22 @@ func marketParam(t interface {
 		}
 	}
 	return ""
+}
+
+type hostMarketKey struct{}
+
+// marketFor is the market a storefront page opens in: the one in the address
+// (?mk=), else the domain's, else the storefront's; "" is the main channel.
+func (s *Server) marketFor(r *http.Request, t interface {
+	Markets(string) []cart.Channel
+}, tenant, site string) string {
+	if mk := marketParam(t, r.URL.Query().Get("mk")); mk != "" || r.URL.Query().Get("mk") == mainChannel {
+		return mk
+	}
+	if v, _ := r.Context().Value(hostMarketKey{}).(string); v != "" {
+		return marketParam(t, v)
+	}
+	return marketParam(t, s.Proj.SiteMarket(tenant, site))
 }
 
 func isCustomHost(r *http.Request) bool {

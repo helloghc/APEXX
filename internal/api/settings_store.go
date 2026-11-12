@@ -680,6 +680,7 @@ func (s *Server) createDomain(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Hostname string `json:"hostname"`
 		Site     string `json:"site"`
+		Market   string `json:"market"`
 	}
 	if !decode(w, r, &body) {
 		return
@@ -698,6 +699,9 @@ func (s *Server) createDomain(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.openSite(pr.Tenant, body.Site); err != nil {
 		errs = append(errs, apierr.FieldError{Field: "site", Code: "unknown", Message: "El sitio no existe"})
 	}
+	if !s.validMarket(pr.Tenant, body.Market) {
+		errs = append(errs, apierr.FieldError{Field: "market", Code: "unknown", Message: "Ese mercado no está activo en tu tienda"})
+	}
 	if len(errs) > 0 {
 		apierr.BadRequest(w, "Revisa los campos marcados", errs...)
 		return
@@ -705,6 +709,12 @@ func (s *Server) createDomain(w http.ResponseWriter, r *http.Request) {
 	d, err := s.DB.CreateDomain(r.Context(), pr.Tenant, pr.Actor(), host, body.Site)
 	if s.storeError(w, err, "") {
 		return
+	}
+	if body.Market != "" && body.Market != mainChannel {
+		if s.storeError(w, s.DB.SetDomainMarket(r.Context(), pr.Tenant, pr.Actor(), d.ID, body.Market), "") {
+			return
+		}
+		d.Market = body.Market
 	}
 	httpx.JSON(w, r, http.StatusCreated, viewDomain(d))
 }

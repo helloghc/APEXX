@@ -306,6 +306,7 @@ export interface Domain {
   id: string;
   hostname: string;
   site: string;
+  market?: string;
   status: "pending" | "verified" | "failed";
   primary: boolean;
   lastError?: string;
@@ -428,7 +429,7 @@ export const sapi = {
 
   // domains
   domains: () => request<{ items: Domain[]; cnameTarget: string; defaultUrl: string }>("GET", "/v1/domains"),
-  createDomain: (hostname: string) => request<Domain>("POST", "/v1/domains", { hostname }),
+  createDomain: (hostname: string, site = "main", market = "") => request<Domain>("POST", "/v1/domains", { hostname, site, market }),
   verifyDomain: (id: string) => request<Domain>("POST", `/v1/domains/${enc(id)}/verify`),
   primaryDomain: (id: string) => request<unknown>("POST", `/v1/domains/${enc(id)}/primary`),
   deleteDomain: (id: string) => request<void>("DELETE", `/v1/domains/${enc(id)}`, undefined, noBody),

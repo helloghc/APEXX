@@ -290,7 +290,8 @@ func (p *Projector) applySite(ctx context.Context, t *Tenant, key string) error 
 
 // hosts maps verified hostnames to their store, for every tenant.
 type hostIndex struct {
-	hosts atomic.Pointer[map[string]store.HostTarget]
+	hosts       atomic.Pointer[map[string]store.HostTarget]
+	siteMarkets atomic.Pointer[map[string]string] // "tenant/site" -> market
 }
 
 func (p *Projector) loadHosts(ctx context.Context) error {
@@ -298,8 +299,22 @@ func (p *Projector) loadHosts(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	sm, err := p.db.SiteMarkets(ctx)
+	if err != nil {
+		return err
+	}
 	p.hostIdx.hosts.Store(&m)
+	p.hostIdx.siteMarkets.Store(&sm)
 	return nil
+}
+
+// SiteMarket returns the market a storefront opens in ("" = main channel).
+func (p *Projector) SiteMarket(tenant, site string) string {
+	m := p.hostIdx.siteMarkets.Load()
+	if m == nil {
+		return ""
+	}
+	return (*m)[tenant+"/"+site]
 }
 
 // Host returns the store a verified custom hostname belongs to.

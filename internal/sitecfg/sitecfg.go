@@ -450,6 +450,7 @@ type Domain struct {
 	LastCheckedAt *time.Time `json:"lastCheckedAt"`
 	VerifiedAt    *time.Time `json:"verifiedAt"`
 	CreatedAt     time.Time  `json:"createdAt"`
+	Market        string     `json:"market"` // "" = the site's market
 }
 
 // VerifyHost is where the TXT record lives.

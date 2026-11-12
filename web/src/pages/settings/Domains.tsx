@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Copy, Globe, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { errorMessage, type Me } from "@/api";
+import { errorMessage, request, type Me } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form";
@@ -21,10 +21,12 @@ export function Domains({ me }: { me: Me }) {
   const q = useQuery({ queryKey: ["settings", "domains"], queryFn: sapi.domains });
   const canEdit = can(me, "settings", "admin");
   const [host, setHost] = useState("");
+  const [site, setSite] = useState("main");
+  const fronts = useQuery({ queryKey: ["storefronts"], queryFn: () => request<{ items: { id: string; name: string }[] }>("GET", "/v1/storefronts").then((r) => r.items) });
   const [error, setError] = useState<string | null>(null);
   const [del, setDel] = useState<Domain | null>(null);
   const refresh = () => void qc.invalidateQueries({ queryKey: ["settings", "domains"] });
-  const add = useMutation({ mutationFn: () => sapi.createDomain(host.trim().toLowerCase()), onSuccess: () => { toast.success("Dominio agregado. Ahora configura tu DNS."); setHost(""); refresh(); }, onError: (e) => setError(errorMessage(e)) });
+  const add = useMutation({ mutationFn: () => sapi.createDomain(host.trim().toLowerCase(), site), onSuccess: () => { toast.success("Dominio agregado. Ahora configura tu DNS."); setHost(""); refresh(); }, onError: (e) => setError(errorMessage(e)) });
   const verify = useMutation({ mutationFn: (id: string) => sapi.verifyDomain(id), onSuccess: (d) => { if (d.status === "verified") toast.success(`${d.hostname} está conectado.`); else toast.error(d.lastError || "Todavía no vemos los registros DNS."); refresh(); }, onError: (e) => toast.error(errorMessage(e)) });
   const primary = useMutation({ mutationFn: (id: string) => sapi.primaryDomain(id), onSuccess: () => { toast.success("Dominio principal actualizado."); refresh(); }, onError: (e) => toast.error(errorMessage(e)) });
   const remove = useMutation({ mutationFn: (id: string) => sapi.deleteDomain(id), onSuccess: () => { toast.success("Dominio eliminado."); setDel(null); refresh(); }, onError: (e) => toast.error(errorMessage(e)) });
@@ -41,6 +43,12 @@ export function Domains({ me }: { me: Me }) {
         <Section title="Conectar un dominio">
           <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); const v = validateHostname(host.trim().toLowerCase()); setError(v); if (!v) add.mutate(); }}>
             <FormField id="dm-host" label="Dominio" error={error ?? undefined}><Input className="w-72" value={host} onChange={(e) => setHost(e.target.value)} placeholder="www.tutienda.mx" /></FormField>
+            {(fronts.data?.length ?? 0) > 1 && (
+              <div className="grid gap-1"><label htmlFor="dm-site" className="text-sm font-medium">Tienda</label>
+                <select id="dm-site" className="h-9 rounded-md border bg-background px-2 text-sm" value={site} onChange={(e) => setSite(e.target.value)}>
+                  {fronts.data?.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select></div>
+            )}
             <Button type="submit" disabled={add.isPending}><Plus aria-hidden="true" /> Agregar</Button>
           </form>
         </Section>

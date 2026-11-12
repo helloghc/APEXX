@@ -97,7 +97,7 @@ func (s *Server) shopContext(w http.ResponseWriter, r *http.Request) (*projectio
 		return nil, pageData{}, false
 	}
 	ch := mainChannel
-	if mk := marketParam(t, r.URL.Query().Get("mk")); mk != "" {
+	if mk := s.marketFor(r, t, tenant, r.PathValue("site")); mk != "" {
 		ch = mk
 	}
 	if _, ok := t.Channel(ch); !ok {

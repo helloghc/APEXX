@@ -64,7 +64,7 @@ func (s *Server) siteRouting(next http.Handler) http.Handler {
 		tenant, site, rel, base := "", "", "", ""
 		if ht, ok := s.Proj.Host(requestHost(r)); ok && !platformPath(path) {
 			tenant, site, rel = ht.Tenant, ht.Site, path
-			r = r.WithContext(context.WithValue(r.Context(), hostKey{}, true))
+			r = r.WithContext(context.WithValue(context.WithValue(r.Context(), hostKey{}, true), hostMarketKey{}, ht.Market))
 		} else if strings.HasPrefix(path, "/s/") {
 			parts := strings.SplitN(path[3:], "/", 3)
 			if len(parts) == 3 && parts[0] != "assets" && parts[0] != "fonts" && parts[1] != "api" && parts[1] != "assets" {

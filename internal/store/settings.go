@@ -804,11 +804,11 @@ func (d *DB) DeleteRedirects(ctx context.Context, tenant, actor string, ids []st
 
 // ---------- domains ----------
 
-const domainCols = `id, hostname, site, status, token, is_primary, last_error, last_checked_at, verified_at, created_at`
+const domainCols = `id, hostname, site, status, token, is_primary, last_error, last_checked_at, verified_at, created_at, market`
 
 func scanDomain(r pgx.CollectableRow) (sitecfg.Domain, error) {
 	var x sitecfg.Domain
-	return x, r.Scan(&x.ID, &x.Hostname, &x.Site, &x.Status, &x.Token, &x.Primary, &x.LastError, &x.LastCheckedAt, &x.VerifiedAt, &x.CreatedAt)
+	return x, r.Scan(&x.ID, &x.Hostname, &x.Site, &x.Status, &x.Token, &x.Primary, &x.LastError, &x.LastCheckedAt, &x.VerifiedAt, &x.CreatedAt, &x.Market)
 }
 
 // Domains lists the custom domains of a store.
@@ -955,12 +955,14 @@ type HostTarget struct {
 	Tenant  string
 	Site    string
 	Primary bool
+	Market  string // the domain's market, else its site's ("" = main channel)
 }
 
 // VerifiedHosts returns every verified hostname of the platform (system pool:
 // routing by Host happens before any tenant is known).
 func (d *DB) VerifiedHosts(ctx context.Context) (map[string]HostTarget, error) {
-	rows, err := d.System.Query(ctx, `SELECT hostname, tenant_id, site, is_primary FROM domains WHERE status='verified'`)
+	rows, err := d.System.Query(ctx, `SELECT d.hostname, d.tenant_id, d.site, d.is_primary, COALESCE(NULLIF(d.market,''), s.market, '') FROM domains d
+		LEFT JOIN sites s ON s.tenant_id=d.tenant_id AND s.id=d.site WHERE d.status='verified'`)
 	if err != nil {
 		return nil, err
 	}
@@ -969,10 +971,45 @@ func (d *DB) VerifiedHosts(ctx context.Context) (map[string]HostTarget, error) {
 	for rows.Next() {
 		var h string
 		var t HostTarget
-		if err := rows.Scan(&h, &t.Tenant, &t.Site, &t.Primary); err != nil {
+		if err := rows.Scan(&h, &t.Tenant, &t.Site, &t.Primary, &t.Market); err != nil {
 			return nil, err
 		}
 		out[h] = t
 	}
 	return out, rows.Err()
+}
+
+// SiteMarkets returns the market of every site that opens in one ("tenant/site" -> market).
+func (d *DB) SiteMarkets(ctx context.Context) (map[string]string, error) {
+	rows, err := d.System.Query(ctx, `SELECT tenant_id, id, market FROM sites WHERE market <> ''`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var t, id, mk string
+		if err := rows.Scan(&t, &id, &mk); err != nil {
+			return nil, err
+		}
+		out[t+"/"+id] = mk
+	}
+	return out, rows.Err()
+}
+
+// SetDomainMarket points a domain to a market ("" = the site's market).
+func (d *DB) SetDomainMarket(ctx context.Context, tenant, actor, id, market string) error {
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		ct, err := tx.Exec(ctx, `UPDATE domains SET market=$3 WHERE tenant_id=$1 AND id=$2`, tenant, id, market)
+		if err != nil {
+			return err
+		}
+		if ct.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		if err := Emit(ctx, tx, tenant, TopicSettings, KeyDomains, nil); err != nil {
+			return err
+		}
+		return Audit(ctx, tx, tenant, actor, "domain.market", id, map[string]any{"market": market})
+	})
 }

@@ -100,7 +100,7 @@ func (p SitePersister) LoadSite() (drafts map[string]builder.Template, version i
 	ctx := p.ctx()
 	drafts = map[string]builder.Template{}
 	err = p.DB.Tx(ctx, p.Tenant, func(tx pgx.Tx) error {
-		e := tx.QueryRow(ctx, `SELECT draft_version FROM sites WHERE tenant_id=$1 AND id=$2`, p.Tenant, p.Site).Scan(&version)
+		e := tx.QueryRow(ctx, `SELECT draft_version FROM sites WHERE tenant_id=$1 AND id=$2 AND archived_at IS NULL`, p.Tenant, p.Site).Scan(&version)
 		if errors.Is(e, pgx.ErrNoRows) {
 			return nil
 		}
