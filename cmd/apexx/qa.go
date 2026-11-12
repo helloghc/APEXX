@@ -191,14 +191,14 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 		fmt.Printf("  %-34s %s@%s\n", x.who, x.email, *domain)
 	}
 	fmt.Printf("\nLlave storefront para pruebas de API: %s\n", sf)
-	qaRoles(ctx, log, a, &orders.Service{DB: db, Keys: keys, Projector: proj, Log: log}, *tenant, *domain, *pass)
+	qaRoles(ctx, log, a, &orders.Service{DB: db, Keys: keys, Projector: proj, Log: log}, *tenant, *domain, *pass, *n)
 }
 
 // qaRoles adds the roles that live outside the team screen, so QA can test
 // every portal from the first command: a sales rep who serves a B2B company,
 // a marketplace seller with its own person, and a company buyer who signs in
 // to the store with a code.
-func qaRoles(ctx context.Context, log *slog.Logger, a *auth.Service, ord *orders.Service, tenant, domain, pass string) {
+func qaRoles(ctx context.Context, log *slog.Logger, a *auth.Service, ord *orders.Service, tenant, domain, pass string, n int) {
 	members, _ := a.Members(ctx, tenant)
 	byEmail := map[string]auth.Member{}
 	for _, m := range members {
@@ -215,7 +215,15 @@ func qaRoles(ctx context.Context, log *slog.Logger, a *auth.Service, ord *orders
 	if _, ok := byEmail[sellerEmail]; !ok {
 		sel, err := ord.SaveSeller(ctx, tenant, "qa-setup", orders.Seller{Name: "Vendedor QA", Email: sellerEmail, CommissionBps: 1500, Status: "active"})
 		must(log, err, "seller")
-		must(log, ord.SetSellerProducts(ctx, tenant, "qa-setup", sel.ID, []string{"QA-00001", "QA-00002", "QA-00004", "QA-00005", "QA-00006"}), "seller products")
+		var ids []string // the first products, skipping the one in the 3x2 promotion
+		for i := 1; i <= n && len(ids) < 5; i++ {
+			if i != 3 {
+				ids = append(ids, fmt.Sprintf("QA-%05d", i))
+			}
+		}
+		if len(ids) > 0 {
+			must(log, ord.SetSellerProducts(ctx, tenant, "qa-setup", sel.ID, ids), "seller products")
+		}
 		_, token, err := a.Invite(ctx, tenant, "qa-setup", sellerEmail, "Vendedor QA", auth.Permissions{}, sel.ID)
 		must(log, err, "seller invite")
 		_, _, err = a.AcceptInvitation(ctx, token, "Vendedor QA", pass)

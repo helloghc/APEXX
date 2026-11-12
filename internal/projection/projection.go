@@ -525,27 +525,67 @@ func (p *Projector) Run(ctx context.Context) {
 	go p.listenLoop(ctx)
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
+	soon := time.NewTimer(time.Hour)
+	defer soon.Stop()
 	for {
 		if err := p.drain(ctx); err != nil && ctx.Err() == nil {
 			p.errs.Add(1)
 			p.log.Error("projector drain", "err", err)
+		}
+		// Another node may hold the sequencer: if events are still waiting
+		// for a position, look again in a few milliseconds, not in a second.
+		if n, err := p.db.OutboxPending(ctx, 0); err == nil && n > 0 {
+			soon.Reset(5 * time.Millisecond)
 		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-p.wake:
 		case <-tick.C:
+		case <-soon.C:
 		}
 	}
 }
 
-// Drain applies all pending events once (used by tests and on wake-up).
-func (p *Projector) Drain(ctx context.Context) error { return p.drain(ctx) }
+// Drain applies every event committed before the call, so a caller reads
+// its own writes (tests, and the API right after a write). If another node
+// holds the sequencer at that moment, Drain waits for it, up to five seconds.
+func (p *Projector) Drain(ctx context.Context) error {
+	upTo, err := p.db.OutboxLastID(ctx)
+	if err != nil {
+		return err
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	wait := 500 * time.Microsecond
+	for {
+		if err := p.drain(ctx); err != nil {
+			return err
+		}
+		n, err := p.db.OutboxPending(ctx, upTo)
+		if err != nil || n == 0 {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("projection: %d events still wait for a position", n)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(wait):
+		}
+		if wait < 20*time.Millisecond {
+			wait *= 2
+		}
+	}
+}
 
 func (p *Projector) drain(ctx context.Context) error {
 	p.drainMu.Lock()
 	defer p.drainMu.Unlock()
 	for {
+		if _, err := p.db.SequenceOutbox(ctx); err != nil {
+			return err
+		}
 		evs, err := p.db.OutboxAfter(ctx, p.cursor.Load(), 500)
 		if err != nil {
 			return err
@@ -569,7 +609,7 @@ func (p *Projector) drain(ctx context.Context) error {
 				}
 			}
 			p.applied.Add(1)
-			p.cursor.Store(e.ID)
+			p.cursor.Store(e.Seq)
 		}
 	}
 }

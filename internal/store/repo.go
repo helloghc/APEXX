@@ -775,36 +775,74 @@ func (d *DB) Promotions(ctx context.Context, tenant string) ([]PromotionRow, err
 
 // OutboxEvent is a row of the outbox.
 type OutboxEvent struct {
-	ID        int64
+	ID        int64 // identity of the event (stable, used by webhooks)
+	Seq       int64 // position in commit order; readers follow this
 	Tenant    string
 	Topic     string
 	Key       string
 	CreatedAt time.Time
 }
 
-// OutboxAfter returns up to limit events with id > after (system pool).
-func (d *DB) OutboxAfter(ctx context.Context, after int64, limit int) ([]OutboxEvent, error) {
-	rows, err := d.System.Query(ctx, `SELECT id, tenant_id, topic, key, created_at FROM outbox WHERE id > $1 ORDER BY id LIMIT $2`, after, limit)
-	if err != nil {
-		return nil, err
-	}
-	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (OutboxEvent, error) {
-		var e OutboxEvent
-		err := r.Scan(&e.ID, &e.Tenant, &e.Topic, &e.Key, &e.CreatedAt)
-		return e, err
+// SequenceOutbox numbers the committed events that have no position yet,
+// and returns how many. Only one caller at a time does it (transaction
+// advisory lock), so the numbers of one run become visible together and
+// always after those of the run before. A reader following seq therefore
+// never skips an event: one that commits late is numbered in a later run.
+func (d *DB) SequenceOutbox(ctx context.Context) (int64, error) {
+	var n int64
+	err := pgx.BeginFunc(ctx, d.System, func(tx pgx.Tx) error {
+		var leader bool
+		if err := tx.QueryRow(ctx, `SELECT pg_try_advisory_xact_lock(hashtext('apexx:outbox-sequencer'))`).Scan(&leader); err != nil || !leader {
+			return err
+		}
+		ct, err := tx.Exec(ctx, `UPDATE outbox o SET seq = s.n
+			FROM (SELECT id, nextval('outbox_order') AS n FROM (
+				SELECT id FROM outbox WHERE seq IS NULL ORDER BY id LIMIT 20000) x) s
+			WHERE o.id = s.id`)
+		n = ct.RowsAffected()
+		return err
 	})
+	return n, err
 }
 
-// OutboxMax returns the highest outbox id.
-func (d *DB) OutboxMax(ctx context.Context) (int64, error) {
+// OutboxPending counts committed events without a position yet (upTo > 0:
+// only those with id <= upTo).
+func (d *DB) OutboxPending(ctx context.Context, upTo int64) (int64, error) {
+	var n int64
+	err := d.System.QueryRow(ctx, `SELECT count(*) FROM outbox WHERE seq IS NULL AND ($1 = 0 OR id <= $1)`, upTo).Scan(&n)
+	return n, err
+}
+
+// OutboxLastID returns the highest outbox id written so far.
+func (d *DB) OutboxLastID(ctx context.Context) (int64, error) {
 	var id int64
 	err := d.System.QueryRow(ctx, `SELECT COALESCE(max(id),0) FROM outbox`).Scan(&id)
 	return id, err
 }
 
-// PruneOutbox deletes processed events older than keep.
+// OutboxAfter returns up to limit numbered events with seq > after (system pool).
+func (d *DB) OutboxAfter(ctx context.Context, after int64, limit int) ([]OutboxEvent, error) {
+	rows, err := d.System.Query(ctx, `SELECT id, seq, tenant_id, topic, key, created_at FROM outbox WHERE seq > $1 ORDER BY seq LIMIT $2`, after, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (OutboxEvent, error) {
+		var e OutboxEvent
+		err := r.Scan(&e.ID, &e.Seq, &e.Tenant, &e.Topic, &e.Key, &e.CreatedAt)
+		return e, err
+	})
+}
+
+// OutboxMax returns the highest outbox position (seq).
+func (d *DB) OutboxMax(ctx context.Context) (int64, error) {
+	var id int64
+	err := d.System.QueryRow(ctx, `SELECT COALESCE(max(seq),0) FROM outbox`).Scan(&id)
+	return id, err
+}
+
+// PruneOutbox deletes processed events (seq up to upTo) older than keep.
 func (d *DB) PruneOutbox(ctx context.Context, upTo int64, keep time.Duration) error {
-	_, err := d.System.Exec(ctx, `DELETE FROM outbox WHERE id <= $1 AND created_at < now() - $2::interval`, upTo, fmt.Sprintf("%d seconds", int(keep.Seconds())))
+	_, err := d.System.Exec(ctx, `DELETE FROM outbox WHERE seq <= $1 AND created_at < now() - $2::interval`, upTo, fmt.Sprintf("%d seconds", int(keep.Seconds())))
 	return err
 }
 

@@ -268,7 +268,7 @@ func (s *Service) Replay(ctx context.Context, tenant, actor, sub string, after i
 			}
 			return err
 		}
-		rows, err := tx.Query(ctx, `SELECT id, topic, key, payload FROM outbox WHERE tenant_id=$1 AND id > $2 ORDER BY id`, tenant, after)
+		rows, err := tx.Query(ctx, `SELECT id, topic, key, payload FROM outbox WHERE tenant_id=$1 AND seq > $2 ORDER BY seq`, tenant, after)
 		if err != nil {
 			return err
 		}
@@ -331,19 +331,21 @@ func (s *Service) Dispatch(ctx context.Context) (int, error) {
 		if err := tx.QueryRow(ctx, `SELECT cursor FROM dispatcher_cursor WHERE name='webhooks' FOR UPDATE`).Scan(&cursor); err != nil {
 			return err
 		}
-		rows, err := tx.Query(ctx, `SELECT id, tenant_id, topic, key, payload FROM outbox WHERE id > $1 ORDER BY id LIMIT 1000`, cursor)
+		// Follow the commit-ordered position (seq): an id can commit after a
+		// larger one and would be skipped.
+		rows, err := tx.Query(ctx, `SELECT id, seq, tenant_id, topic, key, payload FROM outbox WHERE seq > $1 ORDER BY seq LIMIT 1000`, cursor)
 		if err != nil {
 			return err
 		}
 		type ev struct {
-			id                 int64
+			id, seq            int64
 			tenant, topic, key string
 			payload            []byte
 		}
 		var evs []ev
 		for rows.Next() {
 			var e ev
-			if err := rows.Scan(&e.id, &e.tenant, &e.topic, &e.key, &e.payload); err != nil {
+			if err := rows.Scan(&e.id, &e.seq, &e.tenant, &e.topic, &e.key, &e.payload); err != nil {
 				rows.Close()
 				return err
 			}
@@ -388,16 +390,17 @@ func (s *Service) Dispatch(ctx context.Context) (int, error) {
 				n++
 			}
 		}
-		_, err = tx.Exec(ctx, `UPDATE dispatcher_cursor SET cursor=$1 WHERE name='webhooks'`, evs[len(evs)-1].id)
+		_, err = tx.Exec(ctx, `UPDATE dispatcher_cursor SET cursor=$1 WHERE name='webhooks'`, evs[len(evs)-1].seq)
 		return err
 	})
 	return n, err
 }
 
 // Envelope builds the CloudEvent for an outbox event with the current state.
-func (s *Service) Envelope(ctx context.Context, tenant string, id int64, topic, key string, payload []byte, at time.Time) CloudEvent {
+// id identifies the event; seq is its commit-ordered position (Sequence).
+func (s *Service) Envelope(ctx context.Context, tenant string, id, seq int64, topic, key string, payload []byte, at time.Time) CloudEvent {
 	ev := CloudEvent{SpecVersion: "1.0", ID: fmt.Sprintf("%s-%d", tenant, id), Source: "apexx/" + tenant, Type: TypeOf(topic, payload),
-		Subject: key, Time: at.UTC(), Tenant: tenant, Sequence: id, ContentType: "application/json", Data: payload}
+		Subject: key, Time: at.UTC(), Tenant: tenant, Sequence: seq, ContentType: "application/json", Data: payload}
 	if s.Proj != nil {
 		if t, ok := s.Proj.Tenant(tenant); ok {
 			var state any
@@ -447,7 +450,7 @@ func (s *Service) Send(ctx context.Context) (int, error) {
 			FROM due WHERE d.tenant_id=due.tenant_id AND d.subscription_id=due.subscription_id AND d.event_id=due.event_id
 			RETURNING d.tenant_id, d.subscription_id, d.event_id, d.attempts, d.created_at, d.subject)
 		SELECT c.tenant_id, c.subscription_id, c.event_id, c.attempts, c.created_at, w.url, w.secret_enc,
-			COALESCE(o.topic,''), COALESCE(o.key,c.subject), COALESCE(o.payload,'{}'::jsonb), COALESCE(o.created_at, c.created_at)
+			COALESCE(o.topic,''), COALESCE(o.key,c.subject), COALESCE(o.payload,'{}'::jsonb), COALESCE(o.created_at, c.created_at), COALESCE(o.seq, c.event_id)
 		FROM claimed c
 		JOIN webhook_subscriptions w ON w.tenant_id=c.tenant_id AND w.id=c.subscription_id AND w.active
 		LEFT JOIN outbox o ON o.id=c.event_id
@@ -465,11 +468,12 @@ func (s *Service) Send(ctx context.Context) (int, error) {
 		topic, key  string
 		payload     []byte
 		at          time.Time
+		seq         int64
 	}
 	var jobs []job
 	for rows.Next() {
 		var j job
-		if err := rows.Scan(&j.tenant, &j.sub, &j.event, &j.attempts, &j.created, &j.url, &j.secretEnc, &j.topic, &j.key, &j.payload, &j.at); err != nil {
+		if err := rows.Scan(&j.tenant, &j.sub, &j.event, &j.attempts, &j.created, &j.url, &j.secretEnc, &j.topic, &j.key, &j.payload, &j.at, &j.seq); err != nil {
 			rows.Close()
 			return 0, err
 		}
@@ -490,7 +494,7 @@ func (s *Service) Send(ctx context.Context) (int, error) {
 		if err != nil {
 			continue
 		}
-		ev := s.Envelope(ctx, j.tenant, j.event, j.topic, j.key, j.payload, j.at)
+		ev := s.Envelope(ctx, j.tenant, j.event, j.seq, j.topic, j.key, j.payload, j.at)
 		body, _ := json.Marshal(ev)
 		attempt := j.attempts + 1
 		status, sendErr := post(ctx, client, j.url, body, ev.ID, attempt, Sign(string(secret), time.Now().Unix(), body))
@@ -556,23 +560,23 @@ func post(ctx context.Context, c *http.Client, url string, body []byte, id strin
 func (s *Service) Feed(ctx context.Context, tenant string, after int64, limit int, types []string) ([]CloudEvent, error) {
 	var out []CloudEvent
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id, topic, key, payload, created_at FROM outbox WHERE tenant_id=$1 AND id > $2 ORDER BY id LIMIT $3`, tenant, after, limit*4)
+		rows, err := tx.Query(ctx, `SELECT id, seq, topic, key, payload, created_at FROM outbox WHERE tenant_id=$1 AND seq > $2 ORDER BY seq LIMIT $3`, tenant, after, limit*4)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() && len(out) < limit {
-			var id int64
+			var id, seq int64
 			var topic, key string
 			var payload []byte
 			var at time.Time
-			if err := rows.Scan(&id, &topic, &key, &payload, &at); err != nil {
+			if err := rows.Scan(&id, &seq, &topic, &key, &payload, &at); err != nil {
 				return err
 			}
 			if !matches(types, TypeOf(topic, payload)) {
 				continue
 			}
-			out = append(out, s.Envelope(ctx, tenant, id, topic, key, payload, at))
+			out = append(out, s.Envelope(ctx, tenant, id, seq, topic, key, payload, at))
 		}
 		return rows.Err()
 	})
