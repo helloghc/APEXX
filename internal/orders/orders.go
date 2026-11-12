@@ -126,18 +126,19 @@ type ShippingMethod struct {
 
 // Line is an order line. Fulfillable units = Qty - FulfilledQty - CancelledQty.
 type Line struct {
-	Line            int    `json:"line"`
-	SKU             string `json:"sku"`
-	Title           string `json:"title"`
-	Qty             int64  `json:"qty"`
-	Unit            int64  `json:"unit"`
-	Total           int64  `json:"total"`
-	FulfilledQty    int64  `json:"fulfilledQty"`
-	ReturnedQty     int64  `json:"returnedQty"`
-	RefundedQty     int64  `json:"refundedQty"`
-	CancelledQty    int64  `json:"cancelledQty"`
-	Origin          string `json:"origin,omitempty"`
-	PreorderShipsOn string `json:"preorderShipsOn,omitempty"` // sold on preorder: promised ship date
+	Line            int                `json:"line"`
+	SKU             string             `json:"sku"`
+	Title           string             `json:"title"`
+	Qty             int64              `json:"qty"`
+	Unit            int64              `json:"unit"`
+	Total           int64              `json:"total"`
+	FulfilledQty    int64              `json:"fulfilledQty"`
+	ReturnedQty     int64              `json:"returnedQty"`
+	RefundedQty     int64              `json:"refundedQty"`
+	CancelledQty    int64              `json:"cancelledQty"`
+	Origin          string             `json:"origin,omitempty"`
+	PreorderShipsOn string             `json:"preorderShipsOn,omitempty"` // sold on preorder: promised ship date
+	Custom          []cart.CustomValue `json:"custom,omitempty"`          // the buyer's personalization
 }
 
 // Event is one entry in the order history.
@@ -585,8 +586,20 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 			return err
 		}
 		for i, l := range sim.Lines {
-			if _, err := tx.Exec(ctx, `INSERT INTO order_lines (tenant_id, order_id, line, sku, title, qty, unit, total) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-				tenant, id, i+1, l.SKU, l.Title, l.Qty, l.Unit.Amount, l.Total.Amount); err != nil {
+			var custom []byte
+			title := l.Title
+			if len(l.Custom) > 0 {
+				// The title carries the personalization, so emails, packing
+				// slips and warehouses show what to make.
+				custom, _ = json.Marshal(l.Custom)
+				parts := make([]string, len(l.Custom))
+				for j, c := range l.Custom {
+					parts[j] = c.Label + ": " + c.Value
+				}
+				title += " (" + strings.Join(parts, " · ") + ")"
+			}
+			if _, err := tx.Exec(ctx, `INSERT INTO order_lines (tenant_id, order_id, line, sku, title, qty, unit, total, custom) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+				tenant, id, i+1, l.SKU, title, l.Qty, l.Unit.Amount, l.Total.Amount, custom); err != nil {
 				return err
 			}
 			if err := store.ReserveTx(ctx, tx, tenant, id, l.SKU, l.Qty, s.ttl()); err != nil {

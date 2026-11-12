@@ -515,6 +515,13 @@ type variantView struct {
 
 type specView struct{ Name, Value string }
 
+type customView struct {
+	ID, Label, Kind, Price, Help string
+	Required                     bool
+	MaxLength                    int
+	Choices                      []struct{ ID, Label, Price string }
+}
+
 type subChoice struct {
 	Percent string
 	Plans   []map[string]string
@@ -539,10 +546,11 @@ type productPage struct {
 	Extras           []extraSection // records of the store's own entities linked to this product
 	QtyMin, QtyStep  int64          // quantity rules for everyone (the cart enforces them too)
 	QtyMax           int64
-	Volume           []specView // volume prices of the first variant: "Desde 12 piezas" -> "$90.00 MXN"
-	Kit              []specView // what a kit contains: component -> "× 2"
-	PreShips         string     // first available variant on preorder: ship date
-	PreDeposit       string     // and the deposit paid now ("20"), empty when paid in full
+	Volume           []specView   // volume prices of the first variant: "Desde 12 piezas" -> "$90.00 MXN"
+	Kit              []specView   // what a kit contains: component -> "× 2"
+	Customs          []customView // personalization fields
+	PreShips         string       // first available variant on preorder: ship date
+	PreDeposit       string       // and the deposit paid now ("20"), empty when paid in full
 	Similar          []cardView
 	Accessories      []cardView
 	Price, CompareAt string
@@ -644,6 +652,23 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 				pg.QtyMin = (pg.QtyMin/pg.QtyStep + 1) * pg.QtyStep
 			}
 		}
+	}
+	cur := money.Currency("MXN")
+	if c, ok := t.Channel(pd.Channel); ok && c.Currency != "" {
+		cur = c.Currency
+	}
+	plus := func(n int64) string {
+		if n <= 0 {
+			return ""
+		}
+		return pesos(money.New(n, cur))
+	}
+	for _, f := range t.CustomsOf(p.ID) {
+		cv := customView{ID: f.ID, Label: f.Label, Kind: f.Kind, Price: plus(f.Price), Help: f.Help, Required: f.Required, MaxLength: f.MaxLength}
+		for _, c := range f.Choices {
+			cv.Choices = append(cv.Choices, struct{ ID, Label, Price string }{c.ID, c.Label, plus(c.Price)})
+		}
+		pg.Customs = append(pg.Customs, cv)
 	}
 	if len(p.Variants) > 0 {
 		for _, c := range t.Inventory.Bundle(p.Variants[0].SKU) {

@@ -629,6 +629,13 @@ func (p *Projector) listenLoop(ctx context.Context) {
 	}
 }
 
+// CustomsOf returns the personalization fields of a product.
+func (t *Tenant) CustomsOf(productID string) []cart.CustomField {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return append([]cart.CustomField(nil), t.Cart.Customs[productID]...)
+}
+
 // QtyRulesOf returns the quantity rules of a product.
 func (t *Tenant) QtyRulesOf(productID string) []cart.QtyRule {
 	t.mu.RLock()

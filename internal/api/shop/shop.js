@@ -53,10 +53,12 @@ function downloadsBox(ds) {
   }
   const PLAN = { "1w": "cada semana", "2w": "cada 2 semanas", "1m": "cada mes", "2m": "cada 2 meses", "3m": "cada 3 meses", "6m": "cada 6 meses" };
   const preNote = (l) => l.preorder ? "<br><small class='muted'>Preventa: se envía a partir del " + esc(new Date(l.preorder.shipsOn + "T12:00:00").toLocaleDateString(document.documentElement.lang || "es-MX", { dateStyle: "long" })) + "</small>" : "";
-  const planNote = (sku) => { const l = cart().find((x) => x.sku === sku); return l && l.plan && PLAN[l.plan] ? "<br><small class='muted'>Suscripción: entrega " + PLAN[l.plan] + "</small>" : ""; };
+  const keyOf = (x) => x.ref || x.sku;
+  const customNote = (l) => (l.custom || []).map((c) => "<br><small class='muted'>" + esc(c.label) + ": " + esc(c.value) + (c.price && c.price.amount ? " (+" + money(c.price) + ")" : "") + "</small>").join("");
+  const planNote = (sku) => { const l = cart().find((x) => keyOf(x) === sku); return l && l.plan && PLAN[l.plan] ? "<br><small class='muted'>Suscripción: entrega " + PLAN[l.plan] + "</small>" : ""; };
   // Only coupons the store confirmed as applied are kept; an invalid code is never stored or shown as applied.
   const coupons = () => store.get(CPN, []);
-  const simulate = (zip, extra = {}) => post("/simulate", { channel, postalCode: zip || undefined, shippingOption: store.get(SHIP, "") || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined })), coupons: coupons(), ...extra });
+  const simulate = (zip, extra = {}) => post("/simulate", { channel, postalCode: zip || undefined, shippingOption: store.get(SHIP, "") || undefined, items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined, custom: l.custom || undefined, ref: keyOf(l) })), coupons: coupons(), ...extra });
   // Drops stored codes that stopped applying and returns the reasons to show.
   const syncCoupons = (r) => {
     const res = r.coupons || [], lost = res.filter((c) => !c.applied && coupons().includes(c.code));
@@ -134,9 +136,18 @@ function downloadsBox(ds) {
       e.preventDefault();
       const s = sel(); if (!s) { status.textContent = "Elige una opción."; return; }
       const qty = Math.max(1, Math.min(50, parseInt($("#qty").value, 10) || 1));
-      const c = cart(); const line = c.find((l) => l.sku === s.value);
+      // Personalization: each different choice is its own line.
+      const custom = {}; let missing = "";
+      buy.querySelectorAll("[data-custom]").forEach((f) => {
+        const v = f.type === "checkbox" ? (f.checked ? "true" : "") : f.value.trim();
+        if (v) custom[f.dataset.custom] = v; else if (f.hasAttribute("data-required") && !missing) missing = f.dataset.label;
+      });
+      if (missing) { status.textContent = "Completa: " + missing; return; }
+      const ck = Object.keys(custom).sort();
+      const ref = ck.length ? s.value + "#" + ck.map((k) => k + "=" + custom[k]).join("&") : s.value;
+      const c = cart(); const line = c.find((l) => keyOf(l) === ref);
       const plan = buy.querySelector("input[name=mode]:checked")?.value === "sub" ? (buy.querySelector("#plan")?.value || "") : "";
-      if (line) { line.qty = Math.min(50, line.qty + qty); line.plan = plan; } else c.push({ sku: s.value, qty, title: s.dataset.title, plan });
+      if (line) { line.qty = Math.min(50, line.qty + qty); line.plan = plan; } else c.push(ck.length ? { sku: s.value, qty, title: s.dataset.title, plan, custom, ref } : { sku: s.value, qty, title: s.dataset.title, plan });
       saveCart(c);
       status.innerHTML = "Agregado al carrito. <a href='" + base + "/cart'>Ver carrito</a>";
     });
@@ -185,19 +196,19 @@ function downloadsBox(ds) {
       if (r.status !== 200) { view.innerHTML = "<p class='error'>No pudimos calcular tu carrito: " + esc(r.body.detail || "intenta de nuevo") + "</p>"; return; }
       const lostCoupons = syncCoupons(r.body);
       if (lostCoupons.length && couponStatus) couponStatus.textContent = lostCoupons.join(" ");
-      const rows = r.body.lines.map((l) => l.gift ? "<tr><td>" + esc(l.title) + "</td><td>" + l.qty + "</td><td class='num'>Gratis</td><td></td></tr>" : "<tr><td>" + esc(l.title) + planNote(l.sku) + preNote(l) + (l.compareAt ? " <s class='muted'>" + money(l.compareAt) + "</s>" : "") + "</td>" +
-        "<td><span class='qty'><button type='button' data-dec='" + esc(l.sku) + "' aria-label='Quitar uno de " + esc(l.title) + "'>−</button><span>" + l.qty + "</span>" +
-        "<button type='button' data-inc='" + esc(l.sku) + "' aria-label='Agregar uno de " + esc(l.title) + "'>+</button></span></td>" +
-        "<td class='num'>" + money(l.total) + "</td><td><button type='button' class='linkbtn' data-del='" + esc(l.sku) + "'>Quitar</button></td></tr>").join("");
+      const rows = r.body.lines.map((l) => l.gift ? "<tr><td>" + esc(l.title) + "</td><td>" + l.qty + "</td><td class='num'>Gratis</td><td></td></tr>" : "<tr><td>" + esc(l.title) + customNote(l) + planNote(keyOf(l)) + preNote(l) + (l.compareAt ? " <s class='muted'>" + money(l.compareAt) + "</s>" : "") + "</td>" +
+        "<td><span class='qty'><button type='button' data-dec='" + esc(keyOf(l)) + "' aria-label='Quitar uno de " + esc(l.title) + "'>−</button><span>" + l.qty + "</span>" +
+        "<button type='button' data-inc='" + esc(keyOf(l)) + "' aria-label='Agregar uno de " + esc(l.title) + "'>+</button></span></td>" +
+        "<td class='num'>" + money(l.total) + "</td><td><button type='button' class='linkbtn' data-del='" + esc(keyOf(l)) + "'>Quitar</button></td></tr>").join("");
       view.innerHTML = "<table><thead><tr><th>Producto</th><th>Cantidad</th><th class='num'>Total</th><th><span class='sr'>Acciones</span></th></tr></thead><tbody>" + rows + "</tbody></table>" + renderOptions(r.body) + renderTotals(r.body);
       // Keep local quantities in sync with what the store can actually sell.
-      const fixed = c.map((x) => { const l = r.body.lines.find((y) => y.sku === x.sku && !y.gift); return l ? { ...x, qty: l.qty } : x; });
+      const fixed = c.map((x) => { const l = r.body.lines.find((y) => keyOf(y) === keyOf(x) && !y.gift); return l ? { ...x, qty: l.qty } : x; });
       store.set(KEY, fixed.filter((l) => l.qty > 0)); count();
     }
     view.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return;
       if (b.dataset.couponDel) { store.set(CPN, coupons().filter((x) => x !== b.dataset.couponDel)); if (couponStatus) couponStatus.textContent = "Quitamos el cupón " + b.dataset.couponDel + "."; render(); return; }
-      const c = cart(); const sku = b.dataset.inc || b.dataset.dec || b.dataset.del; const l = c.find((x) => x.sku === sku); if (!l) return;
+      const c = cart(); const sku = b.dataset.inc || b.dataset.dec || b.dataset.del; const l = c.find((x) => keyOf(x) === sku); if (!l) return;
       if (b.dataset.inc) l.qty = Math.min(50, l.qty + 1); else if (b.dataset.dec) l.qty -= 1; else l.qty = 0;
       saveCart(c); render();
     });
@@ -228,7 +239,7 @@ function downloadsBox(ds) {
       const r = await simulate($("#postal").value.trim(), { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
       if (r.status === 200 && shipBox) shipBox.innerHTML = r.body.noShipping ? "<p class='note'>Entrega digital: no hay nada que enviar. Recibirás tus archivos en cuanto se confirme el pago.</p>" : renderOptions(r.body);
       if (r.status === 200) { const a = $("#address"), f = a && a.closest(".field"); if (a) { a.required = !r.body.noShipping; if (f) f.style.display = r.body.noShipping ? "none" : ""; } }
-      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + planNote(l.sku) + preNote(l) + "</p>").join("") + renderTotals(r.body); const now = { amount: r.body.totals.grand.amount - ((r.body.totals.dueLater && r.body.totals.dueLater.amount) || 0), currency: r.body.totals.grand.currency }; payBtn.textContent = "Pagar " + money(now); paintWallet(); if (elements) elements.update({ amount: now.amount }); }
+      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + customNote(l) + planNote(keyOf(l)) + preNote(l) + "</p>").join("") + renderTotals(r.body); const now = { amount: r.body.totals.grand.amount - ((r.body.totals.dueLater && r.body.totals.dueLater.amount) || 0), currency: r.body.totals.grand.currency }; payBtn.textContent = "Pagar " + money(now); paintWallet(); if (elements) elements.update({ amount: now.amount }); }
     }
     // Gift cards and store credit pay first; the card only pays what is left.
     let cards = [];
@@ -360,7 +371,7 @@ function downloadsBox(ds) {
       let key = sessionStorage.getItem("apexx_idem");
       if (!key) { key = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9-]/gi, ""); sessionStorage.setItem("apexx_idem", key); }
       const res = await post("/checkout", {
-        channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined })),
+        channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined, custom: l.custom || undefined, ref: keyOf(l) })),
         shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined,
         customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, poNumber: company ? String(f.get("po") || "").trim() || undefined : undefined, paymentMethod: pm,
         coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,

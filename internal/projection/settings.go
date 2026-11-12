@@ -156,6 +156,22 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 		t.Cart.QtyRules = rules
 		t.mu.Unlock()
 	}
+	if key == "" || key == store.KeyProductCustoms {
+		docs, err := p.db.ListDocs(ctx, t.ID, "product_customs")
+		if err != nil {
+			return err
+		}
+		fields := map[string][]cart.CustomField{}
+		for _, d := range docs {
+			var fs []cart.CustomField
+			if json.Unmarshal(d.Data, &fs) == nil && len(fs) > 0 {
+				fields[d.ID] = fs
+			}
+		}
+		t.mu.Lock()
+		t.Cart.Customs = fields
+		t.mu.Unlock()
+	}
 	if key == "" || key == store.KeyOrderFees {
 		var rules []cart.FeeRule
 		if _, err := p.db.GetDoc(ctx, t.ID, "order_fees", "rules", &rules); err != nil {

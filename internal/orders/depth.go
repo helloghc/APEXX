@@ -421,14 +421,14 @@ func lockOrder(ctx context.Context, tx pgx.Tx, tenant, id string) (orderRow, err
 
 func linesTx(ctx context.Context, tx pgx.Tx, tenant, id string) ([]Line, error) {
 	rows, err := tx.Query(ctx, `SELECT line, sku, title, qty, unit, total, fulfilled_qty, returned_qty, refunded_qty, cancelled_qty, origin,
-			COALESCE(to_char(preorder_ships_on,'YYYY-MM-DD'),'')
+			COALESCE(to_char(preorder_ships_on,'YYYY-MM-DD'),''), custom
 		FROM order_lines WHERE tenant_id=$1 AND order_id=$2 ORDER BY line`, tenant, id)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Line, error) {
 		var l Line
-		return l, r.Scan(&l.Line, &l.SKU, &l.Title, &l.Qty, &l.Unit, &l.Total, &l.FulfilledQty, &l.ReturnedQty, &l.RefundedQty, &l.CancelledQty, &l.Origin, &l.PreorderShipsOn)
+		return l, r.Scan(&l.Line, &l.SKU, &l.Title, &l.Qty, &l.Unit, &l.Total, &l.FulfilledQty, &l.ReturnedQty, &l.RefundedQty, &l.CancelledQty, &l.Origin, &l.PreorderShipsOn, &l.Custom)
 	})
 }
 

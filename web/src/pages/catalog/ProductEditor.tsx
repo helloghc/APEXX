@@ -586,6 +586,7 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
           {!isNew && d.variants.length > 0 && <PreorderEditor skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={canEdit} canCollect={can(me, "orders", "edit")} />}
           {!isNew && d.variants.length > 0 && <DigitalFiles skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={canEdit} />}
           {!isNew && d.variants.length > 0 && <KitEditor skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={can(me, "settings", "admin")} />}
+          {!isNew && <Personalization id={id} canEdit={canEdit} />}
           {!isNew && <QtyRules id={id} canEdit={canEdit} />}
           {!isNew && <Customs id={id} canEdit={can(me, "settings", "admin")} />}
           {!isNew && <Translations id={id} canEdit={canEdit} />}
@@ -729,6 +730,78 @@ function Translations({ id, canEdit }: { id: string; canEdit: boolean }) {
 }
 
 interface QtyRule { group: string; min: number; max: number; step: number }
+
+interface CustomChoice { id?: string; label: string; price: number }
+interface CustomField { id?: string; label: string; kind: "text" | "select" | "checkbox"; required?: boolean; maxLength?: number; price?: number; choices?: CustomChoice[]; help?: string }
+
+/** Personalization: engraving (text), finish (list) or gift wrap (checkbox),
+ *  each one able to add to the price. The cart validates and charges it. */
+function Personalization({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["product", id, "customs"], queryFn: () => request<{ fields: CustomField[] }>("GET", `/v1/products/${encodeURIComponent(id)}/customizations`) });
+  const [fields, setFields] = useState<CustomField[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  useEffect(() => { if (q.data) setFields(q.data.fields); }, [q.data]);
+  if (!q.data) return null;
+  const set = (i: number, p: Partial<CustomField>) => setFields((x) => x.map((f, j) => (j === i ? { ...f, ...p } : f)));
+  const pesos = (v: string) => Math.round((parseFloat(v.replace(/[^\d.]/g, "")) || 0) * 100);
+  const dirty = JSON.stringify(fields) !== JSON.stringify(q.data.fields);
+  async function save() {
+    setBusy(true); setErrs({});
+    try {
+      const r = await request<{ fields: CustomField[] }>("PUT", `/v1/products/${encodeURIComponent(id)}/customizations`, { fields });
+      setFields(r.fields);
+      qc.setQueryData(["product", id, "customs"], r);
+      toast.success("Personalización guardada. La tienda ya la muestra.");
+    } catch (e) {
+      setErrs(fieldErrors(e)); toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Section title="Personalización" description="Lo que el comprador puede pedir a su gusto: un grabado, un acabado o envoltura de regalo. Cada opción puede sumar al precio."
+      actions={canEdit && <Button size="sm" disabled={!dirty || busy} onClick={() => void save()}>{busy ? "Guardando…" : "Guardar"}</Button>}>
+      {fields.length === 0 && <p className="text-sm text-muted-foreground">Sin personalización.</p>}
+      {fields.map((f, i) => (
+        <div key={i} className="grid gap-2 rounded-md border p-3" data-custom-field>
+          <div className="grid gap-2 sm:grid-cols-[1fr_9rem_7rem_auto] sm:items-end">
+            <Field label="Nombre" htmlFor={`cz-l-${i}`} hint={errs[`fields[${i}].label`]}><Input id={`cz-l-${i}`} value={f.label} disabled={!canEdit} placeholder="Grabado" onChange={(e) => set(i, { label: e.target.value })} /></Field>
+            <Field label="Tipo" htmlFor={`cz-k-${i}`}>
+              <select id={`cz-k-${i}`} className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={f.kind} disabled={!canEdit}
+                onChange={(e) => { const kind = e.target.value as CustomField["kind"]; set(i, { kind, choices: kind === "select" ? (f.choices?.length ? f.choices : [{ label: "", price: 0 }, { label: "", price: 0 }]) : undefined }); }}>
+                <option value="text">Texto</option><option value="select">Lista</option><option value="checkbox">Casilla</option>
+              </select>
+            </Field>
+            {f.kind !== "select" ? (
+              <Field label="Suma al precio" htmlFor={`cz-p-${i}`}><Input id={`cz-p-${i}`} inputMode="decimal" defaultValue={f.price ? centsToPesos(f.price) : ""} disabled={!canEdit} placeholder="0" onChange={(e) => set(i, { price: pesos(e.target.value) })} /></Field>
+            ) : <span />}
+            {canEdit && <Button type="button" size="icon" variant="ghost" aria-label={`Quitar ${f.label || "personalización"}`} onClick={() => setFields((x) => x.filter((_, j) => j !== i))}><Trash2 aria-hidden="true" /></Button>}
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            {f.kind !== "checkbox" && <label className="flex items-center gap-2"><Checkbox checked={!!f.required} disabled={!canEdit} onCheckedChange={(v) => set(i, { required: v === true })} /> Obligatorio</label>}
+            {f.kind === "text" && <label className="flex items-center gap-2">Hasta <Input aria-label="Caracteres máximos" className="h-8 w-20" inputMode="numeric" value={f.maxLength || ""} placeholder="40" disabled={!canEdit} onChange={(e) => set(i, { maxLength: Number(e.target.value.replace(/\D/g, "")) || 0 })} /> caracteres</label>}
+          </div>
+          {f.kind === "select" && (
+            <div className="grid gap-2">
+              {(f.choices ?? []).map((c, j) => (
+                <div key={j} className="grid grid-cols-[1fr_7rem_auto] items-center gap-2">
+                  <Input aria-label={`Opción ${j + 1}`} value={c.label} disabled={!canEdit} placeholder={`Opción ${j + 1}`} onChange={(e) => set(i, { choices: f.choices!.map((x, k) => (k === j ? { ...x, label: e.target.value } : x)) })} />
+                  <Input aria-label={`Suma de la opción ${j + 1}`} inputMode="decimal" defaultValue={c.price ? centsToPesos(c.price) : ""} placeholder="+0" disabled={!canEdit} onChange={(e) => set(i, { choices: f.choices!.map((x, k) => (k === j ? { ...x, price: pesos(e.target.value) } : x)) })} />
+                  {canEdit && <Button type="button" size="icon" variant="ghost" aria-label={`Quitar opción ${j + 1}`} disabled={(f.choices ?? []).length <= 2} onClick={() => set(i, { choices: f.choices!.filter((_, k) => k !== j) })}><X aria-hidden="true" /></Button>}
+                </div>
+              ))}
+              {canEdit && <div><Button type="button" variant="outline" size="sm" onClick={() => set(i, { choices: [...(f.choices ?? []), { label: "", price: 0 }] })}><Plus aria-hidden="true" /> Agregar opción</Button></div>}
+              {errs[`fields[${i}].choices`] && <p className="text-sm text-bad">{errs[`fields[${i}].choices`]}</p>}
+            </div>
+          )}
+        </div>
+      ))}
+      {canEdit && fields.length < 10 && <div><Button type="button" variant="outline" size="sm" onClick={() => setFields((x) => [...x, { label: "", kind: "text", maxLength: 40 }])}><Plus aria-hidden="true" /> Agregar personalización</Button></div>}
+    </Section>
+  );
+}
 
 interface PreorderData { sku: string; shipsOn: string; depositBps: number; maxUnits: number; sold: number; active: boolean; note: string }
 

@@ -18,6 +18,12 @@
 <label class="opt"><input type="radio" name="mode" value="sub"><span>Suscríbete{{with .Percent}} y ahorra {{.}}%{{end}}<small>Entrega automática. Pausa, salta o cancela cuando quieras.</small></span></label>
 <label class="subplan" for="plan">Entrega <select id="plan" name="plan">{{range .Plans}}<option value="{{.id}}">{{.label}}</option>{{end}}</select></label>
 </fieldset>{{end}}
+{{if .Customs}}<fieldset class="customs" data-customs><legend>Personaliza</legend>
+{{range .Customs}}<div class="field">{{if eq .Kind "checkbox"}}<label class="check"><input type="checkbox" data-custom="{{.ID}}" data-label="{{.Label}}" value="true"> {{.Label}}{{with .Price}} (+{{.}}){{end}}</label>
+{{else if eq .Kind "select"}}<label for="cu-{{.ID}}">{{.Label}}</label><select id="cu-{{.ID}}" data-custom="{{.ID}}" data-label="{{.Label}}"{{if .Required}} data-required{{end}}>{{if not .Required}}<option value="">Sin elegir</option>{{else}}<option value="">Elige una opción</option>{{end}}{{range .Choices}}<option value="{{.ID}}">{{.Label}}{{with .Price}} (+{{.}}){{end}}</option>{{end}}</select>
+{{else}}<label for="cu-{{.ID}}">{{.Label}}{{with .Price}} (+{{.}}){{end}}{{if not .Required}} (opcional){{end}}</label><input id="cu-{{.ID}}" data-custom="{{.ID}}" data-label="{{.Label}}" maxlength="{{.MaxLength}}" autocomplete="off"{{if .Required}} data-required{{end}}>{{end}}
+{{with .Help}}<small class="muted">{{.}}</small>{{end}}</div>
+{{end}}</fieldset>{{end}}
 <div class="qtyrow"><label for="qty">Cantidad <input id="qty" name="qty" type="number" min="{{.QtyMin}}" step="{{.QtyStep}}" max="{{if .QtyMax}}{{.QtyMax}}{{else}}9999{{end}}" value="{{.QtyMin}}" inputmode="numeric"></label>
 <button class="btn" type="submit" {{if .SoldOut}}disabled{{end}}>{{if .SoldOut}}Agotado{{else if .PreShips}}Apartar en preventa{{else}}Agregar al carrito{{end}}</button></div>
 {{with .PreShips}}<p class="note preorder" data-preorder>Preventa: se envía a partir del {{.}}.{{with $.PreDeposit}} Hoy pagas el {{.}}% y el resto cuando esté listo para enviarse.{{end}}</p>{{end}}

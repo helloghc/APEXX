@@ -132,3 +132,7 @@ Pagas cuando esté listo para enviarse || You pay when it is ready to ship || Vo
 Preventa apartada || Preorder placed || Précommande enregistrée || Pré-venda reservada || Pra-pesan tercatat || 予約完了
 se envía a partir del || ships from || expédié à partir du || enviado a partir de || dikirim mulai || 発送開始：
 Se envía a partir del || Ships from || Expédié à partir du || Enviado a partir de || Dikirim mulai || 発送開始：
+Personaliza || Personalize || Personnaliser || Personalize || Personalisasi || カスタマイズ
+(opcional) || (optional) || (facultatif) || (opcional) || (opsional) || （任意）
+Sin elegir || None || Aucun || Nenhum || Tidak ada || 選択なし
+Completa: || Please fill in: || Veuillez remplir : || Preencha: || Harap isi: || 入力してください：

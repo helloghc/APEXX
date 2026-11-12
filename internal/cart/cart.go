@@ -93,6 +93,11 @@ type Item struct {
 	Qty int64  `json:"qty"`
 	// Plan is the subscription frequency of the line ("1m"); "" = one-time purchase.
 	Plan string `json:"plan,omitempty"`
+	// Custom holds the buyer's personalization (field id -> text, choice id or "true").
+	Custom map[string]string `json:"custom,omitempty"`
+	// Ref is the client's key for the line, echoed back (two lines of one SKU
+	// with different personalization are different lines).
+	Ref string `json:"ref,omitempty"`
 }
 
 // Message is a machine-readable notice about the cart.
@@ -121,6 +126,8 @@ type Line struct {
 	// Preorder: sold before it is in stock; ships on its date and may be
 	// paid with a deposit now and the rest later.
 	Preorder *inventory.Preorder `json:"preorder,omitempty"`
+	Custom   []CustomValue       `json:"custom,omitempty"`
+	Ref      string              `json:"ref,omitempty"`
 }
 
 // Shipping is the selected delivery option.
@@ -183,10 +190,11 @@ type Service struct {
 	Pricing   *pricing.Service
 	Promos    *promo.Engine
 	Channels  map[string]Channel
-	Logistics *logistics.Config    // zones, options, estimates and tax regions; nil = legacy channel rules
-	Taxo      *catalog.Taxonomy    // attribute names, for promotions that target attribute values
-	QtyRules  map[string][]QtyRule // product id -> quantity rules (general and per customer group)
-	FeeRules  []FeeRule            // extra charges per order (handling, packaging, small order)
+	Logistics *logistics.Config        // zones, options, estimates and tax regions; nil = legacy channel rules
+	Taxo      *catalog.Taxonomy        // attribute names, for promotions that target attribute values
+	QtyRules  map[string][]QtyRule     // product id -> quantity rules (general and per customer group)
+	Customs   map[string][]CustomField // product id -> personalization fields
+	FeeRules  []FeeRule                // extra charges per order (handling, packaging, small order)
 	// LiveRate asks a connected carrier for its price, in the store currency
 	// (nil: no connected carriers). It must answer within its own time limit.
 	LiveRate func(carrierID, country, postalCode string, weightGrams, value int64) (amount int64, days int, ok bool)
@@ -305,9 +313,38 @@ func (s *Service) Simulate(req Request) (Result, error) {
 				q = q2
 			}
 		}
+		unit, compare := q.Unit, q.CompareAt
+		var custom []CustomValue
+		if fields := s.Customs[p.ID]; len(fields) > 0 || len(it.Custom) > 0 {
+			vals, extra, bad := applyCustom(fields, it.Custom)
+			if bad != "" {
+				res.Messages = append(res.Messages, Message{Code: "invalid_customization", SKU: it.SKU, Text: bad})
+				continue
+			}
+			// Surcharges are in the store currency; a converted market converts them.
+			conv := s.conversion(ch)
+			for i := range vals {
+				amt := vals[i].Price.Amount
+				if conv != nil {
+					amt = conv.Plain(amt)
+				}
+				vals[i].Price = money.New(amt, cur)
+			}
+			if conv != nil {
+				extra = conv.Plain(extra)
+			}
+			unit.Amount += extra
+			if compare != nil {
+				c := *compare
+				c.Amount += extra
+				compare = &c
+			}
+			custom = vals
+		}
 		line := Line{
 			SKU: it.SKU, Title: p.Title + " " + v.Title, RequestedQty: it.Qty, Qty: qty,
-			Unit: q.Unit, CompareAt: q.CompareAt, Total: q.Unit.Mul(qty), Available: avail, PriceList: q.ListName, Categories: p.Categories,
+			Unit: unit, CompareAt: compare, Total: unit.Mul(qty), Available: avail, PriceList: q.ListName, Categories: p.Categories,
+			Custom: custom, Ref: limitRef(it.Ref),
 		}
 		class := s.Logistics.ProductClassOf(p.ID)
 		if class.TaxClass != logistics.TaxGeneral {
@@ -547,6 +584,13 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	res.Totals = Totals{Items: items, Discounts: discounts, Shipping: shipping, ShippingDiscount: shipDisc, Tax: tax, TaxAdjust: adjust, Fees: money.New(feeTotal, cur), Grand: grand,
 		DueLater: money.New(max(later, 0), cur)}
 	return res, nil
+}
+
+func limitRef(r string) string {
+	if len(r) > 80 {
+		return r[:80]
+	}
+	return r
 }
 
 // conversion returns how a market converts from the channel it takes prices
