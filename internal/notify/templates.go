@@ -341,6 +341,12 @@ type Rendered struct {
 // layout. Every variable value is HTML-escaped; the layout works in light and
 // dark mail clients.
 func Render(subject string, b Blocks, d Data, brand Brand, showItems bool) Rendered {
+	return RenderLang(subject, b, d, brand, showItems, "es")
+}
+
+// RenderLang is Render in a buyer's language: the layout's own words follow it.
+func RenderLang(subject string, b Blocks, d Data, brand Brand, showItems bool, lang string) Rendered {
+	fx := fixedWords(lang)
 	vars := map[string]string{}
 	for k, v := range d.Vars {
 		vars[k] = v
@@ -354,7 +360,7 @@ func Render(subject string, b Blocks, d Data, brand Brand, showItems bool) Rende
 	action := safeURL(d.ActionURL)
 
 	var h, t strings.Builder
-	h.WriteString(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
+	h.WriteString(`<!doctype html><html lang="` + fx.lang + `"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
 		`<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>` + esc(fill(subject, vars, false)) + `</title>` +
 		`<style>body{margin:0;background:#f3f4f6;color:#111827}.card{background:#ffffff}.muted{color:#6b7280}.line td{border-bottom:1px solid #e5e7eb}` +
 		`@media (prefers-color-scheme:dark){body{background:#0f1218!important;color:#e5e7eb!important}.card{background:#181c25!important}.muted{color:#9ca3af!important}.line td{border-bottom:1px solid #2a3040!important}h1,p,td{color:#e5e7eb}}</style></head>` +
@@ -408,8 +414,8 @@ func Render(subject string, b Blocks, d Data, brand Brand, showItems bool) Rende
 		t.WriteString("\n")
 	}
 	if len(d.Downloads) > 0 {
-		h.WriteString(`<h2 style="margin:8px 0 8px;font-size:17px">Tus descargas</h2><ul style="margin:0 0 16px;padding-left:20px">`)
-		t.WriteString("Tus descargas:\n")
+		h.WriteString(`<h2 style="margin:8px 0 8px;font-size:17px">` + fx.downloads + `</h2><ul style="margin:0 0 16px;padding-left:20px">`)
+		t.WriteString(fx.downloads + ":\n")
 		for _, r := range d.Downloads {
 			if u := safeURL(r.Value); u != "" {
 				h.WriteString(`<li style="margin:0 0 6px"><a href="` + esc(u) + `">` + esc(r.Label) + `</a></li>`)
@@ -429,8 +435,8 @@ func Render(subject string, b Blocks, d Data, brand Brand, showItems bool) Rende
 		t.WriteString(f + "\n\n")
 	}
 	if u := safeURL(d.Unsubscribe); u != "" {
-		h.WriteString(`<p class="muted" style="margin:12px 0 0;font-size:13px"><a href="` + esc(u) + `" style="color:inherit">Ya no quiero recibir estos correos</a></p>`)
-		t.WriteString("Darse de baja: " + u + "\n\n")
+		h.WriteString(`<p class="muted" style="margin:12px 0 0;font-size:13px"><a href="` + esc(u) + `" style="color:inherit">` + fx.unsubscribe + `</a></p>`)
+		t.WriteString(fx.unsubscribeText + ": " + u + "\n\n")
 	}
 	h.WriteString(`</td></tr><tr><td class="muted" align="center" style="padding:16px 8px;font-size:12px">`)
 	foot := brand.Footer

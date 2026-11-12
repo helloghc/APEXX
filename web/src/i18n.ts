@@ -43,20 +43,36 @@ export function setLanguage(code: string) {
 
 const NUMBER = /[0-9][0-9.,]*[0-9]|[0-9]/g;
 
-type Pattern = { re: RegExp; out: string };
+type Pattern = { re: RegExp; out: string; kinds: ("t" | "n")[] };
 const patterns = new WeakMap<Record<string, string>, Pattern[]>();
 
-/** Phrases with variable parts are stored as "Hola, {}" and matched as a pattern. */
+/** Phrases with variable parts are stored as "Hola, {}" (text) and "# pedidos"
+ * (a number), and a key may mix both: "#% en todo el pedido. Solo en {}". */
 function patternsOf(dict: Record<string, string>): Pattern[] {
   let list = patterns.get(dict);
   if (!list) {
     list = Object.keys(dict)
-      .filter((k) => k.includes("{}") && k.replace(/\{\}/g, "").trim().length >= 3)
+      .filter((k) => k.includes("{}") && k.replace(/\{\}|#/g, "").trim().length >= 3)
       .sort((a, b) => b.length - a.length)
-      .map((k) => ({ re: new RegExp("^" + k.split("{}").map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.+?)") + "$", "s"), out: dict[k] ?? "" }));
+      .map((k) => {
+        const kinds: ("t" | "n")[] = [];
+        const src = k.split(/(\{\}|#)/).map((x) => {
+          if (x === "{}") { kinds.push("t"); return "(.+?)"; }
+          if (x === "#") { kinds.push("n"); return "([0-9][0-9.,]*[0-9]|[0-9])"; }
+          return x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        }).join("");
+        return { re: new RegExp("^" + src + "$", "s"), out: dict[k] ?? "", kinds };
+      });
     patterns.set(dict, list);
   }
   return list;
+}
+
+/** A variable part is translated whole, or item by item when it is a list ("a, b"). */
+function part(dict: Record<string, string>, v: string): string {
+  if (dict[v] !== undefined) return dict[v]!;
+  if (v.includes(", ")) return v.split(", ").map((x) => dict[x] ?? x).join(", ");
+  return v;
 }
 
 /** Translates one phrase; "3 pedidos" is looked up as "# pedidos". Exported for tests. */
@@ -74,9 +90,12 @@ export function translate(dict: Record<string, string>, text: string): string | 
       for (const p of patternsOf(dict)) {
         const m = p.re.exec(core);
         if (!m) continue;
-        let i = 1;
-        // The variable part may itself be a known phrase ("Agregar {}" + "Marca").
-        out = p.out.replace(/\{\}/g, () => { const v = m[i++] ?? ""; return dict[v] ?? v; });
+        // Text parts may themselves be known phrases ("Agregar {}" + "Marca");
+        // numbers go back in their order.
+        const texts: string[] = [], numbers: string[] = [];
+        p.kinds.forEach((k, j) => (k === "t" ? texts : numbers).push(m[j + 1] ?? ""));
+        let ti = 0, ni = 0;
+        out = p.out.replace(/\{\}|#/g, (x) => (x === "#" ? numbers[ni++] ?? "#" : part(dict, texts[ti++] ?? "")));
         break;
       }
       if (out === undefined) return null;

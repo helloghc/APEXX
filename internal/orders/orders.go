@@ -81,6 +81,9 @@ type CheckoutRequest struct {
 	Installments int `json:"installments,omitempty"`
 	// ClientIP is set by the server (never by clients) for risk rules.
 	ClientIP string `json:"-"`
+	// Lang is the storefront language of the buyer (set by the server); the
+	// emails about the order use it.
+	Lang string `json:"-"`
 	// SaveCard keeps the card for the next purchase of a signed-in customer;
 	// SavedCard pays with one they kept. The store's server fills SaveFor and
 	// Saved after checking the customer; a client can never set them.
@@ -613,14 +616,18 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code,
-				shipping_method, tax_detail, display_number, tax_adjust, po_number, fees, fee_lines, deferred, checkout_fields)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`,
+				shipping_method, tax_detail, display_number, tax_adjust, po_number, fees, fee_lines, deferred, checkout_fields, lang)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`,
 			tenant, id, number, req.Channel, StatusPendingPayment, string(tot.Grand.Currency), tot.Items.Amount, tot.Discounts.Amount,
 			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number), tot.TaxAdjust.Amount, req.PONumber,
-			tot.Fees.Amount, feeJSON(sim.Fees), deferred, blocksJSON(blockAnswers)); err != nil {
+			tot.Fees.Amount, feeJSON(sim.Fees), deferred, blocksJSON(blockAnswers), orderLang(req.Lang)); err != nil {
 			return err
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
+			return err
+		}
+		// The customer's language is the one of their latest order.
+		if _, err := tx.Exec(ctx, `UPDATE customers c SET lang=o.lang FROM orders o WHERE o.tenant_id=$1 AND o.id=$2 AND c.tenant_id=o.tenant_id AND c.id=o.customer_id AND c.lang<>o.lang`, tenant, id); err != nil {
 			return err
 		}
 		if sim.Gift != nil || req.RegistryID != "" {
@@ -1135,4 +1142,13 @@ func allowedNames(kinds []string) string {
 		out = append(out, strings.ToLower(PaymentKinds[k]))
 	}
 	return strings.Join(out, ", ")
+}
+
+// orderLang keeps a known two-letter language code, else Spanish.
+func orderLang(l string) string {
+	switch l {
+	case "en", "fr", "pt", "id", "ja":
+		return l
+	}
+	return "es"
 }

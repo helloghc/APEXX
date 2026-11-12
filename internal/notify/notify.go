@@ -47,6 +47,9 @@ type Service struct {
 	ProviderFor func(tenant string, st Settings) (Provider, error)
 	// Backoff overrides the retry delay (tests).
 	Backoff func(attempt int) time.Duration
+	// Phrases translates fixed phrases into a buyer's language with the
+	// store's dictionaries (its own translations first); nil keeps Spanish.
+	Phrases func(tenant, lang string) func(string) string
 }
 
 // Settings is the per-store configuration.
@@ -376,9 +379,13 @@ type Message struct {
 	CustomerID string
 	DedupeKey  string // same key = sent once
 	Force      bool   // send even when the (optional) template is switched off
+	// Lang is the buyer's language; empty takes the order's, else the
+	// customer's, else Spanish.
+	Lang string
 }
 
 type payload struct {
+	Lang     string    `json:"lang,omitempty"`
 	To       string    `json:"to"`
 	Name     string    `json:"name"`
 	Data     Data      `json:"data"`
@@ -403,7 +410,14 @@ func (s *Service) EnqueueTx(ctx context.Context, tx pgx.Tx, tenant string, m Mes
 		return "", nil
 	}
 	id := newID("msg_")
-	raw, _ := json.Marshal(payload{To: to, Name: m.Name, Data: m.Data})
+	lang := m.Lang
+	if lang == "" && m.OrderID != "" {
+		_ = tx.QueryRow(ctx, `SELECT lang FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, m.OrderID).Scan(&lang)
+	}
+	if lang == "" && m.CustomerID != "" {
+		_ = tx.QueryRow(ctx, `SELECT lang FROM customers WHERE tenant_id=$1 AND id=$2`, tenant, m.CustomerID).Scan(&lang)
+	}
+	raw, _ := json.Marshal(payload{Lang: lang, To: to, Name: m.Name, Data: m.Data})
 	enc, err := s.Keys.Encrypt(tenant, raw, id)
 	if err != nil {
 		return "", err
@@ -525,7 +539,8 @@ func (s *Service) sendOne(ctx context.Context, tenant, id string) (bool, error) 
 	if o := p.Data.Override; o != nil {
 		tpl.Subject, tpl.Blocks = o.Subject, o.Blocks
 	}
-	r := Render(tpl.Subject, tpl.Blocks, p.Data, st.Brand, tpl.ShowItems)
+	s.localize(tenant, p.Lang, &tpl, &p.Data)
+	r := RenderLang(tpl.Subject, tpl.Blocks, p.Data, st.Brand, tpl.ShowItems, p.Lang)
 	prov, err := s.provider(tenant, st, sec)
 	var ref string
 	if err == nil {
@@ -557,7 +572,7 @@ func (s *Service) sendOne(ctx context.Context, tenant, id string) (bool, error) 
 	// server is not kept; the development outbox keeps it so it can be read.
 	if tpl.Key == TplAccessCode && provName != "outbox" {
 		p.Data.Vars = map[string]string{"codigo": "••••••"}
-		r = Render(tpl.Subject, tpl.Blocks, p.Data, st.Brand, tpl.ShowItems)
+		r = RenderLang(tpl.Subject, tpl.Blocks, p.Data, st.Brand, tpl.ShowItems, p.Lang)
 	}
 	p.Rendered = &r
 	return true, s.finish(ctx, tenant, id, "sent", provName, ref, "", attempts+1, &p)

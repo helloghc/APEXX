@@ -15,6 +15,11 @@ describe("idiomas del panel", () => {
     expect(translate(en, "Buscar Marca")).toBe("Search Brand");
     expect(translate(id, "Analítica reconstruida: 12 pedidos en 3 s")).toBe("Analitik dibangun ulang: 12 pesanan dalam 3 dtk");
   });
+  it("mezcla cifras y textos en una misma frase, y traduce listas", () => {
+    expect(translate(en, "10% en todo el pedido desde $3,000. Solo en el canal mx.")).toBe("10% on the whole order from $3,000. Only on channel mx.");
+    expect(translate(ja, "Se paga un pedido → agregar nota interna al pedido, etiquetar al cliente. Hecha: 12 · No aplicó: 6")).toBe("注文が支払われる → 注文に社内メモを追加, 顧客にタグを付ける。実行：12 · 対象外：6");
+    expect(translate(fr, "Chrome en Linux")).toBe("Chrome sur Linux");
+  });
   it("deja en español lo que no conoce", () => {
     expect(translate(en, "Playera Sierra talla M")).toBeNull();
   });

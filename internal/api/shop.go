@@ -373,6 +373,7 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.ClientIP = s.clientIP(r)
+	req.Lang = pageLang(w)
 	// A shopper gets company price and credit only from their signed-in account.
 	req.CompanyID = ""
 	if c, email := s.shopperCompany(r); c != nil {
