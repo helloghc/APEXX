@@ -14,13 +14,17 @@ export interface FieldSpec {
   minLength?: number;
   integer: boolean;
   defaultValue?: Json;
+  widget?: string;
 }
 
-/** fieldsFor maps a section's settings schema to form fields, in declaration order. */
+/** fieldsFor maps a section's settings schema to form fields, in the order the server gives (x-apexx-order), then any others. */
 export function fieldsFor(schema: Schema | undefined): FieldSpec[] {
   if (!schema?.properties) return [];
   const required = new Set(schema.required ?? []);
-  return Object.entries(schema.properties).map(([key, p]) => {
+  const props = schema.properties;
+  const order = (schema["x-apexx-order"] ?? []).filter((k) => k in props);
+  const keys = [...order, ...Object.keys(props).filter((k) => !order.includes(k))];
+  return keys.map((key) => [key, props[key]!] as const).map(([key, p]) => {
     const base: FieldSpec = {
       key,
       label: p.title || key,
@@ -33,6 +37,7 @@ export function fieldsFor(schema: Schema | undefined): FieldSpec[] {
       minLength: p.minLength,
       integer: p.type === "integer",
       defaultValue: p.default,
+      widget: p["x-apexx-widget"],
     };
     const widget = p["x-apexx-widget"];
     if (p.enum && p.enum.length > 0) base.kind = "select";

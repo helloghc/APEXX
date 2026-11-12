@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useState, type FormEvent } from "react";
 import { Download, Plus, Search, Ticket, Wand2 } from "lucide-react";
 import { errorMessage, fieldErrors, type Me } from "@/api";
+import { readNumber } from "@/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -164,7 +165,7 @@ function CouponDialog({ many, promos, defaultPromotion, onClose, onDone }: { man
     setErrors({});
     try {
       if (many) {
-        const b = await promoApi.generateCoupons({ ...spec, prefix: prefix.trim().toUpperCase(), length: Number(length) || 8, quantity: Number(quantity) || 0 });
+        const b = await promoApi.generateCoupons({ ...spec, prefix: prefix.trim().toUpperCase(), length: readNumber(length, "Largo del código", 8), quantity: readNumber(quantity, "Cantidad") });
         toast.success(`${b.quantity} cupones generados. Descárgalos desde “Lotes generados”.`);
       } else {
         await promoApi.createCoupon(code.trim().toUpperCase(), spec);

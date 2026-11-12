@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
-import { centsToPesos, parsePesos } from "@/money";
+import { centsToPesos, parsePesos, readNumber } from "@/money";
 import { can } from "@/perms";
 import { href, navigate } from "@/router";
 import { ErrorBox, Notice, StatusPill } from "../common";
@@ -742,17 +742,17 @@ function Personalization({ id, canEdit }: { id: string; canEdit: boolean }) {
   const [fields, setFields] = useState<CustomField[]>([]);
   const [busy, setBusy] = useState(false);
   const [errs, setErrs] = useState<Record<string, string>>({});
-  useEffect(() => { if (q.data) setFields(q.data.fields); }, [q.data]);
+  useEffect(() => { if (q.data) setFields(q.data.fields ?? []); }, [q.data]);
   if (!q.data) return null;
   const set = (i: number, p: Partial<CustomField>) => setFields((x) => x.map((f, j) => (j === i ? { ...f, ...p } : f)));
   const pesos = (v: string) => Math.round((parseFloat(v.replace(/[^\d.]/g, "")) || 0) * 100);
-  const dirty = JSON.stringify(fields) !== JSON.stringify(q.data.fields);
+  const dirty = JSON.stringify(fields) !== JSON.stringify(q.data.fields ?? []);
   async function save() {
     setBusy(true); setErrs({});
     try {
       const r = await request<{ fields: CustomField[] }>("PUT", `/v1/products/${encodeURIComponent(id)}/customizations`, { fields });
-      setFields(r.fields);
-      qc.setQueryData(["product", id, "customs"], r);
+      setFields(r.fields ?? []);
+      qc.setQueryData(["product", id, "customs"], { fields: r.fields ?? [] });
       toast.success("Personalización guardada. La tienda ya la muestra.");
     } catch (e) {
       setErrs(fieldErrors(e)); toast.error(errorMessage(e));
@@ -827,7 +827,7 @@ function PreorderEditor({ skus, canEdit, canCollect }: { skus: string[]; canEdit
   async function save(active: boolean) {
     setBusy(true); setErrs({});
     try {
-      await request("PUT", `/v1/preorders/${encodeURIComponent(sku)}`, { shipsOn: v.shipsOn, depositBps: Math.round((Number(v.deposit) || 100) * 100), maxUnits: Number(v.max) || 0, note: v.note, active });
+      await request("PUT", `/v1/preorders/${encodeURIComponent(sku)}`, { shipsOn: v.shipsOn, depositBps: Math.round(readNumber(v.deposit, "Anticipo (%)", 100) * 100), maxUnits: readNumber(v.max, "Piezas disponibles"), note: v.note, active });
       toast.success(active ? "Preventa activa: la tienda ya la ofrece." : "Preventa pausada: se vende de nuevo con existencias.");
       refresh();
     } catch (e) {

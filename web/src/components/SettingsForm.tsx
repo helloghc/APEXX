@@ -222,8 +222,22 @@ function Field({
       break;
     case "text":
       control = (
-        <input {...common} className={ui.input} type="text" value={String(local)} onChange={(e) => update(e.target.value)} onBlur={flush} />
+        <input {...common} className={ui.input} type="text" value={String(local)} onChange={(e) => update(e.target.value)} onBlur={flush} list={field.widget === "link-picker" ? `${id}-links` : undefined} />
       );
+      if (field.widget === "link-picker") {
+        const known = LINKS.find(([v]) => v === String(local));
+        control = (
+          <>
+            {control}
+            <datalist id={`${id}-links`}>
+              {LINKS.map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </datalist>
+            <span className={ui.help}>{known ? `Lleva a: ${known[1]}` : "Elige un destino de la lista o escribe una dirección (https://…, una página como «nosotros» o #sección)."}</span>
+          </>
+        );
+      }
       break;
     default:
       control = <p className={ui.help}>Este ajuste se edita con un control que llegará en la próxima versión.</p>;
@@ -249,6 +263,19 @@ function Field({
     </div>
   );
 }
+
+// Places inside the store a button can lead to, as the storefront expects
+// them: relative to the store, so they keep working on any domain.
+const LINKS: [string, string][] = [
+  ["c", "Todo el catálogo"],
+  ["c?q=oferta", "Búsqueda de «oferta»"],
+  ["cart", "Carrito"],
+  ["cuenta", "Cuenta del cliente"],
+  ["favoritos", "Favoritos"],
+  ["blog", "Blog"],
+  ["pedido-rapido", "Pedido rápido (B2B)"],
+  ["#", "Inicio de la página"],
+];
 
 function BlockInput({ id, label, value, onCommit }: { id: string; label: string; value: string; onCommit: (v: string) => void }) {
   const { local, update, flush } = useDebouncedCommit(value, onCommit);

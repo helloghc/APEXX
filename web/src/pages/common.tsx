@@ -46,7 +46,7 @@ export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => v
 }
 
 /** Secret shows a value once with a copy button; the API never returns it again. */
-export function Secret({ label, value }: { label: string; value: string }) {
+export function Secret({ label, value, once = true }: { label: string; value: string; once?: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="grid gap-2">
@@ -67,7 +67,7 @@ export function Secret({ label, value }: { label: string; value: string }) {
         >
           <Copy /> {copied ? "Copiado" : "Copiar"}
         </Button>
-        <span className="text-xs text-muted-foreground">Guárdalo ahora: no se volverá a mostrar.</span>
+        {once && <span className="text-xs text-muted-foreground">Guárdalo ahora: no se volverá a mostrar.</span>}
       </div>
     </div>
   );

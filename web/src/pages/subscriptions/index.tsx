@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/sonner";
-import { formatMoney } from "@/money";
+import { formatMoney, readNumber } from "@/money";
 import { can } from "@/perms";
 import { href } from "@/router";
 import { ProductPicker } from "../catalog/ProductPicker";
@@ -136,7 +136,7 @@ function Settings({ canEdit }: { canEdit: boolean }) {
   const [picker, setPicker] = useState(false);
   useEffect(() => { if (q.data && !c) { setC(q.data.config); setPct(String(q.data.config.discountBps / 100)); setNames(Object.fromEntries(q.data.products.map((p) => [p.id, p.title]))); } }, [q.data, c]);
   const save = useMutation({
-    mutationFn: () => api.save({ ...(c as Config), discountBps: Math.round((Number(pct.replace(",", ".")) || 0) * 100) }),
+    mutationFn: () => api.save({ ...(c as Config), discountBps: Math.round(readNumber(pct, "Descuento en cada entrega (%)") * 100) }),
     onSuccess: () => { toast.success("Guardado. Ya aplica en tu tienda."); void qc.invalidateQueries({ queryKey: ["subscription-config"] }); },
     onError: (e) => toast.error(errorMessage(e)),
   });

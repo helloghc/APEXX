@@ -439,8 +439,17 @@ export function PickedList({ items, onRemove, empty }: { items: { id: string; ti
 
 /** Field is a label + control + hint/error for controls that are not a single input. */
 export function Field({ label, hint, error, children, className }: { label: string; hint?: ReactNode; error?: string; children: ReactNode; className?: string }) {
+  // Controls inside take the field's label as their name when they have none,
+  // so screen readers announce "Cupones, edit text" and not just "edit text".
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    box.current?.querySelectorAll("input, textarea, select").forEach((el) => {
+      const named = el.getAttribute("aria-label") || el.getAttribute("aria-labelledby") || (el.id && document.querySelector(`label[for="${el.id}"]`));
+      if (!named && (el as HTMLInputElement).type !== "hidden") el.setAttribute("aria-label", label);
+    });
+  });
   return (
-    <div className={cn("grid gap-1.5", className)} role="group" aria-label={label}>
+    <div ref={box} className={cn("grid gap-1.5", className)} role="group" aria-label={label}>
       <span className="text-sm font-medium leading-none">{label}</span>
       {children}
       {error ? (

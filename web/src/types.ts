@@ -15,6 +15,8 @@ export interface Schema {
   maximum?: number;
   default?: Json;
   "x-apexx-widget"?: string;
+  /** Order of properties in the editor; JSON objects carry none of their own. */
+  "x-apexx-order"?: string[];
 }
 
 export interface Budget {

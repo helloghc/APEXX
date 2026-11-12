@@ -20,6 +20,7 @@ func (s *Server) routesReports(handle func(string, http.HandlerFunc)) {
 	handle("POST /s/{tenant}/api/events", s.shopEvents)
 
 	handle("GET /v1/reports/dashboard", s.authed("reports", auth.Read, s.reportDashboard))
+	handle("GET /v1/setup", s.authed("reports", auth.Read, noStorefront(s.getSetup)))
 	handle("GET /v1/reports/sales", s.authed("reports", auth.Read, s.reportSales))
 	handle("GET /v1/reports/products", s.authed("reports", auth.Read, s.reportProducts))
 	handle("GET /v1/reports/customers", s.authed("reports", auth.Read, s.reportCustomers))

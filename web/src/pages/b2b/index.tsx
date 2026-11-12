@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
-import { centsToPesos, formatMoney, parsePesos } from "@/money";
+import { centsToPesos, formatMoney, parsePesos, readNumber, readPesos } from "@/money";
 import { can } from "@/perms";
 import { href } from "@/router";
 import { dateTime, ErrorBox, Notice, Page } from "../common";
@@ -102,18 +102,18 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
   const team = useQuery({ queryKey: ["team-members-light"], retry: false, queryFn: () => request<{ items: { id: string; name: string; email: string }[] | null }>("GET", "/v1/team/members").then((r) => r.items ?? []) });
   const branches = useQuery({ queryKey: ["company-branches", company?.id], queryFn: () => request<{ items: Branch[] }>("GET", `/v1/companies/${enc(company!.id)}/locations`).then((r) => r.items), enabled: !!company });
   const save = useMutation({
-    mutationFn: () => api.saveCompany({ ...c, creditLimit: c.terms === "prepaid" ? 0 : parsePesos(limit) ?? 0, discountBps: Math.round((Number(pct.replace(",", ".")) || 0) * 100), buyerEmails: emails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean),
-      approverEmails: approverEmails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean), approvalThreshold: parsePesos(threshold) ?? 0 }),
+    mutationFn: () => api.saveCompany({ ...c, creditLimit: c.terms === "prepaid" ? 0 : readPesos(limit, "Límite de crédito (MXN)"), discountBps: Math.round(readNumber(pct, "Descuento sobre precio de lista (%)") * 100), buyerEmails: emails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean),
+      approverEmails: approverEmails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean), approvalThreshold: readPesos(threshold, "Pedir aprobación desde (MXN)") }),
     onSuccess: () => { toast.success("Empresa guardada."); onDone(); onClose(); },
     onError: (e) => { setErrors(fieldErrors(e)); toast.error(errorMessage(e)); },
   });
-  const err = (k: string) => errors[k] && <p className="text-sm text-bad">{errors[k]}</p>;
+  const err = (k: string) => errors[k] && <p className="text-sm text-bad" role="alert">{errors[k]}</p>;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>{company ? "Editar empresa" : "Nueva empresa"}</DialogTitle><DialogDescription>El precio y el crédito aplican cuando un comprador de la lista entra a su cuenta en tu tienda.</DialogDescription></DialogHeader>
         <form id="co-form" className="grid gap-4 sm:grid-cols-2" onSubmit={(e: FormEvent) => { e.preventDefault(); save.mutate(); }}>
-          <div className="grid gap-1.5"><Label htmlFor="co-name">Nombre o razón social</Label><Input id="co-name" value={c.name ?? ""} onChange={(e) => setC({ ...c, name: e.target.value })} />{err("name")}</div>
+          <div className="grid gap-1.5"><Label htmlFor="co-name">Nombre o razón social</Label><Input id="co-name" required maxLength={200} value={c.name ?? ""} onChange={(e) => setC({ ...c, name: e.target.value })} />{err("name")}</div>
           <div className="grid gap-1.5"><Label htmlFor="co-rfc">RFC (opcional)</Label><Input id="co-rfc" className="font-mono uppercase" maxLength={13} value={c.rfc ?? ""} onChange={(e) => setC({ ...c, rfc: e.target.value.toUpperCase() })} />{err("rfc")}</div>
           <div className="grid gap-1.5"><Label htmlFor="co-pct">Descuento sobre precio de lista (%)</Label><Input id="co-pct" inputMode="decimal" value={pct} onChange={(e) => setPct(e.target.value)} />{err("discountBps")}</div>
           <div className="grid gap-1.5"><span className="text-sm font-medium">Forma de pago</span><Select value={c.terms ?? "prepaid"} onValueChange={(v) => setC({ ...c, terms: v })}><SelectTrigger aria-label="Forma de pago"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(TERMS).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent></Select></div>

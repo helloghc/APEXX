@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
-import { centsToPesos, formatMoney, parsePesos } from "@/money";
+import { centsToPesos, formatMoney, parsePesos, readNumber, readPesos } from "@/money";
 import { can } from "@/perms";
 import { href } from "@/router";
 import { dateTime, ErrorBox, StatusPill } from "../common";
@@ -83,7 +83,7 @@ function QuoteDetail({ me, id }: { me: Me; id: string }) {
   const offer = useMutation({
     mutationFn: () => request<Quote>("POST", `/v1/quotes/${encodeURIComponent(id)}/offer`, {
       items: q.data!.items.map((i) => ({ sku: i.sku, qty: i.qty, unit: parsePesos(prices[i.sku] ?? "") ?? undefined })),
-      shipping: parsePesos(ship) ?? 0, discount: parsePesos(disc) ?? 0, validDays: Number(days) || 0, message: msg, postalCode: q.data!.offer?.postalCode ?? "",
+      shipping: readPesos(ship, "Envío (MXN)"), discount: readPesos(disc, "Descuento"), validDays: readNumber(days, "Vigencia (días)"), message: msg, postalCode: q.data!.offer?.postalCode ?? "",
     }),
     onSuccess: () => { toast.success("Oferta enviada al cliente por correo."); setErrors({}); setMsg(""); void qc.invalidateQueries({ queryKey: ["quote", id] }); void qc.invalidateQueries({ queryKey: ["quotes"] }); },
     onError: (e) => { setErrors(fieldErrors(e)); toast.error(errorMessage(e)); },

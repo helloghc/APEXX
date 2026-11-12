@@ -36,6 +36,10 @@ describe("fieldsFor", () => {
     expect(f.subheading?.required).toBe(false);
   });
   it("handles missing schema", () => expect(fieldsFor(undefined)).toEqual([]));
+  it("follows the server's order, then the rest", () => {
+    const s = { type: "object", properties: { alt: { type: "string" }, heading: { type: "string" }, zeta: { type: "string" } }, "x-apexx-order": ["heading", "alt", "gone"] } as Schema;
+    expect(fieldsFor(s).map((x) => x.key)).toEqual(["heading", "alt", "zeta"]);
+  });
 });
 
 describe("coerce and localError", () => {

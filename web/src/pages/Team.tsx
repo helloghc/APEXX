@@ -303,7 +303,7 @@ function ApiKeyDialog({ onClose }: { onClose: () => void }) {
             }}
           >
             <FormField id="k-name" label="Nombre" description="Para reconocerla después, por ejemplo “ERP SAP”.">
-              <Input value={name} onChange={(e) => setName(e.target.value)} />
+              <Input value={name} required maxLength={80} onChange={(e) => setName(e.target.value)} />
             </FormField>
             <div className="grid gap-1.5">
               <span className="text-sm font-medium" id="k-role-label">

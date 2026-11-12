@@ -31,3 +31,23 @@ export function formatMoney(cents: number, currency = "MXN"): string {
   const whole = String(Math.floor(a / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return `${neg ? "-" : ""}$${whole}.${String(a % 100).padStart(2, "0")} ${currency}`;
 }
+
+/** A value typed by a person that is not a valid number: the form says so instead of saving 0. */
+export class InvalidNumber extends Error {}
+
+/** readNumber reads "12.5", "12,5" or " 3 "; empty gives `empty`; anything else throws, naming the field. */
+export function readNumber(text: string | number | null | undefined, field: string, empty = 0): number {
+  const t = String(text ?? "").trim().replace(",", ".");
+  if (t === "") return empty;
+  if (!/^-?\d+(\.\d+)?$/.test(t)) throw new InvalidNumber(`Escribe un número válido en «${field}».`);
+  return Number(t);
+}
+
+/** readPesos is parsePesos for a form: empty gives `empty`; a bad amount throws, naming the field. */
+export function readPesos(text: string | null | undefined, field: string, empty = 0): number {
+  const t = String(text ?? "").trim();
+  if (t === "") return empty;
+  const c = parsePesos(t);
+  if (c === null) throw new InvalidNumber(`Escribe un monto válido en «${field}», por ejemplo 1299.50.`);
+  return c;
+}

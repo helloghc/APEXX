@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { centsToPesos, parsePesos } from "@/money";
+import { centsToPesos, parsePesos, readNumber, readPesos } from "@/money";
 import { can } from "@/perms";
 import { ErrorBox } from "../common";
 import { Loading, ReadOnlyNote, Section, SubPage } from "./kit";
@@ -31,7 +31,7 @@ export function Fees({ me }: { me: Me }) {
   const set = (i: number, p: Partial<Row>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
   const save = useMutation({
     mutationFn: () => api.save(rows.map((r) => ({ id: r.id, name: r.name, active: r.active, kind: r.kind, amount: r.kind === "fixed" ? parsePesos(r.amountText) ?? 0 : 0,
-      bps: r.kind === "percent" ? Math.round((Number(r.pctText.replace(",", ".")) || 0) * 100) : 0, minItems: parsePesos(r.minText) ?? 0, maxItems: parsePesos(r.maxText) ?? 0,
+      bps: r.kind === "percent" ? Math.round(readNumber(r.pctText, "Porcentaje") * 100) : 0, minItems: readPesos(r.minText, "Desde (monto)"), maxItems: readPesos(r.maxText, "Monto máximo"),
       delivery: r.delivery ?? "", channels: list(r.channelsText), groups: list(r.groupsText) }))),
     onSuccess: (items) => { setError(""); qc.setQueryData(["settings", "fees"], items); toast.success("Cargos guardados. Ya se aplican en el carrito."); },
     onError: (e) => { setError(errorMessage(e)); toast.error(errorMessage(e)); },

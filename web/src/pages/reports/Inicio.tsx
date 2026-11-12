@@ -14,7 +14,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { Me } from "@/api";
+import { request, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,65 @@ function Alerts({ alerts, me }: { alerts: Alert[]; me: Me }) {
         })}
       </ul>
     </section>
+  );
+}
+
+type Setup = { products: boolean; payments: boolean; shipping: boolean; published: boolean; team: boolean; domain: boolean; firstSale: boolean };
+
+// SetupGuide walks a new store from empty to its first sale. Each step shows
+// whether it is done (read from the store, not ticked by hand) and links to
+// the screen that does it; it disappears once the essential steps are done.
+function SetupGuide({ me }: { me: Me }) {
+  const q = useQuery({ queryKey: ["setup"], queryFn: () => request<Setup>("GET", "/v1/setup"), staleTime: 30_000 });
+  const s = q.data;
+  if (!s) return null;
+  const steps: { done: boolean; title: string; detail: string; route: string[]; cta: string; optional?: boolean; show: boolean }[] = [
+    { done: s.products, title: "Agrega tu primer producto", detail: "Nombre, foto, precio y existencias. También puedes importar un CSV.", route: ["catalogo", "productos", "nuevo"], cta: "Agregar producto", show: can(me, "catalog", "edit") },
+    { done: s.payments, title: "Conecta Stripe para cobrar", detail: "Los pagos llegan directo a tu cuenta. Sin este paso tus compradores no pueden pagar.", route: ["pagos"], cta: "Conectar pagos", show: can(me, "payments", "read") },
+    { done: s.shipping, title: "Define cómo entregas", detail: "Zonas, tarifas, envío gratis o recoger en tienda.", route: ["configuracion", "envios"], cta: "Configurar envíos", show: can(me, "settings", "read") },
+    { done: s.published, title: "Diseña y publica tu tienda", detail: "Elige un tema, ajusta colores y publica cuando te guste.", route: ["builder"], cta: "Abrir el diseñador", show: can(me, "builder", "read") },
+    { done: s.domain, title: "Usa tu propio dominio", detail: "Por ejemplo www.tutienda.mx. Puedes hacerlo después.", route: ["configuracion", "dominios"], cta: "Conectar dominio", optional: true, show: can(me, "settings", "read") },
+    { done: s.team, title: "Invita a tu equipo", detail: "Cada persona con su propio acceso y solo los permisos que necesita.", route: ["equipo"], cta: "Invitar", optional: true, show: can(me, "team", "admin") },
+  ].filter((x) => x.show);
+  const essential = steps.filter((x) => !x.optional);
+  if (steps.length === 0 || (s.firstSale && essential.every((x) => x.done))) return null;
+  const done = essential.filter((x) => x.done).length;
+  const next = steps.find((x) => !x.done);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Primeros pasos</CardTitle>
+        <CardDescription>
+          <span>{`${done} de ${essential.length} pasos esenciales listos.`}</span>{" "}
+          <span>{s.firstSale ? "Ya tienes ventas: termina lo que falta cuando puedas." : "Al terminarlos tu tienda está lista para su primera venta."}</span>
+        </CardDescription>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Avance de primeros pasos" aria-valuemin={0} aria-valuemax={essential.length} aria-valuenow={done}>
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${essential.length ? (done / essential.length) * 100 : 0}%` }} />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ol className="grid gap-2">
+          {steps.map((x) => (
+            <li key={x.title} className={cn("flex flex-wrap items-center gap-3 rounded-lg border p-3", x === next && "border-primary/50 bg-accent/40")}>
+              <span className={cn("grid size-6 shrink-0 place-items-center rounded-full border text-xs", x.done ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground")} aria-hidden="true">{x.done ? "✓" : ""}</span>
+              <div className="min-w-0 flex-1">
+                <p className={cn("text-sm font-medium", x.done && "text-muted-foreground line-through")}>
+                  {x.title}
+                  {x.optional && <span className="ml-2 text-xs font-normal text-muted-foreground">Opcional</span>}
+                  <span className="sr-only">{x.done ? " (hecho)" : " (pendiente)"}</span>
+                </p>
+                {!x.done && <p className="text-xs text-muted-foreground">{x.detail}</p>}
+              </div>
+              {!x.done && (
+                <Button size="sm" variant={x === next ? "default" : "outline"} asChild>
+                  <a href={href(...x.route)}>{x.cta}</a>
+                </Button>
+              )}
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -400,6 +459,7 @@ export function Inicio({ me }: { me: Me }) {
       }
       actions={allowed ? <Filters params={params} onChange={setParams} channels={q.data?.channels} /> : undefined}
     >
+      {allowed && <SetupGuide me={me} />}
       {allowed ? (
         <>
           {q.data && !invalid && (

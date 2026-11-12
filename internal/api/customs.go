@@ -58,6 +58,9 @@ func (s *Server) putCustoms(w http.ResponseWriter, r *http.Request) {
 		apierr.BadRequest(w, "Revisa las personalizaciones", out...)
 		return
 	}
+	if clean == nil {
+		clean = []cart.CustomField{} // removing them all answers [], not null
+	}
 	if err := s.DB.SetDoc(r.Context(), pr.Tenant, pr.Actor(), "product_customs", id, store.KeyProductCustoms, clean); err != nil {
 		internalError(w, s.Log, err)
 		return

@@ -60,7 +60,6 @@ export function Payments({ me }: { me: Me }) {
   return (
     <Page title="Pagos" sub="Cada tienda cobra con su propia cuenta de Stripe. Apexx nunca ve los datos de las tarjetas.">
       <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
-      <LocalMethods canEdit={can(me, "settings", "admin")} />
       <Card>
         <CardHeader>
           <CardTitle>Cuenta conectada</CardTitle>
@@ -82,18 +81,6 @@ export function Payments({ me }: { me: Me }) {
           ) : (
             <Notice tone="warn">Esta tienda todavía no conectó Stripe: los compradores no pueden pagar.</Notice>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Webhook de Stripe</CardTitle>
-          <CardDescription>
-            En el panel de Stripe crea un endpoint con esta URL y los eventos payment_intent.succeeded y payment_intent.payment_failed.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Secret label="URL del endpoint" value={webhookUrl} />
         </CardContent>
       </Card>
 
@@ -147,6 +134,19 @@ export function Payments({ me }: { me: Me }) {
       ) : (
         <p className="text-sm text-muted-foreground">Para cambiar la cuenta de Stripe necesitas nivel Admin en Pagos.</p>
       )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Webhook de Stripe</CardTitle>
+          <CardDescription>
+            En el panel de Stripe crea un endpoint con esta URL y los eventos payment_intent.succeeded y payment_intent.payment_failed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Secret label="URL del endpoint" value={webhookUrl} once={false} />
+        </CardContent>
+      </Card>
+
+      <LocalMethods canEdit={can(me, "settings", "admin")} />
     </Page>
   );
 }

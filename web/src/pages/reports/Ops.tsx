@@ -196,7 +196,7 @@ function Actividad() {
             </span>
             <Input type="date" aria-label="Hasta" className="w-[9.5rem]" value={f.to} min={f.from || undefined} onChange={(e) => set({ to: e.target.value })} />
           </div>
-          <button type="submit" className="sr-only">
+          <button type="submit" className="sr-only focus:not-sr-only focus:rounded-md focus:border focus:px-3 focus:py-1.5 focus:text-sm focus:ring-2 focus:ring-ring">
             Aplicar filtros
           </button>
           {filtered && (

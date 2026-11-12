@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type FormEvent } from "react";
 import { errorMessage, fieldErrors, request, type Me } from "@/api";
+import { readNumber } from "@/money";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ export function ReturnsPolicy({ me }: { me: Me }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => { if (q.data) { setP(q.data); setDays(String(q.data.windowDays)); } }, [q.data]);
   const save = useMutation({
-    mutationFn: () => api.save({ ...p!, windowDays: Number(days) || 0 }),
+    mutationFn: () => api.save({ ...p!, windowDays: readNumber(days, "Plazo desde el envío (días)") }),
     onSuccess: (x) => { setErrors({}); qc.setQueryData(["settings", "returns"], x); toast.success("Política de devoluciones guardada."); },
     onError: (e) => { setErrors(fieldErrors(e)); toast.error(errorMessage(e)); },
   });

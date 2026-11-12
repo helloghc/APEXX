@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/sonner";
-import { formatMoney, parsePesos } from "@/money";
+import { formatMoney, parsePesos, readNumber } from "@/money";
 import { can } from "@/perms";
 import { href } from "@/router";
 import { ProductPicker } from "../catalog/ProductPicker";
@@ -120,8 +120,8 @@ function SellerDialog({ seller, onClose, onDone }: { seller?: Seller; onClose: (
   const [hold, setHold] = useState(String(seller?.payoutHoldDays ?? 7));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const save = useMutation({
-    mutationFn: () => api.save({ id: seller?.id, name, email, commissionBps: Math.round((Number(rate.replace(",", ".")) || 0) * 100), status, note,
-      payoutAccount: account.trim(), payoutAuto: auto, payoutMin: Math.round((Number(min.replace(",", ".")) || 0) * 100), payoutHoldDays: Math.max(0, Math.round(Number(hold) || 0)) }),
+    mutationFn: () => api.save({ id: seller?.id, name, email, commissionBps: Math.round(readNumber(rate, "Tu comisión (%)") * 100), status, note,
+      payoutAccount: account.trim(), payoutAuto: auto, payoutMin: Math.round(readNumber(min, "Pago mínimo (MXN)") * 100), payoutHoldDays: Math.max(0, Math.round(readNumber(hold, "Días de espera por venta"))) }),
     onSuccess: () => { toast.success("Vendedor guardado."); onDone(); onClose(); },
     onError: (e) => { setErrors(fieldErrors(e)); toast.error(errorMessage(e)); },
   });

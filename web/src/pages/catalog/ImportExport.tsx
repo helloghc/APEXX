@@ -80,7 +80,7 @@ export function ImportExport({ me }: { me: Me }) {
             <CardDescription>Archivo CSV de hasta 10 MB. Una fila por variante; las filas con la misma dirección forman un producto.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <input ref={fileRef} type="file" accept=".csv,text/csv" className="sr-only" id="csv-file" onChange={(e) => void pick(e.target.files?.[0])} />
+            <input ref={fileRef} type="file" accept=".csv,text/csv" className="sr-only" id="csv-file" aria-label="Elegir archivo CSV" onChange={(e) => void pick(e.target.files?.[0])} />
             <Button disabled={!canEdit || busy} onClick={() => fileRef.current?.click()}><Upload aria-hidden="true" /> {busy && !job ? "Revisando…" : "Elegir archivo CSV"}</Button>
             <Button variant="outline" onClick={() => dl("/v1/catalog/import-template.csv", "plantilla-productos.csv")}><FileSpreadsheet aria-hidden="true" /> Descargar plantilla</Button>
           </CardContent>

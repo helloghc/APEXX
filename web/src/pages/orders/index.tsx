@@ -35,7 +35,7 @@ export function Orders({ me, route }: { me: Me; route: string[] }) {
   return (
     <Page title="Pedidos" sub="Todo el ciclo del pedido: pago, envío, devoluciones y reembolsos, con historial completo.">
       <SubNav items={TABS} active={section} label="Secciones de pedidos" />
-      {section === "devoluciones" ? <Returns me={me} /> : section === "borradores" ? <Drafts me={me} /> : section === "cotizaciones" ? <Quotes me={me} id={rest} /> : <OrderList />}
+      {section === "devoluciones" ? <Returns me={me} /> : section === "borradores" ? <Drafts me={me} /> : section === "cotizaciones" ? <Quotes me={me} id={rest} /> : <OrderList canDraft={can(me, "orders", "edit")} />}
     </Page>
   );
 }
@@ -49,7 +49,7 @@ function Filter({ label, value, onChange, options }: { label: string; value: str
   );
 }
 
-function OrderList() {
+function OrderList({ canDraft }: { canDraft: boolean }) {
   const qc = useQueryClient();
   const [f, setF] = useState<OrderQuery>({});
   const [q, setQ] = useState("");
@@ -95,11 +95,12 @@ function OrderList() {
         {filtered && <Button variant="ghost" onClick={() => { setF({}); setQ(""); }}>Limpiar</Button>}
         {filtered && <Button variant="outline" onClick={saveView}><Bookmark aria-hidden="true" /> Guardar vista</Button>}
         <Button variant={f.review ? "default" : "outline"} aria-pressed={!!f.review} onClick={() => setF({ ...f, review: f.review ? undefined : "1" })}>Por revisar (antifraude)</Button>
-        <Button variant="outline" onClick={() => void sale.exportOrders(query).catch((e) => toast.error(errorMessage(e)))}><Download aria-hidden="true" /> Exportar CSV</Button>
+        <Button variant="outline" disabled={total === 0} title={total === 0 ? "No hay pedidos para exportar" : undefined} onClick={() => void sale.exportOrders(query).catch((e) => toast.error(errorMessage(e)))}><Download aria-hidden="true" /> Exportar CSV</Button>
       </div>
       <ErrorBox error={list.error} onRetry={() => void list.refetch()} />
       {!list.isLoading && items.length === 0 ? (
-        <EmptyState icon={<Inbox />} title={filtered ? "Ningún pedido coincide" : "Aún no hay pedidos"} text={filtered ? "Prueba quitando algún filtro." : "Cuando alguien compre en tu tienda, el pedido aparecerá aquí al instante."} />
+        <EmptyState icon={<Inbox />} title={filtered ? "Ningún pedido coincide" : "Aún no hay pedidos"} text={filtered ? "Prueba quitando algún filtro." : "Cuando alguien compre en tu tienda, el pedido aparecerá aquí al instante. ¿Vendiste por teléfono o WhatsApp? Captúralo como pedido borrador y mándale el enlace de pago."}
+          action={!filtered && canDraft ? <Button variant="outline" asChild><a href={href("pedidos", "borradores")}>Crear pedido borrador</a></Button> : filtered ? <Button variant="outline" onClick={() => { setF({}); setQ(""); }}>Quitar filtros</Button> : undefined} />
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <Table>

@@ -57,7 +57,7 @@ func DefaultSections() []SectionDefinition {
 		return Schema{Type: "string", Title: title, MaxLength: intp(max), Widget: "textarea"}
 	}
 	obj := func(req []string, props map[string]Schema) Schema {
-		return Schema{Type: "object", Required: req, AdditionalProperties: boolp(false), Properties: props}
+		return Schema{Type: "object", Required: req, AdditionalProperties: boolp(false), Properties: props, Order: orderFields(props)}
 	}
 	return []SectionDefinition{
 		{

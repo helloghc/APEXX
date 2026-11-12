@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
-import { centsToPesos, formatMoney, parsePesos } from "@/money";
+import { centsToPesos, formatMoney, parsePesos, readPesos } from "@/money";
 import { can } from "@/perms";
 import { href } from "@/router";
 import { dateTime, ErrorBox, Notice, Page } from "../common";
@@ -141,13 +141,13 @@ function CreateDialog({ onClose, onDone }: { onClose: () => void; onDone: () => 
           <>
             <DialogHeader><DialogTitle>Nueva tarjeta de regalo</DialogTitle><DialogDescription>Tu cliente la usa escribiendo el código al pagar. Si no gasta todo, el resto queda en la misma tarjeta.</DialogDescription></DialogHeader>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5"><Label htmlFor="gc-amount">Saldo (MXN)</Label><Input id="gc-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} aria-invalid={!!errors.amount} />{errors.amount && <p className="text-sm text-bad">{errors.amount}</p>}</div>
+              <div className="grid gap-1.5"><Label htmlFor="gc-amount">Saldo (MXN)</Label><Input id="gc-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} aria-invalid={!!errors.amount} />{errors.amount && <p className="text-sm text-bad" role="alert">{errors.amount}</p>}</div>
               <div className="grid gap-1.5"><Label htmlFor="gc-exp">Vence (opcional)</Label><Input id="gc-exp" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />{errors.expiresAt && <p className="text-sm text-bad">{errors.expiresAt}</p>}</div>
               <div className="grid gap-1.5"><Label htmlFor="gc-name">Nombre de quien la recibe</Label><Input id="gc-name" value={name} onChange={(e) => setName(e.target.value)} /></div>
               <div className="grid gap-1.5"><Label htmlFor="gc-email">Correo (para enviarle el código)</Label><Input id="gc-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={!!errors.recipientEmail} />{errors.recipientEmail && <p className="text-sm text-bad">{errors.recipientEmail}</p>}</div>
               <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="gc-note">Nota interna</Label><Input id="gc-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Regalo por aniversario, compensación…" /></div>
             </div>
-            <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button onClick={() => save.mutate()} disabled={save.isPending || !(parsePesos(amount) ?? 0)}>{save.isPending ? "Creando…" : "Crear tarjeta"}</Button></DialogFooter>
+            <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button onClick={() => { const c = parsePesos(amount); if (!c || c <= 0) { setErrors({ amount: "Escribe un saldo mayor a cero, por ejemplo 500." }); document.getElementById("gc-amount")?.focus(); return; } save.mutate(); }} disabled={save.isPending}>{save.isPending ? "Creando…" : "Crear tarjeta"}</Button></DialogFooter>
           </>
         )}
       </DialogContent>
@@ -235,7 +235,7 @@ function InstallmentsForm({ canEdit }: { canEdit: boolean }) {
           <div className="grid max-w-xs gap-1.5"><Label htmlFor="msi-min">Compra mínima (MXN)</Label><Input id="msi-min" inputMode="decimal" value={min} onChange={(e) => setMin(e.target.value)} /><p className="text-xs text-muted-foreground">Los plazos se ofrecen solo en pedidos desde este total.</p></div>
         </CardContent>
       </Card>
-      {canEdit ? <div><Button onClick={() => save.mutate({ installments: { ...v, minAmount: parsePesos(min) ?? 0 } })} disabled={save.isPending}>{save.isPending ? "Guardando…" : "Guardar"}</Button></div> : <Notice tone="warn">Solo un administrador de pagos puede cambiar esto.</Notice>}
+      {canEdit ? <div><Button onClick={() => { try { save.mutate({ installments: { ...v, minAmount: readPesos(min, "Compra mínima (MXN)") } }); } catch (e) { toast.error(errorMessage(e)); } }} disabled={save.isPending}>{save.isPending ? "Guardando…" : "Guardar"}</Button></div> : <Notice tone="warn">Solo un administrador de pagos puede cambiar esto.</Notice>}
     </fieldset>
   );
 }

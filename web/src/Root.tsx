@@ -9,6 +9,7 @@ import { FormField } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Toaster } from "@/components/ui/sonner";
 import { Logo } from "@/components/Logo";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   Sidebar,
   SidebarContent,
@@ -583,7 +584,9 @@ function Shell({ me }: { me: Me }) {
           <span className="truncate text-xs text-muted-foreground">{me.tenant}</span>
         </header>
         <div className={full ? "min-h-0 flex-1 overflow-hidden" : "min-h-0 flex-1 overflow-auto"}>
-          <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Cargando…</p>}>{body}</Suspense>
+          <ErrorBoundary resetKey={route.join("/")}>
+            <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Cargando…</p>}>{body}</Suspense>
+          </ErrorBoundary>
         </div>
       </SidebarInset>
     </SidebarProvider>

@@ -72,7 +72,13 @@ func TestProductCustomizations(t *testing.T) {
 		t.Fatalf("personalization on a product without fields: %v", r)
 	}
 	// Removing the fields: plain lines again.
-	e.must(200, "PUT", "/v1/products/P1/customizations", e.adminA, m{"fields": []m{}})
+	// Removing them all answers an empty list, never null: the panel reads .length.
+	if r := e.must(200, "PUT", "/v1/products/P1/customizations", e.adminA, m{"fields": []m{}}); r["fields"] == nil {
+		t.Fatalf("emptied = %v", r)
+	}
+	if r := e.must(200, "GET", "/v1/products/P1/customizations", e.adminA, nil); r["fields"] == nil {
+		t.Fatalf("emptied, read back = %v", r)
+	}
 	e.drain()
 	if r := sim([]m{{"sku": "S1", "qty": 1}}); r["lines"].([]any)[0].(map[string]any)["unit"].(map[string]any)["amount"].(float64) != 10000 {
 		t.Fatalf("after removing: %v", r["lines"])

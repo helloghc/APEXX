@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/sonner";
-import { centsToPesos, formatMoney, parsePesos } from "@/money";
+import { centsToPesos, formatMoney, parsePesos, readNumber, readPesos } from "@/money";
 import { dateTime } from "../common";
 
 const enc = encodeURIComponent;
@@ -341,7 +341,7 @@ export function Agreements({ id, canEdit }: { id: string; canEdit: boolean }) {
   async function save() {
     if (!edit) return;
     const body = { companyId: id, name: edit.name, validFrom: edit.validFrom, validUntil: edit.validUntil, status: edit.status, note: edit.note, minOrderTotal: parsePesos(edit.min) ?? 0, commitTotal: parsePesos(edit.commit) ?? 0,
-      items: edit.rows.filter((r) => r.sku.trim()).map((r) => ({ sku: r.sku.trim(), unit: parsePesos(r.unit) ?? 0, minQty: Number(r.minQty) || 1, maxQty: Number(r.maxQty) || 0 })) };
+      items: edit.rows.filter((r) => r.sku.trim()).map((r) => ({ sku: r.sku.trim(), unit: readPesos(r.unit, "Precio unitario"), minQty: readNumber(r.minQty, "Mínimo", 1), maxQty: readNumber(r.maxQty, "Máximo") })) };
     try {
       await request(edit.id ? "PUT" : "POST", edit.id ? `/v1/quote-templates/${enc(edit.id)}` : "/v1/quote-templates", body);
       toast.success("Acuerdo guardado. Sus compradores ya pueden pedir de él en «Mi empresa»."); setEdit(null); void qc.invalidateQueries({ queryKey: ["agreements", id] });

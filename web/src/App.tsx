@@ -133,6 +133,7 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
 
   return (
     <div className={s.app}>
+      <h1 className="sr-only">Diseñador de tienda: {template.name || template.handle}</h1>
       <TopBar
         siteName={SITE}
         pageName={template.name || template.handle}

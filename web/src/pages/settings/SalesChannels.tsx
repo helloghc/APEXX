@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { formatMoney } from "@/money";
+import { formatMoney, readNumber } from "@/money";
 import { can } from "@/perms";
 import { ErrorBox, Notice } from "../common";
 import { ProductPicker } from "../promotions/shared";
@@ -45,7 +45,7 @@ function ChannelCard({ a, me }: { a: Account; me: Me }) {
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["sales-channels"] }); void qc.invalidateQueries({ queryKey: ["channel-listings", a.provider] }); };
   const listings = useQuery({ queryKey: ["channel-listings", a.provider], enabled: a.connected, refetchInterval: 15_000,
     queryFn: () => request<{ items: Listing[] }>("GET", `/v1/sales-channels/${a.provider}/listings`).then((r) => r.items) });
-  const settings = () => ({ markupBps: Math.round((Number(st.markup) || 0) * 100), stockBuffer: Number(st.buffer) || 0, importOrders: st.importOrders });
+  const settings = () => ({ markupBps: Math.round(readNumber(st.markup, "Aumento al precio (%)") * 100), stockBuffer: readNumber(st.buffer, "Piezas que no se ofrecen"), importOrders: st.importOrders });
   async function connect() {
     setBusy(true);
     try {

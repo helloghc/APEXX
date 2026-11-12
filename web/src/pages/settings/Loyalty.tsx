@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { centsToPesos, parsePesos } from "@/money";
+import { centsToPesos, readNumber, readPesos } from "@/money";
 import { can } from "@/perms";
 import { ErrorBox } from "../common";
 import { Loading, Section, SubPage } from "./kit";
@@ -31,8 +31,8 @@ export function Loyalty({ me }: { me: Me }) {
   async function save() {
     setBusy(true); setErrs({});
     try {
-      await request("PUT", "/v1/settings/loyalty", { active: v.active, earnPer: parsePesos(v.earn) ?? 0, pointValue: parsePesos(v.value) ?? 0, minRedeem: Number(v.min) || 0,
-        tiers: v.tiers.map((t) => ({ name: t.name, minSpend: parsePesos(t.spend) ?? 0, multiplierPct: Math.round((Number(t.mult) || 1) * 100) })) });
+      await request("PUT", "/v1/settings/loyalty", { active: v.active, earnPer: readPesos(v.earn, "1 punto por cada ($)"), pointValue: readPesos(v.value, "Cada punto vale ($)"), minRedeem: readNumber(v.min, "Mínimo para canjear (puntos)"),
+        tiers: v.tiers.map((t) => ({ name: t.name, minSpend: readPesos(t.spend, "Desde compras de ($)"), multiplierPct: Math.round(readNumber(t.mult, "Multiplica por", 1) * 100) })) });
       toast.success(v.active ? "Programa de puntos activo: los siguientes pedidos pagados ya suman." : "Programa guardado en pausa.");
       void qc.invalidateQueries({ queryKey: ["loyalty-program"] });
     } catch (e) {

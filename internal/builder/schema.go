@@ -21,6 +21,9 @@ type Schema struct {
 	Maximum              *float64          `json:"maximum,omitempty"`
 	Default              any               `json:"default,omitempty"`
 	Widget               string            `json:"x-apexx-widget,omitempty"`
+	// Order lists Properties in the order an editor shows them (a JSON
+	// object has no order of its own).
+	Order []string `json:"x-apexx-order,omitempty"`
 }
 
 // Validate checks v against s and appends issues under path.
@@ -99,4 +102,37 @@ func (s Schema) Validate(path string, v any, out *[]Issue) {
 		}
 		bad("enum", fmt.Sprintf("valor no permitido; opciones: %v", s.Enum))
 	}
+}
+
+// fieldRank orders a section's settings the way a merchant reads them: what
+// it says first, then its buttons, its picture, how much it shows, and last
+// how it looks. Keys not listed go after the content, by name.
+var fieldRank = map[string]int{
+	"eyebrow": 1, "heading": 2, "title": 3, "subheading": 4, "storeName": 5, "logoText": 6, "brand": 7, "initial": 8, "about": 9,
+	"menu": 20, "links": 21, "legal": 22, "showSearch": 23,
+	"ctaLabel": 30, "ctaUrl": 31, "cta2Label": 32, "cta2Url": 33, "url": 34,
+	"image": 40, "alt": 41, "monogram": 42,
+	"limit": 50, "columns": 51,
+	"layout": 60, "style": 61, "align": 62, "height": 63, "reverse": 64, "tone": 65, "overlay": 66,
+}
+
+// orderFields returns the keys of props in editor order.
+func orderFields(props map[string]Schema) []string {
+	keys := make([]string, 0, len(props))
+	for k := range props {
+		keys = append(keys, k)
+	}
+	rank := func(k string) int {
+		if r, ok := fieldRank[k]; ok {
+			return r
+		}
+		return 15
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if ri, rj := rank(keys[i]), rank(keys[j]); ri != rj {
+			return ri < rj
+		}
+		return keys[i] < keys[j]
+	})
+	return keys
 }
