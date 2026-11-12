@@ -354,6 +354,11 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		_, err := srv.RunWarehouseRequests(ctx)
 		return err
 	})
+	// Email campaigns due to go out.
+	resilience.Every(ctx, log, "campaigns", 30*time.Second, func(ctx context.Context) error {
+		_, err := srv.RunCampaigns(ctx)
+		return err
+	})
 	// Bulk operations: stock and price jobs in chunks.
 	resilience.Every(ctx, log, "bulk-jobs", 2*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunBulkJobs(ctx)

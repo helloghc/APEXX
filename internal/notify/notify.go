@@ -522,6 +522,9 @@ func (s *Service) sendOne(ctx context.Context, tenant, id string) (bool, error) 
 		_ = s.finish(ctx, tenant, id, "dead", "", "", truncate(err.Error(), 300), attempts+1, nil)
 		return false, nil
 	}
+	if o := p.Data.Override; o != nil {
+		tpl.Subject, tpl.Blocks = o.Subject, o.Blocks
+	}
 	r := Render(tpl.Subject, tpl.Blocks, p.Data, st.Brand, tpl.ShowItems)
 	prov, err := s.provider(tenant, st, sec)
 	var ref string

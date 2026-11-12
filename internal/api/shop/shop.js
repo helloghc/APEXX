@@ -1,3 +1,14 @@
+// Email campaign attribution: the last campaign link clicked, for 7 days.
+function campaignClick() {
+  try {
+    const c = JSON.parse(localStorage.getItem("apexx_cmp_click_" + (document.body.dataset.tenant || location.pathname.split("/")[2])) || "null");
+    return c && Date.now() - c.at < 7 * 864e5 ? c.id : undefined;
+  } catch { return undefined; }
+}
+(() => {
+  const id = new URLSearchParams(location.search).get("cmp");
+  if (id && /^cmp_[a-f0-9]{1,32}$/.test(id)) try { localStorage.setItem("apexx_cmp_click_" + (document.body.dataset.tenant || location.pathname.split("/")[2]), JSON.stringify({ id, at: Date.now() })); } catch {}
+})();
 // Files of digital products: signed links with what is left of each one.
 function downloadsBox(ds) {
   if (!ds || !ds.length) return "";
@@ -394,7 +405,7 @@ function downloadsBox(ds) {
       if (!key) { key = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9-]/gi, ""); sessionStorage.setItem("apexx_idem", key); }
       const res = await post("/checkout", {
         channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined, custom: l.custom || undefined, ref: keyOf(l) })),
-        shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined, blocks: Object.keys(blocks).length ? blocks : undefined,
+        shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined, blocks: Object.keys(blocks).length ? blocks : undefined, campaign: campaignClick(),
         customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, poNumber: company ? String(f.get("po") || "").trim() || undefined : undefined, paymentMethod: pm,
         coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,
         savedCard: kept || undefined, saveCard: !kept && signedIn && !!f.get("savecard") || undefined,

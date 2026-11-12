@@ -106,6 +106,8 @@ type CheckoutRequest struct {
 	AcceptedTerms bool `json:"acceptedTerms,omitempty"`
 	// Blocks answers the store's checkout blocks (block id -> value).
 	Blocks map[string]string `json:"blocks,omitempty"`
+	// Campaign is the email campaign whose link brought the shopper (attribution).
+	Campaign string `json:"campaign,omitempty"`
 }
 
 func blocksJSON(a []cart.BlockAnswer) []byte {
@@ -604,6 +606,13 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {
 			return err
+		}
+		// Attribution: only a campaign of this store that was really sent counts.
+		if strings.HasPrefix(req.Campaign, "cmp_") && len(req.Campaign) <= 40 {
+			if _, err := tx.Exec(ctx, `UPDATE orders SET email_campaign_id=$3 WHERE tenant_id=$1 AND id=$2
+				AND EXISTS (SELECT 1 FROM email_campaigns WHERE tenant_id=$1 AND id=$3 AND status IN ('sending','sent'))`, tenant, id, req.Campaign); err != nil {
+				return err
+			}
 		}
 		// The key remembers its order, so a retry after a crash finds it.
 		if _, err := tx.Exec(ctx, `UPDATE idempotency_keys SET order_id=$3 WHERE tenant_id=$1 AND key=$2`, tenant, idemKey, id); err != nil {

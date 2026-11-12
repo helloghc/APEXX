@@ -26,6 +26,8 @@ const (
 	TplTeamInvite          = "team_invite"
 	TplSubscriptionCreated = "subscription_created"
 	TplSubscriptionFailed  = "subscription_failed"
+	// TplCampaign carries its own subject and blocks in each message (Data.Override).
+	TplCampaign = "campaign"
 )
 
 // Blocks are the editable parts of a template. Body paragraphs are separated
@@ -78,6 +80,16 @@ type Data struct {
 	ActionURL string            `json:"actionUrl,omitempty"`
 	// Downloads: files of digital products (Label = file name, Value = link).
 	Downloads []Row `json:"downloads,omitempty"`
+	// Override replaces the template's copy (campaigns write their own).
+	Override *Override `json:"override,omitempty"`
+	// Unsubscribe is the link to stop marketing email (campaigns).
+	Unsubscribe string `json:"unsubscribe,omitempty"`
+}
+
+// Override is the subject and blocks of one message.
+type Override struct {
+	Subject string `json:"subject"`
+	Blocks  Blocks `json:"blocks"`
 }
 
 // Brand is the look of the emails of a store.
@@ -101,6 +113,9 @@ func orderVars(extra ...Variable) []Variable {
 
 // Definitions lists the built-in templates in display order.
 var Definitions = []Definition{
+	{Key: TplCampaign, Name: "Campaña", Description: "Correo de una campaña a un grupo de clientes con permiso; su texto se escribe en cada campaña.",
+		Subject: "{{tienda.nombre}}", Blocks: Blocks{Heading: "Novedades", Body: "", CTA: "Ver la tienda", Footer: "Recibes este correo porque aceptaste noticias de la tienda."},
+		Variables: []Variable{{Name: "cliente.nombre", Label: "Nombre del cliente", Sample: "Ana"}}},
 	{Key: TplOrderConfirmed, Name: "Pedido confirmado", Description: "Se envía cuando el pago se confirma.",
 		Subject: "Confirmamos tu pedido #{{pedido.numero}}",
 		Blocks: Blocks{Heading: "¡Gracias por tu compra, {{cliente.nombre}}!",
@@ -412,6 +427,10 @@ func Render(subject string, b Blocks, d Data, brand Brand, showItems bool) Rende
 	if f := fill(b.Footer, vars, false); f != "" {
 		h.WriteString(`<p class="muted" style="margin:0;font-size:14px">` + esc(f) + `</p>`)
 		t.WriteString(f + "\n\n")
+	}
+	if u := safeURL(d.Unsubscribe); u != "" {
+		h.WriteString(`<p class="muted" style="margin:12px 0 0;font-size:13px"><a href="` + esc(u) + `" style="color:inherit">Ya no quiero recibir estos correos</a></p>`)
+		t.WriteString("Darse de baja: " + u + "\n\n")
 	}
 	h.WriteString(`</td></tr><tr><td class="muted" align="center" style="padding:16px 8px;font-size:12px">`)
 	foot := brand.Footer
