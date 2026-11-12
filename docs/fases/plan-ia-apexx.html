@@ -139,7 +139,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <h1>IA en cada panel sin frenar la tienda</h1>
   <p class="lede">Vectores, búsqueda híbrida, re-ranking, fragmentos con contexto, grafo de conocimiento (GraphRAG), recuperación que se corrige sola (CRAG) y prompts estructurados, aplicados en todo el sistema y en siete fases. Cada fase se cierra con la misma batería de pruebas: aislamiento, reversión, escala, roles y velocidad.</p>
   <div class="status">
-    <span class="chip"><span class="dot ok"></span>IA-0 a IA-3: cerradas</span><span class="chip"><span class="dot live"></span>IA-4 Grafo de conocimiento: sigue</span>
+    <span class="chip"><span class="dot ok"></span>IA-0 a IA-4: cerradas</span><span class="chip"><span class="dot live"></span>IA-5 Copilotos por panel: sigue</span>
     <span class="chip"><span class="dot ok"></span>Escala base: cerrada, 10 de 10</span>
     <span class="chip"><span class="dot ok"></span>50 000 productos: tienda y panel en 1–4 ms, 0 errores</span>
     <span class="chip"><span class="dot ok"></span>Base lista: outbox sin huecos (migración 154)</span>
@@ -226,11 +226,11 @@ const PHASES = [
   panels:["Tienda: asistente / MCP","Tienda: ficha","Búsqueda y opiniones","Ayuda del panel"], tech:["V","H","R","CC","CRAG","P"],
   gate:["✓ 0 precios o existencias inventados: cada monto se compara con el sistema","✓ «No sé» sin fuente 5/5 y 3/3 cuando la tienda no cubre el tema","✓ Una opinión con instrucciones maliciosas no se obedece ni se usa como fuente"]},
  {id:"IA-4", name:"Grafo de conocimiento", goal:"Relaciones que una búsqueda no ve: compatible con, accesorio de, sustituto de, catálogo de esta empresa.",
-  deliver:["Grafo con lo que ya existe: categorías, marcas, atributos, colecciones, coocurrencias, empresas","Aristas nuevas propuestas leyendo descripciones y fichas, con confianza y fuente","Accesorios, compatibles y sustitutos en ficha y carrito","B2B: solicitud de cotización en PDF a propuesta con SKU emparejados"],
+  deliver:["✓ Grafo con lo que ya existe: categorías, precios, vectores y compras conjuntas","✓ Relaciones propuestas leyendo descripciones (compatible con), pedidos (accesorio de) y significado (alternativa de), con confianza y motivo","✓ Compatibles, accesorios y alternativas en ficha, asistente y MCP; alternativas primero si está agotado","✓ B2B: solicitud de cotización en texto o PDF a renglones con SKU, precio y existencias, y pedido borrador","✓ Fichas técnicas en PDF: texto en la ficha y respuestas citadas"],
   panels:["Tienda: recomendaciones","Tienda: asistente / MCP","Empresas B2B","Marketplace"], tech:["V","H","R","CC","G","CRAG","P"],
-  gate:["Cada arista tiene fuente y el comerciante la aprueba","Tasa de aprobación medida como calidad del grafo"]},
+  gate:["✓ Cada relación tiene motivo y solo llega a la tienda si el comerciante la aprueba; decisiones auditadas y reversibles","✓ Tasa de aprobación medida y visible en el panel; rechazadas no se vuelven a proponer"]},
  {id:"IA-5", name:"Copilotos por panel", goal:"Ayuda concreta en cada pantalla del comerciante, siempre como sugerencia que se aprueba y se deshace.",
-  deliver:["Catálogo: atributos, categoría, SEO, texto alternativo, duplicados","Importación: mapeo de columnas y categorías externas","Promociones: armar y validar con el simulador","Pedidos: resumen, respuesta al cliente, motivo de devolución","Clientes: segmento en lenguaje natural a reglas","Reportes: preguntas sobre la capa de reportes, nunca SQL libre","Correos y diseño: textos con la voz de la marca"],
+  deliver:["… Catálogo: atributos, categoría, SEO, texto alternativo, duplicados","Importación: mapeo de columnas y categorías externas","Promociones: armar y validar con el simulador","Pedidos: resumen, respuesta al cliente, motivo de devolución","Clientes: segmento en lenguaje natural a reglas","Reportes: preguntas sobre la capa de reportes, nunca SQL libre","Correos y diseño: textos con la voz de la marca"],
   panels:["Catálogo","Importar","Promociones","Pedidos y devoluciones","Clientes y segmentos","Reportes","Correos y campañas","Diseño de la tienda","Marketplace"], tech:["V","H","G","CRAG","P"],
   gate:["Cada sugerencia queda en la auditoría y se revierte","Quien no tiene permiso no ve el copiloto de ese panel"]},
  {id:"IA-6", name:"Decisión de fine-tuning", goal:"Entrenar un modelo propio solo si la evaluación demuestra que la recuperación y los prompts no bastan.",
