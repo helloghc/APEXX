@@ -80,6 +80,13 @@ type CheckoutRequest struct {
 	Installments int `json:"installments,omitempty"`
 	// ClientIP is set by the server (never by clients) for risk rules.
 	ClientIP string `json:"-"`
+	// SaveCard keeps the card for the next purchase of a signed-in customer;
+	// SavedCard pays with one they kept. The store's server fills SaveFor and
+	// Saved after checking the customer; a client can never set them.
+	SaveCard  bool        `json:"saveCard,omitempty"`
+	SavedCard string      `json:"savedCard,omitempty"`
+	SaveFor   string      `json:"-"`
+	Saved     *SavedToken `json:"-"`
 	// CompanyID buys for a company. Only honoured for server-side integrations
 	// with permission to edit orders; shoppers get their company from their session.
 	CompanyID string `json:"companyId,omitempty"`
@@ -617,11 +624,15 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	ch := payments.Charge{Status: "captured", Ref: "no_card"}
 	if due > 0 {
 		var payErr error
+		pmToken, cusToken := req.PaymentMethod, renewalCustomer(req.Renewal)
+		if req.Saved != nil {
+			pmToken, cusToken = req.Saved.PaymentMethod, req.Saved.Customer // a card the customer kept, used with them present
+		}
 		ch, payErr = acct.Provider.Charge(ctx, payments.ChargeRequest{
 			Account: acct.Account, OrderID: id, Amount: due, Currency: string(tot.Grand.Currency),
-			PaymentMethod: req.PaymentMethod, FeeAmount: due * acct.FeeBps / 10000, IdempotencyKey: "charge-" + id, Email: req.Customer.Email,
-			Installments: req.Installments, SaveCard: subscribed && req.Renewal == nil, Name: req.Customer.Name,
-			Customer: renewalCustomer(req.Renewal), OffSession: req.Renewal != nil,
+			PaymentMethod: pmToken, FeeAmount: due * acct.FeeBps / 10000, IdempotencyKey: "charge-" + id, Email: req.Customer.Email,
+			Installments: req.Installments, SaveCard: (subscribed || (req.SaveCard && req.SaveFor != "")) && req.Renewal == nil && req.Saved == nil, Name: req.Customer.Name,
+			Customer: cusToken, OffSession: req.Renewal != nil,
 		})
 		if payErr != nil {
 			// Unknown outcome (network, Stripe outage): leave the order pending; the
@@ -635,6 +646,11 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	o, err := s.Get(ctx, tenant, id, false)
 	if err != nil {
 		return Result{}, err
+	}
+	if ch.Status == "captured" && req.SaveCard && req.SaveFor != "" && ch.Customer != "" && ch.PaymentMethod != "" {
+		if err := s.keepCard(ctx, tenant, req.SaveFor, acct, ch); err != nil && s.Log != nil {
+			s.Log.Error("save card", "tenant", tenant, "order", id, "err", err) // the order stands
+		}
 	}
 	if ch.Status == "pending" && ch.Voucher != nil {
 		b, _ := json.Marshal(o)

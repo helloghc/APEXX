@@ -340,6 +340,27 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 	if c, email := s.shopperCompany(r); c != nil {
 		req.Company, req.Customer.Email = c, email
 	}
+	// Saved cards belong to the signed-in customer only.
+	req.SaveFor, req.Saved = "", nil
+	if req.SaveCard || req.SavedCard != "" {
+		cid, _ := s.shopper(r)
+		switch {
+		case cid == "" && req.SavedCard != "":
+			apierr.Write(w, apierr.Problem{Status: http.StatusUnauthorized, Code: "unauthenticated", Detail: "Entra a tu cuenta para pagar con tu tarjeta guardada"})
+			return
+		case cid == "":
+			req.SaveCard = false
+		case req.SavedCard != "":
+			tok, err := s.Orders.CardToken(r.Context(), r.PathValue("tenant"), cid, req.SavedCard)
+			if err != nil {
+				apierr.Write(w, apierr.Problem{Status: http.StatusBadRequest, Code: "card_not_found", Detail: "Esa tarjeta ya no está guardada; elige otra"})
+				return
+			}
+			req.Saved, req.SaveCard, req.PaymentMethod = tok, false, "pm_saved"
+		default:
+			req.SaveFor = cid
+		}
+	}
 	errs := validateItems(req.Channel, req.Items)
 	if !shopChannel(t, req.Channel) {
 		errs = append(errs, apierr.FieldError{Field: "channel", Code: "invalid", Message: "Canal de venta no disponible en la tienda"})

@@ -52,12 +52,18 @@
 <a href="{{.Base}}/cuenta?ver=direcciones"{{if eq .View "addresses"}} aria-current="page"{{end}}>Direcciones</a>
 <a href="{{.Base}}/cuenta?ver=listas"{{if eq .View "lists"}} aria-current="page"{{end}}>Mis listas</a>
 {{with .Company}}<a href="{{$.Base}}/cuenta?ver=empresa"{{if eq $.View "company"}} aria-current="page"{{end}}>Mi empresa</a>{{end}}
+<a href="{{.Base}}/cuenta?ver=tarjetas"{{if eq .View "cards"}} aria-current="page"{{end}}>Mis tarjetas</a>
 <a href="{{.Base}}/cuenta?ver=datos"{{if eq .View "profile"}} aria-current="page"{{end}}>Mis datos</a>
 <form method="post" action="{{.Base}}/cuenta"><input type="hidden" name="accion" value="salir"><button class="linkbtn" type="submit">Cerrar sesión</button></form>
 </nav>
 {{with .Notice}}<p class="acct-ok" role="status">{{.}}</p>{{end}}
 {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
 
+{{if eq .View "cards"}}
+<p class="muted">Tarjetas que guardaste al pagar. La tienda solo guarda una referencia segura de tu banco, nunca el número completo.</p>
+{{range .Cards}}<div class="acct-box" data-card="{{.ID}}"><p><strong>{{.Brand}} •••• {{.Last4}}</strong>{{if .ExpYear}} · vence {{.ExpMonth}}/{{.ExpYear}}{{end}}</p><button class="linkbtn" type="button" data-card-delete>Quitar tarjeta</button><p class="note" role="status" data-card-status></p></div>
+{{else}}<p>No tienes tarjetas guardadas. Al pagar, marca «Guardar esta tarjeta para mi próxima compra».</p>{{end}}
+{{end}}
 {{if eq .View "company"}}{{with .Portal}}
 <div class="acct-box"><h2>Tu mes</h2>
 <p>Compras a crédito este mes: <strong>{{.Spent}}</strong>{{with .Cap}} de tu tope de {{.}}{{end}}.</p>

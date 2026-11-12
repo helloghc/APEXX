@@ -391,6 +391,7 @@ type accountData struct {
 	Addresses []customers.Address
 	Lists     []reorderList
 	Company   *orders.CompanyAccess // the company the shopper buys for, if any
+	Cards     []orders.SavedCard
 	Portal    *companyPortal
 }
 
@@ -611,6 +612,14 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 		d.View, d.Order, d.Title = "order", v, "Pedido #"+strconv.FormatInt(o.Number, 10)
 	case q.Get("ver") == "direcciones":
 		d.View, d.Title = "addresses", "Mis direcciones"
+	case q.Get("ver") == "tarjetas":
+		d.View, d.Title = "cards", "Mis tarjetas"
+		cards, err := s.Orders.Cards(r.Context(), tenant, customerID)
+		if err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+		d.Cards = cards
 	case q.Get("ver") == "datos":
 		d.View, d.Title = "profile", "Mis datos"
 	case q.Get("ver") == "listas":

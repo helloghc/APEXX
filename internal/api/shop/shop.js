@@ -224,7 +224,8 @@
       const old = $("[data-wallet-rows]", summary); if (old) old.remove();
       if (w > 0) summary.insertAdjacentHTML("beforeend", "<table class='totals' data-wallet-rows><tr><td>Tarjeta de regalo o saldo</td><td class='num'>−" + money({ amount: w, currency: cur }) + "</td></tr><tr class='grand'><td>A pagar</td><td class='num'>" + money({ amount: due, currency: cur }) + "</td></tr></table>");
       payBtn.textContent = due > 0 ? (voucherKind() ? "Generar referencia de " + money({ amount: due, currency: cur }) : "Pagar " + money({ amount: due, currency: cur })) : "Confirmar pedido";
-      payBox.hidden = due === 0 || onCredit() || voucherKind();
+      payBox.hidden = due === 0 || onCredit() || voucherKind() || !!savedCard();
+      cardsBox.hidden = due === 0 || onCredit() || voucherKind();
       if (voucherKind() && instBox) { instBox.innerHTML = ""; return; }
       const ins = cfg.installments;
       if (instBox) {
@@ -249,6 +250,21 @@
         opts.map((o) => "<label><input type='radio' name='paykind' value='" + o[0] + "'" + (keep === o[0] ? " checked" : "") + "> " + o[1] + " <span class='muted'>" + o[2] + "</span></label>").join("") + "</div>" : "";
     };
     kindBox.addEventListener("change", () => { paintWallet(); });
+    // Signed-in customers: pay with a kept card, or keep the new one.
+    const cardsBox = document.createElement("div"); cardsBox.dataset.savedCards = ""; payBox.before(cardsBox);
+    const savedCard = () => { const r = cardsBox.querySelector("input[name=savedcard]:checked"); return r && r.value !== "new" ? r.value : ""; };
+    let signedIn = false;
+    fetch(api + "/account/cards").then((x) => (x.ok ? x.json() : null)).then((c) => {
+      if (!c) return;
+      signedIn = true;
+      for (const [k, v] of [["email", c.email], ["name", c.name], ["phone", c.phone]]) { const el = $("#" + k); if (el && v && !el.value) { el.value = v; if (k === "email") el.dispatchEvent(new Event("change")); } }
+      const list = c.items || [];
+      cardsBox.innerHTML = (list.length ? "<div class='testcards' role='radiogroup' aria-label='Tarjeta'>" + list.map((k, i) => "<label><input type='radio' name='savedcard' value='" + esc(k.id) + "'" + (i === 0 ? " checked" : "") + "> " + esc((k.brand || "Tarjeta").replace(/^./, (x) => x.toUpperCase())) + " •••• " + esc(k.last4) + "</label>").join("") +
+        "<label><input type='radio' name='savedcard' value='new'> Otra tarjeta</label></div>" : "") +
+        "<label class='shipopt' data-save-card" + (list.length ? " hidden" : "") + "><input type='checkbox' name='savecard' id='savecard'> <span>Guardar esta tarjeta para mi próxima compra</span></label>";
+      paintWallet();
+    }).catch(() => {});
+    cardsBox.addEventListener("change", () => { const sv = cardsBox.querySelector("[data-save-card]"); if (sv) sv.hidden = !!savedCard(); paintWallet(); });
     fetch(api + "/payment-methods").then((x) => (x.ok ? x.json() : {})).then((m) => { methods = m || {}; paintKinds(); }).catch(() => {});
     const TERMS = { net15: "15 días", net30: "30 días", net60: "60 días" };
     fetch(api + "/company").then((x) => (x.status === 200 ? x.json() : null)).then((c) => {
@@ -311,8 +327,9 @@
       if (!(pickup() && !String(f.get("postal"))) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
       const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount); // credit or gift cards pay it all: no card needed
-      let pm = onCredit() ? "credit" : covered ? "pm_gift_card" : voucherKind() ? payKind() : String(f.get("pm") || "");
-      if (stripe && !covered && !voucherKind()) {
+      const kept = !onCredit() && !covered && !voucherKind() ? savedCard() : "";
+      let pm = onCredit() ? "credit" : covered ? "pm_gift_card" : voucherKind() ? payKind() : kept ? "pm_saved" : String(f.get("pm") || "");
+      if (stripe && !covered && !voucherKind() && !kept) {
         const sub = await elements.submit();
         if (sub.error) { errBox.textContent = sub.error.message; payBtn.disabled = false; refresh(); return; }
         const r = await stripe.createPaymentMethod({ elements, params: { billing_details: { email: f.get("email"), name: f.get("name") } } });
@@ -327,6 +344,7 @@
         shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined,
         customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, poNumber: company ? String(f.get("po") || "").trim() || undefined : undefined, paymentMethod: pm,
         coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,
+        savedCard: kept || undefined, saveCard: !kept && signedIn && !!f.get("savecard") || undefined,
       }, { "Idempotency-Key": key });
       if (res.status === 201) {
         sessionStorage.removeItem("apexx_idem"); sessionStorage.setItem("apexx_last_order", JSON.stringify(res.body));
@@ -861,4 +879,50 @@
     out.textContent = "Listo: devolución registrada." + (r.body.labelTracking ? " Tu guía es " + r.body.labelTracking + "." : " Te escribiremos con las instrucciones.");
     setTimeout(() => location.reload(), 1500);
   });
+})();
+
+
+/* ==== kept cards in the account, and one-step purchase on the product page ==== */
+(() => {
+  const tenant = document.body.dataset.tenant, api = "/s/" + tenant + "/api";
+  document.querySelectorAll("[data-card]").forEach((box) => box.querySelector("[data-card-delete]").addEventListener("click", async () => {
+    const r = await fetch(api + "/account/cards/" + encodeURIComponent(box.dataset.card), { method: "DELETE" }).catch(() => null);
+    if (r && r.status === 204) box.remove(); else box.querySelector("[data-card-status]").textContent = "No pudimos quitar la tarjeta. Intenta de nuevo.";
+  }));
+  const buy = document.querySelector("form[data-buy]"); if (!buy || !tenant) return;
+  fetch(api + "/account/express").then((x) => (x.status === 200 ? x.json() : null)).then((ex) => {
+    if (!ex) return;
+    const base = document.body.dataset.base || "", mk = new URLSearchParams(location.search).get("mk") || "", channel = mk || document.body.dataset.channel || "mx";
+    const card = (ex.card.brand || "Tarjeta").replace(/^./, (x) => x.toUpperCase()) + " •••• " + ex.card.last4;
+    const wrap = document.createElement("div"); wrap.className = "express";
+    wrap.innerHTML = "<button class='btn ghost' type='button' data-express>Comprar ahora con " + card.replace(/[<>&]/g, "") + "</button><div data-express-box hidden></div>";
+    buy.after(wrap);
+    const box = wrap.querySelector("[data-express-box]"), btn = wrap.querySelector("[data-express]");
+    const sku = () => { const r = buy.querySelector("input[name=sku]:checked") || buy.querySelector("input[name=sku]"); return r ? r.value : ""; };
+    const qty = () => Math.max(1, Number((buy.querySelector("#qty") || {}).value) || 1);
+    const post = (path, body, hdr) => fetch(api + path, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, hdr || {}), body: JSON.stringify(body) }).then(async (x) => ({ status: x.status, body: await x.json().catch(() => ({})) }));
+    let terms = null;
+    fetch(api + "/config").then((x) => x.json()).then((c) => { const co = (c && c.checkout) || {}; if (co.termsCheckbox) terms = { policy: co.termsPolicy, title: co.termsTitle }; }).catch(() => {});
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; box.hidden = false; box.textContent = "Calculando…";
+      const sim = await post("/simulate", { channel, postalCode: ex.postalCode, items: [{ sku: sku(), qty: qty() }], email: ex.email }).catch(() => ({ status: 0, body: {} }));
+      btn.disabled = false;
+      if (sim.status !== 200 || !sim.body.shipping) { box.textContent = (sim.body.messages && sim.body.messages[0] && sim.body.messages[0].text) || "No pudimos calcular el envío a tu dirección; usa el carrito."; return; }
+      const t = sim.body.totals, m = (v) => new Intl.NumberFormat("es-MX", { style: "currency", currency: v.currency }).format(v.amount / 100) + " " + v.currency;
+      box.innerHTML = "<div class='acct-box'><p>Total: <strong>" + m(t.grand) + "</strong> (envío " + (sim.body.shipping.price.amount ? m(sim.body.shipping.price) : "gratis") + ")</p><p class='muted'>Se envía a: " + ex.address.replace(/[<>&]/g, "") + " · C.P. " + ex.postalCode + "</p><p class='muted'>Se cobra a: " + card + "</p>" +
+        (terms ? "<label class='shipopt'><input type='checkbox' data-express-terms> <span>Acepto los " + (terms.policy ? "<a href='" + base + "/politicas/" + encodeURIComponent(terms.policy) + "' target='_blank' rel='noopener'>" + String(terms.title || "términos y condiciones").toLowerCase().replace(/[<>&]/g, "") + "</a>" : "términos y condiciones") + "</span></label>" : "") +
+        "<div class='subactions'><button class='btn' type='button' data-express-ok>Confirmar compra</button><button class='btn ghost' type='button' data-express-no>Cancelar</button></div><p class='note' role='status' data-express-status></p></div>";
+      box.querySelector("[data-express-no]").addEventListener("click", () => { box.hidden = true; box.textContent = ""; });
+      box.querySelector("[data-express-ok]").addEventListener("click", async (e) => {
+        const out = box.querySelector("[data-express-status]"), tb = box.querySelector("[data-express-terms]");
+        if (tb && !tb.checked) { out.textContent = "Acepta los términos y condiciones para continuar."; tb.focus(); return; }
+        e.target.disabled = true; out.textContent = "Procesando…";
+        const key = "x" + (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9-]/gi, "");
+        const res = await post("/checkout", { channel, postalCode: ex.postalCode, items: [{ sku: sku(), qty: qty() }], shippingOption: sim.body.shipping.id, customer: { email: ex.email, name: ex.name, phone: ex.phone || "", address: ex.address },
+          paymentMethod: "pm_saved", savedCard: ex.card.id, expectedTotal: t.grand.amount, acceptedTerms: terms ? true : undefined }, { "Idempotency-Key": key }).catch(() => ({ status: 0, body: {} }));
+        if (res.status === 201) { sessionStorage.setItem("apexx_last_order", JSON.stringify(res.body)); location.href = base + "/gracias" + location.search; return; }
+        e.target.disabled = false; out.textContent = res.body.detail || "No pudimos completar la compra. Intenta desde el carrito.";
+      });
+    });
+  }).catch(() => {});
 })();

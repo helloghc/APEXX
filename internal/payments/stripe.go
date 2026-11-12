@@ -405,3 +405,19 @@ func firstNonEmptyS(a, b string) string {
 	}
 	return b
 }
+
+// DescribeCard implements CardDescriber: brand, last four and expiry of a card.
+func (s *Stripe) DescribeCard(ctx context.Context, account, pm string) (CardInfo, error) {
+	var out struct {
+		Card struct {
+			Brand    string `json:"brand"`
+			Last4    string `json:"last4"`
+			ExpMonth int    `json:"exp_month"`
+			ExpYear  int    `json:"exp_year"`
+		} `json:"card"`
+	}
+	if err := s.call(ctx, http.MethodGet, "/v1/payment_methods/"+url.PathEscape(pm), account, "", url.Values{}, &out); err != nil {
+		return CardInfo{}, err
+	}
+	return CardInfo{Brand: out.Card.Brand, Last4: out.Card.Last4, ExpMonth: out.Card.ExpMonth, ExpYear: out.Card.ExpYear}, nil
+}

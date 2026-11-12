@@ -99,3 +99,17 @@ Generar referencia de || Get a payment reference for || Obtenir une référence 
 Total a pagar || Total to pay || Total à payer || Total a pagar || Total yang harus dibayar || お支払い合計
 Monto exacto: || Exact amount: || Montant exact : || Valor exato: || Jumlah tepat: || 正確な金額：
 Monto: || Amount: || Montant : || Valor: || Jumlah: || 金額：
+Mis tarjetas || My cards || Mes cartes || Meus cartões || Kartu saya || 保存したカード
+Tarjetas que guardaste al pagar. La tienda solo guarda una referencia segura de tu banco, nunca el número completo. || Cards you saved at checkout. The store only keeps a secure reference from your bank, never the full number. || Cartes enregistrées lors du paiement. La boutique ne conserve qu'une référence sécurisée, jamais le numéro complet. || Cartões salvos no pagamento. A loja guarda apenas uma referência segura, nunca o número completo. || Kartu yang Anda simpan saat membayar. Toko hanya menyimpan referensi aman, tidak pernah nomor lengkap. || お支払い時に保存したカードです。ショップは安全な参照情報のみを保存し、カード番号全体は保存しません。
+· vence || · expires || · expire || · vence || · berlaku hingga || ・有効期限
+Quitar tarjeta || Remove card || Retirer la carte || Remover cartão || Hapus kartu || カードを削除
+No tienes tarjetas guardadas. Al pagar, marca «Guardar esta tarjeta para mi próxima compra». || You have no saved cards. At checkout, tick “Save this card for my next purchase”. || Aucune carte enregistrée. Au paiement, cochez « Enregistrer cette carte pour mon prochain achat ». || Você não tem cartões salvos. No pagamento, marque “Salvar este cartão para a próxima compra”. || Belum ada kartu tersimpan. Saat membayar, centang “Simpan kartu ini untuk pembelian berikutnya”. || 保存したカードはありません。お支払い時に「次回の購入のためにこのカードを保存」にチェックしてください。
+Otra tarjeta || Another card || Une autre carte || Outro cartão || Kartu lain || 別のカード
+Guardar esta tarjeta para mi próxima compra || Save this card for my next purchase || Enregistrer cette carte pour mon prochain achat || Salvar este cartão para a próxima compra || Simpan kartu ini untuk pembelian berikutnya || 次回の購入のためにこのカードを保存
+Comprar ahora con || Buy now with || Acheter maintenant avec || Comprar agora com || Beli sekarang dengan || 今すぐ購入：
+Calculando… || Calculating… || Calcul en cours… || Calculando… || Menghitung… || 計算中…
+Confirmar compra || Confirm purchase || Confirmer l'achat || Confirmar compra || Konfirmasi pembelian || 購入を確定
+Se cobra a: || Charged to: || Débité sur : || Cobrado em: || Ditagihkan ke: || 請求先：
+Se envía a: || Ships to: || Livré à : || Enviado para: || Dikirim ke: || 配送先：
+No pudimos quitar la tarjeta. Intenta de nuevo. || We couldn't remove the card. Please try again. || Impossible de retirer la carte. Réessayez. || Não foi possível remover o cartão. Tente novamente. || Kami tidak dapat menghapus kartu. Coba lagi. || カードを削除できませんでした。もう一度お試しください。
+No pudimos completar la compra. Intenta desde el carrito. || We couldn't complete the purchase. Try from the cart. || Impossible de finaliser l'achat. Essayez depuis le panier. || Não foi possível concluir a compra. Tente pelo carrinho. || Kami tidak dapat menyelesaikan pembelian. Coba dari keranjang. || 購入を完了できませんでした。カートからお試しください。

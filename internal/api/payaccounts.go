@@ -184,3 +184,11 @@ func (bp breakerProvider) SaveCard(ctx context.Context, account, pm, email, key 
 	}
 	return cus, method, err
 }
+
+// DescribeCard passes card descriptions through (no breaker: read only).
+func (bp breakerProvider) DescribeCard(ctx context.Context, account, pm string) (payments.CardInfo, error) {
+	if d, ok := bp.Provider.(payments.CardDescriber); ok {
+		return d.DescribeCard(ctx, account, pm)
+	}
+	return payments.CardInfo{}, nil
+}

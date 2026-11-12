@@ -194,6 +194,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesCarriers(handle)
 	s.routesReturnsPolicy(handle)
 	s.routesPayMethods(handle)
+	s.routesShopCards(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

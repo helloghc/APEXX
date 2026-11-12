@@ -148,6 +148,7 @@ func (s *Server) eraseCustomer(ctx context.Context, tenant, actor, id string) er
 		}{
 			{`DELETE FROM notification_messages WHERE tenant_id=$1 AND customer_id=$2`, []any{tenant, id}},
 			{`DELETE FROM abandoned_carts WHERE tenant_id=$1 AND (customer_id=$2 OR email_hash=$3)`, []any{tenant, id, hash}},
+			{`DELETE FROM customer_cards WHERE tenant_id=$1 AND customer_id=$2`, []any{tenant, id}},
 			{`DELETE FROM wishlist_items WHERE tenant_id=$1 AND customer_id=$2`, []any{tenant, id}},
 			{`DELETE FROM custom_values WHERE tenant_id=$1 AND resource='customer' AND owner_id=$2`, []any{tenant, id}},
 			{`DELETE FROM company_buyers WHERE tenant_id=$1 AND email_hash=$2`, []any{tenant, hash}},

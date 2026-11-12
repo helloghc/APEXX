@@ -289,3 +289,26 @@ func (s *Sandbox) SaveCard(_ context.Context, _, pm, _, idem string) (string, st
 	}
 	return "cus_sbx_" + idem, pm, nil
 }
+
+// CardInfo describes a saved card so people can recognise it.
+type CardInfo struct {
+	Brand    string `json:"brand"`
+	Last4    string `json:"last4"`
+	ExpMonth int    `json:"expMonth"`
+	ExpYear  int    `json:"expYear"`
+}
+
+// CardDescriber is a provider that can say which card a token is.
+type CardDescriber interface {
+	DescribeCard(ctx context.Context, account, paymentMethod string) (CardInfo, error)
+}
+
+// DescribeCard implements CardDescriber for the Stripe test cards.
+func (s *Sandbox) DescribeCard(_ context.Context, _, pm string) (CardInfo, error) {
+	brand := strings.TrimPrefix(pm, "pm_card_")
+	last4 := map[string]string{"visa": "4242", "mastercard": "4444", "amex": "8431"}[brand]
+	if last4 == "" {
+		brand, last4 = "visa", "4242"
+	}
+	return CardInfo{Brand: brand, Last4: last4, ExpMonth: 12, ExpYear: time.Now().Year() + 3}, nil
+}
