@@ -525,7 +525,16 @@ func TestCSVImportPreviewApplyAndExport(t *testing.T) {
 	if c, _ := e.do("POST", "/v1/catalog/imports/"+id+"/apply", e.adminA, nil); c != 409 {
 		t.Fatalf("second apply: %d", c)
 	}
-	l := items(e.must(200, "GET", "/v1/products?q=tenis+sierra", e.adminA, nil))
+	// The import writes through the outbox; the search index catches up a
+	// moment later, more so when the whole suite runs in parallel.
+	var l []map[string]any
+	for i := 0; i < 50; i++ {
+		e.drain()
+		if l = items(e.must(200, "GET", "/v1/products?q=tenis+sierra", e.adminA, nil)); len(l) == 1 {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 	if len(l) != 1 {
 		t.Fatalf("imported product not found: %v", l)
 	}
