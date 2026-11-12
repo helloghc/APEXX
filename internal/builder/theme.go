@@ -247,7 +247,7 @@ func tokenLabel(k string) string {
 }
 
 // AssetVersion busts caches of theme CSS and fonts when the renderer changes.
-const AssetVersion = "11"
+const AssetVersion = "12"
 
 func fontFace(f Font) string {
 	return fmt.Sprintf("@font-face{font-family:%q;src:url(/s/fonts/%s.woff2) format(\"woff2\");font-weight:%s;font-style:normal;font-display:swap}",

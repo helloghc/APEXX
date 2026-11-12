@@ -155,3 +155,11 @@ Inicio || Home || Accueil || Início || Beranda || ホーム
 / Comparar || / Compare || / Comparer || / Comparar || / Bandingkan || / 比較
 Algunas formas de pago no están disponibles para este pedido. || Some payment methods are not available for this order. || Certains moyens de paiement ne sont pas disponibles pour cette commande. || Algumas formas de pagamento não estão disponíveis para este pedido. || Beberapa metode pembayaran tidak tersedia untuk pesanan ini. || この注文では一部のお支払い方法をご利用いただけません。
 Este pedido no se puede pagar en línea. Escríbenos para completarlo. || This order cannot be paid online. Write to us to complete it. || Cette commande ne peut pas être payée en ligne. Écrivez-nous pour la finaliser. || Este pedido não pode ser pago online. Escreva para nós para concluí-lo. || Pesanan ini tidak dapat dibayar online. Hubungi kami untuk menyelesaikannya. || この注文はオンラインでお支払いいただけません。お問い合わせください。
+Usamos cookies y herramientas de terceros para medir visitas y mostrarte anuncios. Tú decides. || We use cookies and third-party tools to measure visits and show you ads. You decide. || Nous utilisons des cookies et des outils tiers pour mesurer les visites et vous montrer des publicités. Vous décidez. || Usamos cookies e ferramentas de terceiros para medir visitas e mostrar anúncios. Você decide. || Kami menggunakan cookie dan alat pihak ketiga untuk mengukur kunjungan dan menampilkan iklan. Anda yang memutuskan. || 訪問の計測と広告表示のため、Cookieと外部ツールを使用しています。選択はお客様次第です。
+Configurar || Settings || Paramétrer || Configurar || Atur || 設定
+Analítica || Analytics || Statistiques || Análise || Analitik || アクセス解析
+Publicidad || Advertising || Publicité || Publicidade || Iklan || 広告
+Guardar || Save || Enregistrer || Salvar || Simpan || 保存
+Solo necesarias || Necessary only || Nécessaires uniquement || Somente necessários || Hanya yang diperlukan || 必須のみ
+Aceptar todo || Accept all || Tout accepter || Aceitar tudo || Terima semua || すべて許可
+Preferencias de cookies || Cookie preferences || Préférences de cookies || Preferências de cookies || Preferensi cookie || Cookieの設定

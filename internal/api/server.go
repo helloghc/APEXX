@@ -65,6 +65,7 @@ type Server struct {
 
 	uploadSlots   chan struct{} // bounds concurrent image processing
 	rules         rulesCache    // checkout rules app: settings and answers
+	scripts       scriptsCache  // third-party scripts of each store
 	engage        engageState   // search terms and review cache
 	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
@@ -205,6 +206,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesApps(handle)
 	s.routesAutomations(handle)
 	s.routesCheckoutRules(handle)
+	s.routesScripts(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

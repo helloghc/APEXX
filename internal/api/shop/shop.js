@@ -1005,3 +1005,60 @@ function downloadsBox(ds) {
   }
   paint();
 })();
+
+/* ==== third-party scripts with consent ==== */
+(() => {
+  const d = document, body = d.body, parts = location.pathname.split("/");
+  const tenant = body.dataset.tenant || parts[2];
+  // Never on payment, approval or account pages (their security policy forbids it anyway).
+  if (!tenant || /\/(checkout|cuenta|pagar|aprobar|cotizacion)(\/|$)/.test(location.pathname)) return;
+  const KEY = "apexx_consent_" + tenant;
+  const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch { return null; } };
+  const write = (c) => { try { localStorage.setItem(KEY, JSON.stringify({ ...c, at: Date.now() })); } catch {} };
+  let cfg = null, loaded = new Set(), banner = null;
+  const load = (c) => {
+    (cfg.items || []).forEach((it) => {
+      if (loaded.has(it.id) || !(it.category === "necessary" || c[it.category])) return;
+      loaded.add(it.id);
+      const s = d.createElement("script"); s.src = it.src; s.async = true; s.dataset.thirdParty = it.id; d.head.appendChild(s);
+    });
+  };
+  const close = () => { if (banner) { banner.remove(); banner = null; } };
+  const show = () => {
+    close();
+    const c = read() || { analytics: false, marketing: false };
+    const has = (k) => (cfg.items || []).some((i) => i.category === k);
+    banner = d.createElement("div"); banner.className = "consent"; banner.setAttribute("role", "dialog"); banner.setAttribute("aria-label", "Cookies y privacidad"); banner.dataset.consent = "";
+    banner.innerHTML = "<p>" + (cfg.bannerText ? cfg.bannerText.replace(/[<>&]/g, "") : "Usamos cookies y herramientas de terceros para medir visitas y mostrarte anuncios. Tú decides.") + "</p>" +
+      "<details><summary>Configurar</summary>" + (has("analytics") ? "<label><input type='checkbox' data-c='analytics'" + (c.analytics ? " checked" : "") + "> Analítica</label>" : "") +
+      (has("marketing") ? "<label><input type='checkbox' data-c='marketing'" + (c.marketing ? " checked" : "") + "> Publicidad</label>" : "") + "<button type='button' class='btn btn-ghost' data-consent-save>Guardar</button></details>" +
+      "<div class='consent-actions'><button type='button' class='btn btn-ghost' data-consent-none>Solo necesarias</button><button type='button' class='btn' data-consent-all>Aceptar todo</button></div>";
+    body.appendChild(banner);
+    banner.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      let n;
+      if (b.hasAttribute("data-consent-all")) n = { analytics: true, marketing: true };
+      else if (b.hasAttribute("data-consent-none")) n = { analytics: false, marketing: false };
+      else if (b.hasAttribute("data-consent-save")) n = { analytics: !!banner.querySelector("[data-c=analytics]:checked"), marketing: !!banner.querySelector("[data-c=marketing]:checked") };
+      if (!n) return;
+      const before = read(); write(n); close(); load(n);
+      // Taking consent back only takes effect on a fresh page.
+      if (before && ((before.analytics && !n.analytics) || (before.marketing && !n.marketing))) location.reload();
+    });
+  };
+  fetch("/s/" + tenant + "/api/scripts").then((r) => (r.ok ? r.json() : null)).then((c) => {
+    if (!c || !(c.items || []).length) return;
+    cfg = c;
+    const optional = c.items.some((i) => i.category !== "necessary");
+    let consent = read();
+    // Global Privacy Control: no advertising unless the shopper turns it on.
+    if (!consent && navigator.globalPrivacyControl) { consent = { analytics: false, marketing: false }; write(consent); }
+    load(consent || { analytics: false, marketing: false });
+    if (optional && !consent) show();
+    if (optional) {
+      const foot = d.querySelector("footer") || body;
+      const a = d.createElement("button"); a.type = "button"; a.className = "linkbtn consent-open"; a.textContent = "Preferencias de cookies"; a.addEventListener("click", show);
+      foot.appendChild(a);
+    }
+  }).catch(() => {});
+})();

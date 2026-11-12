@@ -373,7 +373,7 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 	h.Set("ETag", etag)
 	h.Set("Cache-Control", cache)
 	h.Set("Surrogate-Key", "site-"+tenant+" "+rev)
-	h.Set("Content-Security-Policy", shopCSP)
+	h.Set("Content-Security-Policy", s.shopCSPFor(tenant, true))
 	if r.Header.Get("If-None-Match") == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return

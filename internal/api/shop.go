@@ -115,10 +115,21 @@ func (s *Server) shopContext(w http.ResponseWriter, r *http.Request) (*projectio
 	return t, s.decorate(r, t, pd), true
 }
 
+// tenantID lets the page renderer find the store of any page data.
+func (p pageData) tenantID() string { return p.Tenant }
+
+// pagesWithoutScripts never load the store's third-party scripts: the
+// payment and the shopper's data stay out of their reach.
+var pagesWithoutScripts = map[string]bool{"checkout": true, "pay": true, "approval": true, "quote": true}
+
 func (s *Server) renderShop(w http.ResponseWriter, page string, data any, cache bool) {
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
-	h.Set("Content-Security-Policy", shopCSP)
+	tenant := ""
+	if d, ok := data.(interface{ tenantID() string }); ok {
+		tenant = d.tenantID()
+	}
+	h.Set("Content-Security-Policy", s.shopCSPFor(tenant, !pagesWithoutScripts[page]))
 	if cache {
 		h.Set("Cache-Control", "public, max-age=0, s-maxage=30, stale-while-revalidate=60")
 	} else {

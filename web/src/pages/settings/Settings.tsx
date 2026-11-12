@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -20,6 +20,7 @@ const Fields = lazy(() => import("./Fields").then((m) => ({ default: m.Fields })
 const CatalogSource = lazy(() => import("./CatalogSource").then((m) => ({ default: m.CatalogSource })));
 const ReturnsPolicy = lazy(() => import("./ReturnsPolicy").then((m) => ({ default: m.ReturnsPolicy })));
 const Fees = lazy(() => import("./Fees").then((m) => ({ default: m.Fees })));
+const Scripts = lazy(() => import("./Scripts").then((m) => ({ default: m.Scripts })));
 const CheckoutRules = lazy(() => import("./CheckoutRules").then((m) => ({ default: m.CheckoutRules })));
 const Automations = lazy(() => import("./Automations").then((m) => ({ default: m.Automations })));
 const Apps = lazy(() => import("./Apps").then((m) => ({ default: m.Apps })));
@@ -44,6 +45,7 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
   { id: "redirecciones", label: "Redirecciones", icon: CornerUpRight, group: "Tienda en línea" },
   { id: "dominios", label: "Dominios", icon: Globe, group: "Tienda en línea" },
   { id: "idiomas", label: "Idiomas", icon: LanguagesIcon, group: "Tienda en línea" },
+  { id: "scripts", label: "Scripts y cookies", icon: Cookie, group: "Tienda en línea" },
   { id: "anuncios", label: "Anuncios y catálogos", icon: Megaphone, group: "Tienda en línea" },
 ];
 
@@ -91,6 +93,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "devoluciones":
       body = <ReturnsPolicy me={me} />;
+      break;
+    case "scripts":
+      body = <Scripts me={me} />;
       break;
     case "reglas-pago":
       body = <CheckoutRules me={me} />;
