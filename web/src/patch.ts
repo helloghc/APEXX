@@ -180,3 +180,19 @@ export function reorder<T>(xs: T[], from: number, to: number): T[] {
   if (item !== undefined) out.splice(to, 0, item);
   return out;
 }
+
+/** setAudience shows a section only to (or hides it from) some customer groups; null = everyone. */
+export function setAudience(t: Template, index: number, audience: { mode: "only" | "hide"; groups: string[] } | null, region: Region = "main"): Edit | null {
+  const sec = regionSections(t, region)[index];
+  if (!sec) return null;
+  const base = `/regions/${region}/${index}/visibility`;
+  const old = sec.visibility;
+  const next = { ...(old ?? {}), audience: audience ?? undefined } as Record<string, Json>;
+  if (!audience) delete next.audience;
+  if (JSON.stringify(old?.audience ?? null) === JSON.stringify(audience)) return null;
+  return {
+    label: "Cambiar quién ve la sección",
+    ops: [{ op: old ? "replace" : "add", path: base, value: next as unknown as Json }],
+    inverse: old ? [{ op: "replace", path: base, value: old as unknown as Json }] : [{ op: "remove", path: base }],
+  };
+}

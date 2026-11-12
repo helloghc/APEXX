@@ -21,6 +21,7 @@ func (s *Server) routesLoyalty(handle func(string, http.HandlerFunc)) {
 	handle("POST /v1/customers/{id}/loyalty/adjust", s.authed("customers", auth.Edit, s.adjustLoyalty))
 	handle("GET /s/{tenant}/api/account/loyalty", s.shopLoyalty)
 	handle("POST /s/{tenant}/api/account/loyalty/redeem", s.shopRedeemPoints)
+	handle("GET /s/{tenant}/api/account/groups", s.shopMyGroups)
 }
 
 func (s *Server) getLoyalty(w http.ResponseWriter, r *http.Request) {
@@ -162,4 +163,21 @@ func (s *Server) shopRedeemPoints(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.JSON(w, r, http.StatusCreated, map[string]any{"code": card.Code, "amount": card.Balance, "currency": card.Currency})
+}
+
+// shopMyGroups tells the store's page which customer groups the signed-in
+// shopper is in, so sections for a segment show (or hide) for them. A guest
+// gets an empty list.
+func (s *Server) shopMyGroups(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "private, no-store")
+	cid, _ := s.shopper(r)
+	out := []string{}
+	if cid != "" {
+		if c, err := s.Customers.Get(r.Context(), r.PathValue("tenant"), cid, false); err == nil {
+			for _, g := range c.Groups {
+				out = append(out, g.ID)
+			}
+		}
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"groups": out})
 }

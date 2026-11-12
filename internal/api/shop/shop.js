@@ -1108,3 +1108,14 @@ function downloadsBox(ds) {
     } catch { st.textContent = "No se pudo canjear. Intenta de nuevo."; b.disabled = false; }
   });
 })();
+
+/* ==== content per segment: sections for some customer groups ==== */
+(() => {
+  const secs = document.querySelectorAll("[data-audience]"); if (!secs.length) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2];
+  const apply = (mine) => secs.forEach((s) => {
+    const inGroup = s.dataset.audience.split(",").some((g) => mine.includes(g));
+    s.hidden = s.dataset.audienceMode === "only" ? !inGroup : inGroup;
+  });
+  fetch("/s/" + tenant + "/api/account/groups", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : { groups: [] })).then((j) => apply(j.groups || [])).catch(() => apply([]));
+})();

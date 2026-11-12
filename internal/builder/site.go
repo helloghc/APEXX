@@ -652,7 +652,16 @@ func (s *Site) renderFull(t Template) Rendered {
 				ctx["Products"] = s.data.Products(limit)
 			}
 		}
-		fmt.Fprintf(out, `<section id="%s" data-type="%s">`, template.HTMLEscapeString(sec.ID), def.Type)
+		if a := audienceOf(sec.Visibility); a != nil {
+			hidden := ""
+			if a.Mode == "only" {
+				hidden = " hidden"
+			}
+			fmt.Fprintf(out, `<section id="%s" data-type="%s" data-audience="%s" data-audience-mode="%s"%s>`, template.HTMLEscapeString(sec.ID), def.Type,
+				template.HTMLEscapeString(strings.Join(a.Groups, ",")), a.Mode, hidden)
+		} else {
+			fmt.Fprintf(out, `<section id="%s" data-type="%s">`, template.HTMLEscapeString(sec.ID), def.Type)
+		}
 		if err := s.lib.tmpls[def.Type].Execute(out, ctx); err != nil {
 			issue(path, "render_failed", err.Error(), true)
 		}
@@ -727,6 +736,14 @@ func contains(xs []string, x string) bool {
 		}
 	}
 	return false
+}
+
+// audienceOf returns a valid audience rule, or nil.
+func audienceOf(v *Visibility) *Audience {
+	if v == nil || v.Audience == nil || len(v.Audience.Groups) == 0 || (v.Audience.Mode != "only" && v.Audience.Mode != "hide") {
+		return nil
+	}
+	return v.Audience
 }
 
 func visibleNow(v *Visibility, now time.Time) bool {

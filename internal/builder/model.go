@@ -53,6 +53,15 @@ type Block struct {
 type Visibility struct {
 	Devices  []string  `json:"devices,omitempty"`
 	Schedule *Schedule `json:"schedule,omitempty"`
+	Audience *Audience `json:"audience,omitempty"`
+}
+
+// Audience shows a section only to (or hides it from) customers of some
+// groups. Pages are cached for everyone, so the store's page shows or hides
+// it once it knows who is signed in; "only" sections start hidden.
+type Audience struct {
+	Mode   string   `json:"mode"` // only | hide
+	Groups []string `json:"groups"`
 }
 
 // Schedule shows a section only inside a time window.

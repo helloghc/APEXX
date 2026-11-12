@@ -44,10 +44,13 @@ export interface Block {
   settings?: Record<string, Json>;
 }
 
+export interface Audience { mode: "only" | "hide"; groups: string[] }
+
 export interface SectionInstance {
   id: string;
   type?: string;
   typeVersion?: string;
+  visibility?: { devices?: string[]; schedule?: { from: string; to: string }; audience?: Audience };
   settings?: Record<string, Json>;
   blocks?: Block[];
   globalRef?: string;

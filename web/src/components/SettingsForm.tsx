@@ -12,9 +12,10 @@ interface Props {
   onBlockChange: (block: number, key: string, value: string) => void;
   onAddBlock: (type: string) => void;
   onRemoveBlock: (block: number) => void;
+  onAudience?: (a: { mode: "only" | "hide"; groups: string[] } | null) => void;
 }
 
-export function SettingsForm({ section, def, issues, onChange, onBlockChange, onAddBlock, onRemoveBlock }: Props) {
+export function SettingsForm({ section, def, issues, onChange, onBlockChange, onAddBlock, onRemoveBlock, onAudience }: Props) {
   if (!section) {
     return (
       <aside className={s.panel} aria-label="Ajustes">
@@ -94,6 +95,7 @@ export function SettingsForm({ section, def, issues, onChange, onBlockChange, on
           })}
         </section>
       )}
+      {onAudience && <AudienceField section={section} onChange={onAudience} />}
       <footer className={s.budget}>
         Costo de la sección: {def.budget.htmlBytes.toLocaleString("es-MX")} B de HTML · {def.budget.jsBytes.toLocaleString("es-MX")} B de JS
       </footer>
@@ -257,5 +259,33 @@ function BlockInput({ id, label, value, onCommit }: { id: string; label: string;
       </label>
       <input id={id} className={ui.input} value={local} onChange={(e) => update(e.target.value)} onBlur={flush} />
     </div>
+  );
+}
+
+/** AudienceField: who sees the section (everyone, only some customer groups, or all but them). */
+function AudienceField({ section, onChange }: { section: SectionInstance; onChange: (a: { mode: "only" | "hide"; groups: string[] } | null) => void }) {
+  const [groups, setGroups] = useState<{ id: string; name: string }[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch("/v1/customer-groups", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : { items: [] })).then((j) => { if (live) setGroups(j.items ?? []); }).catch(() => live && setGroups([]));
+    return () => { live = false; };
+  }, []);
+  const a = section.visibility?.audience;
+  const mode = a ? a.mode : "all";
+  const chosen = a?.groups ?? [];
+  const set = (m: string, g: string[]) => onChange(m === "all" || g.length === 0 ? (m === "all" ? null : { mode: m as "only" | "hide", groups: g }) : { mode: m as "only" | "hide", groups: g });
+  return (
+    <fieldset className={s.field} data-audience-field>
+      <legend>Quién la ve</legend>
+      <select aria-label="Quién ve la sección" value={mode} onChange={(e) => set(e.target.value, e.target.value === "all" ? [] : chosen)}>
+        <option value="all">Todos</option>
+        <option value="only">Solo clientes de estos grupos</option>
+        <option value="hide">Todos menos estos grupos</option>
+      </select>
+      {mode !== "all" && (groups === null ? <p>Cargando grupos…</p> : groups.length === 0 ? <p>Crea grupos de clientes en Clientes › Grupos.</p> : groups.map((g) => (
+        <label key={g.id} style={{ display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={chosen.includes(g.id)} onChange={(e) => set(mode, e.target.checked ? [...chosen, g.id] : chosen.filter((x) => x !== g.id))} /> {g.name}</label>
+      )))}
+      {mode !== "all" && chosen.length === 0 && <p>Elige al menos un grupo.</p>}
+    </fieldset>
   );
 }

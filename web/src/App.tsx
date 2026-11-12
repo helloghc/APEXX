@@ -20,6 +20,7 @@ import {
   removeSection,
   setBlockSetting,
   setSetting,
+  setAudience,
   locate,
   regionSections,
   type Region,
@@ -195,6 +196,7 @@ export function Editor({ site: SITE, handle: HANDLE, me }: { site: string; handl
           onBlockChange={(b, k, v) => void ed.apply(setBlockSetting(template, selIndex, b, k, v, selRegion))}
           onAddBlock={(type) => void ed.apply(addBlock(template, selIndex, type, undefined, selRegion))}
           onRemoveBlock={(b) => void ed.apply(removeBlock(template, selIndex, b, selRegion))}
+          onAudience={(a) => void ed.apply(setAudience(template, selIndex, a, selRegion))}
         />
       </div>
 
