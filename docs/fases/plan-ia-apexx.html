@@ -139,7 +139,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <h1>IA en cada panel sin frenar la tienda</h1>
   <p class="lede">Vectores, búsqueda híbrida, re-ranking, fragmentos con contexto, grafo de conocimiento (GraphRAG), recuperación que se corrige sola (CRAG) y prompts estructurados, aplicados en todo el sistema y en siete fases. Cada fase se cierra con la misma batería de pruebas: aislamiento, reversión, escala, roles y velocidad.</p>
   <div class="status">
-    <span class="chip"><span class="dot ok"></span>IA-0, IA-1 e IA-2: cerradas</span><span class="chip"><span class="dot live"></span>IA-3 Asistentes con CRAG: en curso</span>
+    <span class="chip"><span class="dot ok"></span>IA-0 a IA-3: cerradas</span><span class="chip"><span class="dot live"></span>IA-4 Grafo de conocimiento: sigue</span>
     <span class="chip"><span class="dot ok"></span>Escala base: cerrada, 10 de 10</span>
     <span class="chip"><span class="dot ok"></span>50 000 productos: tienda y panel en 1–4 ms, 0 errores</span>
     <span class="chip"><span class="dot ok"></span>Base lista: outbox sin huecos (migración 154)</span>
@@ -222,9 +222,9 @@ const PHASES = [
   panels:["Tienda: ficha","Configuración y políticas","Ayuda del panel","Operación"], tech:["V","H","R","CC"],
   gate:["✓ Fidelidad 100 %; correctas 27/27; «no sé» 5/5; conjunto apartado 10/12","✓ Cada respuesta enlaza su fuente"]},
  {id:"IA-3", name:"Asistentes con CRAG", goal:"Asistentes que verifican lo que recuperan, corrigen la búsqueda y dicen «no sé» cuando no hay fuente.",
-  deliver:["… Asistente del comprador en la tienda y por MCP","Copiloto del panel con herramientas del sistema","✓ Evaluar relevancia, reescribir consulta, ir a la fuente estructurada (en «Pregúntale a la tienda»)","Resumen de opiniones con citas","Fichas técnicas en PDF y ayuda del panel"],
+  deliver:["✓ Asistente del comprador en la búsqueda de la tienda y por MCP (ask_store)","✓ Copiloto del panel: ventas, más vendidos, agotados, búsquedas sin resultado y ayuda con enlace a la pantalla, según permisos","✓ Evaluar, reescribir, ir a la fuente estructurada y detectar temas que la tienda no cubre","✓ Resumen de opiniones con frases reales y su autor","✓ Ayuda del panel: 25 tareas con pantalla y permiso","Fichas técnicas en PDF (pasa a IA-4 con la cotización desde PDF)"],
   panels:["Tienda: asistente / MCP","Tienda: ficha","Búsqueda y opiniones","Ayuda del panel"], tech:["V","H","R","CC","CRAG","P"],
-  gate:["… Cero precios o existencias inventados en la evaluación","✓ Responde «no sé» sin fuente (5/5)","✓ Una opinión con instrucciones maliciosas se cita, nunca se obedece"]},
+  gate:["✓ 0 precios o existencias inventados: cada monto se compara con el sistema","✓ «No sé» sin fuente 5/5 y 3/3 cuando la tienda no cubre el tema","✓ Una opinión con instrucciones maliciosas no se obedece ni se usa como fuente"]},
  {id:"IA-4", name:"Grafo de conocimiento", goal:"Relaciones que una búsqueda no ve: compatible con, accesorio de, sustituto de, catálogo de esta empresa.",
   deliver:["Grafo con lo que ya existe: categorías, marcas, atributos, colecciones, coocurrencias, empresas","Aristas nuevas propuestas leyendo descripciones y fichas, con confianza y fuente","Accesorios, compatibles y sustitutos en ficha y carrito","B2B: solicitud de cotización en PDF a propuesta con SKU emparejados"],
   panels:["Tienda: recomendaciones","Tienda: asistente / MCP","Empresas B2B","Marketplace"], tech:["V","H","R","CC","G","CRAG","P"],
