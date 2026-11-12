@@ -45,7 +45,7 @@ export function AIPanel({ canEdit, canAdmin }: { canEdit: boolean; canAdmin: boo
           <CardDescription>«Otros clientes también eligieron» en la ficha de producto y en el carrito. Se calculan con los pedidos pagados del último año y lo que se ve junto en una misma visita, y se actualizan solas en menos de un minuto. Un pedido cancelado o devuelto deja de contar. No se guarda nada que identifique a una persona.</CardDescription></CardHeader>
         <CardContent className="grid gap-3 text-sm">
           <label className="flex items-center gap-2"><input type="checkbox" checked={!cur.recsOff} disabled={!canAdmin || save.isPending} onChange={(e) => put({ recsOff: !e.target.checked })} /> Mostrar recomendaciones en la tienda</label>
-          {s.index ? <p className="text-muted-foreground">Índice al {dateTime(s.index.builtAt)}: {s.index.orders} pedidos, {s.index.products} productos con recomendaciones, {s.index.terms} términos de búsqueda aprendidos.</p>
+          {s.index ? <p className="text-muted-foreground">Índice al {dateTime(s.index.builtAt)}: pedidos: {s.index.orders} · productos con recomendaciones: {s.index.products} · búsquedas aprendidas: {s.index.terms}.</p>
             : <p className="text-muted-foreground">El índice se arma en los próximos segundos.</p>}
           <div className="grid gap-1.5"><p className="font-medium">Nunca recomendar</p>
             <div className="flex flex-wrap gap-1.5">{s.excluded.length === 0 ? <span className="text-muted-foreground">Ningún producto excluido.</span> : s.excluded.map((p) => (

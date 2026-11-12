@@ -1,3 +1,24 @@
+// A cart link from an AI assistant (MCP): its products go into the cart
+// before anything renders; the shopper reviews and pays as always.
+(() => {
+  const qs = new URLSearchParams(location.search), add = qs.get("add");
+  if (!add || !/\/cart$/.test(location.pathname)) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2], key = "apexx_cart_" + tenant;
+  let cart = []; try { cart = JSON.parse(localStorage.getItem(key) || "[]") || []; } catch (e) { cart = []; }
+  add.split(",").slice(0, 50).forEach((p) => {
+    const i = p.lastIndexOf(":"), sku = decodeURIComponent(p.slice(0, i)), qty = Math.min(999, Math.max(1, parseInt(p.slice(i + 1), 10) || 1));
+    if (!sku || i < 1) return;
+    const l = cart.find((c) => c.sku === sku && !c.plan); if (l) l.qty = qty; else cart.push({ sku, qty });
+  });
+  try { localStorage.setItem(key, JSON.stringify(cart)); } catch (e) { return; }
+  qs.delete("add"); const from = qs.get("from"); qs.delete("from");
+  history.replaceState(null, "", location.pathname + (qs.toString() ? "?" + qs : ""));
+  if (from === "ai") document.addEventListener("DOMContentLoaded", () => {
+    const n = document.createElement("p"); n.className = "rep-bar"; n.setAttribute("role", "status");
+    n.textContent = "Un asistente de IA preparó este carrito. Revísalo antes de pagar: nada se compra hasta que tú lo confirmes.";
+    document.body.prepend(n);
+  });
+})();
 // Whether the shopper accepted advertising in the cookie notice.
 function adsConsent() {
   try { const c = JSON.parse(localStorage.getItem("apexx_consent_" + (document.body.dataset.tenant || location.pathname.split("/")[2])) || "null"); return !!(c && c.marketing); } catch { return false; }

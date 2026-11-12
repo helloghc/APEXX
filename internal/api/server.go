@@ -247,6 +247,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesCompanyImport(handle)
 	s.routesPunchout(handle)
 	s.routesLearning(handle)
+	s.routesMCP(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 
