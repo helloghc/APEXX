@@ -96,7 +96,7 @@ func RolePermissions(role string) Permissions {
 // Principal is the authenticated caller.
 type Principal struct {
 	Tenant      string      `json:"tenant"`
-	Kind        string      `json:"kind"` // member | api_key
+	Kind        string      `json:"kind"` // member | api_key | app
 	ID          string      `json:"id"`
 	Name        string      `json:"name"`
 	Email       string      `json:"email,omitempty"`
@@ -390,6 +390,18 @@ func (s *Service) Authenticate(ctx context.Context, token string) (Principal, er
 		}
 		p.Kind = "member"
 		return p, nil
+	case strings.HasPrefix(token, "apa_"):
+		tenant, a, err := s.DB.LookupApp(ctx, token)
+		if err != nil {
+			return Principal{}, ErrUnauthenticated
+		}
+		perms := Permissions{}
+		for m, l := range a.Permissions {
+			if m != "team" && rank[l] > 0 && rank[l] <= rank[Admin] {
+				perms[m] = l // an app never manages the team, whatever is stored
+			}
+		}
+		return Principal{Tenant: tenant, Kind: "app", ID: a.ID, Name: a.Name, Permissions: perms}, nil
 	case strings.HasPrefix(token, "apx_"):
 		k, err := s.DB.LookupAPIKey(ctx, token)
 		if err != nil {
