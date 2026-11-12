@@ -1,5 +1,6 @@
 import { ProductPicker } from "../catalog/ProductPicker";
 import { CustomFields } from "@/components/CustomFields";
+import { Branches, Members, Requests, RulesEditor, type Branch, type Rule } from "./CompanyDepth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Building2, Copy, Database, Download, Plus, Trash2 } from "lucide-react";
@@ -22,7 +23,7 @@ import { dateTime, ErrorBox, Notice, Page } from "../common";
 import { EmptyState, SkeletonRows } from "../promotions/shared";
 
 const enc = encodeURIComponent;
-interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; requirePO?: boolean; creditOnly?: boolean; approvalThreshold: number }
+interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; requirePO?: boolean; creditOnly?: boolean; approvalThreshold: number; approvalRules?: Rule[]; approvalDays?: number }
 interface CEntry { id: string; kind: string; amount: number; orderId?: string; orderNumber?: number; dueAt?: string; note?: string; at: string }
 interface Field { key: string; label: string; type: string; required: boolean; options?: string[] }
 interface Entity { id: string; name: string; description: string; public: boolean; showOnProduct?: boolean; success: string; fields: Field[]; records: number }
@@ -91,6 +92,7 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
   const [pct, setPct] = useState(String((company?.discountBps ?? 0) / 100));
   const [emails, setEmails] = useState((buyers ?? []).filter((b) => !(approvers ?? []).includes(b)).join("\n"));
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const branches = useQuery({ queryKey: ["company-branches", company?.id], queryFn: () => request<{ items: Branch[] }>("GET", `/v1/companies/${enc(company!.id)}/locations`).then((r) => r.items), enabled: !!company });
   const save = useMutation({
     mutationFn: () => api.saveCompany({ ...c, creditLimit: c.terms === "prepaid" ? 0 : parsePesos(limit) ?? 0, discountBps: Math.round((Number(pct.replace(",", ".")) || 0) * 100), buyerEmails: emails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean),
       approverEmails: approverEmails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean), approvalThreshold: parsePesos(threshold) ?? 0 }),
@@ -119,7 +121,9 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
           </div>
           <div className="grid gap-1.5 sm:col-span-2"><label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.taxExempt} onChange={(e) => setC({ ...c, taxExempt: e.target.checked })} /><span>Exenta de impuestos<span className="block text-muted-foreground">Sus pedidos se cobran sin impuesto. Guarda su constancia en la nota interna.</span></span></label>
             {c.taxExempt && <div className="grid gap-1.5"><Label htmlFor="co-exu">Vigente hasta (opcional)</Label><Input id="co-exu" type="date" value={c.taxExemptUntil ?? ""} onChange={(e) => setC({ ...c, taxExemptUntil: e.target.value })} />{errors.taxExemptUntil && <p className="text-sm text-bad">{errors.taxExemptUntil}</p>}</div>}</div>
-          <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="co-appr">Correos de quienes aprueban (uno por línea)</Label><Textarea id="co-appr" rows={2} className="font-mono" value={approverEmails} onChange={(e) => setApproverEmails(e.target.value)} placeholder="direccion@empresa.com" />{err("approvers")}<p className="text-xs text-muted-foreground">También pueden comprar, sin límite de aprobación.</p></div>
+          <RulesEditor rules={c.approvalRules ?? []} days={c.approvalDays ?? 7} branches={branches.data ?? []} onChange={(r) => setC({ ...c, approvalRules: r })} onDays={(d) => setC({ ...c, approvalDays: d })} />
+          {(errors.approvalRules || errors.approvalDays) && <p className="text-sm text-bad sm:col-span-2">{errors.approvalRules || errors.approvalDays}</p>}
+          <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="co-appr">Correos de quienes aprueban (uno por línea)</Label><Textarea id="co-appr" rows={2} className="font-mono" value={approverEmails} onChange={(e) => setApproverEmails(e.target.value)} placeholder="direccion@empresa.com" />{err("approvers")}<p className="text-xs text-muted-foreground">Aprueban el nivel 1 y también compran. Para niveles, topes por persona, sucursales y suplentes usa “Editar compradores” en la página de la empresa.</p></div>
           <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="co-note">Nota interna</Label><Input id="co-note" value={c.note ?? ""} onChange={(e) => setC({ ...c, note: e.target.value })} /></div>
         </form>
         <DialogFooter><Button variant="outline" onClick={onClose}>Cancelar</Button><Button type="submit" form="co-form" disabled={save.isPending}>{save.isPending ? "Guardando…" : "Guardar"}</Button></DialogFooter>
@@ -160,8 +164,9 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
         </CardContent>
       </Card>
       <CustomFields resource="company" id={id} canEdit={isAdmin} />
-      <Card><CardHeader><CardTitle className="text-base">Compradores ({buyers.length || c.buyers})</CardTitle><CardDescription>Personas que compran a nombre de la empresa.</CardDescription></CardHeader>
-        <CardContent>{buyers.length === 0 ? <p className="text-sm text-muted-foreground">{c.buyers ? "Tu acceso no incluye ver los correos." : "Agrega al menos un comprador para que la empresa pueda usar su precio."}</p> : <ul className="grid gap-1 font-mono text-sm">{buyers.map((b) => <li key={b}>{b}{approvers.includes(b) && <Badge variant="secondary" className="ml-2 font-sans">Aprueba compras</Badge>}</li>)}</ul>}</CardContent></Card>
+      <Members id={id} canEdit={isAdmin} onChanged={refresh} />
+      <Branches id={id} canEdit={isAdmin} />
+      <Requests id={id} />
       {edit && <CompanyDialog company={c} buyers={buyers} approvers={approvers} onClose={() => setEdit(false)} onDone={refresh} />}
       {pay && <PayDialog id={id} kind={pay} balance={c.balance} onClose={() => setPay(null)} onDone={refresh} />}
     </Page>

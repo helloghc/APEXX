@@ -51,11 +51,43 @@
 <a href="{{.Base}}/cuenta"{{if or (eq .View "home") (eq .View "order")}} aria-current="page"{{end}}>Pedidos</a>
 <a href="{{.Base}}/cuenta?ver=direcciones"{{if eq .View "addresses"}} aria-current="page"{{end}}>Direcciones</a>
 <a href="{{.Base}}/cuenta?ver=listas"{{if eq .View "lists"}} aria-current="page"{{end}}>Mis listas</a>
+{{with .Company}}<a href="{{$.Base}}/cuenta?ver=empresa"{{if eq $.View "company"}} aria-current="page"{{end}}>Mi empresa</a>{{end}}
 <a href="{{.Base}}/cuenta?ver=datos"{{if eq .View "profile"}} aria-current="page"{{end}}>Mis datos</a>
 <form method="post" action="{{.Base}}/cuenta"><input type="hidden" name="accion" value="salir"><button class="linkbtn" type="submit">Cerrar sesión</button></form>
 </nav>
 {{with .Notice}}<p class="acct-ok" role="status">{{.}}</p>{{end}}
 {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+
+{{if eq .View "company"}}{{with .Portal}}
+<div class="acct-box"><h2>Tu mes</h2>
+<p>Compras a crédito este mes: <strong>{{.Spent}}</strong>{{with .Cap}} de tu tope de {{.}}{{end}}.</p>
+{{if $.Company.LocationName}}<p>Sucursal {{$.Company.LocationName}}: {{.BranchSpent}}{{with .BranchCap}} de {{.}}{{end}} este mes.</p>{{end}}
+{{with .Available}}<p class="muted">Crédito disponible de la empresa: {{.}}.</p>{{end}}
+{{if $.Company.Approver}}<p class="muted">Apruebas compras de nivel {{$.Company.ApproverLevel}}.</p>{{end}}
+</div>
+<h2>Solicitudes de aprobación</h2>
+{{if .Requests}}<div class="scrollx"><table><thead><tr><th>Fecha</th><th>Quién</th><th>Motivo</th><th>Nivel</th><th>Estado</th><th class="num">Total</th></tr></thead><tbody>
+{{range .Requests}}<tr data-request="{{.ID}}"><td>{{.Date}}</td><td>{{.Requester}}</td><td>{{.Reason}}</td><td>{{.Level}}</td><td>{{.Status}}{{if .Pending}} <button class="linkbtn" type="button" data-request-cancel data-confirm="¿Cancelar esta solicitud?">Cancelar</button>{{end}}</td><td class="num">{{.Total}}</td></tr>
+{{end}}</tbody></table></div>{{else}}<p class="muted">Ninguna solicitud todavía.</p>{{end}}
+{{if $.Company.Admin}}
+<h2>Compradores de la empresa</h2>
+<p class="muted">Como administrador, decides quién compra, quién aprueba y hasta cuánto al mes. El crédito y las reglas los define la tienda.</p>
+<form class="members" data-members>
+<div class="scrollx"><table><thead><tr><th>Correo</th><th>Tope al mes</th><th>Sucursal</th><th>Aprueba (nivel)</th><th>Administra</th><th>Ausente hasta</th><th>Suplente</th><th></th></tr></thead><tbody data-member-rows>
+{{range .Members}}<tr data-member><td><input type="email" name="email" value="{{.Email}}" aria-label="Correo" required></td>
+<td><input name="cap" inputmode="decimal" value="{{if .MonthlyLimit}}{{plain .MonthlyLimit}}{{end}}" placeholder="Sin tope" aria-label="Tope al mes"></td>
+<td><select name="location" aria-label="Sucursal"><option value="">Empresa</option>{{$loc := .Location}}{{range $.Portal.Locations}}<option value="{{.ID}}"{{if eq .ID $loc}} selected{{end}}>{{.Name}}</option>{{end}}</select></td>
+<td><select name="level" aria-label="Aprueba"><option value="0">No</option>{{$lv := .Level}}{{range $n := levels}}<option value="{{$n}}"{{if eq $n $lv}} selected{{end}}>{{$n}}</option>{{end}}</select></td>
+<td><input type="checkbox" name="admin"{{if .Admin}} checked{{end}} aria-label="Administra"></td>
+<td><input type="date" name="away" value="{{.AwayUntil}}" aria-label="Ausente hasta"></td>
+<td><input type="email" name="substitute" value="{{.Substitute}}" aria-label="Suplente"></td>
+<td><button class="linkbtn" type="button" data-member-remove>Quitar</button></td></tr>
+{{end}}</tbody></table></div>
+<div class="subactions"><button class="btn ghost" type="button" data-member-add>Agregar comprador</button><button class="btn" type="submit">Guardar compradores</button></div>
+<p class="note" role="status" data-members-status></p>
+</form>
+{{end}}
+{{end}}{{end}}
 
 {{if eq .View "lists"}}
 <p class="muted">Guarda desde tu carrito los productos que compras seguido y vuelve a pedirlos en un paso. Los precios son siempre los de hoy.</p>

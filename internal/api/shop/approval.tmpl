@@ -6,10 +6,14 @@
 <p><strong>{{.Req.Requester}}</strong> quiere comprar a crédito de <strong>{{.Req.Company}}</strong>.</p>
 <table><thead><tr><th>Producto</th><th>Cantidad</th><th class="num">Total</th></tr></thead><tbody>{{range .Req.Lines}}<tr><td>{{.Title}}</td><td>{{.Qty}}</td><td class="num">{{cents .Total}}</td></tr>{{end}}</tbody></table>
 <p>Total con envío e impuestos: <strong>{{cents .Req.Total}}</strong></p>
+{{with .Req.Reason}}<p class="muted">Motivo: {{.}}</p>{{end}}
+{{if gt .Req.RequiredLevel 1}}<p class="muted">Aprobación de nivel {{.Req.StepLevel}}; la compra necesita llegar al nivel {{.Req.RequiredLevel}}.</p>{{end}}
 {{if eq .Req.Status "pending"}}
 <p class="note" role="status" data-approval-status></p>
 <div class="subactions"><button class="btn" type="button" data-approval-act="approve">Aprobar y colocar el pedido</button><button class="btn ghost" type="button" data-approval-act="reject" data-confirm="¿Rechazar esta compra?">Rechazar</button></div>
 {{else if eq .Req.Status "approved"}}<p class="acct-ok">Aprobada. El pedido ya se colocó.</p>
+{{else if eq .Req.Status "expired"}}<p class="muted">Esta solicitud venció sin decisión.</p>
+{{else if eq .Req.Status "cancelled"}}<p class="muted">Quien compra canceló esta solicitud.</p>
 {{else}}<p class="muted">Esta compra fue rechazada.</p>{{end}}
 </div>
 {{else}}

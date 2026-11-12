@@ -415,3 +415,4 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .quote-req{margin-top:16px}.quote-req form{display:grid;gap:10px;max-width:520px;margin-top:10px}.history{padding-left:18px;display:grid;gap:4px}
 .quick{display:grid;gap:12px;max-width:760px}.quick textarea{font-family:ui-monospace,monospace}
 .cart-tools{margin-top:8px;font-size:.9rem}.lists{list-style:none;padding:0;display:grid;gap:16px}
+.scrollx{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}.scrollx table{min-width:100%}.members input,.members select{min-width:7rem}

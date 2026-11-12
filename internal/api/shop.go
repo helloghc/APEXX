@@ -43,6 +43,8 @@ var shopFuncs = template.FuncMap{
 	"stars5": func() []int { return []int{5, 4, 3, 2, 1} },
 	"day":    func(t time.Time) string { return shortDate(t) },
 	"cents":  func(n int64) string { return pesos(money.New(n, "MXN")) },
+	"plain":  pesosPlain,
+	"levels": func() []int { return []int{1, 2, 3, 4, 5} },
 }
 
 var shopPages = localizedPages("catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval", "quote", "quickorder")

@@ -498,11 +498,15 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	if !instRules.Allows(req.Installments, tot.Grand.Amount) {
 		return problem(409, "installments_unavailable", "Ese plazo de meses sin intereses no está disponible para este pedido", nil), nil
 	}
-	if needsApproval(req, tot.Grand.Amount) {
-		if err := s.requestApproval(ctx, tenant, req, sim.Lines, tot.Grand.Amount, string(tot.Grand.Currency)); err != nil {
+	if level, why := approvalNeeded(req, tot.Grand.Amount, sim.Lines); level > 0 {
+		if err := s.requestApproval(ctx, tenant, req, sim.Lines, tot.Grand.Amount, string(tot.Grand.Currency), level, why); err != nil {
+			var ce *CreditError
+			if errors.As(err, &ce) {
+				return problem(409, ce.Code, ce.Message, nil), nil
+			}
 			return Result{}, err
 		}
-		return problem(202, "approval_required", "Tu compra supera el monto que puedes autorizar. Enviamos la solicitud a quien aprueba en tu empresa; te avisaremos por correo cuando se confirme el pedido.", nil), nil
+		return problem(202, "approval_required", why+". Enviamos la solicitud a quien aprueba en tu empresa; te avisaremos por correo cuando se confirme el pedido.", map[string]any{"level": level}), nil
 	}
 	risk, ipHash, blocked, err := s.evaluateRisk(ctx, tenant, riskRules, req, tot.Grand.Amount)
 	if err != nil {

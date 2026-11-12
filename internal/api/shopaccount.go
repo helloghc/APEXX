@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"net/url"
@@ -377,6 +378,22 @@ type accountData struct {
 	Order     *shopOrderView
 	Addresses []customers.Address
 	Lists     []reorderList
+	Company   *orders.CompanyAccess // the company the shopper buys for, if any
+	Portal    *companyPortal
+}
+
+// companyPortal is the company view of "Mi cuenta": the buyer's month and
+// requests; the members and branches for the company's administrators.
+type companyPortal struct {
+	Available, Spent, Cap, BranchSpent, BranchCap string
+	Requests                                      []portalRequest
+	Members                                       []orders.Member
+	Locations                                     []orders.Location
+}
+
+type portalRequest struct {
+	ID, Date, Status, Total, Reason, Requester, Level string
+	Pending                                           bool
 }
 
 func shopperStatus(o orders.Order) string {
@@ -433,8 +450,49 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 		return
 	}
 	d.Customer, d.Addresses = c, c.Addresses
+	if c.Email != "" && s.Orders != nil {
+		d.Company, _ = s.Orders.CompanyForEmail(r.Context(), tenant, c.Email)
+	}
 	q := r.URL.Query()
 	switch {
+	case q.Get("ver") == "empresa" && d.Company != nil:
+		d.View, d.Title = "company", d.Company.Name
+		a := d.Company
+		cur := "MXN"
+		p := &companyPortal{Spent: mon(a.MonthSpent, cur), BranchSpent: mon(a.LocationSpent, cur)}
+		if a.Terms != "prepaid" {
+			p.Available = mon(a.Available, cur)
+		}
+		if a.MonthlyLimit > 0 {
+			p.Cap = mon(a.MonthlyLimit, cur)
+		}
+		if a.LocationLimit > 0 {
+			p.BranchCap = mon(a.LocationLimit, cur)
+		}
+		var mine []byte
+		if !a.Admin {
+			mine = a.BuyerHash
+		}
+		reqs, err := s.Orders.PurchaseRequests(r.Context(), tenant, a.ID, mine)
+		if err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+		label := map[string]string{"pending": "En espera", "approved": "Aprobada", "rejected": "Rechazada", "expired": "Vencida", "cancelled": "Cancelada"}
+		for _, x := range reqs {
+			p.Requests = append(p.Requests, portalRequest{ID: x.ID, Date: shortDate(x.CreatedAt), Status: label[x.Status], Total: mon(x.Total, x.Currency), Reason: x.Reason,
+				Requester: x.Requester, Level: strconv.Itoa(x.Level) + "/" + strconv.Itoa(x.RequiredLevel), Pending: x.Status == "pending" && bytes.Equal(x.BuyerHash, a.BuyerHash)})
+		}
+		if a.Admin {
+			if p.Members, err = s.Orders.Members(r.Context(), tenant, a.ID); err == nil {
+				p.Locations, err = s.Orders.Locations(r.Context(), tenant, a.ID)
+			}
+			if err != nil {
+				internalError(w, s.Log, err)
+				return
+			}
+		}
+		d.Portal = p
 	case q.Get("pedido") != "":
 		o, err := s.shopperOrder(r, tenant, customerID, q.Get("pedido"))
 		if err != nil {

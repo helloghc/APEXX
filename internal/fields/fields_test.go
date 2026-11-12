@@ -32,7 +32,7 @@ func TestDefsAndValues(t *testing.T) {
 		{"rfc": "x", "talla": "XL"},
 		{"rfc": "x", "puntos": "doce"},
 		{"rfc": "x", "nacimiento": "01/05/1990"},
-		{"talla": "M"},             // required missing
+		{"talla": "M"},            // required missing
 		{"rfc": "x", "otro": "y"}, // unknown key
 	} {
 		if _, _, err := d.Split(v); err == nil {

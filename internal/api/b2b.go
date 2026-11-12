@@ -17,6 +17,17 @@ func (s *Server) routesB2B(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/companies/{id}", s.authed(mod, auth.Read, s.getCompany))
 	handle("PUT /v1/companies/{id}", s.authed(mod, auth.Admin, s.saveCompany))
 	handle("POST /v1/companies/{id}/entries", s.authed(mod, auth.Admin, s.companyEntry))
+	handle("GET /v1/companies/{id}/members", s.authed(mod, auth.Read, s.companyMembers))
+	handle("PUT /v1/companies/{id}/members", s.authed(mod, auth.Admin, s.saveCompanyMembers))
+	handle("GET /v1/companies/{id}/locations", s.authed(mod, auth.Read, s.companyLocations))
+	handle("PUT /v1/companies/{id}/locations", s.authed(mod, auth.Admin, s.saveCompanyLocations))
+	handle("GET /v1/companies/{id}/requests", s.authed(mod, auth.Read, s.companyRequests))
+
+	// The company's own portal in the store: its administrators manage buyers;
+	// every buyer sees their requests and month.
+	handle("GET /s/{tenant}/api/account/company", s.shopCompanyPortal)
+	handle("PUT /s/{tenant}/api/account/company/members", s.shopCompanyMembers)
+	handle("POST /s/{tenant}/api/account/company/requests/{id}/cancel", s.shopCancelRequest)
 
 	handle("GET /s/{tenant}/api/company", s.shopCompany)
 	handle("GET /s/{tenant}/{site}/aprobacion/{token}", s.shopApproval)
@@ -166,5 +177,159 @@ func (s *Server) shopApprovalAct(w http.ResponseWriter, r *http.Request) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "cannot_place", Detail: "No se pudo colocar el pedido: " + problem})
 		return
 	}
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"status": v.Status})
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"status": v.Status, "level": v.Level, "nextLevel": v.StepLevel})
+}
+
+func (s *Server) companyMembers(w http.ResponseWriter, r *http.Request) {
+	p := principal(r)
+	if !p.Permissions.Allows("customers", "edit") {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Ver a los compradores requiere permiso de edición de clientes"})
+		return
+	}
+	list, err := s.Orders.Members(r.Context(), p.Tenant, r.PathValue("id"))
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": nonNil(list)})
+}
+
+func (s *Server) saveCompanyMembers(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Items []orders.Member `json:"items"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	p := principal(r)
+	list, err := s.Orders.SaveMembers(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), "", body.Items)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": nonNil(list)})
+}
+
+func (s *Server) companyLocations(w http.ResponseWriter, r *http.Request) {
+	list, err := s.Orders.Locations(r.Context(), principal(r).Tenant, r.PathValue("id"))
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": nonNil(list)})
+}
+
+func (s *Server) saveCompanyLocations(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Items []orders.Location `json:"items"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	p := principal(r)
+	list, err := s.Orders.SaveLocations(r.Context(), p.Tenant, p.Actor(), r.PathValue("id"), body.Items)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": nonNil(list)})
+}
+
+func (s *Server) companyRequests(w http.ResponseWriter, r *http.Request) {
+	list, err := s.Orders.PurchaseRequests(r.Context(), principal(r).Tenant, r.PathValue("id"), nil)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": nonNil(list)})
+}
+
+// portalCompany is the company of the signed-in shopper, or a 403 written.
+func (s *Server) portalCompany(w http.ResponseWriter, r *http.Request) (*orders.CompanyAccess, string, bool) {
+	if _, ok := s.shopperAPI(w, r); !ok {
+		return nil, "", false
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	c, email := s.shopperCompany(r)
+	if c == nil {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "no_company", Detail: "Tu cuenta no compra para una empresa"})
+		return nil, "", false
+	}
+	return c, email, true
+}
+
+func (s *Server) shopCompanyPortal(w http.ResponseWriter, r *http.Request) {
+	c, email, ok := s.portalCompany(w, r)
+	if !ok {
+		return
+	}
+	tenant := r.PathValue("tenant")
+	out := map[string]any{"company": c, "email": email}
+	var buyer []byte
+	if !c.Admin {
+		buyer = c.BuyerHash // a buyer sees only their own requests
+	}
+	reqs, err := s.Orders.PurchaseRequests(r.Context(), tenant, c.ID, buyer)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	out["requests"] = nonNil(reqs)
+	if c.Admin {
+		members, err := s.Orders.Members(r.Context(), tenant, c.ID)
+		if err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+		locs, err := s.Orders.Locations(r.Context(), tenant, c.ID)
+		if err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+		out["members"], out["locations"] = nonNil(members), nonNil(locs)
+	}
+	httpx.JSON(w, r, http.StatusOK, out)
+}
+
+func (s *Server) shopCompanyMembers(w http.ResponseWriter, r *http.Request) {
+	if !sameOrigin(r) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Origen no permitido"})
+		return
+	}
+	c, email, ok := s.portalCompany(w, r)
+	if !ok {
+		return
+	}
+	if !c.Admin {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "not_company_admin", Detail: "Solo quien administra la empresa cambia a sus compradores"})
+		return
+	}
+	var body struct {
+		Items []orders.Member `json:"items"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	list, err := s.Orders.SaveMembers(r.Context(), r.PathValue("tenant"), "company-admin:"+c.ID, c.ID, email, body.Items)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": nonNil(list)})
+}
+
+func (s *Server) shopCancelRequest(w http.ResponseWriter, r *http.Request) {
+	if !sameOrigin(r) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Origen no permitido"})
+		return
+	}
+	c, _, ok := s.portalCompany(w, r)
+	if !ok {
+		return
+	}
+	if err := s.Orders.CancelPurchaseRequest(r.Context(), r.PathValue("tenant"), c.ID, r.PathValue("id"), c.BuyerHash); err != nil {
+		s.fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

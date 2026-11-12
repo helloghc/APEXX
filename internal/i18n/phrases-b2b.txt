@@ -1,0 +1,48 @@
+## Portal de empresa en "Mi cuenta": aprobaciones, topes y compradores.
+@ es || en || fr || pt || id || ja
+Mi empresa || My company || Mon entreprise || Minha empresa || Perusahaan saya || 自社
+Tu mes || Your month || Votre mois || Seu mês || Bulan Anda || 今月の状況
+Compras a crédito este mes: || Credit purchases this month: || Achats à crédit ce mois-ci : || Compras a crédito este mês: || Pembelian kredit bulan ini: || 今月の掛け払い購入：
+de tu tope de || of your cap of || sur votre plafond de || do seu limite de || dari batas Anda sebesar || ／上限
+Sucursal || Branch || Agence || Filial || Cabang || 支店
+este mes. || this month. || ce mois-ci. || este mês. || bulan ini. || （今月）。
+Crédito disponible de la empresa: || Company credit available: || Crédit disponible de l'entreprise : || Crédito disponível da empresa: || Kredit perusahaan yang tersedia: || 会社の利用可能な与信額：
+Apruebas compras de nivel || You approve purchases up to level || Vous approuvez les achats de niveau || Você aprova compras de nível || Anda menyetujui pembelian level || 承認できる購入レベル：
+Solicitudes de aprobación || Approval requests || Demandes d'approbation || Solicitações de aprovação || Permintaan persetujuan || 承認リクエスト
+Quién || Who || Qui || Quem || Siapa || 依頼者
+Motivo || Reason || Motif || Motivo || Alasan || 理由
+Nivel || Level || Niveau || Nível || Level || レベル
+Cancelar || Cancel || Annuler || Cancelar || Batalkan || キャンセル
+Ninguna solicitud todavía. || No requests yet. || Aucune demande pour l'instant. || Nenhuma solicitação ainda. || Belum ada permintaan. || まだリクエストはありません。
+Compradores de la empresa || Company buyers || Acheteurs de l'entreprise || Compradores da empresa || Pembeli perusahaan || 会社の購買担当者
+Como administrador, decides quién compra, quién aprueba y hasta cuánto al mes. El crédito y las reglas los define la tienda. || As an administrator, you decide who buys, who approves and how much each person can spend per month. The store sets the credit and the rules. || En tant qu'administrateur, vous décidez qui achète, qui approuve et jusqu'à combien par mois. Le crédit et les règles sont définis par la boutique. || Como administrador, você decide quem compra, quem aprova e até quanto por mês. O crédito e as regras são definidos pela loja. || Sebagai administrator, Anda menentukan siapa yang membeli, siapa yang menyetujui, dan berapa batas per bulan. Kredit dan aturannya ditetapkan oleh toko. || 管理者として、誰が購入し、誰が承認し、月にいくらまで使えるかを決められます。与信額とルールはショップが設定します。
+Tope al mes || Monthly cap || Plafond mensuel || Limite mensal || Batas bulanan || 月間上限
+Aprueba (nivel) || Approves (level) || Approuve (niveau) || Aprova (nível) || Menyetujui (level) || 承認（レベル）
+Aprueba || Approves || Approuve || Aprova || Menyetujui || 承認
+Administra || Manages || Administre || Administra || Mengelola || 管理
+Ausente hasta || Away until || Absent jusqu'au || Ausente até || Tidak hadir sampai || 不在期間（終了日）
+Suplente || Substitute || Suppléant || Substituto || Pengganti || 代理承認者
+Sin tope || No cap || Sans plafond || Sem limite || Tanpa batas || 上限なし
+Empresa || Company || Entreprise || Empresa || Perusahaan || 会社
+Agregar comprador || Add buyer || Ajouter un acheteur || Adicionar comprador || Tambah pembeli || 購買担当者を追加
+Guardar compradores || Save buyers || Enregistrer les acheteurs || Salvar compradores || Simpan pembeli || 購買担当者を保存
+Quitar || Remove || Retirer || Remover || Hapus || 削除
+¿Cancelar esta solicitud? || Cancel this request? || Annuler cette demande ? || Cancelar esta solicitação? || Batalkan permintaan ini? || このリクエストをキャンセルしますか？
+Correo || Email || E-mail || E-mail || Email || メールアドレス
+No || No || Non || Não || Tidak || いいえ
+Fecha || Date || Date || Data || Tanggal || 日付
+Estado || Status || Statut || Status || Status || 状態
+Total || Total || Total || Total || Total || 合計
+ · Cancelada || · Cancelled || · Annulée || · Cancelada || · Dibatalkan || ・キャンセル済み
+No pudimos cancelar la solicitud. Intenta de nuevo. || We couldn't cancel the request. Please try again. || Nous n'avons pas pu annuler la demande. Réessayez. || Não foi possível cancelar a solicitação. Tente novamente. || Kami tidak dapat membatalkan permintaan. Coba lagi. || リクエストをキャンセルできませんでした。もう一度お試しください。
+Guardando… || Saving… || Enregistrement… || Salvando… || Menyimpan… || 保存中…
+Compradores guardados. || Buyers saved. || Acheteurs enregistrés. || Compradores salvos. || Pembeli disimpan. || 購買担当者を保存しました。
+No pudimos guardar. Intenta de nuevo. || We couldn't save. Please try again. || Nous n'avons pas pu enregistrer. Réessayez. || Não foi possível salvar. Tente novamente. || Kami tidak dapat menyimpan. Coba lagi. || 保存できませんでした。もう一度お試しください。
+Ver mis solicitudes || See my requests || Voir mes demandes || Ver minhas solicitações || Lihat permintaan saya || リクエストを見る
+Motivo: || Reason: || Motif : || Motivo: || Alasan: || 理由：
+Aprobación de nivel || Approval at level || Approbation de niveau || Aprovação de nível || Persetujuan level || 承認レベル
+; la compra necesita llegar al nivel || ; the purchase must reach level || ; l'achat doit atteindre le niveau || ; a compra precisa chegar ao nível || ; pembelian harus mencapai level || 。この購入には次のレベルまでの承認が必要です：
+Esta solicitud venció sin decisión. || This request expired without a decision. || Cette demande a expiré sans décision. || Esta solicitação expirou sem decisão. || Permintaan ini kedaluwarsa tanpa keputusan. || このリクエストは決定されないまま期限切れになりました。
+Quien compra canceló esta solicitud. || The buyer cancelled this request. || L'acheteur a annulé cette demande. || O comprador cancelou esta solicitação. || Pembeli membatalkan permintaan ini. || 購入者がこのリクエストをキャンセルしました。
+Aprobaste tu nivel. Enviamos la compra a quien aprueba el nivel || You approved your level. We sent the purchase to the level || Vous avez approuvé votre niveau. Nous avons envoyé l'achat à la personne qui approuve le niveau || Você aprovou seu nível. Enviamos a compra para quem aprova o nível || Anda telah menyetujui level Anda. Kami mengirim pembelian ke penyetuju level || あなたのレベルの承認が完了しました。次のレベルの承認者に送信しました：レベル
+; el pedido se coloca cuando lo apruebe. || approver; the order is placed once they approve. || ; la commande sera passée dès son approbation. || ; o pedido é feito quando for aprovado. || ; pesanan dibuat setelah disetujui. || 。承認されると注文が確定します。

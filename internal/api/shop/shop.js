@@ -316,6 +316,13 @@
         store.set(KEY, []); store.set(CPN, []); location.href = withLang(base + "/gracias"); return;
       }
       sessionStorage.removeItem("apexx_idem");
+      if (res.status === 202 && res.body.code === "approval_required") {
+        store.set(KEY, []); store.set(CPN, []);
+        const done = document.createElement("div"); done.className = "acct-box"; done.setAttribute("role", "status");
+        const p1 = document.createElement("p"); p1.textContent = res.body.detail; const p2 = document.createElement("p");
+        const a = document.createElement("a"); a.className = "btn"; a.href = withLang(base + "/cuenta?ver=empresa"); a.textContent = "Ver mis solicitudes"; p2.appendChild(a);
+        done.append(p1, p2); form.replaceWith(done); return;
+      }
       const msg = { payment_declined: "Tu pago fue rechazado. Prueba con otra tarjeta.", cart_changed: "Algunos productos cambiaron de precio o disponibilidad. Revisa el resumen.",
         insufficient_stock: "Ya no hay suficientes unidades de un producto. Ajusta tu carrito.", payment_pending: "No pudimos confirmar el pago todavía. No vuelvas a pagar: te avisaremos por correo.",
         temporarily_unavailable: "La tienda no pudo procesar tu compra en este momento. No se hizo ningún cargo; intenta de nuevo en unos segundos.", postal_code_required: "Revisa tu código postal.", no_shipping_option: "No hay entregas disponibles para tu código postal.", shipping_option_unavailable: "La opción de entrega cambió. Revisa las opciones y vuelve a intentar.",
@@ -546,6 +553,12 @@
     if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
     box.querySelectorAll("[data-approval-act]").forEach((x) => (x.disabled = true)); out.textContent = "Un momento…";
     const r = await fetch("/s/" + tenant + "/api/approval/" + encodeURIComponent(box.dataset.approval) + "/" + b.dataset.approvalAct, { method: "POST" }).then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    if (r.ok && r.body.status === "pending") {
+      // Their level is signed; the next level gets its own link by email.
+      box.querySelectorAll("[data-approval-act]").forEach((x) => x.remove());
+      out.textContent = "Aprobaste tu nivel. Enviamos la compra a quien aprueba el nivel " + r.body.nextLevel + "; el pedido se coloca cuando lo apruebe.";
+      return;
+    }
     if (r.ok) location.reload();
     else { out.textContent = r.body.detail || "No pudimos registrar tu decisión. Intenta de nuevo."; box.querySelectorAll("[data-approval-act]").forEach((x) => (x.disabled = false)); }
   });
@@ -680,5 +693,44 @@
       const r = await send("DELETE", "/" + encodeURIComponent(box.dataset.reorder));
       if (r.ok) box.remove(); else out.textContent = r.body.detail || "No pudimos borrar la lista. Intenta de nuevo.";
     });
+  });
+})();
+
+/* ==== company portal ==== */
+(() => {
+  const tenant = document.body.dataset.tenant;
+  const send = (method, path, body) => fetch("/s/" + tenant + "/api/account/company" + path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+    .then(async (x) => ({ ok: x.ok, status: x.status, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, status: 0, body: {} }));
+  document.querySelectorAll("[data-request-cancel]").forEach((b) => b.addEventListener("click", async () => {
+    if (!confirm(b.dataset.confirm)) return;
+    const tr = b.closest("[data-request]");
+    const r = await send("POST", "/requests/" + encodeURIComponent(tr.dataset.request) + "/cancel");
+    if (r.ok) { b.replaceWith(document.createTextNode(" · Cancelada")); } else alert(r.body.detail || "No pudimos cancelar la solicitud. Intenta de nuevo.");
+  }));
+  const f = document.querySelector("[data-members]");
+  if (!f) return;
+  const rows = f.querySelector("[data-member-rows]"), out = f.querySelector("[data-members-status]");
+  const wire = (tr) => tr.querySelector("[data-member-remove]").addEventListener("click", () => tr.remove());
+  rows.querySelectorAll("[data-member]").forEach(wire);
+  f.querySelector("[data-member-add]").addEventListener("click", () => {
+    const first = rows.querySelector("[data-member]");
+    if (!first) return;
+    const tr = first.cloneNode(true);
+    tr.querySelectorAll("input").forEach((i) => { if (i.type === "checkbox") i.checked = false; else i.value = ""; });
+    tr.querySelectorAll("select").forEach((s) => { s.selectedIndex = 0; });
+    rows.appendChild(tr); wire(tr); tr.querySelector("input[name=email]").focus();
+  });
+  const cents = (v) => { const n = Number(String(v).replace(/[$,\s]/g, "")); return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0; };
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const items = [...rows.querySelectorAll("[data-member]")].map((tr) => {
+      const v = (n) => tr.querySelector("[name=" + n + "]");
+      const level = Number(v("level").value) || 0;
+      return { email: v("email").value.trim(), monthlyLimit: cents(v("cap").value), location: v("location").value, approver: level > 0, level: level || 1,
+        admin: v("admin").checked, awayUntil: level > 0 ? v("away").value : "", substitute: level > 0 ? v("substitute").value.trim() : "" };
+    }).filter((m) => m.email);
+    out.textContent = "Guardando…";
+    const r = await send("PUT", "/members", { items });
+    out.textContent = r.ok ? "Compradores guardados." : (r.body.detail || "No pudimos guardar. Intenta de nuevo.");
   });
 })();

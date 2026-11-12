@@ -101,6 +101,7 @@ type Line struct {
 	Gift         bool         `json:"gift,omitempty"`      // added by a promotion at no cost
 	PromotionID  string       `json:"promotionId,omitempty"`
 	TaxClass     string       `json:"taxClass,omitempty"`
+	Categories   []string     `json:"-"` // for approval rules by category
 }
 
 // Shipping is the selected delivery option.
@@ -267,7 +268,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		}
 		line := Line{
 			SKU: it.SKU, Title: p.Title + " " + v.Title, RequestedQty: it.Qty, Qty: qty,
-			Unit: q.Unit, CompareAt: q.CompareAt, Total: q.Unit.Mul(qty), Available: avail, PriceList: q.ListName,
+			Unit: q.Unit, CompareAt: q.CompareAt, Total: q.Unit.Mul(qty), Available: avail, PriceList: q.ListName, Categories: p.Categories,
 		}
 		class := s.Logistics.ProductClassOf(p.ID)
 		if class.TaxClass != logistics.TaxGeneral {

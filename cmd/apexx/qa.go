@@ -12,6 +12,7 @@ import (
 	"github.com/helloghc/apexx/internal/auth"
 	"github.com/helloghc/apexx/internal/builder"
 	"github.com/helloghc/apexx/internal/catalog"
+	"github.com/helloghc/apexx/internal/customers"
 	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/pricing"
@@ -270,4 +271,37 @@ func qaSettings(ctx context.Context, db *store.DB, tenant string) error {
 		}
 	}
 	return nil
+}
+
+// cmdQAShopper creates (or reuses) a verified store account with a password,
+// so a QA walk can sign in as a shopper without reading a code from email.
+func cmdQAShopper(ctx context.Context, log *slog.Logger, args []string) {
+	fs := flag.NewFlagSet("qa-shopper", flag.ExitOnError)
+	tenant := fs.String("tenant", "qa", "store id")
+	email := fs.String("email", "", "shopper email")
+	name := fs.String("name", "", "shopper name")
+	pass := fs.String("password", "", "password (12+ chars)")
+	_ = fs.Parse(args)
+	if *email == "" || len(*pass) < 12 {
+		fmt.Fprintln(os.Stderr, "usa -email y -password con al menos 12 caracteres")
+		os.Exit(2)
+	}
+	db, keys := open(ctx, log)
+	defer db.Close()
+	must(log, loadKeys(ctx, db, keys, *tenant), "tenant key")
+	cust := &customers.Service{DB: db, Keys: keys}
+	list, _, _, err := cust.List(ctx, *tenant, customers.ListFilter{Q: *email, Limit: 1}, true)
+	must(log, err, "lookup")
+	var id string
+	if len(list) > 0 {
+		id = list[0].ID
+	} else {
+		c, err := cust.Create(ctx, *tenant, "qa-setup", customers.Input{Email: email, Name: name})
+		must(log, err, "create")
+		id = c.ID
+	}
+	_, err = db.System.Exec(ctx, `UPDATE customers SET verified_at=COALESCE(verified_at, now()) WHERE tenant_id=$1 AND id=$2`, *tenant, id)
+	must(log, err, "verify")
+	must(log, cust.SetPassword(ctx, *tenant, id, *pass, ""), "password")
+	log.Info("qa shopper ready", "tenant", *tenant, "customer", id)
 }

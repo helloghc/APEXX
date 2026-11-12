@@ -64,7 +64,7 @@ func must(log *slog.Logger, err error, msg string) {
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "uso: apexx migrate | tenant | seed | import | qa-setup | rotate-master-key | serve")
+		fmt.Fprintln(os.Stderr, "uso: apexx migrate | tenant | seed | import | qa-setup | qa-shopper | rotate-master-key | serve")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -84,6 +84,8 @@ func main() {
 		cmdImport(ctx, log, os.Args[2:])
 	case "qa-setup":
 		cmdQASetup(ctx, log, os.Args[2:])
+	case "qa-shopper":
+		cmdQAShopper(ctx, log, os.Args[2:])
 	case "analytics":
 		cmdAnalytics(ctx, log, os.Args[2:])
 	case "rotate-master-key":
@@ -235,6 +237,10 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	})
 	resilience.Every(ctx, log, "quote-expiry", time.Minute, func(ctx context.Context) error {
 		_, err := ord.ExpireQuotes(ctx)
+		return err
+	})
+	resilience.Every(ctx, log, "purchase-request-expiry", time.Minute, func(ctx context.Context) error {
+		_, err := ord.ExpirePurchaseRequests(ctx)
 		return err
 	})
 	resilience.Every(ctx, log, "seller-payouts", 10*time.Minute, func(ctx context.Context) error {

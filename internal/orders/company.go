@@ -45,6 +45,10 @@ type Company struct {
 	// hides the card: the company always buys on its credit.
 	RequirePO  bool `json:"requirePO"`
 	CreditOnly bool `json:"creditOnly"`
+	// ApprovalRules ask for more levels of approval (by amount, category or
+	// branch); ApprovalDays is how long a request waits before it expires.
+	ApprovalRules []ApprovalRule `json:"approvalRules"`
+	ApprovalDays  int            `json:"approvalDays"`
 }
 
 // CompanyEntry is one movement of a company's account.
@@ -72,6 +76,18 @@ type CompanyAccess struct {
 	TaxExempt         bool   `json:"taxExempt"`
 	RequirePO         bool   `json:"requirePO"`
 	CreditOnly        bool   `json:"creditOnly"`
+	// The buyer: approval level (when Approver), monthly cap and what they
+	// used this month, branch, and whether they manage the company's buyers.
+	ApproverLevel int            `json:"approverLevel,omitempty"`
+	MonthlyLimit  int64          `json:"monthlyLimit,omitempty"`
+	MonthSpent    int64          `json:"monthSpent,omitempty"`
+	Location      string         `json:"location,omitempty"`
+	LocationName  string         `json:"locationName,omitempty"`
+	LocationLimit int64          `json:"locationLimit,omitempty"`
+	LocationSpent int64          `json:"locationSpent,omitempty"`
+	Admin         bool           `json:"admin,omitempty"`
+	Rules         []ApprovalRule `json:"-"`
+	BuyerHash     []byte         `json:"-"`
 }
 
 var termDays = map[string]int{"prepaid": 0, "net15": 15, "net30": 30, "net60": 60}
@@ -83,6 +99,15 @@ func (c *Company) clean() error {
 	}
 	if c.Terms == "" {
 		c.Terms = "prepaid"
+	}
+	if c.ApprovalDays == 0 {
+		c.ApprovalDays = 7
+	}
+	if c.ApprovalRules == nil {
+		c.ApprovalRules = []ApprovalRule{}
+	}
+	if err := cleanRules(c.ApprovalRules); err != nil {
+		return err
 	}
 	_, okTerms := termDays[c.Terms]
 	switch {
@@ -106,6 +131,8 @@ func (c *Company) clean() error {
 		return FieldError{"priceGroup", "El grupo de precios es una sola palabra de hasta 60 caracteres"}
 	case c.CreditOnly && c.Terms == "prepaid":
 		return FieldError{"creditOnly", "Una empresa de contado no puede pagar solo a crédito"}
+	case c.ApprovalDays < 1 || c.ApprovalDays > 90:
+		return FieldError{"approvalDays", "Una solicitud espera entre 1 y 90 días"}
 	case c.TaxExemptUntil != "" && !validDate(c.TaxExemptUntil):
 		return FieldError{"taxExemptUntil", "Fecha con formato AAAA-MM-DD"}
 	case c.ApprovalThreshold < 0:
@@ -117,7 +144,8 @@ func (c *Company) clean() error {
 const companySelect = `SELECT c.id, c.name, c.rfc, c.status, c.terms, c.credit_limit, c.discount_bps, c.note, c.created_at,
 	COALESCE(e.balance,0),
 	LEAST(GREATEST(COALESCE(e.balance,0),0), GREATEST(COALESCE(e.due,0) - COALESCE(e.paid,0), 0)),
-	(SELECT count(*) FROM company_buyers b WHERE b.tenant_id=c.tenant_id AND b.company_id=c.id)::int, c.price_group, c.approval_threshold, c.tax_exempt, COALESCE(to_char(c.tax_exempt_until,'YYYY-MM-DD'),''), c.require_po, c.credit_only
+	(SELECT count(*) FROM company_buyers b WHERE b.tenant_id=c.tenant_id AND b.company_id=c.id)::int, c.price_group, c.approval_threshold, c.tax_exempt, COALESCE(to_char(c.tax_exempt_until,'YYYY-MM-DD'),''), c.require_po, c.credit_only,
+	c.approval_rules, c.approval_days
 	FROM companies c LEFT JOIN (SELECT company_id, sum(amount) AS balance,
 			sum(amount) FILTER (WHERE kind='charge' AND due_at < now()) AS due,
 			-sum(amount) FILTER (WHERE kind IN ('payment','refund','release') OR (kind='adjust' AND amount < 0)) AS paid
@@ -126,7 +154,7 @@ const companySelect = `SELECT c.id, c.name, c.rfc, c.status, c.terms, c.credit_l
 
 func scanCompany(r pgx.Row) (Company, error) {
 	var c Company
-	return c, r.Scan(&c.ID, &c.Name, &c.RFC, &c.Status, &c.Terms, &c.CreditLimit, &c.DiscountBps, &c.Note, &c.CreatedAt, &c.Balance, &c.Overdue, &c.Buyers, &c.PriceGroup, &c.ApprovalThreshold, &c.TaxExempt, &c.TaxExemptUntil, &c.RequirePO, &c.CreditOnly)
+	return c, r.Scan(&c.ID, &c.Name, &c.RFC, &c.Status, &c.Terms, &c.CreditLimit, &c.DiscountBps, &c.Note, &c.CreatedAt, &c.Balance, &c.Overdue, &c.Buyers, &c.PriceGroup, &c.ApprovalThreshold, &c.TaxExempt, &c.TaxExemptUntil, &c.RequirePO, &c.CreditOnly, &c.ApprovalRules, &c.ApprovalDays)
 }
 
 // Companies lists the business customers of a store.
@@ -253,13 +281,13 @@ func (s *Service) SaveCompanyWith(ctx context.Context, tenant, actor string, in 
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		if in.ID == "" {
 			in.ID = newID("com_")
-			if _, err := tx.Exec(ctx, `INSERT INTO companies (tenant_id, id, name, rfc, status, terms, credit_limit, discount_bps, note, price_group, approval_threshold, tax_exempt, tax_exempt_until, require_po, credit_only) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULLIF($13,'')::date,$14,$15)`,
-				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold, in.TaxExempt, in.TaxExemptUntil, in.RequirePO, in.CreditOnly); err != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO companies (tenant_id, id, name, rfc, status, terms, credit_limit, discount_bps, note, price_group, approval_threshold, tax_exempt, tax_exempt_until, require_po, credit_only, approval_rules, approval_days) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULLIF($13,'')::date,$14,$15,$16,$17)`,
+				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold, in.TaxExempt, in.TaxExemptUntil, in.RequirePO, in.CreditOnly, in.ApprovalRules, in.ApprovalDays); err != nil {
 				return err
 			}
 		} else {
-			ct, err := tx.Exec(ctx, `UPDATE companies SET name=$3, rfc=$4, status=$5, terms=$6, credit_limit=$7, discount_bps=$8, note=$9, price_group=$10, approval_threshold=$11, tax_exempt=$12, tax_exempt_until=NULLIF($13,'')::date, require_po=$14, credit_only=$15, updated_at=now() WHERE tenant_id=$1 AND id=$2`,
-				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold, in.TaxExempt, in.TaxExemptUntil, in.RequirePO, in.CreditOnly)
+			ct, err := tx.Exec(ctx, `UPDATE companies SET name=$3, rfc=$4, status=$5, terms=$6, credit_limit=$7, discount_bps=$8, note=$9, price_group=$10, approval_threshold=$11, tax_exempt=$12, tax_exempt_until=NULLIF($13,'')::date, require_po=$14, credit_only=$15, approval_rules=$16, approval_days=$17, updated_at=now() WHERE tenant_id=$1 AND id=$2`,
+				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold, in.TaxExempt, in.TaxExemptUntil, in.RequirePO, in.CreditOnly, in.ApprovalRules, in.ApprovalDays)
 			if err != nil {
 				return err
 			}
@@ -268,24 +296,46 @@ func (s *Service) SaveCompanyWith(ctx context.Context, tenant, actor string, in 
 			}
 		}
 		if buyers != nil {
-			if _, err := tx.Exec(ctx, `DELETE FROM company_buyers WHERE tenant_id=$1 AND company_id=$2`, tenant, in.ID); err != nil {
-				return err
-			}
+			// People who stay keep their level, cap, branch and role.
+			hashes := make([][]byte, 0, len(emails))
 			for _, e := range emails {
 				hash, err := s.Keys.Blind(tenant, "email", e)
 				if err != nil {
 					return err
 				}
+				hashes = append(hashes, hash)
+			}
+			if _, err := tx.Exec(ctx, `DELETE FROM company_buyers WHERE tenant_id=$1 AND company_id=$2 AND NOT (email_hash = ANY($3))`, tenant, in.ID, hashes); err != nil {
+				return err
+			}
+			for i, e := range emails {
 				enc, err := s.Keys.Encrypt(tenant, []byte(e), "buyer:"+in.ID)
 				if err != nil {
 					return err
 				}
-				if _, err := tx.Exec(ctx, `INSERT INTO company_buyers (tenant_id, company_id, email_hash, email, approver) VALUES ($1,$2,$3,$4,$5)`, tenant, in.ID, hash, enc, isApprover[e]); err != nil {
-					if strings.Contains(err.Error(), "23505") || strings.Contains(err.Error(), "duplicate") {
-						return FieldError{"buyers", e + " ya compra para otra empresa"}
-					}
+				ct, err := tx.Exec(ctx, `INSERT INTO company_buyers (tenant_id, company_id, email_hash, email, approver) VALUES ($1,$2,$3,$4,$5)
+					ON CONFLICT (tenant_id, email_hash) DO UPDATE SET approver=EXCLUDED.approver WHERE company_buyers.company_id=EXCLUDED.company_id`, tenant, in.ID, hashes[i], enc, isApprover[e])
+				if err != nil {
 					return err
 				}
+				if ct.RowsAffected() == 0 {
+					return FieldError{"buyers", e + " ya compra para otra empresa"}
+				}
+			}
+		}
+		// A rule that asks for a level nobody approves would be signed by a
+		// lower level: refuse it and say who is missing.
+		need := 0
+		for _, r := range in.ApprovalRules {
+			need = max(need, r.Level)
+		}
+		if need > 0 {
+			var top int
+			if err := tx.QueryRow(ctx, `SELECT COALESCE(max(approver_level),0) FROM company_buyers WHERE tenant_id=$1 AND company_id=$2 AND approver`, tenant, in.ID).Scan(&top); err != nil {
+				return err
+			}
+			if top < need {
+				return FieldError{"approvalRules", fmt.Sprintf("Una regla pide aprobación de nivel %d y nadie aprueba ese nivel. Guarda la empresa sin esa regla, asigna el nivel en “Editar compradores” y vuelve a agregarla.", need)}
 			}
 		}
 		return store.Audit(ctx, tx, tenant, actor, "company.save", in.ID, map[string]any{"name": in.Name, "terms": in.Terms, "creditLimit": in.CreditLimit, "discountBps": in.DiscountBps, "status": in.Status})
@@ -345,11 +395,27 @@ func (s *Service) CompanyForEmail(ctx context.Context, tenant, email string) (*C
 	var a CompanyAccess
 	var limit, balance int64
 	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT c.id, c.name, c.terms, c.discount_bps, c.credit_limit,
+		var locGroup string
+		if err := tx.QueryRow(ctx, `SELECT c.id, c.name, c.terms, c.discount_bps, c.credit_limit,
 				COALESCE((SELECT sum(amount) FROM company_entries e WHERE e.tenant_id=c.tenant_id AND e.company_id=c.id),0), c.price_group, c.approval_threshold, b.approver,
-				c.tax_exempt AND (c.tax_exempt_until IS NULL OR c.tax_exempt_until >= current_date), c.require_po, c.credit_only
+				c.tax_exempt AND (c.tax_exempt_until IS NULL OR c.tax_exempt_until >= current_date), c.require_po, c.credit_only,
+				b.approver_level, b.monthly_limit, b.admin, c.approval_rules, COALESCE(l.id,''), COALESCE(l.name,''), COALESCE(l.price_group,''), COALESCE(l.monthly_limit,0)
 			FROM company_buyers b JOIN companies c ON c.tenant_id=b.tenant_id AND c.id=b.company_id
-			WHERE b.tenant_id=$1 AND b.email_hash=$2 AND c.status='active'`, tenant, hash).Scan(&a.ID, &a.Name, &a.Terms, &a.DiscountBps, &limit, &balance, &a.PriceGroup, &a.ApprovalThreshold, &a.Approver, &a.TaxExempt, &a.RequirePO, &a.CreditOnly)
+			LEFT JOIN company_locations l ON l.tenant_id=b.tenant_id AND l.company_id=b.company_id AND l.id=b.location_id
+			WHERE b.tenant_id=$1 AND b.email_hash=$2 AND c.status='active'`, tenant, hash).Scan(&a.ID, &a.Name, &a.Terms, &a.DiscountBps, &limit, &balance, &a.PriceGroup, &a.ApprovalThreshold, &a.Approver, &a.TaxExempt, &a.RequirePO, &a.CreditOnly,
+			&a.ApproverLevel, &a.MonthlyLimit, &a.Admin, &a.Rules, &a.Location, &a.LocationName, &locGroup, &a.LocationLimit); err != nil {
+			return err
+		}
+		if locGroup != "" {
+			a.PriceGroup = locGroup // the branch buys with its own price list
+		}
+		if !a.Approver {
+			a.ApproverLevel = 0
+		}
+		a.BuyerHash = hash
+		var err error
+		a.MonthSpent, a.LocationSpent, err = monthSpentTx(ctx, tx, tenant, a.ID, hash, a.Location)
+		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -374,7 +440,7 @@ func (s *Service) CompanyAccessByID(ctx context.Context, tenant, id string) (*Co
 		return nil, &CreditError{"company_suspended", "La empresa está suspendida"}
 	}
 	// A server-side integration acts for the company itself: it needs no approval.
-	a := &CompanyAccess{ID: c.ID, Name: c.Name, Terms: c.Terms, DiscountBps: c.DiscountBps, PriceGroup: c.PriceGroup, ApprovalThreshold: c.ApprovalThreshold, Approver: true,
+	a := &CompanyAccess{ID: c.ID, Name: c.Name, Terms: c.Terms, DiscountBps: c.DiscountBps, PriceGroup: c.PriceGroup, ApprovalThreshold: c.ApprovalThreshold, Approver: true, ApproverLevel: maxApprovalLevel, Rules: c.ApprovalRules,
 		TaxExempt: c.TaxExempt && (c.TaxExemptUntil == "" || c.TaxExemptUntil >= time.Now().Format("2006-01-02")), RequirePO: c.RequirePO, CreditOnly: c.CreditOnly}
 	if c.Terms != "prepaid" {
 		a.Available = max(c.CreditLimit-c.Balance, 0)
@@ -416,8 +482,8 @@ func creditChargeTx(ctx context.Context, tx pgx.Tx, tenant, actor, orderID strin
 		return &CreditError{"credit_limit", fmt.Sprintf("El pedido supera el crédito disponible de tu empresa ($%s)", cents(max(limit-balance, 0)))}
 	}
 	due := time.Now().AddDate(0, 0, termDays[terms])
-	_, err := tx.Exec(ctx, `INSERT INTO company_entries (tenant_id, id, company_id, kind, amount, order_id, due_at, actor) VALUES ($1,$2,$3,'charge',$4,$5,$6,$7)`,
-		tenant, newID("cen_"), c.ID, amount, orderID, due, actor)
+	_, err := tx.Exec(ctx, `INSERT INTO company_entries (tenant_id, id, company_id, kind, amount, order_id, due_at, actor, buyer_hash, location_id) VALUES ($1,$2,$3,'charge',$4,$5,$6,$7,$8,$9)`,
+		tenant, newID("cen_"), c.ID, amount, orderID, due, actor, c.BuyerHash, c.Location)
 	return err
 }
 
@@ -438,7 +504,9 @@ func releaseCreditTx(ctx context.Context, tx pgx.Tx, tenant, actor, orderID stri
 	if err != nil || amount <= 0 {
 		return err
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO company_entries (tenant_id, id, company_id, kind, amount, order_id, actor, note) VALUES ($1,$2,$3,'release',$4,$5,$6,'El pedido no se completó')`,
+	// The release carries the buyer and branch of the charge: their month frees up.
+	_, err = tx.Exec(ctx, `INSERT INTO company_entries (tenant_id, id, company_id, kind, amount, order_id, actor, note, buyer_hash, location_id)
+		SELECT $1,$2,$3,'release',$4,$5,$6,'El pedido no se completó', buyer_hash, location_id FROM company_entries WHERE tenant_id=$1 AND order_id=$5 AND kind='charge' LIMIT 1`,
 		tenant, newID("cen_"), company, -amount, orderID, actor)
 	return err
 }
