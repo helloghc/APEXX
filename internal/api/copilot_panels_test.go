@@ -94,3 +94,12 @@ func testTenantWithCategory(t *testing.T, name string) *projection.Tenant {
 	tx.SetCategory(catalog.Category{ID: "cat_1", Handle: "calcetas", Name: name, Active: true})
 	return &projection.Tenant{ID: "t", Catalog: catalog.New(nil), Taxo: tx}
 }
+
+func TestUselessAlt(t *testing.T) {
+	for alt, want := range map[string]bool{"IMG_4021.JPG": true, "foto": true, "DSC-0091": true, "producto.png": true, "3f9a8c7d-1e2b-4c5d-9e8f-0a1b2c3d4e5f": true,
+		"Tenis rojos para correr, vista lateral": false, "Taza blanca de cerámica": false, "": true} {
+		if got := uselessAlt(alt); got != want {
+			t.Errorf("%q -> %v, want %v", alt, got, want)
+		}
+	}
+}

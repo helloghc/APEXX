@@ -139,7 +139,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <h1>IA en cada panel sin frenar la tienda</h1>
   <p class="lede">Vectores, búsqueda híbrida, re-ranking, fragmentos con contexto, grafo de conocimiento (GraphRAG), recuperación que se corrige sola (CRAG) y prompts estructurados, aplicados en todo el sistema y en siete fases. Cada fase se cierra con la misma batería de pruebas: aislamiento, reversión, escala, roles y velocidad.</p>
   <div class="status">
-    <span class="chip"><span class="dot ok"></span>IA-0 a IA-4: cerradas</span><span class="chip"><span class="dot live"></span>IA-5 Copilotos por panel: sigue</span>
+    <span class="chip"><span class="dot ok"></span>Las 8 fases: cerradas</span><span class="chip"><span class="dot live"></span>Pendiente: medir con la llave de Claude en el servidor</span>
     <span class="chip"><span class="dot ok"></span>Escala base: cerrada, 10 de 10</span>
     <span class="chip"><span class="dot ok"></span>50 000 productos: tienda y panel en 1–4 ms, 0 errores</span>
     <span class="chip"><span class="dot ok"></span>Base lista: outbox sin huecos (migración 154)</span>
@@ -218,11 +218,11 @@ const PHASES = [
   panels:["Tienda: búsqueda","Tienda: recomendaciones","Búsqueda y opiniones","Catálogo"], tech:["V","H","R"],
   gate:["✓ nDCG@10 0,528 → 0,814; búsquedas sin resultado 42 % → 9 %","✓ Sin caché, 50 000 productos: p50 1,7 ms, p95 11 ms","✓ Búsquedas exactas 0,844 → 0,969; ningún tipo de búsqueda pierde"]},
  {id:"IA-2", name:"Fragmentos con contexto", goal:"Que los documentos largos se puedan consultar sin que cada fragmento pierda su sentido.",
-  deliver:["✓ Políticas, blog y descripciones largas en fragmentos con contexto «Título › Sección»; se actualizan solos cada 30 s","✓ Contexto escrito por Claude Haiku con el documento completo en caché, cuando hay llave (probado contra servidor de prueba)","✓ «Pregúntale a la tienda» en la ficha: respuesta citada, precio y existencias del sistema, «no sé» sin fuente","Fichas técnicas en PDF y ayuda del panel (pasan a IA-3, con el copiloto)"],
+  deliver:["✓ Políticas, blog y descripciones largas en fragmentos con contexto «Título › Sección»; se actualizan solos cada 30 s","✓ Contexto escrito por Claude Haiku con el documento completo en caché, cuando hay llave (probado contra servidor de prueba)","✓ «Pregúntale a la tienda» en la ficha: respuesta citada, precio y existencias del sistema, «no sé» sin fuente","✓ Fichas técnicas en PDF (hechas en IA-4) y ayuda del panel (hecha en IA-3)"],
   panels:["Tienda: ficha","Configuración y políticas","Ayuda del panel","Operación"], tech:["V","H","R","CC"],
   gate:["✓ Fidelidad 100 %; correctas 27/27; «no sé» 5/5; conjunto apartado 10/12","✓ Cada respuesta enlaza su fuente"]},
  {id:"IA-3", name:"Asistentes con CRAG", goal:"Asistentes que verifican lo que recuperan, corrigen la búsqueda y dicen «no sé» cuando no hay fuente.",
-  deliver:["✓ Asistente del comprador en la búsqueda de la tienda y por MCP (ask_store)","✓ Copiloto del panel: ventas, más vendidos, agotados, búsquedas sin resultado y ayuda con enlace a la pantalla, según permisos","✓ Evaluar, reescribir, ir a la fuente estructurada y detectar temas que la tienda no cubre","✓ Resumen de opiniones con frases reales y su autor","✓ Ayuda del panel: 25 tareas con pantalla y permiso","Fichas técnicas en PDF (pasa a IA-4 con la cotización desde PDF)"],
+  deliver:["✓ Asistente del comprador en la búsqueda de la tienda y por MCP (ask_store)","✓ Copiloto del panel: ventas, más vendidos, agotados, búsquedas sin resultado y ayuda con enlace a la pantalla, según permisos","✓ Evaluar, reescribir, ir a la fuente estructurada y detectar temas que la tienda no cubre","✓ Resumen de opiniones con frases reales y su autor","✓ Ayuda del panel: 25 tareas con pantalla y permiso","✓ Fichas técnicas en PDF (hechas en IA-4, con la cotización desde PDF)"],
   panels:["Tienda: asistente / MCP","Tienda: ficha","Búsqueda y opiniones","Ayuda del panel"], tech:["V","H","R","CC","CRAG","P"],
   gate:["✓ 0 precios o existencias inventados: cada monto se compara con el sistema","✓ «No sé» sin fuente 5/5 y 3/3 cuando la tienda no cubre el tema","✓ Una opinión con instrucciones maliciosas no se obedece ni se usa como fuente"]},
  {id:"IA-4", name:"Grafo de conocimiento", goal:"Relaciones que una búsqueda no ve: compatible con, accesorio de, sustituto de, catálogo de esta empresa.",
@@ -230,13 +230,13 @@ const PHASES = [
   panels:["Tienda: recomendaciones","Tienda: asistente / MCP","Empresas B2B","Marketplace"], tech:["V","H","R","CC","G","CRAG","P"],
   gate:["✓ Cada relación tiene motivo y solo llega a la tienda si el comerciante la aprueba; decisiones auditadas y reversibles","✓ Tasa de aprobación medida y visible en el panel; rechazadas no se vuelven a proponer"]},
  {id:"IA-5", name:"Copilotos por panel", goal:"Ayuda concreta en cada pantalla del comerciante, siempre como sugerencia que se aprueba y se deshace.",
-  deliver:["… Catálogo: atributos, categoría, SEO, texto alternativo, duplicados","Importación: mapeo de columnas y categorías externas","Promociones: armar y validar con el simulador","Pedidos: resumen, respuesta al cliente, motivo de devolución","Clientes: segmento en lenguaje natural a reglas","Reportes: preguntas sobre la capa de reportes, nunca SQL libre","Correos y diseño: textos con la voz de la marca"],
+  deliver:["✓ Catálogo: atributos que el texto dice, categoría por los productos más parecidos, SEO y posibles duplicados, aplicables y reversibles","✓ Importación: columnas con nombres comunes y de otras plataformas, atributos por nombre y handle desde el nombre","✓ Promociones: «3x2 en calcetas», «20 % hasta el 30 de noviembre», validadas por el motor y creadas como borrador","✓ Pedidos: resumen, respuesta al cliente según su estado y motivo de devolución","✓ Clientes: segmento en lenguaje natural a reglas, con conteo","✓ Reportes: copiloto con ventas, más vendidos, agotados y búsquedas sin resultado","… Correos y diseño: textos con la voz de la marca, listos con Claude; falta medirlos con la llave en el servidor","✓ Texto alternativo: detecta los que no describen nada (nombre de archivo, «foto», repetido) y propone uno, reversible"],
   panels:["Catálogo","Importar","Promociones","Pedidos y devoluciones","Clientes y segmentos","Reportes","Correos y campañas","Diseño de la tienda","Marketplace"], tech:["V","H","G","CRAG","P"],
-  gate:["Cada sugerencia queda en la auditoría y se revierte","Quien no tiene permiso no ve el copiloto de ese panel"]},
+  gate:["✓ Cada sugerencia aplicada queda en la auditoría y se deshace sin pisar ediciones posteriores","✓ Quien no tiene permiso no ve ni usa el copiloto de ese panel"]},
  {id:"IA-6", name:"Decisión de fine-tuning", goal:"Entrenar un modelo propio solo si la evaluación demuestra que la recuperación y los prompts no bastan.",
-  deliver:["Comparar contra la mejor versión sin fine-tuning","Candidatos primero: modelo de embeddings y reordenador con búsquedas reales en español"],
+  deliver:["✓ Comparación contra la mejor versión sin fine-tuning: las metas se cumplen sin modelo propio","✓ Medición por tienda con sus búsquedas reales (clics y carritos), en el panel","✓ Candidatos definidos: vectores o reordenador, nunca el modelo de lenguaje; umbrales documentados"],
   panels:["Tienda: búsqueda"], tech:["FT"],
-  gate:["Ganancia medida mayor que el costo de mantener el modelo"]}
+  gate:["✓ Decisión: no entrenar ahora; se reevalúa sola por tienda con 200 o más búsquedas etiquetadas"]}
 ];
 const TECH = {V:"Vectorial",H:"Híbrida",R:"Re-ranking",CC:"Contexto",G:"Grafo",CRAG:"CRAG",P:"Prompts",FT:"Fine-tuning"};
 const ROWS = [

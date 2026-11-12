@@ -165,3 +165,43 @@ func TestCatalogCopilotCategory(t *testing.T) {
 		t.Fatalf("category not applied: %v", p["categories"])
 	}
 }
+
+// Images whose alt text says nothing get one from the product; applying
+// writes it to the media library, undo restores the text before.
+func TestCatalogCopilotAltText(t *testing.T) {
+	e := setup(t)
+	var ids []string
+	for i := uint8(1); i <= 2; i++ {
+		c, m := e.upload("/v1/catalog/media", e.adminA, "foto.png", testPNG(i), map[string]string{"alt": "x"})
+		if c != 201 && c != 200 {
+			t.Fatalf("upload: %d %v", c, m)
+		}
+		md, _ := m["media"].(map[string]any)
+		ids = append(ids, md["id"].(string))
+	}
+	// Alt text is required; imports fill it with whatever they have, like a
+	// file name: that is what this simulates.
+	for i, mid := range ids {
+		_, _ = e.db.System.Exec(context.Background(), `UPDATE media SET alt=$2 WHERE tenant_id='store-a' AND id=$1`, mid, []string{"IMG_4021.JPG", "foto"}[i])
+		_ = e.db.EmitAI(context.Background(), "store-a", "catalog.media.changed", mid)
+	}
+	e.must(201, "POST", "/v1/products", e.adminA, map[string]any{"handle": "lampara", "title": "Lámpara de escritorio LED", "status": "active", "media": ids, "seoTitle": "x", "seoDescription": "y",
+		"variants": []map[string]any{{"sku": "LMP-1", "title": "Única"}}})
+	e.drain()
+	id := e.idOf("lampara")
+	alt := sugsOf(e.must(200, "GET", "/v1/products/"+id+"/suggestions", e.adminA, nil), "alt")
+	if len(alt) != 1 || !strings.Contains(string(asJSON(alt[0]["proposal"])), "Lámpara de escritorio LED, vista 2") {
+		t.Fatalf("alt suggestion: %v", alt)
+	}
+	sid := alt[0]["id"].(string)
+	e.must(200, "POST", "/v1/ai/suggestions/"+sid+"/apply", e.adminA, nil)
+	e.drain()
+	if m := e.must(200, "GET", "/v1/catalog/media/"+ids[0], e.adminA, nil); !strings.Contains(string(asJSON(m)), `"alt":"Lámpara de escritorio LED"`) {
+		t.Fatalf("alt not applied: %v", m)
+	}
+	e.must(200, "POST", "/v1/ai/suggestions/"+sid+"/undo", e.adminA, nil)
+	e.drain()
+	if m := e.must(200, "GET", "/v1/catalog/media/"+ids[1], e.adminA, nil); !strings.Contains(string(asJSON(m)), `"alt":"foto"`) {
+		t.Fatalf("alt not undone: %v", m)
+	}
+}

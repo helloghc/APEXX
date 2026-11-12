@@ -3761,5 +3761,6 @@
 "Todavía hay pocas búsquedas con clics para decidir. Se mide sola conforme tus clientes buscan y eligen.": "There are still too few searches with clicks to decide. It measures itself as your customers search and choose.",
 "La búsqueda ya ordena bien lo que tus clientes eligen. Entrenar un modelo propio no se justifica.": "Search already ranks well what your customers choose. Training a model of our own is not justified.",
 "Antes de entrenar, prueba un proveedor de vectores semánticos y vuelve a medir con estas mismas búsquedas.": "Before training, try a semantic vector provider and measure again with these same searches.",
-"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "With a semantic provider, search is still below the goal. These searches can train the re-ranker or the vectors; compare the result with this same measurement before using it."
+"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "With a semantic provider, search is still below the goal. These searches can train the re-ranker or the vectors; compare the result with this same measurement before using it.",
+"Texto alternativo de imágenes": "Image alt text"
 }

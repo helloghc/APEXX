@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -35,6 +36,26 @@ import (
 
 type sugSource struct {
 	Text string `json:"text"`
+}
+
+var reFileAlt = regexp.MustCompile(`(?i)^(img|dsc|image|imagen|foto|photo|pic|screenshot|captura)?[ _-]?\d*(\.(jpe?g|png|webp|gif|avif|heic))?$|\.(jpe?g|png|webp|gif|avif|heic)$|^[a-f0-9-]{16,}$`)
+
+// uselessAlt reports alt text that describes nothing to someone who cannot see the image.
+func uselessAlt(alt string) bool {
+	a := strings.TrimSpace(alt)
+	if a == "" || reFileAlt.MatchString(a) {
+		return true
+	}
+	switch strings.ToLower(a) {
+	case "foto", "imagen", "image", "producto", "product", "picture", "img", "sin descripcion", "sin descripción", "x":
+		return true
+	}
+	return false
+}
+
+type altText struct {
+	ID  string `json:"id"`
+	Alt string `json:"alt"`
 }
 
 func sources(texts ...string) json.RawMessage {
@@ -148,6 +169,31 @@ func (s *Server) catalogSuggestions(ctx context.Context, t *projection.Tenant, p
 			why = append(why, "No tiene descripción para buscadores: se usa el inicio de la descripción")
 		}
 		add("seo", f, why...)
+	}
+
+	// Images whose alt text says nothing (a file name, "foto", the same as
+	// another image): the product says what they show. Alt text is
+	// required, so imports fill it with whatever they have.
+	var alts []altText
+	seenAlt := map[string]bool{}
+	for i, mid := range p.Media {
+		m, ok := t.Taxo.Media(mid)
+		if !ok {
+			continue
+		}
+		useless := uselessAlt(m.Alt) || seenAlt[strings.ToLower(strings.TrimSpace(m.Alt))]
+		seenAlt[strings.ToLower(strings.TrimSpace(m.Alt))] = true
+		if !useless {
+			continue
+		}
+		a := p.Title
+		if i > 0 {
+			a = fmt.Sprintf("%s, vista %d", p.Title, i+1)
+		}
+		alts = append(alts, altText{ID: mid, Alt: cut(a, 125)})
+	}
+	if len(alts) > 0 {
+		add("alt", map[string]any{"media": alts}, fmt.Sprintf("%d imágenes con un texto alternativo que no describe nada (un nombre de archivo, «foto» o repetido): quien usa lector de pantalla no sabe qué muestran", len(alts)))
 	}
 
 	// Near duplicates: almost the same meaning and the same words.
@@ -297,6 +343,10 @@ func (s *Server) suggestionAction(w http.ResponseWriter, r *http.Request, to str
 		apierr.NotFound(w, "Sugerencia no encontrada")
 		return
 	}
+	if sg.Feature == "alt" {
+		s.altAction(w, r, sg, to)
+		return
+	}
 	if sg.TargetKind != "product" || sg.Feature == "duplicate" {
 		apierr.BadRequest(w, "", apierr.FieldError{Field: "id", Code: "not_applicable", Message: "Esta sugerencia solo informa; márcala como revisada o recházala"})
 		return
@@ -430,4 +480,57 @@ func (s *Server) routesCopilots(handle func(string, http.HandlerFunc)) {
 	handle("POST /v1/ai/suggestions/{id}/apply", s.staff("catalog", auth.Edit, s.applySuggestion))
 	handle("POST /v1/ai/suggestions/{id}/undo", s.staff("catalog", auth.Edit, s.undoSuggestion))
 	handle("POST /v1/ai/suggestions/{id}/reject", s.staff("catalog", auth.Edit, s.rejectSuggestion))
+}
+
+// altAction applies or undoes alt texts of images (media library), keeping
+// the texts before; undo only restores images still holding the proposal.
+func (s *Server) altAction(w http.ResponseWriter, r *http.Request, sg store.Suggestion, to string) {
+	p := principal(r)
+	want := map[string]string{"applied": "proposed", "undone": "applied"}[to]
+	if sg.Status != want {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "state", Detail: "La sugerencia ya no está en un estado que lo permita"})
+		return
+	}
+	t, _ := s.Proj.Tenant(p.Tenant)
+	var prop struct {
+		Media []altText `json:"media"`
+	}
+	_ = json.Unmarshal(sg.Proposal, &prop)
+	var before json.RawMessage
+	if to == "applied" {
+		var prev []altText
+		for _, a := range prop.Media {
+			m, _ := t.Taxo.Media(a.ID)
+			prev = append(prev, altText{ID: a.ID, Alt: m.Alt})
+		}
+		before = raw(map[string]any{"media": prev})
+		for _, a := range prop.Media {
+			if err := s.DB.SetMediaAlt(r.Context(), p.Tenant, p.Actor(), a.ID, a.Alt); err != nil && !errors.Is(err, store.ErrNotFound) {
+				internalError(w, s.Log, err)
+				return
+			}
+		}
+	} else {
+		var prev struct {
+			Media []altText `json:"media"`
+		}
+		_ = json.Unmarshal(sg.Before, &prev)
+		for i, a := range prop.Media {
+			if m, ok := t.Taxo.Media(a.ID); ok && m.Alt != a.Alt {
+				apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "stale", Detail: "El texto de una imagen cambió después de aplicar la sugerencia; ajústalo a mano para no perder ese cambio"})
+				return
+			}
+			if i < len(prev.Media) {
+				if err := s.DB.SetMediaAlt(r.Context(), p.Tenant, p.Actor(), a.ID, prev.Media[i].Alt); err != nil && !errors.Is(err, store.ErrNotFound) {
+					internalError(w, s.Log, err)
+					return
+				}
+			}
+		}
+	}
+	if err := s.DB.MarkSuggestion(r.Context(), p.Tenant, p.Actor(), sg.ID, to, before); err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"status": to})
 }

@@ -155,3 +155,18 @@ func (d *DB) DecideSuggestion(ctx context.Context, tenant, actor, id, status str
 		return Audit(ctx, tx, tenant, actor, "ai.suggestion."+status, id, map[string]any{})
 	})
 }
+
+// MarkSuggestion records a decision whose change was written elsewhere
+// (for example the alt text of images), with the value before.
+func (d *DB) MarkSuggestion(ctx context.Context, tenant, actor, id, status string, before json.RawMessage) error {
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `UPDATE ai_suggestions SET status=$3, before=COALESCE($4, before), decided_by=$5, decided_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, id, status, before, actor)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		return Audit(ctx, tx, tenant, actor, "ai.suggestion."+status, id, map[string]any{})
+	})
+}

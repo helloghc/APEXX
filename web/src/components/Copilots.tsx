@@ -9,7 +9,7 @@ import { href, navigate } from "@/router";
 
 interface Sug { id: string; feature: string; targetId: string; proposal: Record<string, unknown>; status: string; sources: { text: string }[]; title?: string }
 
-const FEATURE: Record<string, string> = { attributes: "Atributos", category: "Categoría", seo: "Buscadores (SEO)", duplicate: "Posible duplicado" };
+const FEATURE: Record<string, string> = { attributes: "Atributos", category: "Categoría", seo: "Buscadores (SEO)", duplicate: "Posible duplicado", alt: "Texto alternativo de imágenes" };
 const STATUS: Record<string, string> = { proposed: "Por revisar", applied: "Aplicada", rejected: "Rechazada", undone: "Deshecha" };
 
 function proposalText(s: Sug): string {
@@ -18,6 +18,7 @@ function proposalText(s: Sug): string {
   if (s.feature === "seo") return [p.seoTitle && `Título: ${p.seoTitle}`, p.seoDescription && `Descripción: ${p.seoDescription}`].filter(Boolean).join(" · ");
   if (s.feature === "duplicate") return String(p.title ?? "");
   if (s.feature === "category") return "Asignar la categoría propuesta";
+  if (s.feature === "alt") return ((p.media as { alt: string }[]) ?? []).map((m) => `«${m.alt}»`).join(" · ");
   return "";
 }
 

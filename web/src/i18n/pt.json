@@ -3761,5 +3761,6 @@
 "Todavía hay pocas búsquedas con clics para decidir. Se mide sola conforme tus clientes buscan y eligen.": "Ainda há poucas buscas com cliques para decidir. A medição acontece sozinha conforme seus clientes buscam e escolhem.",
 "La búsqueda ya ordena bien lo que tus clientes eligen. Entrenar un modelo propio no se justifica.": "A busca já ordena bem o que seus clientes escolhem. Treinar um modelo próprio não se justifica.",
 "Antes de entrenar, prueba un proveedor de vectores semánticos y vuelve a medir con estas mismas búsquedas.": "Antes de treinar, teste um provedor de vetores semânticos e meça de novo com estas mesmas buscas.",
-"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "Com um provedor semântico a busca continua abaixo da meta. Estas buscas servem para treinar o reordenador ou os vetores; compare o resultado com esta mesma medição antes de usar."
+"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "Com um provedor semântico a busca continua abaixo da meta. Estas buscas servem para treinar o reordenador ou os vetores; compare o resultado com esta mesma medição antes de usar.",
+"Texto alternativo de imágenes": "Texto alternativo das imagens"
 }

@@ -3761,5 +3761,6 @@
 "Todavía hay pocas búsquedas con clics para decidir. Se mide sola conforme tus clientes buscan y eligen.": "判断するにはクリックのある検索がまだ少なすぎます。お客様の検索と選択に合わせて自動で測定されます。",
 "La búsqueda ya ordena bien lo que tus clientes eligen. Entrenar un modelo propio no se justifica.": "検索はすでにお客様の選ぶ商品を上位に表示しています。独自モデルの学習は不要です。",
 "Antes de entrenar, prueba un proveedor de vectores semánticos y vuelve a medir con estas mismas búsquedas.": "学習の前に、意味ベクトルのプロバイダーを試して同じ検索で再測定してください。",
-"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "意味プロバイダーでも目標に届いていません。これらの検索で並べ替えモデルやベクトルを学習できます。使う前に同じ測定で比較してください。"
+"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "意味プロバイダーでも目標に届いていません。これらの検索で並べ替えモデルやベクトルを学習できます。使う前に同じ測定で比較してください。",
+"Texto alternativo de imágenes": "画像の代替テキスト"
 }

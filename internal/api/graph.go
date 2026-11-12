@@ -52,7 +52,13 @@ type graphState struct {
 	mu    sync.Mutex
 	dirty map[string]map[string]bool
 	swept map[string]time.Time
+	// pos is how far the full pass of each store has gone: it walks the
+	// catalog a slice per tick so it never competes with shoppers.
+	pos map[string]int
 }
+
+// graphSlice is how many products the full pass looks at per tick.
+const graphSlice = 2000
 
 func (s *Server) graphOf(ctx context.Context, tenant string) *productGraph {
 	if v, ok := s.graph.idx.Load(tenant); ok {
@@ -272,36 +278,69 @@ func (s *Server) graphTenant(ctx context.Context, tenant string, all bool) (int,
 	ids := s.graph.dirty[tenant]
 	delete(s.graph.dirty, tenant)
 	if s.graph.swept == nil {
-		s.graph.swept = map[string]time.Time{}
+		s.graph.swept, s.graph.pos = map[string]time.Time{}, map[string]int{}
 	}
 	if time.Since(s.graph.swept[tenant]) > 6*time.Hour {
-		all = true
 		s.graph.swept[tenant] = time.Now()
+		s.graph.pos[tenant] = 0 // start a new full pass
 	}
+	pos, sweeping := s.graph.pos[tenant]
 	s.graph.mu.Unlock()
 	x := s.loadedIndex(tenant)
 	var ps []*catalog.Product
-	if all {
-		ps = t.Catalog.Products()
-	} else {
-		for id := range ids {
-			if p, err := t.Catalog.Get(id); err == nil {
-				pp := p
-				ps = append(ps, &pp)
-			}
+	var later []string
+	for id := range ids {
+		if len(ps) >= graphSlice {
+			later = append(later, id) // a big import: the rest on the next ticks
+			continue
+		}
+		if p, err := t.Catalog.Get(id); err == nil {
+			pp := p
+			ps = append(ps, &pp)
 		}
 	}
+	if len(later) > 0 {
+		s.graph.mu.Lock()
+		if s.graph.dirty[tenant] == nil {
+			s.graph.dirty[tenant] = map[string]bool{}
+		}
+		for _, id := range later {
+			s.graph.dirty[tenant][id] = true
+		}
+		s.graph.mu.Unlock()
+	}
+	// The whole catalog at once only when asked (the panel's button);
+	// otherwise the next slice of the full pass.
+	if all || sweeping {
+		cat := t.Catalog.Products()
+		from, to := 0, len(cat)
+		if !all {
+			from, to = min(pos, len(cat)), min(pos+graphSlice, len(cat))
+		}
+		ps = append(ps, cat[from:to]...)
+		s.graph.mu.Lock()
+		if all || to >= len(cat) {
+			delete(s.graph.pos, tenant)
+		} else {
+			s.graph.pos[tenant] = to
+		}
+		s.graph.mu.Unlock()
+	}
 	var es []store.Edge
+	total := 0
 	for _, p := range ps {
 		es = append(es, s.proposeFor(ctx, t, p, x)...)
 		if len(es) >= 2000 {
-			if _, err := s.DB.ProposeEdges(ctx, tenant, es); err != nil {
-				return 0, err
+			n, err := s.DB.ProposeEdges(ctx, tenant, es)
+			if err != nil {
+				return total, err
 			}
+			total += n
 			es = es[:0]
 		}
 	}
-	return s.DB.ProposeEdges(ctx, tenant, es)
+	n, err := s.DB.ProposeEdges(ctx, tenant, es)
+	return total + n, err
 }
 
 // ---------- panel ----------
