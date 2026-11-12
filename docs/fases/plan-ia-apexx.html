@@ -139,7 +139,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   <h1>IA en cada panel sin frenar la tienda</h1>
   <p class="lede">Vectores, búsqueda híbrida, re-ranking, fragmentos con contexto, grafo de conocimiento (GraphRAG), recuperación que se corrige sola (CRAG) y prompts estructurados, aplicados en todo el sistema y en siete fases. Cada fase se cierra con la misma batería de pruebas: aislamiento, reversión, escala, roles y velocidad.</p>
   <div class="status">
-    <span class="chip"><span class="dot live"></span>IA-0 Cimientos: en curso</span>
+    <span class="chip"><span class="dot ok"></span>IA-0 e IA-1: cerradas</span><span class="chip"><span class="dot live"></span>IA-2 Fragmentos con contexto: en curso</span>
     <span class="chip"><span class="dot ok"></span>Escala base: cerrada, 10 de 10</span>
     <span class="chip"><span class="dot ok"></span>50 000 productos: tienda y panel en 1–4 ms, 0 errores</span>
     <span class="chip"><span class="dot ok"></span>Base lista: outbox sin huecos (migración 154)</span>
@@ -210,15 +210,15 @@ const PHASES = [
   gate:["✓ Tras el borrado, cero productos visibles y todas las tablas iguales a la foto inicial","✓ Percentil 95 de la tienda estable al pasar de 1 000 a 50 000","✓ 50 000 productos importados en 39 s; mediciones sin respuestas 429, 0 errores","✓ Relevo de nodos con tráfico constante: 154 689 peticiones, 0 fallidas, la más lenta 55 ms"],
   },
  {id:"IA-0", name:"Cimientos", goal:"La infraestructura que todas las demás fases usan, con aislamiento y reversión desde el primer día.",
-  deliver:["… Tablas ai_chunks, kg_edges, ai_suggestions, ai_usage con RLS forzada","… Flujo de embeddings por el outbox; borrar un producto borra sus vectores","✓ Índice vectorial int8 en memoria, en dos pasadas (1 bit y luego int8): 50 000 vectores en 1,0 ms (escaneo completo 15,2 ms), mismos resultados","Presupuesto mensual y apagado por tienda y función","Arnés de evaluación con búsquedas reales etiquetadas en español"],
+  deliver:["✓ Tablas ai_chunks, kg_edges, ai_suggestions, ai_usage con RLS forzada","✓ Flujo de vectores por el outbox, un nodo calcula y todos cargan; borrar un producto borra sus vectores","✓ Índice vectorial int8 en memoria, en dos pasadas (1 bit y luego int8): 50 000 vectores en 1,0 ms (escaneo completo 15,2 ms), mismos resultados","✓ Presupuesto mensual y apagado por tienda, con tarjeta en el panel","✓ Arnés de evaluación: 93 productos y 55 búsquedas etiquetadas en español, 6 tipos"],
   panels:["Recomendaciones e IA","Operación"], tech:["V"],
-  gate:["Auditoría de aislamiento incluye las tablas nuevas","50 000 productos con vectores sin subir el p95 de la tienda","Borrado total deja cero vectores"]},
+  gate:["✓ Auditoría de aislamiento incluye las tablas nuevas","✓ 50 000 productos con vectores listos 259 ms después de verse (18,3 MB); importación 34 s","✓ Borrado total deja cero vectores: todas las tablas iguales a la foto inicial"]},
  {id:"IA-1", name:"Búsqueda híbrida y re-ranking", goal:"Encontrar lo que el comprador quiso decir aunque no use las palabras del catálogo.",
-  deliver:["Fusión léxico + vector (Reciprocal Rank Fusion)","Intención a filtros: «tenis rojos para correr talla 27 baratos»","Re-ranking de los primeros 50 con conversión, existencias, margen y fijados","Sinónimos y redirecciones sugeridos desde búsquedas sin resultados","Similares por vector para productos nuevos sin ventas"],
+  deliver:["✓ Fusión léxico + vector (Reciprocal Rank Fusion), solo cuando la caché falla","✓ Intención a filtros: color, talla, marca y precio desde el texto, sin modelo","✓ Re-ranking: fijados y clics aprendidos, luego relevancia fusionada, luego existencias","✓ Sinónimos sugeridos desde búsquedas sin resultados, con un clic en el panel","✓ Similares por vector para productos nuevos sin ventas"],
   panels:["Tienda: búsqueda","Tienda: recomendaciones","Búsqueda y opiniones","Catálogo"], tech:["V","H","R"],
-  gate:["nDCG@10 y búsquedas con resultado mejoran contra la versión léxica","p95 de búsqueda menor a 15 ms con 50 000 productos","SKU, marca y códigos exactos siguen ganando"]},
+  gate:["✓ nDCG@10 0,528 → 0,814; búsquedas sin resultado 42 % → 9 %","✓ Sin caché, 50 000 productos: p50 1,7 ms, p95 11 ms","✓ Búsquedas exactas 0,844 → 0,969; ningún tipo de búsqueda pierde"]},
  {id:"IA-2", name:"Fragmentos con contexto", goal:"Que los documentos largos se puedan consultar sin que cada fragmento pierda su sentido.",
-  deliver:["Fichas técnicas en PDF, políticas, blog y ayuda del panel en fragmentos con contexto","Contexto generado por lotes con el documento completo en caché","Preguntas en la ficha de producto, respondidas con citas"],
+  deliver:["… Fichas técnicas en PDF, políticas, blog y ayuda del panel en fragmentos con contexto","Contexto generado por lotes con el documento completo en caché","Preguntas en la ficha de producto, respondidas con citas"],
   panels:["Tienda: ficha","Configuración y políticas","Ayuda del panel","Operación"], tech:["V","H","R","CC"],
   gate:["Fidelidad a la fuente ≥ 95 % en la evaluación","Cada respuesta enlaza su fragmento de origen"]},
  {id:"IA-3", name:"Asistentes con CRAG", goal:"Asistentes que verifican lo que recuperan, corrigen la búsqueda y dicen «no sé» cuando no hay fuente.",
