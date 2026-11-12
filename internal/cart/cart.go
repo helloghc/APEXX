@@ -221,7 +221,7 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	cur := ch.Currency
 	res := Result{Channel: ch.ID, Lines: []Line{}, Messages: []Message{}, Promotions: []promo.Result{}, Coupons: []promo.CouponResult{}, ShippingOptions: []logistics.Quote{}}
 	var profiles []string
-	var lineClass []string // tax class of each priced line, parallel to promoLines
+	var lineClass []string                   // tax class of each priced line, parallel to promoLines
 	var lineCustoms []logistics.ProductClass // tariff code and origin, parallel to promoLines
 	items := money.Zero(cur)
 	var weight int64
