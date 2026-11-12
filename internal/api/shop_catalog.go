@@ -596,7 +596,8 @@ type productPage struct {
 	SoldBy  string     // marketplace seller, when the product is not the store's own
 	Sub     *subChoice // set when the product can be bought on subscription
 	Reviews store.ProductReviews
-	Average string // "4.6"
+	Summary *ReviewSummary // customers' own sentences: what they highlight and would improve
+	Average string         // "4.6"
 	P       struct {
 		Title, Brand, BrandURL, Description, Initial string
 		Tone                                         int
@@ -792,6 +793,9 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	pg.Reviews = s.productReviews(r.Context(), t.ID, p.ID)
+	if pg.Reviews.Count >= reviewSumMin {
+		pg.Summary = s.reviewSummary(r.Context(), t.ID, p.ID)
+	}
 	if pg.Reviews.Count > 0 {
 		pg.Average = strconv.FormatFloat(pg.Reviews.Average, 'f', 1, 64)
 		ld["aggregateRating"] = map[string]any{"@type": "AggregateRating", "ratingValue": pg.Average, "reviewCount": pg.Reviews.Count}

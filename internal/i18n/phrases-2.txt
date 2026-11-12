@@ -351,3 +351,9 @@ Buscando la respuesta… || Recherche de la réponse… || Mencari jawaban… ||
 No pudimos responder. Intenta de nuevo. || Nous n'avons pas pu répondre. Réessayez. || Kami tidak dapat menjawab. Coba lagi. || 回答できませんでした。もう一度お試しください。
 Demasiadas preguntas. Espera un minuto. || Trop de questions. Patientez une minute. || Terlalu banyak pertanyaan. Tunggu sebentar. || 質問が多すぎます。1分お待ちください。
 Fuente: || Source : || Sumber: || 出典：
+Lo que destacan || Ce qu'ils soulignent || Yang mereka sukai || 評価されている点
+Lo que mejorarían || Ce qu'ils amélioreraient || Yang perlu ditingkatkan || 改善してほしい点
+Frases tal cual de las opiniones de clientes. || Phrases telles que les clients les ont écrites. || Kalimat persis seperti yang ditulis pelanggan. || お客様のレビューからそのまま引用しています。
+¿No es lo que buscabas? Pregúntale a la tienda || Ce n'est pas ce que vous cherchiez ? Demandez à la boutique || Bukan yang Anda cari? Tanya toko || お探しのものではありませんか？ストアに質問する
+Por ejemplo: busco algo para regalar a mi papá || Par exemple : un cadeau pour mon père || Misalnya: hadiah untuk ayah saya || 例：父へのプレゼントを探しています
+Agotado || Épuisé || Habis || 売り切れ

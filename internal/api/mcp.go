@@ -192,6 +192,9 @@ var mcpTools = []map[string]any{
 	{"name": "get_product", "title": "Get a product", "annotations": readOnly,
 		"description": "Details of one product by handle: description, brand, and every variant with SKU, price and stock.",
 		"inputSchema": obj(map[string]any{"handle": map[string]any{"type": "string", "maxLength": 200}}, "handle")},
+	{"name": "ask_store", "title": "Ask the store", "annotations": readOnly,
+		"description": "Answer a question with the store's own information: shipping, returns, warranty, payment, and (with handle) one product's description, specifications and reviews. Prices, stock and variants come from the store's system. Returns the answer, its kind (fact, quote, written or unknown) and its sources; kind unknown means the store does not say it: do not guess.",
+		"inputSchema": obj(map[string]any{"question": map[string]any{"type": "string", "maxLength": 300}, "handle": map[string]any{"type": "string", "maxLength": 200}}, "question")},
 	{"name": "quote_cart", "title": "Price a cart", "annotations": readOnly,
 		"description": "Price a cart as the store would: promotions, taxes and, with a postal code, the shipping options with their cost and delivery estimate.",
 		"inputSchema": obj(map[string]any{"items": itemsSchema, "postalCode": map[string]any{"type": "string", "maxLength": 10}}, "items")},
@@ -311,8 +314,39 @@ func (s *Server) mcpCall(r *http.Request, t *projection.Tenant, name string, raw
 			}
 			vars = append(vars, vv)
 		}
-		return map[string]any{"handle": p.Handle, "title": p.Title, "brand": p.Brand, "description": mcpText(p.Description, 1500),
-			"currency": cur, "variants": vars, "url": base + "/p/" + p.Handle}, nil
+		out := map[string]any{"handle": p.Handle, "title": p.Title, "brand": p.Brand, "description": mcpText(p.Description, 1500),
+			"currency": cur, "variants": vars, "url": base + "/p/" + p.Handle}
+		if sum := s.reviewSummary(r.Context(), t.ID, p.ID); sum != nil {
+			out["reviewSummary"] = sum // customers' own sentences, with their author
+		}
+		return out, nil
+	case "ask_store":
+		var a struct {
+			Question string `json:"question"`
+			Handle   string `json:"handle"`
+		}
+		if err := decodeArgs(raw, &a); err != nil {
+			return nil, err
+		}
+		q := strings.TrimSpace(a.Question)
+		if n := len([]rune(q)); n < 3 || n > 300 {
+			return nil, fmt.Errorf("question: between 3 and 300 characters")
+		}
+		var prod *catalog.Product
+		if a.Handle != "" {
+			pp, ok := t.Catalog.ByHandle(a.Handle)
+			if !ok || pp.Status != "active" {
+				return nil, fmt.Errorf("no product with handle %q", a.Handle)
+			}
+			prod = &pp
+		}
+		ans := s.answerQuestion(r.Context(), t, base, mainChannel, q, prod)
+		for i := range ans.Sources {
+			if strings.HasPrefix(ans.Sources[i].URL, "/") {
+				ans.Sources[i].URL = s.publicOrigin(r) + ans.Sources[i].URL
+			}
+		}
+		return ans, nil
 	case "quote_cart":
 		var a struct {
 			Items      []mcpItem `json:"items"`

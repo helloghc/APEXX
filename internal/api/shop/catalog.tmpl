@@ -22,6 +22,9 @@
 {{if .Products}}<div class="sortbar"><p class="muted" data-total="{{.Total}}">{{.Total}} {{if eq .Total 1}}producto{{else}}productos{{end}}</p>
 <nav aria-label="Ordenar"><span class="muted">Ordenar:</span> {{range .Sorts}}<a href="{{.URL}}" rel="nofollow"{{if .Selected}} aria-current="true"{{end}}>{{.Label}}</a> {{end}}</nav></div>{{end}}
 {{if not .Products}}<p class="empty">No encontramos productos{{if .Query}} para “{{.Query}}”. Revisa la ortografía o prueba con otra palabra{{else if .Active}} con estos filtros. <a href="{{.ClearURL}}" rel="nofollow">Quita los filtros</a> para ver más{{end}}.</p>{{end}}
+{{if .Query}}<section class="ask assistant" aria-labelledby="as-h"><h2 id="as-h">¿No es lo que buscabas? Pregúntale a la tienda</h2>
+<form class="ask-form" data-assistant-form><label for="as-q" class="sr">Tu pregunta</label><input id="as-q" name="q" type="text" minlength="3" maxlength="300" required placeholder="Por ejemplo: busco algo para regalar a mi papá"><button class="btn" type="submit">Preguntar</button></form>
+<div class="ask-answer" role="status" aria-live="polite" data-assistant-answer></div></section>{{end}}
 <ul class="pgrid {{if .ShowFilters}}cols-3{{else}}cols-4{{end}}">{{range .Products}}{{template "pcard" .}}{{end}}</ul>
 {{if or .Prev .Next}}<nav class="more pager" aria-label="Páginas">{{with .Prev}}<a class="btn btn-ghost" href="{{.}}" rel="prev">Anterior</a>{{end}} <span class="muted">Página {{.Page}} de {{.Pages}}</span> {{with .Next}}<a class="btn btn-ghost" href="{{.}}" rel="next">Siguiente</a>{{end}}</nav>{{end}}
 </div></div>

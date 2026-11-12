@@ -3666,5 +3666,17 @@
 "(proveedor externo, con costo por uso)": "(external provider, paid per use)",
 "Usar búsqueda por significado": "Use search by meaning",
 "Al llegar al tope se pausan las huellas nuevas hasta el mes siguiente; la búsqueda sigue funcionando.": "At the cap, new fingerprints pause until next month; search keeps working.",
-"El último intento de actualizar huellas falló; se reintenta solo. Detalle:": "The last attempt to update fingerprints failed; it retries by itself. Details:"
+"El último intento de actualizar huellas falló; se reintenta solo. Detalle:": "The last attempt to update fingerprints failed; it retries by itself. Details:",
+"Escribe tu pregunta": "Type your question",
+"Preguntar": "Ask",
+"Pregúntale a Apexx": "Ask Apexx",
+"Sin sugerencia": "No suggestion",
+"Sugerencia": "Suggestion",
+"Tu pregunta": "Your question",
+"Ventas, lo más vendido, lo agotado, lo que buscan sin encontrar, o cómo hacer algo en el panel. Las cifras salen de tus reportes.": "Sales, best sellers, what is sold out, what shoppers search without finding, or how to do something in the panel. Figures come from your reports.",
+"¿Cuánto vendí esta semana?": "How much did I sell this week?",
+"¿Cómo importo productos?": "How do I import products?",
+"¿Qué está agotado?": "What is sold out?",
+"Parecido a: {}": "Similar to: {}",
+"Agregar sinónimo: {}": "Add synonym: {}"
 }

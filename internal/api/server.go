@@ -86,6 +86,7 @@ type Server struct {
 	sem           semState      // vectors per product (semantic index)
 	qvec          qcache        // query vectors, reused across searches
 	know          knowState     // store documents in chunks (policies, blog, long descriptions)
+	revSum        revSumState   // review summaries, cached a few minutes
 	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
 }

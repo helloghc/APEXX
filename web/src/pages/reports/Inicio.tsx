@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils";
 import { can } from "@/perms";
 import { href } from "@/router";
+import { Copilot } from "@/components/Copilot";
 import { ErrorBox, Page, StatusPill } from "../common";
 import { reportsApi, type Alert, type Dashboard } from "./api";
 import { BarList, Chart, Funnel, PREV_COLOR, SERIES_COLORS, Split, useNow } from "./charts";
@@ -460,6 +461,7 @@ export function Inicio({ me }: { me: Me }) {
       actions={allowed ? <Filters params={params} onChange={setParams} channels={q.data?.channels} /> : undefined}
     >
       {allowed && <SetupGuide me={me} />}
+      <Copilot />
       {allowed ? (
         <>
           {q.data && !invalid && (

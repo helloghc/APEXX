@@ -3666,5 +3666,17 @@
 "(proveedor externo, con costo por uso)": "(fournisseur externe, payé à l'usage)",
 "Usar búsqueda por significado": "Utiliser la recherche par le sens",
 "Al llegar al tope se pausan las huellas nuevas hasta el mes siguiente; la búsqueda sigue funcionando.": "Au plafond, les nouvelles empreintes sont suspendues jusqu'au mois suivant ; la recherche continue de fonctionner.",
-"El último intento de actualizar huellas falló; se reintenta solo. Detalle:": "La dernière mise à jour des empreintes a échoué ; elle sera relancée automatiquement. Détail :"
+"El último intento de actualizar huellas falló; se reintenta solo. Detalle:": "La dernière mise à jour des empreintes a échoué ; elle sera relancée automatiquement. Détail :",
+"Escribe tu pregunta": "Écrivez votre question",
+"Preguntar": "Demander",
+"Pregúntale a Apexx": "Demandez à Apexx",
+"Sin sugerencia": "Aucune suggestion",
+"Sugerencia": "Suggestion",
+"Tu pregunta": "Votre question",
+"Ventas, lo más vendido, lo agotado, lo que buscan sin encontrar, o cómo hacer algo en el panel. Las cifras salen de tus reportes.": "Ventes, meilleures ventes, ruptures, recherches sans résultat ou comment faire quelque chose dans le panneau. Les chiffres viennent de vos rapports.",
+"¿Cuánto vendí esta semana?": "Combien ai-je vendu cette semaine ?",
+"¿Cómo importo productos?": "Comment importer des produits ?",
+"¿Qué está agotado?": "Qu'est-ce qui est épuisé ?",
+"Parecido a: {}": "Semblable à : {}",
+"Agregar sinónimo: {}": "Ajouter le synonyme : {}"
 }

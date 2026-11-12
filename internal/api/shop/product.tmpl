@@ -47,6 +47,11 @@
 <section class="reviews" id="opiniones" aria-labelledby="rv-h">
 <h2 id="rv-h">Opiniones</h2>
 {{if .Reviews.Count}}<p class="rv-sum"><span class="stars" role="img" aria-label="{{.Average}} de 5 estrellas">{{stars .Reviews.Average}}</span> <strong>{{.Average}}</strong> <span class="muted">{{.Reviews.Count}} {{if eq .Reviews.Count 1}}opinión{{else}}opiniones{{end}}</span></p>
+{{with .Summary}}<div class="rv-summary" data-review-summary>
+{{if .Pros}}<div><h3>Lo que destacan</h3><ul>{{range .Pros}}<li><q>{{.Text}}</q> <span class="muted">— {{.Author}}</span></li>{{end}}</ul></div>{{end}}
+{{if .Cons}}<div><h3>Lo que mejorarían</h3><ul>{{range .Cons}}<li><q>{{.Text}}</q> <span class="muted">— {{.Author}}</span></li>{{end}}</ul></div>{{end}}
+<p class="muted note">Frases tal cual de las opiniones de clientes.</p>
+</div>{{end}}
 <ul class="rv-list">{{range .Reviews.Items}}<li><p><span class="stars" role="img" aria-label="{{.Rating}} de 5 estrellas">{{stars .Rating}}</span>{{with .Title}} <strong>{{.}}</strong>{{end}}</p><p>{{.Body}}</p><p class="muted">{{.Author}}{{if .Verified}} · Compra verificada{{end}} · {{day .CreatedAt}}</p>{{with .Reply}}<p class="rv-reply"><strong>Respuesta de la tienda:</strong> {{.}}</p>{{end}}</li>{{end}}</ul>
 {{else}}<p class="muted">Todavía no hay opiniones de este producto. Sé la primera persona en opinar.</p>{{end}}
 <details class="rv-form"><summary class="btn ghost">Escribir una opinión</summary>

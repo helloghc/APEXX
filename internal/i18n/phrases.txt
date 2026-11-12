@@ -352,3 +352,9 @@ Buscando la respuesta… || Looking for the answer… || Procurando a resposta�
 No pudimos responder. Intenta de nuevo. || We couldn't answer. Please try again. || Não conseguimos responder. Tente novamente.
 Demasiadas preguntas. Espera un minuto. || Too many questions. Please wait a minute. || Perguntas demais. Aguarde um minuto.
 Fuente: || Source: || Fonte:
+Lo que destacan || What they highlight || O que destacam
+Lo que mejorarían || What they would improve || O que melhorariam
+Frases tal cual de las opiniones de clientes. || Sentences exactly as customers wrote them. || Frases exatamente como os clientes escreveram.
+¿No es lo que buscabas? Pregúntale a la tienda || Not what you were looking for? Ask the store || Não é o que procurava? Pergunte à loja
+Por ejemplo: busco algo para regalar a mi papá || For example: something to give my dad || Por exemplo: procuro algo para dar ao meu pai
+Agotado || Sold out || Esgotado

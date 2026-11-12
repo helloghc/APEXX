@@ -462,3 +462,12 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .ask-form input{flex:1 1 16rem;min-width:0}
 .ask-answer{margin-top:.75rem}
 .ask-answer p{margin:.25rem 0}
+
+/* Review summary: customers' own sentences */
+.rv-summary{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));margin:1rem 0;padding:1rem;border:1px solid var(--line,#ddd);border-radius:var(--radius,8px)}
+.rv-summary h3{font-size:1rem;margin:0 0 .5rem}
+.rv-summary ul{margin:0;padding-left:1.1rem}
+.rv-summary li{margin:.25rem 0}
+.rv-summary .note{grid-column:1/-1;margin:0}
+.assistant-products{margin:.5rem 0;padding-left:1.1rem}
+.assistant-products li{margin:.25rem 0}

@@ -72,7 +72,7 @@ func TestMCPServer(t *testing.T) {
 			t.Fatalf("a tool can place orders: %s", n)
 		}
 	}
-	if strings.Join(names, ",") != "search_products,get_product,quote_cart,create_cart_link" {
+	if strings.Join(names, ",") != "search_products,get_product,ask_store,quote_cart,create_cart_link" {
 		t.Fatalf("tools = %v", names)
 	}
 	found := tool("store-a", "search_products", m{"query": "prodcto", "limit": 5})["structuredContent"].(map[string]any)
@@ -83,6 +83,17 @@ func TestMCPServer(t *testing.T) {
 	v := p["variants"].([]any)[0].(map[string]any)
 	if v["sku"] != "S1" || v["price"] != "100.00" || v["available"].(float64) != 10 {
 		t.Fatalf("product = %v", p)
+	}
+	// ask_store: the price comes from the system; without a source it says so.
+	ans := tool("store-a", "ask_store", m{"question": "¿Cuánto cuesta?", "handle": "p1"})["structuredContent"].(map[string]any)
+	if ans["kind"] != "fact" || !strings.Contains(ans["text"].(string), "100.00") {
+		t.Fatalf("ask_store price = %v", ans)
+	}
+	if src := ans["sources"].([]any)[0].(map[string]any)["url"].(string); !strings.HasPrefix(src, "http") {
+		t.Fatalf("ask_store sources must be absolute links: %s", src)
+	}
+	if ans := tool("store-a", "ask_store", m{"question": "¿Tienen tienda física en Monterrey?"})["structuredContent"].(map[string]any); ans["kind"] != "unknown" {
+		t.Fatalf("ask_store without source = %v", ans)
 	}
 	q := tool("store-a", "quote_cart", m{"items": []m{{"sku": "S1", "qty": 2}, {"sku": "S2", "qty": 1}}, "postalCode": "53129"})["structuredContent"].(map[string]any)
 	if q["items"] != "300.00" || len(q["shippingOptions"].([]any)) == 0 {

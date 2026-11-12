@@ -3666,5 +3666,17 @@
 "(proveedor externo, con costo por uso)": "（外部プロバイダー、従量課金）",
 "Usar búsqueda por significado": "意味で検索を使う",
 "Al llegar al tope se pausan las huellas nuevas hasta el mes siguiente; la búsqueda sigue funcionando.": "上限に達すると、新しい指紋の作成は翌月まで停止します。検索はそのまま使えます。",
-"El último intento de actualizar huellas falló; se reintenta solo. Detalle:": "前回の指紋の更新に失敗しました。自動で再試行します。詳細："
+"El último intento de actualizar huellas falló; se reintenta solo. Detalle:": "前回の指紋の更新に失敗しました。自動で再試行します。詳細：",
+"Escribe tu pregunta": "質問を入力",
+"Preguntar": "質問する",
+"Pregúntale a Apexx": "Apexxに質問",
+"Sin sugerencia": "提案なし",
+"Sugerencia": "提案",
+"Tu pregunta": "ご質問",
+"Ventas, lo más vendido, lo agotado, lo que buscan sin encontrar, o cómo hacer algo en el panel. Las cifras salen de tus reportes.": "売上、売れ筋、在庫切れ、見つからなかった検索、パネルの使い方。数値はレポートから取得します。",
+"¿Cuánto vendí esta semana?": "今週の売上は？",
+"¿Cómo importo productos?": "商品をインポートするには？",
+"¿Qué está agotado?": "在庫切れの商品は？",
+"Parecido a: {}": "類似：{}",
+"Agregar sinónimo: {}": "同義語を追加：{}"
 }

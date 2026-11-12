@@ -29,6 +29,7 @@ import (
 	"github.com/helloghc/apexx/internal/ai"
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/httpx"
+	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/projection"
 )
 
@@ -58,10 +59,12 @@ type passage struct {
 }
 
 var (
-	rePrice = regexp.MustCompile(`\b(precio|cuesta|cuestan|costo|vale|valen|cuanto)\b`)
+	rePrice = regexp.MustCompile(`\b(precio|cuesta|cuestan|costo|vale|valen)\b|\bcuanto (es|sale|salen)\b`)
 	reStock = regexp.MustCompile(`\b(hay|disponible|disponibles|existencia|existencias|stock|agotado|agotada|tienen|queda|quedan)\b`)
 	reVars  = regexp.MustCompile(`\b(talla|tallas|color|colores|medida|medidas|tamano|tamanos|presentacion|presentaciones|modelos|opciones)\b`)
 	reNum   = regexp.MustCompile(`\d+(?:[.,]\d+)?`)
+	// Text aimed at a language model, not at people: never a source.
+	reInjection = regexp.MustCompile(`\b(ignora|ignore|olvida) (todas? )?(las |tus |the )?(instrucciones|indicaciones|instructions|reglas)|\b(responde|di|contesta) (que|siempre)\b|\bsystem prompt\b|\b(eres|actua como) (un|una) (asistente|modelo|ia)\b`)
 )
 
 func foldQ(s string) string {
@@ -78,8 +81,20 @@ func (s *Server) answerQuestion(ctx context.Context, t *projection.Tenant, base,
 		if a, ok := productFact(t, base, channel, fq, p); ok {
 			return a
 		}
+		// The price and the stock of a product come only from the system:
+		// without them, no text (a review, a description) may answer.
+		if (rePrice.MatchString(fq) && !reVars.MatchString(fq)) || (reStock.MatchString(fq) && !reVars.MatchString(fq)) {
+			return Answer{Kind: "unknown", Text: "No tengo ese dato de este producto. Puedes escribirle a la tienda para preguntarle.", Sources: []Citation{}}
+		}
 	}
 	ps := s.passages(ctx, t, base, q, p)
+	title := ""
+	if p != nil {
+		title = p.Title
+	}
+	if p == nil && topicGap(q, ps, title) {
+		return Answer{Kind: "unknown", Text: "No encontré esa información en la tienda. Puedes escribirle a la tienda para preguntarle.", Sources: []Citation{}}
+	}
 	best := rankPassages(q, ps)
 	// CRAG: weak retrieval, rewrite once with the store's synonyms and
 	// without filler words, then judge again.
@@ -120,9 +135,13 @@ func productFact(t *projection.Tenant, base, channel, fq string, p *catalog.Prod
 		if !o.HasPrice {
 			return Answer{}, false
 		}
-		txt := "Cuesta $" + catalog.FormatAmount(o.Price) + "."
+		cur := money.Currency("MXN")
+		if c, ok := t.Channel(channel); ok {
+			cur = c.Currency
+		}
+		txt := "Cuesta " + pesos(money.New(o.Price, cur)) + "."
 		if o.CompareAt > o.Price {
-			txt = "Cuesta $" + catalog.FormatAmount(o.Price) + " (antes $" + catalog.FormatAmount(o.CompareAt) + ")."
+			txt = "Cuesta " + pesos(money.New(o.Price, cur)) + " (antes " + pesos(money.New(o.CompareAt, cur)) + ")."
 		}
 		return Answer{Kind: "fact", Text: txt, Sources: src, Score: 1}, true
 	case reStock.MatchString(fq) && !reVars.MatchString(fq):
@@ -146,6 +165,9 @@ func (s *Server) passages(ctx context.Context, t *projection.Tenant, base, q str
 	var out []passage
 	add := func(text, ctxt string, c Citation) {
 		for _, sn := range ai.Sentences(text) {
+			if reInjection.MatchString(foldQ(sn)) {
+				continue // written to steer a machine, not to inform a shopper
+			}
 			if utf8.RuneCountInString(sn) >= 8 {
 				out = append(out, passage{text: sn, ctxt: ctxt, cite: c})
 			}
@@ -226,7 +248,13 @@ func rankPassages(q string, ps []passage) []passage {
 			}
 			overlap = float64(n) / float64(len(qw))
 		}
-		ps[i].score = 0.45*sv + 0.2*cv + 0.35*overlap + typeBonus(fq, ps[i].text, ps[i].ctxt)
+		// The kind of answer counts only for a passage about the same thing:
+		// "5 días" answers "¿cuánto tarda el envío?" only if it is about shipping.
+		tb, topical := typeBonus(fq, ps[i].text, ps[i].ctxt)
+		if overlap == 0 && tb > 0 && !topical {
+			tb = 0
+		}
+		ps[i].score = 0.45*sv + 0.2*cv + 0.35*overlap + tb
 	}
 	sort.SliceStable(ps, func(i, j int) bool { return ps[i].score > ps[j].score })
 	return ps
@@ -245,25 +273,26 @@ func contentStems(s string) map[string]bool {
 // Expected answer types: what kind of words an answer to the question has.
 // "¿Cuánto dura?" is answered by a duration, "¿cuánto pesa?" by a weight.
 type answerType struct {
-	q, a *regexp.Regexp
-	ctx  *regexp.Regexp // section titles that usually hold this answer
+	q, a  *regexp.Regexp
+	ctx   *regexp.Regexp // section titles that usually hold this answer
+	topic bool           // the type names the subject ("material", "lluvia"), not only a measure ("días", "$")
 }
 
 var answerTypes = []answerType{
-	{regexp.MustCompile(`\b(cuanto|cuantos|cuantas) (dura|duran|tiempo|tarda|tardan|dias|meses|anos|demora)|\b(tarda|tardan|demora|demoran|llega|llegan|llegar)\b|\bcuando\b`), regexp.MustCompile(`\b\d+\s*(a\s*\d+\s*)?(dias?|semanas?|meses|mes|anos?|horas?|minutos?)\b`), regexp.MustCompile(`\b(plazos?|tiempos?|duracion|vigencia|entrega)\b`)},
-	{regexp.MustCompile(`\bcuanto (pesa|pesan)|\bpeso\b`), regexp.MustCompile(`\b\d+([.,]\d+)?\s*(kg|kilos?|gramos?|g|lb)\b`), nil},
-	{regexp.MustCompile(`\b(de que (es|son|esta|estan)|material|materiales|hecho de|hecha de|tela)\b`), regexp.MustCompile(`\b(lino|algodon|poliester|piel|cuero|lana|seda|mezclilla|acero|aluminio|vidrio|plastico|madera|silicon|nylon|bambu|gamuza|ceramica|hule|pvc)\b`), nil},
-	{regexp.MustCompile(`\b(donde|origen|fabricad[oa]|hech[oa] en)\b`), regexp.MustCompile(`\b(hech[oa] en|fabricad[oa] en|origen|importad[oa])\b`), nil},
-	{regexp.MustCompile(`\bcuanto (cuesta|cuestan|vale|cobran)|\bcosto\b|\bprecio\b`), regexp.MustCompile(`\$\s*\d|\bgratis\b`), nil},
-	{regexp.MustCompile(`\b(lluvia|mojar|mojarse|agua)\b`), regexp.MustCompile(`\b(impermeable|agua|lluvia|selladas?)\b`), nil},
-	{regexp.MustCompile(`\b(armar|arma|instalar|montar)\b`), regexp.MustCompile(`\b(arma|armar|minutos?|instala)\b`), nil},
+	{regexp.MustCompile(`\b(cuanto|cuantos|cuantas) (dura|duran|tiempo|tarda|tardan|dias|meses|anos|demora)|\b(tarda|tardan|demora|demoran|llega|llegan|llegar)\b|\bcuando\b`), regexp.MustCompile(`\b\d+\s*(a\s*\d+\s*)?(dias?|semanas?|meses|mes|anos?|horas?|minutos?)\b`), regexp.MustCompile(`\b(plazos?|tiempos?|duracion|vigencia|entrega)\b`), false},
+	{regexp.MustCompile(`\bcuanto (pesa|pesan)|\bpeso\b`), regexp.MustCompile(`\b\d+([.,]\d+)?\s*(kg|kilos?|gramos?|g|lb)\b`), nil, false},
+	{regexp.MustCompile(`\b(de que (es|son|esta|estan)|material|materiales|hecho de|hecha de|tela)\b`), regexp.MustCompile(`\b(lino|algodon|poliester|piel|cuero|lana|seda|mezclilla|acero|aluminio|vidrio|plastico|madera|silicon|nylon|bambu|gamuza|ceramica|hule|pvc)\b`), nil, true},
+	{regexp.MustCompile(`\b(donde|origen|fabricad[oa]|hech[oa] en)\b`), regexp.MustCompile(`\b(hech[oa] en|fabricad[oa] en|origen|importad[oa])\b`), nil, true},
+	{regexp.MustCompile(`\bcuanto (cuesta|cuestan|vale|cobran)|\bcosto\b|\bprecio\b`), regexp.MustCompile(`\$\s*\d|\bgratis\b`), nil, false},
+	{regexp.MustCompile(`\b(lluvia|mojar|mojarse|agua)\b`), regexp.MustCompile(`\b(impermeable|agua|lluvia|selladas?)\b`), nil, true},
+	{regexp.MustCompile(`\b(armar|arma|instalar|montar)\b`), regexp.MustCompile(`\b(arma|armar|minutos?|instala)\b`), nil, true},
 	// Capability: "¿se puede…?", "¿sirve para…?", "¿aguanta…?"
-	{regexp.MustCompile(`\b(se puede|se pueden|sirve|sirven|apto|apta|aguanta|resiste|soporta|admite|compatible)\b`), regexp.MustCompile(`\b(apt[oa]s?|compatibles?|resistentes?|resiste|soporta|permite|se puede|sirve)\b`), nil},
+	{regexp.MustCompile(`\b(se puede|se pueden|sirve|sirven|apto|apta|aguanta|resiste|soporta|admite|compatible)\b`), regexp.MustCompile(`\b(apt[oa]s?|compatibles?|resistentes?|resiste|soporta|permite|se puede|sirve)\b`), nil, true},
 }
 
-func typeBonus(fq, sentence, ctxt string) float64 {
+func typeBonus(fq, sentence, ctxt string) (float64, bool) {
 	fs, fc := foldQ(sentence), foldQ(ctxt)
-	applies, best := false, 0.0
+	applies, best, topic := false, 0.0, false
 	for _, t := range answerTypes {
 		if !t.q.MatchString(fq) {
 			continue
@@ -274,13 +303,65 @@ func typeBonus(fq, sentence, ctxt string) float64 {
 			if t.ctx != nil && t.ctx.MatchString(fc) {
 				bb += 0.1
 			}
-			best = max(best, bb)
+			if bb > best {
+				best, topic = bb, t.topic
+			}
 		}
 	}
 	if applies && best == 0 {
-		return -0.05 // the question expects a kind of answer this sentence lacks
+		return -0.05, false // the question expects a kind of answer this sentence lacks
 	}
-	return best
+	return best, topic
+}
+
+// cueWords are the words an answer type already accounts for.
+func cueWords(fq string) map[string]bool {
+	out := map[string]bool{}
+	for _, t := range answerTypes {
+		for _, m := range t.q.FindAllString(fq, -1) {
+			for w := range contentStems(m) {
+				out[w] = true
+			}
+		}
+	}
+	return out
+}
+
+// topicGap reports whether the question names something specific that no
+// retrieved passage mentions: the store does not cover that subject, and
+// any answer would be about something else. Specific words are the long
+// non-verb words ("internacional", "instalación"); short words and verbs
+// are too often paraphrased to judge.
+func topicGap(q string, ps []passage, extra string) bool {
+	pre := func(w string) string {
+		if r := []rune(w); len(r) > 6 {
+			return string(r[:6])
+		}
+		return w
+	}
+	have := map[string]bool{}
+	add := func(text string) {
+		for _, w := range ai.Words(text) {
+			have[pre(w)] = true
+		}
+	}
+	add(extra)
+	for _, p := range ps {
+		add(p.ctxt + " " + p.text)
+	}
+	cues := cueWords(foldQ(q))
+	for _, w := range ai.Words(q) {
+		if ai.IsStopword(w) || questionFiller[w] || len(w) < 7 || cues[ai.Root(w)] {
+			continue
+		}
+		if strings.HasSuffix(w, "ar") || strings.HasSuffix(w, "er") || strings.HasSuffix(w, "ir") || strings.HasSuffix(w, "ando") || strings.HasSuffix(w, "iendo") {
+			continue
+		}
+		if !have[pre(w)] {
+			return true
+		}
+	}
+	return false
 }
 
 // rewriteQuestion is the CRAG correction step: the store's synonyms of the

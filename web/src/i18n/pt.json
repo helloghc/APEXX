@@ -254,7 +254,7 @@
 "Busca por nombre, marca o SKU.": "Busque por nome, marca ou SKU.",
 "Buscadores": "Buscadores",
 "Buscadores (SEO)": "Buscadores (SEO)",
-"Buscando…": "Buscando…",
+"Buscando…": "Procurando…",
 "Buscar": "Buscar",
 "Buscar SKU en el origen": "Buscar SKU na origem",
 "Buscar clientes": "Buscar clientes",
@@ -3666,5 +3666,17 @@
 "(proveedor externo, con costo por uso)": "(provedor externo, cobrado por uso)",
 "Usar búsqueda por significado": "Usar busca por significado",
 "Al llegar al tope se pausan las huellas nuevas hasta el mes siguiente; la búsqueda sigue funcionando.": "Ao atingir o teto, novas impressões ficam pausadas até o mês seguinte; a busca continua funcionando.",
-"El último intento de actualizar huellas falló; se reintenta solo. Detalle:": "A última tentativa de atualizar impressões falhou; ela é repetida sozinha. Detalhe:"
+"El último intento de actualizar huellas falló; se reintenta solo. Detalle:": "A última tentativa de atualizar impressões falhou; ela é repetida sozinha. Detalhe:",
+"Escribe tu pregunta": "Escreva sua pergunta",
+"Preguntar": "Perguntar",
+"Pregúntale a Apexx": "Pergunte à Apexx",
+"Sin sugerencia": "Sem sugestão",
+"Sugerencia": "Sugestão",
+"Tu pregunta": "Sua pergunta",
+"Ventas, lo más vendido, lo agotado, lo que buscan sin encontrar, o cómo hacer algo en el panel. Las cifras salen de tus reportes.": "Vendas, mais vendidos, esgotados, buscas sem resultado ou como fazer algo no painel. Os números vêm dos seus relatórios.",
+"¿Cuánto vendí esta semana?": "Quanto vendi esta semana?",
+"¿Cómo importo productos?": "Como importo produtos?",
+"¿Qué está agotado?": "O que está esgotado?",
+"Parecido a: {}": "Parecido com: {}",
+"Agregar sinónimo: {}": "Adicionar sinônimo: {}"
 }

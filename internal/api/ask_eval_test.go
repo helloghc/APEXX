@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/helloghc/apexx/internal/ai"
+	"github.com/helloghc/apexx/internal/money"
+	"github.com/helloghc/apexx/internal/pricing"
 )
 
 type askCase struct {
@@ -39,7 +41,7 @@ var askEval = []askCase{
 	{"camisa", "¿De qué material es?", "lino"},
 	{"camisa", "¿Dónde está hecha?", "yucatan"},
 	{"camisa", "¿Qué tallas tiene?", "ch m g"},
-	{"camisa", "¿Cuánto cuesta?", "cuesta"},
+	{"camisa", "¿Cuánto cuesta?", "cuesta 999 00"},
 	{"tienda", "¿Cuánto pesa?", "3 2 kg"},
 	{"tienda", "¿Aguanta la lluvia?", "agua|impermeable"},
 	{"tienda", "¿Es difícil de armar?", "5 minutos"},
@@ -69,6 +71,10 @@ var askHeldOut = []askCase{
 	{"", "¿Tienen programa de lealtad?", ""},
 }
 
+// askNoTopic: the store has no document about the topic, but has others
+// with answers of the same kind (days, amounts): it must not borrow them.
+var askNoTopic = []string{"¿Cuánto tarda en llegar un pedido internacional?", "¿Cuánto cuesta la instalación?", "¿Cuántos días dura la promoción?"}
+
 func (e *env) askSetup() {
 	pol := func(slug, title, body string) {
 		e.must(200, "PUT", "/v1/policies/"+slug, e.adminA, map[string]any{"title": title, "body": body, "published": true})
@@ -89,11 +95,14 @@ func (e *env) askSetup() {
 	prod("licuadora", "Licuadora 600 W", "Vaso de vidrio de 1.5 litros. Cinco velocidades y función pulso. Tritura hielo sin problema. Las cuchillas son de acero inoxidable y se desmontan para lavarlas.", "Única")
 	prod("camisa", "Camisa de lino blanca", "Camisa de manga larga 100 % lino. Corte regular. Hecha en Yucatán.", "CH", "M", "G")
 	prod("tienda", "Tienda de campaña para 4 personas", "Impermeable con costuras selladas. Se arma en 5 minutos. Pesa 3.2 kg. Incluye bolsa de transporte y estacas.", "Única")
-	e.drain()
-	_, rv := e.do("POST", "/s/store-a/api/reviews/tienda", "", map[string]any{"rating": 5, "title": "Excelente", "body": "La usé en una tormenta y no entró agua.", "name": "Luis", "email": "luis@example.com"})
-	if id, _ := rv["id"].(string); id != "" {
-		e.must(200, "POST", "/v1/reviews/"+id+"/moderate", e.adminA, map[string]any{"status": "approved"})
+	for _, h := range []string{"licuadora", "camisa", "tienda"} {
+		for _, v := range []string{"Única", "CH", "M", "G"} {
+			_ = e.db.SetPrices(context.Background(), "store-a", "test", "mx", "SKU-"+h+"-"+v, []pricing.Tier{{MinQty: 1, Unit: money.New(99900, "MXN")}})
+		}
 	}
+	e.drain()
+	e.must(201, "POST", "/s/store-a/api/reviews/tienda", "", map[string]any{"rating": 5, "title": "Excelente", "body": "La usé en una tormenta y no entró agua.", "name": "Luis", "email": "luis@example.com"})
+	e.approveReviews()
 	e.embed()
 	if _, err := e.server.RunKnowledge(context.Background()); err != nil {
 		e.t.Fatal(err)
@@ -197,6 +206,11 @@ func TestAskEvaluation(t *testing.T) {
 		}
 	}
 	t.Logf("conjunto apartado: %d/%d (%.0f%%)", hr, hn, 100*float64(hr)/float64(hn))
+	for _, q := range askNoTopic {
+		if a := e.ask("", q); a.Kind != "unknown" {
+			t.Errorf("borrowed an answer about another topic: %q -> %s", q, a.Text)
+		}
+	}
 	if float64(hr)/float64(hn) < 0.7 {
 		t.Errorf("held-out accuracy %d/%d under 70%%", hr, hn)
 	}

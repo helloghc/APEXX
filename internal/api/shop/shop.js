@@ -684,6 +684,42 @@ function downloadsBox(ds) {
     if (r.ok) { rf.reset(); out.textContent = "¡Gracias! Tu opinión se publicará cuando la tienda la revise."; }
     else out.textContent = r.status === 429 ? "Demasiados intentos. Espera un minuto." : (r.body.detail || "No pudimos enviar tu opinión. Intenta de nuevo.");
   });
+  // Store assistant (search page): products with the store's prices, or a
+  // cited answer about the store or a product it names.
+  const asf = d.querySelector("[data-assistant-form]");
+  if (asf) asf.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = asf.querySelector("input[name=q]").value.trim(), out = d.querySelector("[data-assistant-answer]"), btn = asf.querySelector("button[type=submit]");
+    if (q.length < 3) { out.textContent = "Escribe tu pregunta."; return; }
+    btn.disabled = true; out.textContent = "Buscando la respuesta…";
+    const r = await fetch(api + "/assistant?site=" + encodeURIComponent(site), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) })
+      .then(async (x) => ({ ok: x.ok, status: x.status, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    btn.disabled = false; out.textContent = "";
+    if (!r.ok) { out.textContent = r.status === 429 ? "Demasiadas preguntas. Espera un minuto." : (r.body.detail || "No pudimos responder. Intenta de nuevo."); return; }
+    const a = r.body.answer || {};
+    const p = document.createElement("p"); p.textContent = a.text || ""; out.appendChild(p);
+    const items = r.body.products || [];
+    if (items.length) {
+      const ul = document.createElement("ul"); ul.className = "assistant-products";
+      items.forEach((it) => {
+        if (typeof it.url !== "string" || !it.url.startsWith("/")) return;
+        const li = document.createElement("li"), link = document.createElement("a");
+        link.href = it.url; link.textContent = it.title; li.appendChild(link);
+        const price = document.createElement("span"); price.className = "muted"; price.textContent = " " + (it.soldOut ? "Agotado" : it.price); li.appendChild(price);
+        ul.appendChild(li);
+      });
+      out.appendChild(ul);
+    }
+    const src = (a.sources || []).filter((s) => s.title);
+    if (src.length && a.kind !== "unknown" && a.kind !== "products") {
+      const s = document.createElement("p"); s.className = "muted"; s.append("Fuente: ");
+      src.forEach((c, i) => {
+        if (i) s.append(" · ");
+        if (typeof c.url === "string" && c.url.startsWith("/")) { const l = document.createElement("a"); l.href = c.url; l.textContent = c.title; s.appendChild(l); } else s.append(c.title);
+      });
+      out.appendChild(s);
+    }
+  });
   // Ask the store: the answer comes with its source, or says it does not know.
   const af = d.querySelector("[data-ask-form]");
   if (af) af.addEventListener("submit", async (e) => {
