@@ -1,0 +1,305 @@
+<title>Plan IA Apexx</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: plan document — header, guard-rail strip, phase timeline, panel × technique matrix, reference tables. Apexx brand tokens. */
+:root{
+  --bg:#F5F6F9; --surface:#FFFFFF; --surface-2:#ECEEF4; --line:#D9DDE7;
+  --ink:#0E1220; --muted:#565E74; --primary:#2E44E8; --primary-soft:#E6E9FD; --signal:#FF5B2E;
+  --ok:#157F4A; --warn:#9A5B00; --bad:#C2281F;
+  --f-head:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r:10px; --shadow:0 1px 2px rgb(14 18 32 / .06), 0 2px 8px rgb(14 18 32 / .05);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B0E18; --surface:#131726; --surface-2:#1B2034; --line:#2A3049;
+  --ink:#EDEFF6; --muted:#9AA2BC; --primary:#8C9BFF; --primary-soft:#1E2550; --signal:#FF5B2E;
+  --ok:#6FD39A; --warn:#F2B252; --bad:#FF8D84; --shadow:none; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B0E18; --surface:#131726; --surface-2:#1B2034; --line:#2A3049;
+  --ink:#EDEFF6; --muted:#9AA2BC; --primary:#8C9BFF; --primary-soft:#1E2550; --signal:#FF5B2E;
+  --ok:#6FD39A; --warn:#F2B252; --bad:#FF8D84; --shadow:none; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:32px 64px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;gap:48px}
+h1,h2,h3{font-family:var(--f-head);letter-spacing:-.015em;text-wrap:balance;margin:0}
+h1{font-size:clamp(30px,5vw,44px);line-height:1.05;font-weight:750}
+h2{font-size:24px;font-weight:700}
+h3{font-size:17px;font-weight:650}
+p{margin:0}
+.lede{max-width:68ch;color:var(--muted);font-size:16px}
+.eyebrow{font:600 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12.5px;background:var(--surface);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.live{background:var(--signal)} .dot.ok{background:var(--ok)}
+header{display:grid;gap:16px}
+.status{display:flex;flex-wrap:wrap;gap:8px}
+section{display:grid;gap:20px}
+.sec-head{display:grid;gap:6px}
+/* guard rails */
+.rails{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.rail{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:6px;align-content:start}
+.rail strong{font-family:var(--f-head);font-size:15.5px}
+.rail span{color:var(--muted);font-size:14px}
+/* architecture */
+.flow{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:grid;gap:14px;overflow-x:auto}
+.lane{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start;min-width:620px}
+.lane > b{font:600 12px/1.4 var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-top:8px}
+.steps{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.node{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:7px 11px;font-size:13.5px}
+.node.hot{border-color:var(--primary);background:var(--primary-soft)}
+.arrow{color:var(--muted);font-family:var(--f-mono)}
+.flow small{color:var(--muted);font-size:13px}
+/* phases */
+.tabs{display:flex;flex-wrap:wrap;gap:8px}
+.tab{font:600 13px var(--f-mono);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+.tab[aria-selected="true"]{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+.tab:focus-visible,.pill:focus-visible,.row-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.timeline{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.seg{height:8px;border-radius:4px;background:var(--line)}
+.seg.pre{background:var(--signal)}
+.seg.on{background:var(--primary)}
+.phase{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:24px;display:grid;gap:20px}
+.phase-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start}
+.phase-top .title{display:grid;gap:6px;min-width:0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.block{display:grid;gap:8px;align-content:start;min-width:0}
+.block ul{margin:0;padding-left:18px;display:grid;gap:5px}
+.block li::marker{color:var(--primary)}
+.gate{border-left:3px solid var(--ok);background:var(--surface-2);border-radius:0 8px 8px 0;padding:10px 14px;display:grid;gap:4px}
+.gate .mono{font-size:13px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+/* matrix */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pill{font:500 13px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer}
+.pill[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--surface)}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:14px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+thead th{font:600 11.5px/1.3 var(--f-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface-2);position:sticky;top:0}
+td.c{text-align:center;width:52px}
+.mk{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--primary)}
+.mk.opt{background:transparent;border:2px solid var(--primary)}
+th.hl,td.hl{background:var(--primary-soft)}
+tr.dim td{opacity:.35}
+.row-btn{all:unset;cursor:pointer;font-weight:600;display:block}
+.row-btn:hover{color:var(--primary)}
+.detail td{background:var(--surface-2);font-size:14px;color:var(--ink)}
+.ph-tag{font:600 11.5px var(--f-mono);color:var(--primary);border:1px solid var(--primary);border-radius:6px;padding:1px 6px;margin-right:4px;white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:16px;color:var(--muted);font-size:13px;align-items:center}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+/* reference tables */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:grid;gap:12px;align-content:start;min-width:0}
+.kv{display:grid;gap:10px}
+.kv > div{display:grid;gap:2px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.kv > div:last-child{border-bottom:0;padding-bottom:0}
+.kv b{font-family:var(--f-head);font-weight:650}
+.kv span{color:var(--muted);font-size:14px}
+.no{color:var(--bad)}
+.tests{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:4px}
+.test b{font-size:14.5px}
+.test span{color:var(--muted);font-size:13.5px}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:560px){ .phase{padding:18px} .lane{grid-template-columns:110px 1fr} }
+@media (prefers-reduced-motion:no-preference){ .phase{animation:in .25s ease} @keyframes in{from{transform:translateY(4px)}to{transform:none}} }
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">Apexx · plan de IA contextual · noviembre 2026</p>
+  <h1>IA en cada panel sin frenar la tienda</h1>
+  <p class="lede">Vectores, búsqueda híbrida, re-ranking, fragmentos con contexto, grafo de conocimiento (GraphRAG), recuperación que se corrige sola (CRAG) y prompts estructurados, aplicados en todo el sistema y en siete fases. Cada fase se cierra con la misma batería de pruebas: aislamiento, reversión, escala, roles y velocidad.</p>
+  <div class="status">
+    <span class="chip"><span class="dot"></span>Propuesta: nada construido aún</span>
+    <span class="chip"><span class="dot live"></span>Escala base: 9 de 10 entregables listos</span>
+    <span class="chip"><span class="dot ok"></span>50 000 productos: tienda y panel en 1–4 ms, 0 errores</span>
+    <span class="chip"><span class="dot ok"></span>Base lista: outbox sin huecos (migración 154)</span>
+  </div>
+</header>
+
+<section aria-labelledby="h-rails">
+  <div class="sec-head"><p class="eyebrow">Reglas que no se rompen</p><h2 id="h-rails">Cinco límites para toda función de IA</h2></div>
+  <div class="rails">
+    <div class="rail"><strong>El comprador nunca espera a un modelo</strong><span>Catálogo, ficha y carrito siguen en milisegundos. Lo que necesita un modelo se calcula al escribir o en paneles donde unos segundos son aceptables.</span></div>
+    <div class="rail"><strong>La IA no inventa datos de comercio</strong><span>Precio, existencias, envío, impuestos y estado del pedido salen siempre del sistema. El modelo redacta, ordena y propone.</span></div>
+    <div class="rail"><strong>Una sola base, sin indexador aparte</strong><span>Vectores en Postgres (pgvector) con RLS por tienda; copia cuantizada en memoria. El outbox mantiene todo al día.</span></div>
+    <div class="rail"><strong>Todo se puede deshacer</strong><span>Cada sugerencia aplicada queda en la auditoría con modelo, versión del prompt y fuentes, y se revierte como un cambio masivo.</span></div>
+    <div class="rail"><strong>El contenido recuperado es dato</strong><span>Descripciones, opiniones y PDF de clientes pueden traer instrucciones maliciosas: se citan, nunca se obedecen. Escribir requiere aprobación.</span></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-arch">
+  <div class="sec-head"><p class="eyebrow">Arquitectura</p><h2 id="h-arch">El mismo camino que ya usa el catálogo</h2></div>
+  <div class="flow">
+    <div class="lane"><b>Escritura</b><div class="steps"><span class="node">Panel, API o importación</span><span class="arrow">→</span><span class="node">Postgres (fuente de verdad)</span><span class="arrow">→</span><span class="node hot">Evento en outbox con posición seq</span></div></div>
+    <div class="lane"><b>Tienda (ms)</b><div class="steps"><span class="node">Proyección en memoria</span><span class="arrow">→</span><span class="node">Léxico + vector int8</span><span class="arrow">→</span><span class="node">Fusión RRF</span><span class="arrow">→</span><span class="node hot">Re-ranking con señales</span></div></div>
+    <div class="lane"><b>Trabajadores IA</b><div class="steps"><span class="node">Fragmentar + contexto (por lotes)</span><span class="arrow">→</span><span class="node">Embeddings → ai_chunks</span><span class="arrow">·</span><span class="node">Relaciones → kg_edges</span></div></div>
+    <div class="lane"><b>Asistentes (s)</b><div class="steps"><span class="node">Herramientas del sistema</span><span class="arrow">→</span><span class="node">CRAG: evaluar, corregir, citar</span><span class="arrow">→</span><span class="node hot">Respuesta estructurada</span></div></div>
+    <small>Si el proveedor de embeddings falla, la tienda sigue con búsqueda léxica y la cola reintenta sola. Si una fuente cambia, su hash marca los fragmentos para regenerarse.</small>
+  </div>
+</section>
+
+<section aria-labelledby="h-phases">
+  <div class="sec-head"><p class="eyebrow">Fases</p><h2 id="h-phases">Siete fases, cada una con criterio de cierre medible</h2></div>
+  <div class="timeline" id="timeline" aria-hidden="true"></div>
+  <div class="tabs" role="tablist" id="tabs" aria-label="Fases del plan"></div>
+  <div id="phase"></div>
+</section>
+
+<section aria-labelledby="h-matrix">
+  <div class="sec-head"><p class="eyebrow">Todo el sistema</p><h2 id="h-matrix">Qué técnica entra en cada panel</h2><p class="lede">Pulsa una técnica para resaltarla; pulsa un panel para ver la función y en qué fase llega.</p></div>
+  <div class="filters" id="filters" role="group" aria-label="Filtrar por técnica"></div>
+  <div class="legend"><span><i class="mk"></i> entra en el plan</span><span><i class="mk opt"></i> opcional, solo si la evaluación lo justifica</span></div>
+  <div class="table-wrap"><table id="matrix"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<section aria-labelledby="h-tech">
+  <div class="sec-head"><p class="eyebrow">Técnicas</p><h2 id="h-tech">Para qué sirve cada una aquí, y dónde no</h2></div>
+  <div class="grid2" id="tech"></div>
+</section>
+
+<section aria-labelledby="h-models">
+  <div class="sec-head"><p class="eyebrow">Modelos</p><h2 id="h-models">Modelo por tarea</h2><p class="lede">Precios de la API de Claude vigentes en noviembre de 2026, por millón de tokens de entrada / salida.</p></div>
+  <div class="card"><div class="kv" id="models"></div></div>
+</section>
+
+<section aria-labelledby="h-tests">
+  <div class="sec-head"><p class="eyebrow">Cierre de cada fase</p><h2 id="h-tests">La batería que se vuelve a correr</h2></div>
+  <div class="tests" id="tests"></div>
+</section>
+
+<footer>Fuente: <span class="mono">docs/fases/plan-ia-contextual.md</span> en la rama <span class="mono">claude/hola-c650ea</span>. Ninguna técnica entra si su evaluación no mejora contra la versión sin IA.</footer>
+</div>
+
+<script>
+const PHASES = [
+ {id:"PRE", name:"Escala base", pre:true, goal:"Confirmar que el núcleo aguanta 10 000 y 50 000 productos antes de sumar vectores.",
+  deliver:["✓ Simulación 1 000 / 10 000 / 50 000 con carga por CSV, latencias, propagación y borrado","✓ Outbox sin huecos: ningún evento se pierde con escritores concurrentes","✓ Catálogo, categoría y sugerencias: un cálculo por versión (340 ms → 3,3 ms)","✓ Índice de palabras: búsqueda del panel 46 ms → 1,2 ms","✓ Panel: abrir producto 31 → 2,4 ms; inicio 102 → 3,9 ms","✓ Arranque 44 s → 0,45 s (carga por conjuntos)","✓ Reversión de precios exacta en 100 000 líneas","✓ Borrado masivo en el panel, por conjuntos: 50 000 en 22 s, sin restos","✓ Importación por conjuntos: 50 000 en 39 s (antes 270 s), idéntica al camino anterior","… Arranque sin corte: foto de la proyección en disco y relevo con /readyz"],
+  panels:["Catálogo","Importar","Tienda","Inicio"], tech:[],
+  gate:["✓ Tras el borrado, cero productos visibles y todas las tablas iguales a la foto inicial","✓ Percentil 95 de la tienda estable al pasar de 1 000 a 50 000","✓ 50 000 productos importados en 39 s; mediciones sin respuestas 429, 0 errores","… Un reinicio o despliegue no deja la tienda sin servicio"],
+  status:"9 de 10 listos"},
+ {id:"IA-0", name:"Cimientos", goal:"La infraestructura que todas las demás fases usan, con aislamiento y reversión desde el primer día.",
+  deliver:["pgvector y tablas ai_chunks, kg_edges, ai_suggestions, ai_usage con RLS forzada","Flujo de embeddings por el outbox; borrar un producto borra sus vectores","Índice vectorial int8 en la memoria de la proyección","Presupuesto mensual y apagado por tienda y función","Arnés de evaluación con búsquedas reales etiquetadas en español"],
+  panels:["Recomendaciones e IA","Operación"], tech:["V"],
+  gate:["Auditoría de aislamiento incluye las tablas nuevas","50 000 productos con vectores sin subir el p95 de la tienda","Borrado total deja cero vectores"]},
+ {id:"IA-1", name:"Búsqueda híbrida y re-ranking", goal:"Encontrar lo que el comprador quiso decir aunque no use las palabras del catálogo.",
+  deliver:["Fusión léxico + vector (Reciprocal Rank Fusion)","Intención a filtros: «tenis rojos para correr talla 27 baratos»","Re-ranking de los primeros 50 con conversión, existencias, margen y fijados","Sinónimos y redirecciones sugeridos desde búsquedas sin resultados","Similares por vector para productos nuevos sin ventas"],
+  panels:["Tienda: búsqueda","Tienda: recomendaciones","Búsqueda y opiniones","Catálogo"], tech:["V","H","R"],
+  gate:["nDCG@10 y búsquedas con resultado mejoran contra la versión léxica","p95 de búsqueda menor a 15 ms con 50 000 productos","SKU, marca y códigos exactos siguen ganando"]},
+ {id:"IA-2", name:"Fragmentos con contexto", goal:"Que los documentos largos se puedan consultar sin que cada fragmento pierda su sentido.",
+  deliver:["Fichas técnicas en PDF, políticas, blog y ayuda del panel en fragmentos con contexto","Contexto generado por lotes con el documento completo en caché","Preguntas en la ficha de producto, respondidas con citas"],
+  panels:["Tienda: ficha","Configuración y políticas","Ayuda del panel","Operación"], tech:["V","H","R","CC"],
+  gate:["Fidelidad a la fuente ≥ 95 % en la evaluación","Cada respuesta enlaza su fragmento de origen"]},
+ {id:"IA-3", name:"Asistentes con CRAG", goal:"Asistentes que verifican lo que recuperan, corrigen la búsqueda y dicen «no sé» cuando no hay fuente.",
+  deliver:["Asistente del comprador en la tienda y por MCP","Copiloto del panel con herramientas del sistema","Evaluar relevancia, reescribir consulta, ir a la fuente estructurada","Resumen de opiniones con citas"],
+  panels:["Tienda: asistente / MCP","Tienda: ficha","Búsqueda y opiniones","Ayuda del panel"], tech:["V","H","R","CC","CRAG","P"],
+  gate:["Cero precios o existencias inventados en la evaluación","Responde «no sé» sin fuente","Resiste inyección de instrucciones en descripciones y opiniones"]},
+ {id:"IA-4", name:"Grafo de conocimiento", goal:"Relaciones que una búsqueda no ve: compatible con, accesorio de, sustituto de, catálogo de esta empresa.",
+  deliver:["Grafo con lo que ya existe: categorías, marcas, atributos, colecciones, coocurrencias, empresas","Aristas nuevas propuestas leyendo descripciones y fichas, con confianza y fuente","Accesorios, compatibles y sustitutos en ficha y carrito","B2B: solicitud de cotización en PDF a propuesta con SKU emparejados"],
+  panels:["Tienda: recomendaciones","Tienda: asistente / MCP","Empresas B2B","Marketplace"], tech:["V","H","R","CC","G","CRAG","P"],
+  gate:["Cada arista tiene fuente y el comerciante la aprueba","Tasa de aprobación medida como calidad del grafo"]},
+ {id:"IA-5", name:"Copilotos por panel", goal:"Ayuda concreta en cada pantalla del comerciante, siempre como sugerencia que se aprueba y se deshace.",
+  deliver:["Catálogo: atributos, categoría, SEO, texto alternativo, duplicados","Importación: mapeo de columnas y categorías externas","Promociones: armar y validar con el simulador","Pedidos: resumen, respuesta al cliente, motivo de devolución","Clientes: segmento en lenguaje natural a reglas","Reportes: preguntas sobre la capa de reportes, nunca SQL libre","Correos y diseño: textos con la voz de la marca"],
+  panels:["Catálogo","Importar","Promociones","Pedidos y devoluciones","Clientes y segmentos","Reportes","Correos y campañas","Diseño de la tienda","Marketplace"], tech:["V","H","G","CRAG","P"],
+  gate:["Cada sugerencia queda en la auditoría y se revierte","Quien no tiene permiso no ve el copiloto de ese panel"]},
+ {id:"IA-6", name:"Decisión de fine-tuning", goal:"Entrenar un modelo propio solo si la evaluación demuestra que la recuperación y los prompts no bastan.",
+  deliver:["Comparar contra la mejor versión sin fine-tuning","Candidatos primero: modelo de embeddings y reordenador con búsquedas reales en español"],
+  panels:["Tienda: búsqueda"], tech:["FT"],
+  gate:["Ganancia medida mayor que el costo de mantener el modelo"]}
+];
+const TECH = {V:"Vectorial",H:"Híbrida",R:"Re-ranking",CC:"Contexto",G:"Grafo",CRAG:"CRAG",P:"Prompts",FT:"Fine-tuning"};
+const ROWS = [
+ ["Tienda: búsqueda","Entiende intención y sinónimos; semántica cuando la léxica da poco","V H R P? FT?",["IA-1","IA-6"]],
+ ["Tienda: ficha","Preguntas sobre el producto con descripción, ficha técnica, opiniones y políticas, con citas","V H R CC G CRAG P",["IA-2","IA-3"]],
+ ["Tienda: recomendaciones","Accesorios, compatibles y sustitutos del grafo; similares por vector sin historial","V R G",["IA-1","IA-4"]],
+ ["Tienda: asistente / MCP","Herramientas nuevas con grafo y verificación de precio y existencias","V H R CC G CRAG P",["IA-3","IA-4"]],
+ ["Catálogo","Atributos, categoría, SEO, texto alternativo de imágenes, duplicados; todo aprobable","V G P",["IA-5"]],
+ ["Importar (CSV y VTEX)","Mapeo de columnas y categorías externas; variantes mal agrupadas","V H G P",["IA-5"]],
+ ["Búsqueda y opiniones","Sinónimos desde búsquedas sin resultado; resumen de opiniones con citas; moderación","V H CRAG P",["IA-1","IA-3"]],
+ ["Promociones","Armar una promoción en lenguaje natural, validada con el simulador antes de guardar","CRAG P",["IA-5"]],
+ ["Pedidos y devoluciones","Resumen del pedido, borrador de respuesta, motivo de devolución, riesgo explicado","CRAG P",["IA-5"]],
+ ["Clientes y segmentos","Segmento en lenguaje natural a reglas JSON validadas, sin vectores de datos personales","P",["IA-5"]],
+ ["Empresas B2B","Solicitud de cotización en PDF a propuesta con SKU, con catálogo y precios de la empresa","V H R CC G CRAG P",["IA-4"]],
+ ["Marketplace","Alta de productos del vendedor: mapeo y duplicados contra el catálogo","V H G P",["IA-4","IA-5"]],
+ ["Correos y campañas","Texto con la voz de la marca y en el idioma del comprador","P",["IA-5"]],
+ ["Diseño de la tienda","Textos de secciones, alternativas de banner, texto alternativo","P",["IA-5"]],
+ ["Reportes","Preguntas sobre la capa de reportes personalizados, con la cifra y el reporte de origen","G CRAG P",["IA-5"]],
+ ["Configuración y políticas","Borradores de políticas y respuestas frecuentes con fuente","V CC CRAG P",["IA-2","IA-5"]],
+ ["Operación","Explicar un incidente con el registro de actividad y sugerir la acción documentada","V CC CRAG P",["IA-0","IA-2"]],
+ ["Ayuda del panel","Responder «cómo hago X» con la documentación, con enlace a la pantalla","V H R CC CRAG P",["IA-2","IA-3"]]
+];
+const TECHCARDS = [
+ ["Base de datos vectorial","pgvector en Postgres con RLS como fuente; índice int8 en memoria para la tienda. 50 000 productos × 512 dimensiones ≈ 25 MB por tienda.","Un servicio vectorial externo: otro indexador que se desincroniza."],
+ ["Búsqueda híbrida","Fusiona el resultado léxico actual con el vectorial. Encuentra «algo para correr en lluvia» aunque no comparta palabras con «tenis impermeable».","Reemplazar la léxica: para SKU, marca y códigos exactos es mejor y más rápida."],
+ ["Re-ranking","Reordena los primeros 50 con señales del negocio y, si la evaluación lo justifica, un modelo de reordenamiento.","Un modelo de lenguaje en la tienda: cuesta cientos de milisegundos."],
+ ["Fragmentos con contexto","Antepone a cada fragmento una o dos frases que lo sitúan («Del manual del Taladro X, sección garantía»), generadas por lotes.","Textos cortos como títulos: no hay fragmentos que pierdan sentido."],
+ ["GraphRAG","Grafo de productos, atributos, compatibilidades, accesorios, sustitutos y catálogos B2B; el modelo propone aristas con fuente.","Preguntas que una consulta directa responde mejor, como precio o existencias."],
+ ["CRAG con autocorrección","Recuperar, evaluar, reescribir o ir a la fuente estructurada, y citar. En los datos: regenerar fragmentos viejos y comparar conteos.","Respuestas que no necesitan recuperación."],
+ ["Prompt engineering","Prompts por panel en caché, salidas con esquema JSON, herramientas estrictas y razonamiento adaptativo con esfuerzo por ruta.","Mostrar la cadena de razonamiento: los modelos no la devuelven en crudo; se muestra la respuesta citada."],
+ ["Fine-tuning","Al final, si la evaluación lo justifica; primero embeddings o reordenador.","Tono de marca o conocimiento del catálogo: lo resuelven el prompt y la recuperación sin reentrenar."]
+];
+const MODELS = [
+ ["Asistentes del panel y análisis","claude-opus-5-5 · $4 / $20 — mejor razonamiento con herramientas"],
+ ["Atención al comprador, alto volumen","claude-sonnet-5-5 · $2 / $10 — se decide midiendo contra la evaluación"],
+ ["Contexto de fragmentos, clasificación, extracción, traducción masiva","claude-haiku-5-5 por lotes · $0.10 / $0.50, con 50 % menos en lotes"],
+ ["Embeddings y re-ranking","Modelo de embeddings dedicado (Voyage AI o uno abierto local), elegido con la evaluación en español"]
+];
+const TESTS = [
+ ["Suite completa","Go y panel, más pruebas nuevas por función"],
+ ["Aislamiento","Las tablas nuevas entran solas a la auditoría; una búsqueda nunca devuelve fragmentos de otra tienda"],
+ ["Reversión","Aplicar y deshacer cada sugerencia deja la base igual a la foto inicial"],
+ ["Escala","1 000, 10 000 y 50 000 productos con vectores: memoria, latencia, propagación, borrado sin restos"],
+ ["Calidad","nDCG@10, recall@50, búsquedas sin resultado, fidelidad y citas correctas"],
+ ["Seguridad","Inyección de instrucciones en descripciones y opiniones: el asistente no obedece"],
+ ["Roles","Quien no tiene permiso no ve ni usa el copiloto de ese panel"],
+ ["Costo","Costo por tarea completada, con tope mensual por tienda"]
+];
+
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let current = 0, tech = null, open = null;
+
+function renderPhase(){
+  const p = PHASES[current];
+  $("#timeline").innerHTML = PHASES.map((x,i)=>`<div class="seg ${x.pre?"pre":""} ${i<=current&&!x.pre?"on":""}"></div>`).join("");
+  $("#tabs").innerHTML = PHASES.map((x,i)=>`<button class="tab" role="tab" id="tab-${i}" aria-selected="${i===current}" aria-controls="phase" tabindex="${i===current?0:-1}">${x.id}</button>`).join("");
+  $("#phase").innerHTML = `<article class="phase" role="tabpanel" aria-labelledby="tab-${current}">
+    <div class="phase-top"><div class="title"><span class="eyebrow">${p.id}${p.status?" · "+p.status:""}</span><h3 style="font-size:22px">${esc(p.name)}</h3><p class="lede">${esc(p.goal)}</p></div>
+      <div class="tags">${p.tech.map(t=>`<span class="chip">${TECH[t]}</span>`).join("")||'<span class="chip"><span class="dot live"></span>Sin IA: mide el núcleo</span>'}</div></div>
+    <div class="cols">
+      <div class="block"><span class="eyebrow">Entregables</span><ul>${p.deliver.map(d=>`<li>${esc(d)}</li>`).join("")}</ul></div>
+      <div class="block"><span class="eyebrow">Paneles que toca</span><div class="tags">${p.panels.map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div>
+        <span class="eyebrow" style="margin-top:8px">Se cierra cuando</span>${p.gate.map(g=>`<div class="gate"><span>${esc(g)}</span></div>`).join("")}</div>
+    </div></article>`;
+  document.querySelectorAll(".tab").forEach((b,i)=>{
+    b.onclick=()=>{current=i;renderPhase();document.getElementById("tab-"+i).focus()};
+    b.onkeydown=(e)=>{if(e.key==="ArrowRight"||e.key==="ArrowLeft"){e.preventDefault();current=(current+(e.key==="ArrowRight"?1:-1)+PHASES.length)%PHASES.length;renderPhase();document.getElementById("tab-"+current).focus()}};
+  });
+}
+
+function renderMatrix(){
+  const keys = Object.keys(TECH);
+  $("#filters").innerHTML = `<button class="pill" aria-pressed="${tech===null}" data-t="">Todas</button>` + keys.map(k=>`<button class="pill" aria-pressed="${tech===k}" data-t="${k}">${TECH[k]}</button>`).join("");
+  document.querySelectorAll(".pill").forEach(b=>b.onclick=()=>{tech=b.dataset.t||null;renderMatrix()});
+  $("#matrix thead").innerHTML = `<tr><th>Panel o contexto</th>${keys.map(k=>`<th class="c ${tech===k?"hl":""}">${TECH[k]}</th>`).join("")}<th>Fase</th></tr>`;
+  $("#matrix tbody").innerHTML = ROWS.map((r,i)=>{
+    const set = r[2].split(" ");
+    const has = (k)=> set.includes(k) ? "full" : set.includes(k+"?") ? "opt" : "";
+    const dim = tech && !has(tech);
+    const row = `<tr class="${dim?"dim":""}"><td><button class="row-btn" aria-expanded="${open===i}" data-i="${i}">${esc(r[0])}</button></td>${keys.map(k=>{const h=has(k);return `<td class="c ${tech===k?"hl":""}">${h?`<i class="mk ${h==="opt"?"opt":""}" title="${TECH[k]}${h==="opt"?" (opcional)":""}"></i>`:""}</td>`}).join("")}<td>${r[3].map(x=>`<span class="ph-tag">${x}</span>`).join("")}</td></tr>`;
+    const det = open===i ? `<tr class="detail"><td colspan="${keys.length+2}">${esc(r[1])}</td></tr>` : "";
+    return row+det;
+  }).join("");
+  document.querySelectorAll(".row-btn").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;open=open===i?null:i;renderMatrix()});
+}
+
+$("#tech").innerHTML = TECHCARDS.map(([n,y,no])=>`<div class="card"><h3>${n}</h3><p>${esc(y)}</p><p class="no"><b>Dónde no:</b> ${esc(no)}</p></div>`).join("");
+$("#models").innerHTML = MODELS.map(([a,b])=>`<div><b>${a}</b><span class="mono">${esc(b)}</span></div>`).join("");
+$("#tests").innerHTML = TESTS.map(([a,b])=>`<div class="test"><b>${a}</b><span>${esc(b)}</span></div>`).join("");
+renderPhase(); renderMatrix();
+</script>
