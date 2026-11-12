@@ -684,6 +684,30 @@ function downloadsBox(ds) {
     if (r.ok) { rf.reset(); out.textContent = "¡Gracias! Tu opinión se publicará cuando la tienda la revise."; }
     else out.textContent = r.status === 429 ? "Demasiados intentos. Espera un minuto." : (r.body.detail || "No pudimos enviar tu opinión. Intenta de nuevo.");
   });
+  // Ask the store: the answer comes with its source, or says it does not know.
+  const af = d.querySelector("[data-ask-form]");
+  if (af) af.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = af.querySelector("input[name=q]").value.trim(), out = d.querySelector("[data-ask-answer]"), btn = af.querySelector("button[type=submit]");
+    if (q.length < 3) { out.textContent = "Escribe tu pregunta."; return; }
+    btn.disabled = true; out.textContent = "Buscando la respuesta…";
+    const r = await fetch(api + "/ask?site=" + encodeURIComponent(site), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q, product: af.dataset.askForm }) })
+      .then(async (x) => ({ ok: x.ok, status: x.status, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    btn.disabled = false;
+    out.textContent = "";
+    if (!r.ok) { out.textContent = r.status === 429 ? "Demasiadas preguntas. Espera un minuto." : (r.body.detail || "No pudimos responder. Intenta de nuevo."); return; }
+    const p = document.createElement("p"); p.textContent = r.body.text || ""; out.appendChild(p);
+    const src = (r.body.sources || []).filter((s) => s.title);
+    if (src.length && r.body.kind !== "unknown") {
+      const s = document.createElement("p"); s.className = "muted"; s.append("Fuente: ");
+      src.forEach((c, i) => {
+        if (i) s.append(" · ");
+        if (typeof c.url === "string" && c.url.startsWith("/")) { const a = document.createElement("a"); a.href = c.url; a.textContent = c.title; s.appendChild(a); }
+        else s.append(c.title);
+      });
+      out.appendChild(s);
+    }
+  });
 })();
 
 /* ==== subscription manage page ==== */

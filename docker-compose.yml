@@ -107,6 +107,11 @@ services:
       APEXX_SECURE_COOKIES: "true"
       APEXX_TRUST_PROXY: "true"
       APEXX_DRAIN: ${APEXX_DRAIN:-6s}
+      # Optional AI providers. Without them every AI feature runs in its
+      # deterministic mode (local vectors, quoted answers).
+      APEXX_ANTHROPIC_API_KEY: ${APEXX_ANTHROPIC_API_KEY:-}
+      APEXX_EMBEDDINGS: ${APEXX_EMBEDDINGS:-local}
+      VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

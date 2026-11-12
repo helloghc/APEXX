@@ -32,6 +32,7 @@ func (s *Server) routesEngage(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/wishlists/top", s.staff("catalog", auth.Read, s.topWishes))
 
 	handle("GET /s/{tenant}/api/suggest", s.shopSuggest)
+	handle("POST /s/{tenant}/api/ask", s.shopAsk)
 	handle("GET /s/{tenant}/api/reviews/{handle}", s.shopReviews)
 	handle("POST /s/{tenant}/api/reviews/{handle}", s.shopReviewCreate)
 	handle("POST /s/{tenant}/api/cards", s.shopCards)

@@ -171,6 +171,17 @@ Cada nodo tarda de 0,45 a 0,6 s en estar listo al arrancar.
 
 `APEXX_TRUST_PROXY=true` ya viene en el compose: sin él, todos los compradores llegaban con la IP de Caddy y compartían un solo límite por IP.
 
+## 7.2 IA (opcional)
+
+Sin configurar nada, la IA funciona en modo determinista: vectores locales para la búsqueda y respuestas citadas textualmente. Para sumar modelos, agrega a `.env` (los secretos van en Secret Manager como los demás):
+
+| Variable | Para qué |
+|---|---|
+| `APEXX_ANTHROPIC_API_KEY` | Claude: contexto de fragmentos (`claude-haiku-5-5`) y respuestas escritas (`claude-sonnet-5-5`). Modelos: `APEXX_AI_MODEL_FAST`, `APEXX_AI_MODEL`. |
+| `APEXX_EMBEDDINGS=voyage` y `VOYAGE_API_KEY` | Vectores semánticos de Voyage. Al cambiar de proveedor, los vectores se recalculan solos. |
+
+Cada tienda tiene un presupuesto mensual (10 USD por omisión) en *Búsqueda y opiniones › Recomendaciones e IA*. Al llegar al tope, la IA de pago se pausa y todo sigue funcionando en modo determinista.
+
 ## 8. Runbook de incidentes
 
 | Síntoma | Qué pasa | Qué hacer |

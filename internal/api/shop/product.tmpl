@@ -39,6 +39,11 @@
 {{if .Specs}}<div class="desc"><h2>Especificaciones</h2><table class="specs"><tbody>{{range .Specs}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}
 {{range .Extras}}<div class="desc"><h2>{{.Title}}</h2><table class="specs"><tbody>{{range .Rows}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}
 </div></div>
+<section class="ask" aria-labelledby="ask-h">
+<h2 id="ask-h">Pregúntale a la tienda</h2>
+<form class="ask-form" data-ask-form="{{.Handle}}"><label for="ask-q" class="sr">Tu pregunta</label><input id="ask-q" name="q" type="text" minlength="3" maxlength="300" required placeholder="Por ejemplo: ¿cuánto tarda el envío?"><button class="btn" type="submit">Preguntar</button></form>
+<div class="ask-answer" role="status" aria-live="polite" data-ask-answer></div>
+</section>
 <section class="reviews" id="opiniones" aria-labelledby="rv-h">
 <h2 id="rv-h">Opiniones</h2>
 {{if .Reviews.Count}}<p class="rv-sum"><span class="stars" role="img" aria-label="{{.Average}} de 5 estrellas">{{stars .Reviews.Average}}</span> <strong>{{.Average}}</strong> <span class="muted">{{.Reviews.Count}} {{if eq .Reviews.Count 1}}opinión{{else}}opiniones{{end}}</span></p>

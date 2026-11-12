@@ -455,3 +455,10 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 /* Links people tap on a phone are at least 32px tall (WCAG 2.2 target size). */
 .ft-col a{display:inline-flex;align-items:center;min-height:32px}
 .eyebrow a{display:inline-flex;align-items:center;min-height:32px}
+
+/* Ask the store */
+.ask{margin:2rem 0}
+.ask-form{display:flex;gap:.5rem;flex-wrap:wrap}
+.ask-form input{flex:1 1 16rem;min-width:0}
+.ask-answer{margin-top:.75rem}
+.ask-answer p{margin:.25rem 0}

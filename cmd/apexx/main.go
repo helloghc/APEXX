@@ -428,6 +428,19 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	// Vectors for semantic search: what changed is embedded by one node and
 	// every node loads it (see internal/api/semantic.go).
 	srv.Embedder = embedderFromEnv(log)
+	// Claude, when the operator configures a key: chunk context (fast
+	// model) and written answers (answer model). Without it every feature
+	// keeps its deterministic answer.
+	if key := os.Getenv("APEXX_ANTHROPIC_API_KEY"); key != "" {
+		base := os.Getenv("APEXX_ANTHROPIC_BASE_URL")
+		srv.LLM = ai.NewClaude(key, base, env("APEXX_AI_MODEL", "claude-sonnet-5-5"))
+		srv.LLMFast = ai.NewClaude(key, base, env("APEXX_AI_MODEL_FAST", "claude-haiku-5-5"))
+		log.Info("language model", "answers", srv.LLM.Model(), "bulk", srv.LLMFast.Model())
+	}
+	every("ai-docs", 30*time.Second, func(ctx context.Context) error {
+		_, err := srv.RunKnowledge(ctx)
+		return err
+	})
 	every("ai-embed", 2*time.Second, func(ctx context.Context) error {
 		_, err := srv.RunEmbeddings(ctx)
 		return err

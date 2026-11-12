@@ -124,6 +124,58 @@ func init() {
 	}
 }
 
+// Root is a light Spanish stem for matching words of one family:
+// devolver, devolución and devolverlo share "devol"; lavo, lava and lavar
+// share "lav". It strips an attached pronoun and the usual endings, then
+// keeps at most five letters.
+func Root(w string) string {
+	if r, ok := irregular[w]; ok {
+		return r
+	}
+	if len(w) > 6 {
+		for _, e := range []string{"selo", "sela", "los", "las", "lo", "la", "le", "les", "se", "me", "te"} {
+			if strings.HasSuffix(w, e) && (strings.HasSuffix(w[:len(w)-len(e)], "ar") || strings.HasSuffix(w[:len(w)-len(e)], "er") || strings.HasSuffix(w[:len(w)-len(e)], "ir")) {
+				w = w[:len(w)-len(e)]
+				break
+			}
+		}
+	}
+	for _, e := range []string{"aciones", "iciones", "ciones", "acion", "icion", "cion", "siones", "sion", "mente", "amos", "emos", "imos", "ando", "iendo", "aron", "ieron", "ado", "ido", "ada", "ida", "ados", "idos", "ar", "er", "ir", "as", "es", "os", "an", "en", "a", "e", "o", "s"} {
+		if strings.HasSuffix(w, e) && len(w)-len(e) >= 3 {
+			w = w[:len(w)-len(e)]
+			break
+		}
+	}
+	if r := []rune(w); len(r) > 5 {
+		w = string(r[:5])
+	}
+	return w
+}
+
+// irregular maps the forms of frequent irregular verbs to one root:
+// "¿cuántos días tengo?" must meet "tienes 30 días".
+var irregular = map[string]string{}
+
+func init() {
+	for root, forms := range map[string]string{
+		"tener": "tengo tienes tiene tienen tenemos tenga tengan tuve tuvo tendra tendran tener tenia",
+		"poder": "puedo puedes puede pueden podemos pueda puedan podra podran poder podria",
+		"hacer": "hago haces hace hacen hacemos haga hagan hizo hara haran hacer",
+		"decir": "digo dices dice dicen decimos diga digan dijo decir",
+		"venir": "vengo vienes viene vienen venimos venga vengan vino vendra venir",
+		"poner": "pongo pones pone ponen ponemos ponga pongan puso pondra poner",
+		"salir": "salgo sales sale salen salimos salga salgan salio saldra salir",
+		"traer": "traigo traes trae traen traemos traiga traigan trajo traera traer",
+	} {
+		for _, f := range strings.Fields(forms) {
+			irregular[f] = root
+		}
+	}
+}
+
+// IsStopword reports whether w (folded) is a function word.
+func IsStopword(w string) bool { return stopwords[w] }
+
 // Words folds text (lowercase, no accents) and splits it into words.
 func Words(s string) []string {
 	var out []string

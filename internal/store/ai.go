@@ -22,6 +22,7 @@ type Chunk struct {
 	Model      string
 	Vec        []byte // int8, packed
 	Hash       []byte
+	Title, URL string // documents: what to cite and where it is
 }
 
 func dropAIOf(ctx context.Context, tx pgx.Tx, tenant, kind, id string) error {
@@ -172,4 +173,28 @@ func (d *DB) AIMonthCost(ctx context.Context, tenant string) (int64, error) {
 		return tx.QueryRow(ctx, `SELECT coalesce(sum(cost_micros),0) FROM ai_usage WHERE tenant_id=$1 AND day >= date_trunc('month', current_date)`, tenant).Scan(&c)
 	})
 	return c, err
+}
+
+// ReplaceDocChunks replaces every chunk of one document (cs empty: the
+// document is gone and so are its chunks).
+func (d *DB) ReplaceDocChunks(ctx context.Context, tenant, kind, id string, cs []Chunk) error {
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM ai_chunks WHERE tenant_id=$1 AND source_kind=$2 AND source_id=$3`, tenant, kind, id); err != nil {
+			return err
+		}
+		if len(cs) == 0 {
+			return nil
+		}
+		b := &pgx.Batch{}
+		for _, c := range cs {
+			b.Queue(`INSERT INTO ai_chunks (tenant_id, source_kind, source_id, chunk_no, body, context, model, vec, source_hash, title, url)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, tenant, kind, id, c.No, c.Body, c.Context, c.Model, c.Vec, c.Hash, c.Title, c.URL)
+		}
+		return sendBatch(ctx, tx, b, func(_ int, err error) error { return err })
+	})
+}
+
+// EmitAI writes an outbox event (AI read models: every node follows it).
+func (d *DB) EmitAI(ctx context.Context, tenant, topic, key string) error {
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error { return Emit(ctx, tx, tenant, topic, key, nil) })
 }

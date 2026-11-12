@@ -342,3 +342,12 @@ Correo o contraseña incorrectos. También puedes entrar con un código por corr
 Esta cuenta está desactivada. Escribe a la tienda. || Ce compte est désactivé. Écrivez à la boutique. || Akun ini dinonaktifkan. Hubungi toko. || このアカウントは無効です。ショップにお問い合わせください。
 Idioma || Langue || Bahasa || 言語
 Entendimos tu búsqueda con: || Nous avons compris votre recherche ainsi : || Kami membaca pencarian Anda sebagai: || 検索内容をこう解釈しました：
+Pregúntale a la tienda || Demandez à la boutique || Tanya toko || ストアに質問する
+Tu pregunta || Votre question || Pertanyaan Anda || ご質問
+Por ejemplo: ¿cuánto tarda el envío? || Par exemple : combien de temps prend la livraison ? || Misalnya: berapa lama pengiriman? || 例：配送にはどのくらいかかりますか？
+Preguntar || Demander || Tanyakan || 質問する
+Escribe tu pregunta. || Écrivez votre question. || Tulis pertanyaan Anda. || ご質問を入力してください。
+Buscando la respuesta… || Recherche de la réponse… || Mencari jawaban… || 回答を探しています…
+No pudimos responder. Intenta de nuevo. || Nous n'avons pas pu répondre. Réessayez. || Kami tidak dapat menjawab. Coba lagi. || 回答できませんでした。もう一度お試しください。
+Demasiadas preguntas. Espera un minuto. || Trop de questions. Patientez une minute. || Terlalu banyak pertanyaan. Tunggu sebentar. || 質問が多すぎます。1分お待ちください。
+Fuente: || Source : || Sumber: || 出典：

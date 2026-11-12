@@ -343,3 +343,12 @@ Correo o contraseña incorrectos. También puedes entrar con un código por corr
 Esta cuenta está desactivada. Escribe a la tienda. || This account is disabled. Contact the store. || Esta conta está desativada. Escreva para a loja.
 Idioma || Language || Idioma
 Entendimos tu búsqueda con: || We read your search as: || Entendemos sua busca como:
+Pregúntale a la tienda || Ask the store || Pergunte à loja
+Tu pregunta || Your question || Sua pergunta
+Por ejemplo: ¿cuánto tarda el envío? || For example: how long does shipping take? || Por exemplo: quanto tempo leva o envio?
+Preguntar || Ask || Perguntar
+Escribe tu pregunta. || Write your question. || Escreva sua pergunta.
+Buscando la respuesta… || Looking for the answer… || Procurando a resposta…
+No pudimos responder. Intenta de nuevo. || We couldn't answer. Please try again. || Não conseguimos responder. Tente novamente.
+Demasiadas preguntas. Espera un minuto. || Too many questions. Please wait a minute. || Perguntas demais. Aguarde um minuto.
+Fuente: || Source: || Fonte:

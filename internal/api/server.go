@@ -65,6 +65,8 @@ type Server struct {
 	MetricsToken     string        // bearer token for /metrics; empty = loopback/private callers only
 	Media            media.Storage // media library files; nil = local disk under the system temp dir
 	Embedder         ai.Embedder   // vectors for semantic search; nil = local (no network, no cost)
+	LLM              ai.LLM        // language model for answers and assistants; nil = deterministic only
+	LLMFast          ai.LLM        // cheaper model for bulk work (chunk context); nil = use LLM
 
 	sitesMu sync.Mutex
 	sites   map[string]*builder.Site // tenant/site -> site
@@ -83,6 +85,7 @@ type Server struct {
 	learn         learnState    // recommendations and learning search
 	sem           semState      // vectors per product (semantic index)
 	qvec          qcache        // query vectors, reused across searches
+	know          knowState     // store documents in chunks (policies, blog, long descriptions)
 	patterns      []string      // every registered route, for the access audit
 	eventsLimiter *shopLimiter  // analytics beacon: per store and address
 }
@@ -105,6 +108,7 @@ func (s *Server) Routes() http.Handler {
 		s.Proj.On("site.released", evict)
 		s.Proj.On("site.draft", evict)
 		s.semHooks()
+		s.knowHooks()
 		s.Proj.SetLiveRates(s.LiveRate)
 		s.Proj.SetExternalTax(s.ExternalTax)
 		s.Proj.SetExternalRules(s.ExternalRules)
