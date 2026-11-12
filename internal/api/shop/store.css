@@ -428,3 +428,7 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .consent p{margin:0}.consent details label{display:flex;gap:8px;align-items:center;margin:6px 0}.consent-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .consent-open{display:block;margin:12px auto}
 .sx-embed{max-width:var(--container,1200px);margin:0 auto;padding:0 16px}
+/* blog */
+.blog{max-width:820px;margin:0 auto;padding:0 16px}.post-cover{width:100%;border-radius:12px;margin:12px 0;aspect-ratio:16/9;object-fit:cover}
+.post-body{line-height:1.7}.post-body img{max-width:100%;height:auto}.post-tags a{margin-right:8px}
+.post-list{list-style:none;padding:0;display:grid;gap:24px}.post-card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px}.post-card h2{margin:8px 0 4px;font-size:1.3rem}

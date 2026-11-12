@@ -224,6 +224,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesSSO(handle)
 	s.routesCheckoutBlocks(handle)
 	s.routesLoyalty(handle)
+	s.routesBlog(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

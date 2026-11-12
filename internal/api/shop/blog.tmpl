@@ -1,0 +1,22 @@
+{{define "content"}}
+<div class="blog">
+{{if .Post}}{{with .Post}}
+<article class="post">
+<nav class="crumbs" aria-label="Ruta"><a href="{{$.Base}}/index">Inicio</a> / <a href="{{$.Base}}/blog">Blog</a></nav>
+{{if .Preview}}<p class="note" role="status">Vista previa: este artículo aún no está publicado.</p>{{end}}
+<h1>{{.Title}}</h1>
+<p class="muted">{{.Date}}{{with .Author}} · {{.}}{{end}}</p>
+{{with .Cover}}<img class="post-cover" src="{{.}}" alt="" decoding="async">{{end}}
+<div class="post-body">{{.Body}}</div>
+{{with .Tags}}<p class="post-tags">{{range .}}<a href="{{$.Base}}/blog?tema={{.}}">#{{.}}</a> {{end}}</p>{{end}}
+<p><a class="btn btn-ghost" href="{{$.Base}}/blog">Ver más artículos</a></p>
+</article>
+{{end}}{{else}}
+<nav class="crumbs" aria-label="Ruta"><a href="{{.Base}}/index">Inicio</a> / Blog</nav>
+<h1>{{if eq .Title "Artículo no encontrado"}}Artículo no encontrado{{else}}Blog{{end}}</h1>
+{{with .Tag}}<p class="muted">Artículos sobre <strong>{{.}}</strong> · <a href="{{$.Base}}/blog">ver todos</a></p>{{end}}
+{{if .Posts}}<ul class="post-list">{{range .Posts}}<li class="post-card"><a href="{{$.Base}}/blog/{{.Handle}}">{{with .Cover}}<img src="{{.}}" alt="" loading="lazy" decoding="async">{{end}}<h2>{{.Title}}</h2></a><p class="muted">{{.Date}}</p><p>{{.Excerpt}}</p></li>{{end}}</ul>
+{{else}}<p class="muted">Todavía no hay artículos.</p>{{end}}
+{{end}}
+</div>
+{{end}}

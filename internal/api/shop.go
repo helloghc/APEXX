@@ -48,7 +48,7 @@ var shopFuncs = template.FuncMap{
 	"levels": func() []int { return []int{1, 2, 3, 4, 5} },
 }
 
-var shopPages = localizedPages("catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval", "quote", "quickorder", "compare")
+var shopPages = localizedPages("catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval", "quote", "quickorder", "compare", "blog")
 
 // shopCSP allows only our own assets plus Stripe for the payment form.
 const shopCSP = "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://js.stripe.com; " +

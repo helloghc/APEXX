@@ -328,6 +328,12 @@ func (s *Server) sitemap(w http.ResponseWriter, r *http.Request) {
 		after = next
 	}
 	urls = append(urls, sitecfg.SitemapURL{Loc: root + "/c", LastMod: newest})
+	if posts, err := s.livePosts(r, tenant, "", 1000); err == nil && len(posts) > 0 {
+		urls = append(urls, sitecfg.SitemapURL{Loc: root + "/blog", LastMod: *posts[0].PublishAt})
+		for _, p := range posts {
+			urls = append(urls, sitecfg.SitemapURL{Loc: root + "/blog/" + p.Handle, LastMod: p.UpdatedAt})
+		}
+	}
 	urls = append(urls, products...)
 	var slugs []string
 	for slug, p := range site.Policies {

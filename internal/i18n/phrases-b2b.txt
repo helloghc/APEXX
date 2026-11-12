@@ -180,3 +180,11 @@ Fecha || Date || Date || Data || Tanggal || 日付
 Movimiento || Activity || Mouvement || Movimento || Aktivitas || 内容
 Puntos || Points || Points || Pontos || Poin || ポイント
 Aún no tienes movimientos. || No activity yet. || Aucun mouvement pour l'instant. || Ainda não há movimentos. || Belum ada aktivitas. || まだ履歴はありません。
+Blog || Blog || Blog || Blog || Blog || ブログ
+Vista previa: este artículo aún no está publicado. || Preview: this post is not published yet. || Aperçu : cet article n'est pas encore publié. || Prévia: este artigo ainda não foi publicado. || Pratinjau: artikel ini belum diterbitkan. || プレビュー：この記事はまだ公開されていません。
+Ver más artículos || More posts || Plus d'articles || Mais artigos || Artikel lainnya || 他の記事
+Artículo no encontrado || Post not found || Article introuvable || Artigo não encontrado || Artikel tidak ditemukan || 記事が見つかりません
+Artículos sobre || Posts about || Articles sur || Artigos sobre || Artikel tentang || 関連記事：
+ver todos || see all || voir tout || ver todos || lihat semua || すべて見る
+Todavía no hay artículos. || No posts yet. || Aucun article pour l'instant. || Ainda não há artigos. || Belum ada artikel. || まだ記事はありません。
+/ Blog || / Blog || / Blog || / Blog || / Blog || / ブログ
