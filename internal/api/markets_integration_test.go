@@ -183,3 +183,33 @@ func TestQuantityRulesAndVolumePrices(t *testing.T) {
 		t.Fatalf("volume prices: 3=%v 4=%v 9=%v", unit(3), unit(4), unit(9))
 	}
 }
+
+// A company can require a purchase order number and pay only on credit.
+func TestCompanyPurchaseOrders(t *testing.T) {
+	e := setup(t)
+	if st, _ := e.do("POST", "/v1/companies", e.adminA, m{"name": "Contado", "creditOnly": true}); st != 400 {
+		t.Fatalf("credit-only prepaid company accepted: %d", st)
+	}
+	co := e.must(201, "POST", "/v1/companies", e.adminA, m{"name": "Industrias PO", "terms": "net30", "creditLimit": 10000000, "requirePO": true, "creditOnly": true,
+		"buyerEmails": []string{"compras@po.example"}})["id"].(string)
+	buy := func(key string, extra m) (int, m) {
+		b := m{"channel": "mx", "postalCode": "53129", "items": []m{{"sku": "S1", "qty": 1}}, "customer": m{"email": "compras@po.example", "name": "Compras"}, "paymentMethod": "credit", "companyId": co}
+		for k, v := range extra {
+			b[k] = v
+		}
+		return e.do("POST", "/v1/checkout", e.adminA, b, "Idempotency-Key", key)
+	}
+	if st, b := buy("po-key-1", nil); st != 400 || !strings.Contains(b["detail"].(string), "orden de compra") {
+		t.Fatalf("missing PO = %d %v", st, b)
+	}
+	if st, b := buy("po-key-2", m{"poNumber": "OC-2026-0042", "paymentMethod": "pm_card_visa"}); st != 409 || b["code"] != "credit_only" {
+		t.Fatalf("card for a credit-only company = %d %v", st, b)
+	}
+	st, o := buy("po-key-3", m{"poNumber": "  OC-2026-0042  "})
+	if st != 201 {
+		t.Fatalf("order with PO = %d %v", st, o)
+	}
+	if got := e.must(200, "GET", "/v1/orders/"+o["id"].(string), e.adminA, nil)["poNumber"]; got != "OC-2026-0042" {
+		t.Fatalf("PO on the order = %v", got)
+	}
+}

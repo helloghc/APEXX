@@ -222,7 +222,7 @@
       const old = $("[data-wallet-rows]", summary); if (old) old.remove();
       if (w > 0) summary.insertAdjacentHTML("beforeend", "<table class='totals' data-wallet-rows><tr><td>Tarjeta de regalo o saldo</td><td class='num'>−" + money({ amount: w, currency: cur }) + "</td></tr><tr class='grand'><td>A pagar</td><td class='num'>" + money({ amount: due, currency: cur }) + "</td></tr></table>");
       payBtn.textContent = due > 0 ? "Pagar " + money({ amount: due, currency: cur }) : "Confirmar pedido";
-      payBox.hidden = due === 0;
+      payBox.hidden = due === 0 || onCredit();
       const ins = cfg.installments;
       if (instBox) {
         const keep = instCount();
@@ -238,8 +238,10 @@
       if (!c || !coBox) return;
       company = c; $("#email").value = c.email; $("#email").readOnly = true;
       coBox.innerHTML = "<p class='testnote'>Compras para <strong>" + esc(c.name) + "</strong>" + (c.discountBps ? " con " + c.discountBps / 100 + "% de precio de empresa" : "") + ".</p>" +
-        (c.terms !== "prepaid" ? "<div class='testcards'><label><input type='radio' name='paymode' value='card' checked> Pagar con tarjeta</label><label><input type='radio' name='paymode' id='paycredit' value='credit'> Pagar a crédito de la empresa (" + (TERMS[c.terms] || "") + ") · disponible " + money({ amount: c.available, currency: "MXN" }) + "</label></div>" : "");
+        (c.terms !== "prepaid" ? "<div class='testcards'>" + (c.creditOnly ? "" : "<label><input type='radio' name='paymode' value='card' checked> Pagar con tarjeta</label>") + "<label><input type='radio' name='paymode' id='paycredit' value='credit'" + (c.creditOnly ? " checked" : "") + "> Pagar a crédito de la empresa (" + (TERMS[c.terms] || "") + ") · disponible " + money({ amount: c.available, currency: "MXN" }) + "</label></div>" : "") +
+        "<div class='field'><label for='po'>Orden de compra" + (c.requirePO ? "" : " (opcional)") + "</label><input id='po' name='po' maxlength='60' autocomplete='off'" + (c.requirePO ? " required" : "") + "></div>";
       coBox.addEventListener("change", () => { payBox.hidden = onCredit(); if (instBox && onCredit()) instBox.innerHTML = ""; payBtn.textContent = onCredit() ? "Confirmar pedido a crédito" : payBtn.textContent; if (!onCredit()) paintWallet(); });
+      if (c.creditOnly) { payBox.hidden = true; payBtn.textContent = "Confirmar pedido a crédito"; }
       refresh();
     }).catch(() => {});
     const gcApply = $("[data-gc-apply]");
@@ -306,7 +308,7 @@
       const res = await post("/checkout", {
         channel, postalCode: String(f.get("postal")), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined })),
         shippingOption: last && last.shipping ? last.shipping.id : undefined, acceptedTerms: !!f.get("terms") || undefined,
-        customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, paymentMethod: pm,
+        customer: { email: f.get("email"), name: f.get("name"), phone: f.get("phone") || "", address: f.get("address"), notes: f.get("notes") || undefined }, poNumber: company ? String(f.get("po") || "").trim() || undefined : undefined, paymentMethod: pm,
         coupons: coupons(), giftCards: cards.length ? cards.map((c) => c.code) : undefined, installments: instCount(), expectedTotal: last ? last.totals.grand.amount : undefined,
       }, { "Idempotency-Key": key });
       if (res.status === 201) {

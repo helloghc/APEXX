@@ -78,6 +78,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
           <a href={href("pedidos")} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" aria-hidden="true" /> Pedidos</a>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight">Pedido #{o.displayNumber || o.number}</h1>
+            {o.poNumber && <span className="rounded-md border px-2 py-0.5 text-sm" data-testid="po-number">Orden de compra {o.poNumber}</span>}
             <StatusPill status={o.paymentStatus || o.status} />
             {open && <StatusPill status={o.fulfillmentStatus} />}
             {(o.status === "cancelled" || o.status === "refunded") && <StatusPill status={o.status} />}

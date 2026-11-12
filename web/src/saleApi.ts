@@ -19,6 +19,7 @@ export interface ONote { id: string; visibility: "internal" | "customer"; body: 
 export interface ShippingMethod { id: string; name: string; kind: string; carrier?: string; zone?: string; locationName?: string; pickupAddress?: string; instructions?: string; price: number; priceReason?: string; estimate?: { text: string } }
 export interface Order {
   displayNumber?: string;
+  poNumber?: string;
   shippingMethod?: ShippingMethod;
   taxDetail?: { regionName: string; lines: { label: string; rateBps: number; tax: number }[] };
   id: string; number: number; channel: string; status: string; currency: string;

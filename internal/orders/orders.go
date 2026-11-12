@@ -85,6 +85,8 @@ type CheckoutRequest struct {
 	CompanyID string `json:"companyId,omitempty"`
 	// Company is set by the server when the signed-in shopper buys for a company.
 	Company *CompanyAccess `json:"-"`
+	// PONumber is the buyer's purchase order number (B2B).
+	PONumber string `json:"poNumber,omitempty"`
 	// Renewal is set by the subscription worker for the deliveries after the first.
 	Renewal *Renewal `json:"-"`
 	// ExpectedTotal is the grand total the shopper saw (minor units). When sent,
@@ -184,6 +186,7 @@ type Order struct {
 	Edits             []Edit        `json:"edits,omitempty"`
 	// DisplayNumber is what the shopper sees: store prefix + number.
 	DisplayNumber  string               `json:"displayNumber"`
+	PONumber       string               `json:"poNumber,omitempty"`
 	ShippingMethod *ShippingMethod      `json:"shippingMethod,omitempty"`
 	TaxDetail      *logistics.TaxResult `json:"taxDetail,omitempty"`
 }
@@ -381,6 +384,19 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 	if len(fieldErrs) > 0 {
 		return problem(400, "validation_failed", fieldErrs[0]["message"], map[string]any{"errors": fieldErrs}), nil
 	}
+	req.PONumber = strings.TrimSpace(req.PONumber)
+	if len(req.PONumber) > 60 {
+		fieldErrs = append(fieldErrs, map[string]string{"field": "poNumber", "code": "too_long", "message": "La orden de compra admite hasta 60 caracteres"})
+	}
+	if req.Company != nil && req.Company.RequirePO && req.PONumber == "" && req.Renewal == nil {
+		fieldErrs = append(fieldErrs, map[string]string{"field": "poNumber", "code": "required", "message": "Escribe el número de orden de compra de tu empresa"})
+	}
+	if len(fieldErrs) > 0 {
+		return problem(400, "validation_failed", fieldErrs[0]["message"], map[string]any{"errors": fieldErrs}), nil
+	}
+	if req.Company != nil && req.Company.CreditOnly && req.PaymentMethod != "credit" {
+		return problem(409, "credit_only", "Tu empresa compra a crédito; elige pagar a crédito", nil), nil
+	}
 	if !rules.Checkout.NotesField {
 		req.Customer.Notes = ""
 	}
@@ -505,10 +521,10 @@ func (s *Service) checkout(ctx context.Context, tenant, actor, idemKey string, r
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code,
-				shipping_method, tax_detail, display_number, tax_adjust)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+				shipping_method, tax_detail, display_number, tax_adjust, po_number)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
 			tenant, id, number, req.Channel, StatusPendingPayment, string(tot.Grand.Currency), tot.Items.Amount, tot.Discounts.Amount,
-			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number), tot.TaxAdjust.Amount); err != nil {
+			tot.Shipping.Amount, tot.Tax.Amount, tot.Grand.Amount, enc, req.PostalCode, methodJSON, taxJSON, rules.OrderNumber(number), tot.TaxAdjust.Amount, req.PONumber); err != nil {
 			return err
 		}
 		if err := s.linkCustomerTx(ctx, tx, tenant, id, req.Customer, req.PostalCode); err != nil {

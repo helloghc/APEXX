@@ -56,7 +56,7 @@ func (s *Server) shopCompany(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"name": c.Name, "terms": c.Terms, "discountBps": c.DiscountBps, "available": c.Available, "email": email, "approvalThreshold": c.ApprovalThreshold, "approver": c.Approver})
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"name": c.Name, "terms": c.Terms, "discountBps": c.DiscountBps, "available": c.Available, "email": email, "approvalThreshold": c.ApprovalThreshold, "approver": c.Approver, "requirePO": c.RequirePO, "creditOnly": c.CreditOnly})
 }
 
 func (s *Server) listCompanies(w http.ResponseWriter, r *http.Request) {

@@ -415,10 +415,10 @@ func (s *Service) Get(ctx context.Context, tenant, id string, withPII bool) (Ord
 		var methodJSON, taxJSON, riskJSON []byte
 		err := tx.QueryRow(ctx, `SELECT id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, created_at,
 				COALESCE(customer_id,''), payment_status, fulfillment_status, refunded_total, source,
-				shipping_method, tax_detail, display_number, risk, installments
+				shipping_method, tax_detail, display_number, risk, installments, po_number
 			FROM orders WHERE tenant_id=$1 AND id=$2`, tenant, id).
 			Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.ItemsTotal, &o.Discounts, &o.Shipping, &o.TaxIncluded, &o.GrandTotal, &enc, &o.CreatedAt,
-				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber, &riskJSON, &o.Installments)
+				&o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus, &o.RefundedTotal, &o.Source, &methodJSON, &taxJSON, &o.DisplayNumber, &riskJSON, &o.Installments, &o.PONumber)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -687,7 +687,7 @@ func (s *Service) Query(ctx context.Context, tenant string, f ListFilter, withPI
 			dir, cmp = "ASC", ">"
 		}
 		q := `SELECT o.id, o.number, o.channel, o.status, o.currency, o.grand_total, o.created_at, COALESCE(o.customer_id,''), o.payment_status, o.fulfillment_status,
-			o.refunded_total, o.source, o.customer, (SELECT COALESCE(sum(qty - cancelled_qty),0) FROM order_lines l WHERE l.tenant_id=o.tenant_id AND l.order_id=o.id)
+			o.refunded_total, o.source, o.customer, (SELECT COALESCE(sum(qty - cancelled_qty),0) FROM order_lines l WHERE l.tenant_id=o.tenant_id AND l.order_id=o.id), o.po_number
 			FROM orders o` + w
 		if f.Cursor != "" {
 			a, b, _ := strings.Cut(f.Cursor, "|")
@@ -720,7 +720,7 @@ func (s *Service) Query(ctx context.Context, tenant string, f ListFilter, withPI
 			var o Order
 			var enc []byte
 			if err := rows.Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.GrandTotal, &o.CreatedAt, &o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus,
-				&o.RefundedTotal, &o.Source, &enc, &o.ItemsCount); err != nil {
+				&o.RefundedTotal, &o.Source, &enc, &o.ItemsCount, &o.PONumber); err != nil {
 				return err
 			}
 			if withPII {
@@ -780,7 +780,7 @@ func cents(n int64) string {
 // Export writes the filtered orders as CSV. withPII adds name and email columns.
 func (s *Service) Export(ctx context.Context, tenant string, f ListFilter, withPII bool, w io.Writer) (int, error) {
 	cw := csv.NewWriter(w)
-	head := []string{"pedido", "fecha", "canal", "estado", "pago", "envio", "moneda", "total", "reembolsado", "piezas"}
+	head := []string{"pedido", "fecha", "canal", "estado", "pago", "envio", "moneda", "total", "reembolsado", "piezas", "orden_de_compra"}
 	if withPII {
 		head = append(head, "cliente", "correo")
 	}
@@ -796,7 +796,7 @@ func (s *Service) Export(ctx context.Context, tenant string, f ListFilter, withP
 		}
 		for _, o := range p.Items {
 			rec := []string{strconv.FormatInt(o.Number, 10), o.CreatedAt.UTC().Format(time.RFC3339), csvSafe(o.Channel), o.Status, o.PaymentStatus, o.FulfillmentStatus,
-				o.Currency, cents(o.GrandTotal), cents(o.RefundedTotal), strconv.FormatInt(o.ItemsCount, 10)}
+				o.Currency, cents(o.GrandTotal), cents(o.RefundedTotal), strconv.FormatInt(o.ItemsCount, 10), csvSafe(o.PONumber)}
 			if withPII {
 				rec = append(rec, csvSafe(o.CustomerName), csvSafe(o.CustomerEmail))
 			}
