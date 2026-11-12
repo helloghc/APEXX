@@ -224,3 +224,8 @@ Compartido || Shared || Partagé || Compartilhado || Bersama || 共有
 Propio || Own || Propre || Próprio || Sendiri || 独自
 Activa || Active || Active || Ativa || Aktif || 有効
 Suspendida || Suspended || Suspendue || Suspensa || Ditangguhkan || 停止中
+
+## Representante de ventas en "Mi empresa".
+@ es || en || fr || pt || id || ja
+Tu representante de ventas || Your sales representative || Votre représentant commercial || Seu representante de vendas || Perwakilan penjualan Anda || 担当営業
+Permitir que nuestro representante haga pedidos por nosotros. Cada pedido queda registrado con su nombre. || Allow our representative to place orders for us. Every order records their name. || Autoriser notre représentant à passer des commandes pour nous. Chaque commande enregistre son nom. || Permitir que nosso representante faça pedidos por nós. Cada pedido fica registrado com o nome dele. || Izinkan perwakilan kami membuat pesanan untuk kami. Setiap pesanan mencatat namanya. || 担当者が当社に代わって注文できるようにする。各注文には担当者の名前が記録されます。

@@ -1264,3 +1264,34 @@ function downloadsBox(ds) {
     }).catch(() => {});
   }
 })();
+
+/* ==== sales representative shopping for a buyer: banner with both names ==== */
+(() => {
+  if (!/(?:^|; )apexx_rep=1/.test(document.cookie)) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2];
+  fetch("/s/" + tenant + "/api/account/acting", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+    if (!j || !j.acting) return;
+    const bar = document.createElement("div");
+    bar.className = "rep-bar"; bar.setAttribute("role", "status"); bar.dataset.repBar = "";
+    const t = document.createElement("span");
+    t.textContent = "Estás comprando como " + j.buyer + " · representante " + j.representative + ". Todo queda registrado con tu nombre.";
+    const b = document.createElement("button"); b.type = "button"; b.className = "linkbtn"; b.textContent = "Terminar";
+    b.addEventListener("click", async () => {
+      await fetch("/s/" + tenant + "/api/account/acting/exit", { method: "POST", credentials: "same-origin" }).catch(() => {});
+      location.href = (document.body.dataset.base || "/s/" + tenant + "/main") + "/index";
+    });
+    bar.append(t, " ", b);
+    document.body.prepend(bar);
+  }).catch(() => {});
+})();
+
+/* ==== company consent for its sales representative ==== */
+(() => {
+  const f = document.querySelector("[data-rep-access]"); if (!f) return;
+  const tenant = document.body.dataset.tenant || location.pathname.split("/")[2], st = f.querySelector("[data-rep-status]");
+  f.addEventListener("change", async () => {
+    const on = f.querySelector("input[name=on]").checked;
+    const r = await fetch("/s/" + tenant + "/api/account/company/rep-access", { method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ on }) }).catch(() => null);
+    st.textContent = r && r.ok ? (on ? "Listo: tu representante puede hacer pedidos por tu empresa." : "Listo: tu representante ya no puede hacer pedidos por tu empresa.") : "No se pudo guardar. Intenta de nuevo.";
+  });
+})();

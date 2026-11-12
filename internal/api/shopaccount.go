@@ -437,6 +437,7 @@ type companyPortal struct {
 	Credit                                        bool // the company buys on credit (autopay applies)
 	Subsidiaries                                  []portalSub
 	PoolName, PoolOwed, PoolLimit                 string // shared credit of the group
+	HasRep, RepAccess                             bool   // a sales representative serves the company; it may shop for it
 }
 
 type portalSub struct {
@@ -560,8 +561,11 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 					}
 					p.Subsidiaries = append(p.Subsidiaries, portalSub{Name: c.Name, Owed: mon(c.Balance, cur), Status: st, Shared: c.SharedCredit, Inherits: c.InheritTerms})
 				}
-				if full, _, _, e := s.Orders.Company(r.Context(), tenant, a.ID, false); e == nil && full.Pool != nil {
-					p.PoolName, p.PoolOwed, p.PoolLimit = full.Pool.RootName, mon(full.Pool.Balance, cur), mon(full.Pool.Limit, cur)
+				if full, _, _, e := s.Orders.Company(r.Context(), tenant, a.ID, false); e == nil {
+					if full.Pool != nil {
+						p.PoolName, p.PoolOwed, p.PoolLimit = full.Pool.RootName, mon(full.Pool.Balance, cur), mon(full.Pool.Limit, cur)
+					}
+					p.HasRep, p.RepAccess = full.SalesRep != "", full.RepAccess
 				}
 			}
 			if err != nil {

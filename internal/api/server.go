@@ -238,6 +238,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesSalesChannels(handle)
 	s.routesStorefronts(handle)
 	s.routesCompanyRoles(handle)
+	s.routesSalesReps(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 

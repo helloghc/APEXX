@@ -60,6 +60,10 @@ type Company struct {
 	InheritTerms bool           `json:"inheritTerms"`
 	Children     []CompanyChild `json:"children,omitempty"`
 	Pool         *CreditPool    `json:"pool,omitempty"`
+	// SalesRep is the store's team member who serves the company; with
+	// RepAccess (the company's consent) they may shop as its buyers.
+	SalesRep  string `json:"salesRep"`
+	RepAccess bool   `json:"repAccess"`
 }
 
 // CompanyEntry is one movement of a company's account.
@@ -168,7 +172,7 @@ const companySelect = `SELECT c.id, c.name, c.rfc, c.status, c.terms, c.credit_l
 	COALESCE(e.balance,0),
 	LEAST(GREATEST(COALESCE(e.balance,0),0), GREATEST(COALESCE(e.due,0) - COALESCE(e.paid,0), 0)),
 	(SELECT count(*) FROM company_buyers b WHERE b.tenant_id=c.tenant_id AND b.company_id=c.id)::int, c.price_group, c.approval_threshold, c.tax_exempt, COALESCE(to_char(c.tax_exempt_until,'YYYY-MM-DD'),''), c.require_po, c.credit_only,
-	c.approval_rules, c.approval_days, c.catalog_restricted, COALESCE(c.parent_id,''), COALESCE(p.name,''), c.shared_credit, c.inherit_terms
+	c.approval_rules, c.approval_days, c.catalog_restricted, COALESCE(c.parent_id,''), COALESCE(p.name,''), c.shared_credit, c.inherit_terms, c.sales_rep, c.rep_access
 	FROM companies c LEFT JOIN companies p ON p.tenant_id=c.tenant_id AND p.id=c.parent_id LEFT JOIN (SELECT company_id, sum(amount) AS balance,
 			sum(amount) FILTER (WHERE kind='charge' AND due_at < now()) AS due,
 			-sum(amount) FILTER (WHERE kind IN ('payment','refund','release') OR (kind='adjust' AND amount < 0)) AS paid
@@ -177,7 +181,7 @@ const companySelect = `SELECT c.id, c.name, c.rfc, c.status, c.terms, c.credit_l
 
 func scanCompany(r pgx.Row) (Company, error) {
 	var c Company
-	return c, r.Scan(&c.ID, &c.Name, &c.RFC, &c.Status, &c.Terms, &c.CreditLimit, &c.DiscountBps, &c.Note, &c.CreatedAt, &c.Balance, &c.Overdue, &c.Buyers, &c.PriceGroup, &c.ApprovalThreshold, &c.TaxExempt, &c.TaxExemptUntil, &c.RequirePO, &c.CreditOnly, &c.ApprovalRules, &c.ApprovalDays, &c.CatalogRestricted, &c.ParentID, &c.ParentName, &c.SharedCredit, &c.InheritTerms)
+	return c, r.Scan(&c.ID, &c.Name, &c.RFC, &c.Status, &c.Terms, &c.CreditLimit, &c.DiscountBps, &c.Note, &c.CreatedAt, &c.Balance, &c.Overdue, &c.Buyers, &c.PriceGroup, &c.ApprovalThreshold, &c.TaxExempt, &c.TaxExemptUntil, &c.RequirePO, &c.CreditOnly, &c.ApprovalRules, &c.ApprovalDays, &c.CatalogRestricted, &c.ParentID, &c.ParentName, &c.SharedCredit, &c.InheritTerms, &c.SalesRep, &c.RepAccess)
 }
 
 // Companies lists the business customers of a store.
@@ -321,14 +325,14 @@ func (s *Service) SaveCompanyWith(ctx context.Context, tenant, actor string, in 
 				tenant, in.ID, in.Name, in.RFC, in.Status, in.Terms, in.CreditLimit, in.DiscountBps, in.Note, in.PriceGroup, in.ApprovalThreshold, in.TaxExempt, in.TaxExemptUntil, in.RequirePO, in.CreditOnly, in.ApprovalRules, in.ApprovalDays, in.CatalogRestricted); err != nil {
 				return err
 			}
-			if _, err := tx.Exec(ctx, `UPDATE companies SET parent_id=NULLIF($3,''), shared_credit=$4, inherit_terms=$5 WHERE tenant_id=$1 AND id=$2`, tenant, in.ID, in.ParentID, in.SharedCredit, in.InheritTerms); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE companies SET parent_id=NULLIF($3,''), shared_credit=$4, inherit_terms=$5, sales_rep=$6, rep_access=$7 WHERE tenant_id=$1 AND id=$2`, tenant, in.ID, in.ParentID, in.SharedCredit, in.InheritTerms, in.SalesRep, in.RepAccess); err != nil {
 				return err
 			}
 		} else {
 			if err := checkParentTx(ctx, tx, tenant, in.ID, in.ParentID); err != nil {
 				return err
 			}
-			if _, err := tx.Exec(ctx, `UPDATE companies SET parent_id=NULLIF($3,''), shared_credit=$4, inherit_terms=$5 WHERE tenant_id=$1 AND id=$2`, tenant, in.ID, in.ParentID, in.SharedCredit, in.InheritTerms); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE companies SET parent_id=NULLIF($3,''), shared_credit=$4, inherit_terms=$5, sales_rep=$6, rep_access=$7 WHERE tenant_id=$1 AND id=$2`, tenant, in.ID, in.ParentID, in.SharedCredit, in.InheritTerms, in.SalesRep, in.RepAccess); err != nil {
 				return err
 			}
 			ct, err := tx.Exec(ctx, `UPDATE companies SET name=$3, rfc=$4, status=$5, terms=$6, credit_limit=$7, discount_bps=$8, note=$9, price_group=$10, approval_threshold=$11, tax_exempt=$12, tax_exempt_until=NULLIF($13,'')::date, require_po=$14, credit_only=$15, approval_rules=$16, approval_days=$17, catalog_restricted=$18, updated_at=now() WHERE tenant_id=$1 AND id=$2`,
@@ -598,4 +602,19 @@ func CompanyGroup(c *CompanyAccess) string {
 func validDate(s string) bool {
 	_, err := time.Parse("2006-01-02", s)
 	return err == nil
+}
+
+// SetRepAccess is the company's consent for its sales representative to
+// shop as its buyers (given by a company administrator).
+func (s *Service) SetRepAccess(ctx context.Context, tenant, actor, company string, on bool) error {
+	return s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		ct, err := tx.Exec(ctx, `UPDATE companies SET rep_access=$3, updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenant, company, on)
+		if err != nil {
+			return err
+		}
+		if ct.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		return store.Audit(ctx, tx, tenant, actor, "company.rep_access", company, map[string]any{"on": on})
+	})
 }

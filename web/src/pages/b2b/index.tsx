@@ -24,7 +24,7 @@ import { EmptyState, SkeletonRows } from "../promotions/shared";
 
 const enc = encodeURIComponent;
 interface Company { id: string; name: string; rfc: string; status: string; terms: string; creditLimit: number; discountBps: number; note: string; balance: number; overdue: number; buyers: number; priceGroup: string; taxExempt?: boolean; taxExemptUntil?: string; requirePO?: boolean; creditOnly?: boolean; approvalThreshold: number; approvalRules?: Rule[]; approvalDays?: number; catalogRestricted?: boolean;
-  parentId?: string; parentName?: string; sharedCredit?: boolean; inheritTerms?: boolean;
+  parentId?: string; parentName?: string; sharedCredit?: boolean; inheritTerms?: boolean; salesRep?: string; repAccess?: boolean;
   children?: { id: string; name: string; status: string; balance: number; sharedCredit: boolean; inheritTerms: boolean; children: number }[];
   pool?: { rootId: string; rootName: string; limit: number; balance: number; available: number; members: string[] } }
 interface CEntry { id: string; kind: string; amount: number; orderId?: string; orderNumber?: number; dueAt?: string; note?: string; at: string }
@@ -96,6 +96,7 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
   const [emails, setEmails] = useState((buyers ?? []).filter((b) => !(approvers ?? []).includes(b)).join("\n"));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const all = useQuery({ queryKey: ["companies"], queryFn: () => api.companies() });
+  const team = useQuery({ queryKey: ["team-members-light"], retry: false, queryFn: () => request<{ items: { id: string; name: string; email: string }[] | null }>("GET", "/v1/team/members").then((r) => r.items ?? []) });
   const branches = useQuery({ queryKey: ["company-branches", company?.id], queryFn: () => request<{ items: Branch[] }>("GET", `/v1/companies/${enc(company!.id)}/locations`).then((r) => r.items), enabled: !!company });
   const save = useMutation({
     mutationFn: () => api.saveCompany({ ...c, creditLimit: c.terms === "prepaid" ? 0 : parsePesos(limit) ?? 0, discountBps: Math.round((Number(pct.replace(",", ".")) || 0) * 100), buyerEmails: emails.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean),
@@ -125,6 +126,13 @@ function CompanyDialog({ company, buyers, approvers, onClose, onDone }: { compan
               <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.sharedCredit} onChange={(e) => setC({ ...c, sharedCredit: e.target.checked })} /><span>Compra con el crédito de la matriz<span className="block text-muted-foreground">La matriz y sus filiales comparten un solo límite; ninguna puede gastar el crédito de otra a la vez.</span></span></label>
               <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.inheritTerms} onChange={(e) => setC({ ...c, inheritTerms: e.target.checked })} /><span>Usa las condiciones de la matriz<span className="block text-muted-foreground">Plazo, descuento, lista de precios, catálogo, exención y orden de compra se toman de la matriz.</span></span></label>
             </>}
+          </fieldset>
+          <fieldset className="grid gap-2 rounded-md border p-3 sm:col-span-2"><legend className="px-1 text-sm font-medium">Representante de ventas</legend>
+            {team.data ? <div className="grid gap-1.5"><Label htmlFor="co-rep">Quién atiende a la empresa</Label>
+              <select id="co-rep" className="h-9 rounded-md border bg-background px-2 text-sm" value={c.salesRep ?? ""} onChange={(e) => setC({ ...c, salesRep: e.target.value })}>
+                <option value="">Nadie</option>{team.data.map((m) => <option key={m.id} value={m.id}>{m.name || m.email}</option>)}</select></div>
+              : <p className="text-xs text-muted-foreground">Para asignar representante necesitas ver el equipo.</p>}
+            <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!c.repAccess} onChange={(e) => setC({ ...c, repAccess: e.target.checked })} /><span>La empresa permite que su representante compre por ella<span className="block text-muted-foreground">El representante abre la tienda como uno de sus compradores; cada pedido queda registrado con los dos nombres. La empresa también puede activarlo o quitarlo desde «Mi empresa».</span></span></label>
           </fieldset>
           <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="co-buyers">Correos de sus compradores (uno por línea)</Label><Textarea id="co-buyers" rows={4} className="font-mono" value={emails} onChange={(e) => setEmails(e.target.value)} placeholder={"compras@empresa.com\ndirector@empresa.com"} />{err("buyers")}<p className="text-xs text-muted-foreground">Cada persona entra a “Mi cuenta” en tu tienda con su correo (le llega un código). Así nadie más puede usar el crédito.</p></div>
           <div className="grid gap-1.5"><Label htmlFor="co-group">Grupo de precios (precio por producto)</Label><Input id="co-group" className="font-mono" value={c.priceGroup ?? ""} onChange={(e) => setC({ ...c, priceGroup: e.target.value.trim() })} placeholder="acme" />{err("priceGroup")}<p className="text-xs text-muted-foreground">Escribe el mismo “grupo de clientes” de una lista de precios (Promociones › Listas de precios). Esa lista fija el precio de cada producto para esta empresa.</p></div>
@@ -173,6 +181,7 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
                 <TableCell>{k.sharedCredit ? "Compartido" : "Propio"}</TableCell><TableCell>{k.inheritTerms ? "De la matriz" : "Propias"}</TableCell><TableCell className="text-right tabular-nums">{formatMoney(k.balance)}</TableCell></TableRow>)}</TableBody></Table>}
           </CardContent></Card>
       )}
+      {c.repAccess && buyers.length > 0 && <ActAs id={c.id} buyers={buyers} />}
       {c.overdue > 0 && <Notice tone="warn">Esta empresa tiene {formatMoney(c.overdue)} vencido. Puedes suspenderla para que no compre a crédito hasta que pague.</Notice>}
       <Card>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Estado de cuenta</CardTitle><CardDescription>Los pedidos a crédito suman; los pagos y reembolsos restan.</CardDescription></div>
@@ -372,4 +381,26 @@ function ProductName({ id }: { id: string }) {
   const q = useQuery({ queryKey: ["product-name", id], queryFn: () => request<{ title: string }>("GET", `/v1/products/${enc(id)}`), staleTime: 60_000, retry: false });
   if (q.isError) return <span className="text-muted-foreground">Producto eliminado ({id})</span>;
   return <a className="text-primary hover:underline" href={href("catalogo", "productos", id)}>{q.data?.title ?? id}</a>;
+}
+
+/** ActAs opens the store as one of the company's buyers (representative with consent). */
+function ActAs({ id, buyers }: { id: string; buyers: string[] }) {
+  const [email, setEmail] = useState(buyers[0] ?? "");
+  const [busy, setBusy] = useState(false);
+  async function go() {
+    setBusy(true);
+    try {
+      const r = await request<{ url: string }>("POST", `/v1/companies/${enc(id)}/act-as`, { email });
+      window.open(r.url, "_blank", "noopener");
+      toast.success("Se abrió la tienda como " + email + ". El enlace sirve una sola vez.");
+    } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
+  }
+  return (
+    <Card data-act-as><CardHeader><CardTitle className="text-base">Comprar como la empresa</CardTitle><CardDescription>La empresa lo permite. Abres la tienda con la sesión de uno de sus compradores por una hora; la tienda muestra que eres su representante y cada pedido queda con tu nombre.</CardDescription></CardHeader>
+      <CardContent className="flex flex-wrap items-end gap-2">
+        <div className="grid gap-1.5"><Label htmlFor="act-email">Comprador</Label>
+          <select id="act-email" className="h-9 rounded-md border bg-background px-2 text-sm" value={email} onChange={(e) => setEmail(e.target.value)}>{buyers.map((b) => <option key={b} value={b}>{b}</option>)}</select></div>
+        <Button disabled={busy || !email} onClick={() => void go()}>Abrir la tienda como este comprador</Button>
+      </CardContent></Card>
+  );
 }

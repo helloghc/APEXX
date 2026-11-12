@@ -404,7 +404,22 @@ func (s *Server) shopCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tenant := r.PathValue("tenant")
-	res, err := s.Orders.Checkout(r.Context(), tenant, "storefront:web", key, req)
+	// A representative shopping for the buyer is the actor of the order.
+	actor, acting := "storefront:web", s.shopperActing(r)
+	if acting != nil {
+		actor = "member:" + acting.MemberID
+	}
+	res, err := s.Orders.Checkout(r.Context(), tenant, actor, key, req)
+	if err == nil && acting != nil && res.Status == http.StatusCreated {
+		var o struct {
+			ID         string `json:"id"`
+			CustomerID string `json:"customerId"`
+		}
+		if json.Unmarshal(res.Body, &o) == nil && o.ID != "" {
+			s.repOrderAudit(r, acting, o.ID, o.CustomerID)
+			_, _ = s.Orders.AddNote(r.Context(), tenant, "member:"+acting.MemberID, acting.Name, o.ID, "internal", "Pedido hecho por el representante "+acting.Name+" en nombre del comprador.")
+		}
+	}
 	switch {
 	case errors.Is(err, orders.ErrIdempotencyReuse):
 		apierr.Write(w, apierr.Problem{Status: http.StatusUnprocessableEntity, Code: "idempotency_key_reused", Detail: "Esta compra ya se envió con otro contenido"})
