@@ -181,7 +181,10 @@ type Service struct {
 	// LiveRate asks a connected carrier for its price, in the store currency
 	// (nil: no connected carriers). It must answer within its own time limit.
 	LiveRate func(carrierID, country, postalCode string, weightGrams, value int64) (amount int64, days int, ok bool)
-	Now      func() time.Time
+	// ExternalTax asks the store's tax service (nil or ok=false: Apexx's
+	// own calculation). It must answer within its own time limit.
+	ExternalTax func(country, postalCode, currency string, exclusive bool, parts []logistics.TaxPart) (logistics.TaxResult, bool)
+	Now         func() time.Time
 }
 
 // ErrUnknownChannel is returned for a channel that is not configured.
@@ -503,6 +506,11 @@ func (s *Service) Simulate(req Request) (Result, error) {
 	}
 	grand.Amount += feeTotal
 	taxRes := s.Logistics.TaxFor(ch.Country, req.PostalCode, ch.TaxRegion, ch.TaxBps, parts, ch.TaxExclusive)
+	if s.ExternalTax != nil && !req.TaxExempt && req.PostalCode != "" {
+		if ext, ok := s.ExternalTax(ch.Country, req.PostalCode, string(cur), ch.TaxExclusive, parts); ok {
+			taxRes = ext
+		}
+	}
 	adjust := money.Zero(cur)
 	switch {
 	case req.TaxExempt:

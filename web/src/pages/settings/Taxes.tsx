@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Percent, Plus, Trash2 } from "lucide-react";
-import { errorMessage, fieldErrors, type Me } from "@/api";
+import { errorMessage, fieldErrors, request, type Me } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -87,6 +87,7 @@ export function Taxes({ me }: { me: Me }) {
       </Section>
       {edit && <RegionDialog region={edit} states={q.data?.states ?? []} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); refresh(); }} />}
       <Confirm open={!!del} title={`¿Eliminar ${del?.name ?? ""}?`} text="Los destinos de esta región usarán la región predeterminada. Los pedidos anteriores no cambian." confirmLabel="Eliminar" busy={remove.isPending} onConfirm={() => del && remove.mutate(del.id)} onClose={() => setDel(null)} />
+      <TaxService canEdit={can(me, "settings", "admin")} />
     </SubPage>
   );
 }
@@ -163,6 +164,34 @@ function Calculator() {
           {res.lines.map((l) => `${l.label}: ${formatMoney(l.tax)} de impuesto sobre ${formatMoney(l.net)} sin impuesto`).join(" · ")}
         </Notice>
       )}
+    </Section>
+  );
+}
+
+interface TaxServiceCfg { active: boolean; name: string; endpoint: string; secret?: string; contract?: string }
+
+/** TaxService: an external tax engine computes the tax; if it does not answer in time, these rules do. */
+function TaxService({ canEdit }: { canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["settings", "tax-service"], queryFn: () => request<TaxServiceCfg>("GET", "/v1/settings/tax-service") });
+  const [c, setC] = useState<TaxServiceCfg | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const v = c ?? q.data;
+  const save = useMutation({
+    mutationFn: () => request<TaxServiceCfg>("PUT", "/v1/settings/tax-service", { active: v!.active, name: v!.name.trim(), endpoint: v!.endpoint.trim() }),
+    onSuccess: () => { setErrors({}); setC(null); void qc.invalidateQueries({ queryKey: ["settings", "tax-service"] }); toast.success("Servicio de impuestos guardado."); },
+    onError: (e) => { setErrors(fieldErrors(e)); toast.error(errorMessage(e)); },
+  });
+  if (!v) return null;
+  return (
+    <Section title="Servicio de impuestos externo" description="Opcional. Un servicio especializado (por ejemplo, para vender en varios estados de Estados Unidos) calcula el impuesto de cada carrito. Si tarda más de un segundo o falla, se usan tus regiones de arriba y la venta sigue."
+      actions={canEdit && <Button onClick={() => save.mutate()} disabled={save.isPending || !c}>{save.isPending ? "Guardando…" : "Guardar"}</Button>}>
+      <fieldset className="grid gap-4 sm:grid-cols-2" disabled={!canEdit}>
+        <FormField id="ts-name" label="Nombre"><Input value={v.name} placeholder="Mi servicio de impuestos" onChange={(e) => setC({ ...v, name: e.target.value })} /></FormField>
+        <FormField id="ts-endpoint" label="Dirección del servicio" error={errors.endpoint}><Input className="font-mono text-xs" value={v.endpoint} placeholder="https://impuestos.ejemplo.com/apexx" onChange={(e) => setC({ ...v, endpoint: e.target.value })} /></FormField>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={v.active} onChange={(e) => setC({ ...v, active: e.target.checked })} /> Usar este servicio para calcular el impuesto</label>
+      </fieldset>
+      {q.data?.secret && <div className="grid gap-1 text-sm"><span className="font-medium">Secreto de firma para el servicio</span><code className="break-all rounded bg-muted px-2 py-1 text-xs">{q.data.secret}</code><span className="text-muted-foreground">{q.data.contract}</span></div>}
     </Section>
   );
 }

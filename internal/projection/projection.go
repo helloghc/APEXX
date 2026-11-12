@@ -23,6 +23,7 @@ import (
 	"github.com/helloghc/apexx/internal/cart"
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/inventory"
+	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/pricing"
 	"github.com/helloghc/apexx/internal/promo"
 	"github.com/helloghc/apexx/internal/promostore"
@@ -129,6 +130,7 @@ type Projector struct {
 	// liveRates answers carrier rates for a store (set by the server; nil
 	// until then, and carts fall back to their fixed rates).
 	liveRates atomic.Pointer[LiveRateFunc]
+	extTax    atomic.Pointer[ExternalTaxFunc]
 
 	hooksMu sync.RWMutex
 	hooks   map[string][]func(tenant, key string)
@@ -205,6 +207,12 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 		return err
 	}
 	t.Cart = &cart.Service{Catalog: t.Catalog, Inventory: t.Inventory, Pricing: t.Pricing, Channels: map[string]cart.Channel{}, Promos: promo.NewEngine(), Taxo: t.Taxo}
+	t.Cart.ExternalTax = func(country, postal, currency string, exclusive bool, parts []logistics.TaxPart) (logistics.TaxResult, bool) {
+		if fn := p.extTax.Load(); fn != nil {
+			return (*fn)(id, country, postal, currency, exclusive, parts)
+		}
+		return logistics.TaxResult{}, false
+	}
 	t.Cart.LiveRate = func(carrierID, country, postal string, weight, value int64) (int64, int, bool) {
 		if fn := p.liveRates.Load(); fn != nil {
 			return (*fn)(id, carrierID, country, postal, weight, value)
@@ -595,3 +603,9 @@ type LiveRateFunc func(tenant, carrierID, country, postal string, weightGrams, v
 
 // SetLiveRates installs the carrier rate function for every store.
 func (p *Projector) SetLiveRates(fn LiveRateFunc) { p.liveRates.Store(&fn) }
+
+// ExternalTaxFunc asks a store's tax service.
+type ExternalTaxFunc func(tenant, country, postal, currency string, exclusive bool, parts []logistics.TaxPart) (logistics.TaxResult, bool)
+
+// SetExternalTax installs the tax service function for every store.
+func (p *Projector) SetExternalTax(fn ExternalTaxFunc) { p.extTax.Store(&fn) }

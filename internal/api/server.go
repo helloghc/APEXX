@@ -87,6 +87,7 @@ func (s *Server) Routes() http.Handler {
 		s.Proj.On("site.released", evict)
 		s.Proj.On("site.draft", evict)
 		s.Proj.SetLiveRates(s.LiveRate)
+		s.Proj.SetExternalTax(s.ExternalTax)
 	}
 	mux := http.NewServeMux()
 	s.patterns = s.patterns[:0]
@@ -195,6 +196,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesReturnsPolicy(handle)
 	s.routesPayMethods(handle)
 	s.routesShopCards(handle)
+	s.routesTaxService(handle)
 	s.routesEntities(handle)
 	s.routesQuotes(handle)
 
