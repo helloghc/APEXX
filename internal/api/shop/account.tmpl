@@ -50,12 +50,21 @@
 <nav class="acct-nav" aria-label="Mi cuenta">
 <a href="{{.Base}}/cuenta"{{if or (eq .View "home") (eq .View "order")}} aria-current="page"{{end}}>Pedidos</a>
 <a href="{{.Base}}/cuenta?ver=direcciones"{{if eq .View "addresses"}} aria-current="page"{{end}}>Direcciones</a>
+<a href="{{.Base}}/cuenta?ver=listas"{{if eq .View "lists"}} aria-current="page"{{end}}>Mis listas</a>
 <a href="{{.Base}}/cuenta?ver=datos"{{if eq .View "profile"}} aria-current="page"{{end}}>Mis datos</a>
 <form method="post" action="{{.Base}}/cuenta"><input type="hidden" name="accion" value="salir"><button class="linkbtn" type="submit">Cerrar sesión</button></form>
 </nav>
 {{with .Notice}}<p class="acct-ok" role="status">{{.}}</p>{{end}}
 {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
 
+{{if eq .View "lists"}}
+<p class="muted">Guarda desde tu carrito los productos que compras seguido y vuelve a pedirlos en un paso. Los precios son siempre los de hoy.</p>
+{{if .Lists}}<ul class="lists">{{range .Lists}}<li class="acct-box" data-reorder="{{.ID}}"><h2>{{.Name}}{{if .Shared}} <small class="muted">· de tu empresa</small>{{end}}</h2>
+<table><thead><tr><th>Producto</th><th class="num">Cantidad</th></tr></thead><tbody>{{range .Lines}}<tr data-sku="{{.SKU}}" data-qty="{{.Qty}}"><td>{{.Title}}{{if not .Available}} <small class="muted">· agotado</small>{{end}}</td><td class="num">{{.Qty}}</td></tr>{{end}}</tbody></table>
+<div class="subactions"><button class="btn" type="button" data-reorder-add>Agregar todo al carrito</button><button class="btn ghost" type="button" data-reorder-delete data-confirm="¿Borrar esta lista?">Borrar lista</button></div>
+<p class="note" role="status" data-reorder-status></p></li>{{end}}</ul>
+{{else}}<p>Todavía no tienes listas. En tu carrito usa “Guardar como lista”.</p>{{end}}
+{{end}}
 {{if eq .View "home"}}
 <p class="muted">{{if .Customer.Name}}Hola, {{.Customer.Name}}. {{end}}Sesión iniciada como {{.Customer.Email}}.</p>
 {{if .Orders}}

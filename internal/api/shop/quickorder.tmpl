@@ -1,0 +1,13 @@
+{{define "content"}}
+<div class="policy">
+<h1>Pedido rápido</h1>
+<p class="muted">Escribe o pega un SKU y su cantidad por línea, o sube un archivo CSV con esas dos columnas. Revisamos cada línea antes de agregarla a tu carrito.</p>
+<form class="quick" data-quick-order novalidate>
+<div class="field"><label for="qo-lines">SKU y cantidad</label><textarea id="qo-lines" rows="8" spellcheck="false" autocomplete="off" placeholder="100234, 12"></textarea></div>
+<div class="field"><label for="qo-file">O sube un archivo CSV</label><input id="qo-file" type="file" accept=".csv,text/csv,text/plain"></div>
+<div class="subactions"><button class="btn ghost" type="button" data-quick-check>Revisar</button><button class="btn" type="submit" disabled data-quick-add>Agregar al carrito</button></div>
+<p class="note" role="status" aria-live="polite" data-quick-status></p>
+<div data-quick-result></div>
+</form>
+</div>
+{{end}}

@@ -99,3 +99,35 @@ Escribe tu nombre y tu correo. || Enter your name and email. || Saisissez votre 
 Enviaste varias solicitudes seguidas. Espera un minuto. || You sent several requests in a row. Wait a minute. || Vous avez envoyé plusieurs demandes à la suite. Attendez une minute. || Você enviou várias solicitações seguidas. Espere um minuto. || Anda mengirim beberapa permintaan berturut-turut. Tunggu satu menit. || 続けて依頼が送信されました。1分ほどお待ちください。
 No pudimos enviar tu solicitud. Intenta de nuevo. || We could not send your request. Try again. || Nous n'avons pas pu envoyer votre demande. Réessayez. || Não conseguimos enviar sua solicitação. Tente de novo. || Kami tidak dapat mengirim permintaan Anda. Coba lagi. || 依頼を送信できませんでした。もう一度お試しください。
 Ver mi cotización || See my quote || Voir mon devis || Ver minha cotação || Lihat penawaran saya || 見積もりを見る
+Escribe o pega un SKU y su cantidad por línea, o sube un archivo CSV con esas dos columnas. Revisamos cada línea antes de agregarla a tu carrito. || Type or paste one SKU and its quantity per line, or upload a CSV file with those two columns. We check each line before adding it to your cart. || Saisissez ou collez un SKU et sa quantité par ligne, ou envoyez un fichier CSV avec ces deux colonnes. Nous vérifions chaque ligne avant de l'ajouter au panier. || Digite ou cole um SKU e sua quantidade por linha, ou envie um arquivo CSV com essas duas colunas. Verificamos cada linha antes de adicioná-la ao carrinho. || Tulis atau tempel satu SKU dan jumlahnya per baris, atau unggah file CSV dengan dua kolom itu. Kami memeriksa setiap baris sebelum menambahkannya ke keranjang. || 1行に1つのSKUと数量を入力・貼り付けするか、その2列のCSVファイルをアップロードしてください。カートに追加する前に各行を確認します。
+Agregar todo al carrito || Add all to cart || Tout ajouter au panier || Adicionar tudo ao carrinho || Tambahkan semua ke keranjang || すべてカートに追加
+Borrar lista || Delete list || Supprimer la liste || Excluir lista || Hapus daftar || リストを削除
+Guarda desde tu carrito los productos que compras seguido y vuelve a pedirlos en un paso. Los precios son siempre los de hoy. || Save from your cart the products you buy often and order them again in one step. Prices are always today's. || Enregistrez depuis votre panier les produits que vous achetez souvent et recommandez-les en une étape. Les prix sont toujours ceux du jour. || Salve do seu carrinho os produtos que você compra sempre e peça de novo em um passo. Os preços são sempre os de hoje. || Simpan dari keranjang produk yang sering Anda beli dan pesan lagi dalam satu langkah. Harga selalu harga hari ini. || よく買う商品をカートから保存し、ワンステップで再注文できます。価格は常に当日の価格です。
+Guardar como lista || Save as list || Enregistrer comme liste || Salvar como lista || Simpan sebagai daftar || リストとして保存
+Mis listas || My lists || Mes listes || Minhas listas || Daftar saya || マイリスト
+O sube un archivo CSV || Or upload a CSV file || Ou envoyez un fichier CSV || Ou envie um arquivo CSV || Atau unggah file CSV || またはCSVファイルをアップロード
+Pedido rápido por SKU || Quick order by SKU || Commande rapide par SKU || Pedido rápido por SKU || Pesan cepat per SKU || SKUでクイック注文
+Pedido rápido || Quick order || Commande rapide || Pedido rápido || Pesan cepat || クイック注文
+Revisar || Check || Vérifier || Verificar || Periksa || 確認
+SKU y cantidad || SKU and quantity || SKU et quantité || SKU e quantidade || SKU dan jumlah || SKUと数量
+Todavía no tienes listas. En tu carrito usa “Guardar como lista”. || You have no lists yet. In your cart use “Save as list”. || Vous n'avez pas encore de liste. Dans votre panier, utilisez « Enregistrer comme liste ». || Você ainda não tem listas. No carrinho, use “Salvar como lista”. || Anda belum punya daftar. Di keranjang, gunakan “Simpan sebagai daftar”. || まだリストはありません。カートで「リストとして保存」を使ってください。
+· agotado || · sold out || · épuisé || · esgotado || · habis || · 在庫切れ
+· de tu empresa || · your company's || · de votre entreprise || · da sua empresa || · milik perusahaan Anda || · 会社のリスト
+Agrega productos antes de guardar una lista. || Add products before saving a list. || Ajoutez des produits avant d'enregistrer une liste. || Adicione produtos antes de salvar uma lista. || Tambahkan produk sebelum menyimpan daftar. || リストを保存する前に商品を追加してください。
+Nombre de la lista || List name || Nom de la liste || Nome da lista || Nama daftar || リスト名
+Pedido de cada mes || Monthly order || Commande mensuelle || Pedido do mês || Pesanan bulanan || 毎月の注文
+Entra a tu cuenta para guardar listas. || Sign in to save lists. || Connectez-vous pour enregistrer des listes. || Entre na sua conta para salvar listas. || Masuk ke akun untuk menyimpan daftar. || リストを保存するにはログインしてください。
+No pudimos guardar la lista. Intenta de nuevo. || We could not save the list. Try again. || Nous n'avons pas pu enregistrer la liste. Réessayez. || Não conseguimos salvar a lista. Tente de novo. || Kami tidak dapat menyimpan daftar. Coba lagi. || リストを保存できませんでした。もう一度お試しください。
+No pudimos borrar la lista. Intenta de nuevo. || We could not delete the list. Try again. || Nous n'avons pas pu supprimer la liste. Réessayez. || Não conseguimos excluir a lista. Tente de novo. || Kami tidak dapat menghapus daftar. Coba lagi. || リストを削除できませんでした。もう一度お試しください。
+Revisa las líneas || Check lines || Vérifiez les lignes || Verifique as linhas || Periksa baris || 次の行を確認してください：
+Escribe al menos un SKU. || Enter at least one SKU. || Saisissez au moins un SKU. || Digite pelo menos um SKU. || Tulis setidaknya satu SKU. || SKUを1つ以上入力してください。
+Hasta 200 productos por pedido rápido. || Up to 200 products per quick order. || Jusqu'à 200 produits par commande rapide. || Até 200 produtos por pedido rápido. || Maksimal 200 produk per pesan cepat. || クイック注文は200商品までです。
+Revisando… || Checking… || Vérification… || Verificando… || Memeriksa… || 確認中…
+No pudimos revisar tu lista. Intenta de nuevo. || We could not check your list. Try again. || Nous n'avons pas pu vérifier votre liste. Réessayez. || Não conseguimos verificar sua lista. Tente de novo. || Kami tidak dapat memeriksa daftar Anda. Coba lagi. || リストを確認できませんでした。もう一度お試しください。
+Pediste || You asked for || Demandé || Você pediu || Diminta || 依頼数
+Se agrega || Added || Ajouté || Adicionado || Ditambahkan || 追加数
+Listo || Ready || Prêt || Pronto || Siap || OK
+No se encontró || Not found || Introuvable || Não encontrado || Tidak ditemukan || 見つかりません
+Ningún producto se puede agregar. || No product can be added. || Aucun produit ne peut être ajouté. || Nenhum produto pode ser adicionado. || Tidak ada produk yang bisa ditambahkan. || 追加できる商品はありません。
+El archivo pesa más de 1 MB. || The file is larger than 1 MB. || Le fichier dépasse 1 Mo. || O arquivo tem mais de 1 MB. || File lebih dari 1 MB. || ファイルが1MBを超えています。
+Tu navegador no permite guardar el carrito. || Your browser does not allow saving the cart. || Votre navigateur ne permet pas d'enregistrer le panier. || Seu navegador não permite salvar o carrinho. || Peramban Anda tidak mengizinkan menyimpan keranjang. || お使いのブラウザではカートを保存できません。

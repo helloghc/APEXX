@@ -19,6 +19,9 @@ func (s *Server) routesQuotes(handle func(string, http.HandlerFunc)) {
 	handle("POST /s/{tenant}/api/quotes", s.shopRequestQuote)
 	handle("POST /s/{tenant}/api/quotes/{token}/{action}", s.shopAnswerQuote)
 	handle("GET /s/{tenant}/{site}/cotizacion/{token}", s.shopQuotePage)
+	handle("POST /s/{tenant}/api/lists", s.shopListSave)
+	handle("PUT /s/{tenant}/api/lists/{id}", s.shopListSave)
+	handle("DELETE /s/{tenant}/api/lists/{id}", s.shopListDelete)
 }
 
 var quoteLimiter = &shopLimiter{n: 5}

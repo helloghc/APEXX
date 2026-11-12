@@ -165,6 +165,7 @@ func (s *Server) Routes() http.Handler {
 	handle("GET /s/{tenant}/{site}/cart", s.shopStatic("cart", "Carrito"))
 	handle("GET /s/{tenant}/{site}/checkout", s.shopStatic("checkout", "Pago"))
 	handle("GET /s/{tenant}/{site}/gracias", s.shopStatic("thanks", "Gracias"))
+	handle("GET /s/{tenant}/{site}/pedido-rapido", s.shopStatic("quickorder", "Pedido rápido"))
 	handle("GET /favicon.ico", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		w.Header().Set("Cache-Control", "public, max-age=86400")

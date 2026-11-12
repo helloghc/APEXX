@@ -376,6 +376,7 @@ type accountData struct {
 	NextPage  string
 	Order     *shopOrderView
 	Addresses []customers.Address
+	Lists     []reorderList
 }
 
 func shopperStatus(o orders.Order) string {
@@ -494,6 +495,31 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 		d.View, d.Title = "addresses", "Mis direcciones"
 	case q.Get("ver") == "datos":
 		d.View, d.Title = "profile", "Mis datos"
+	case q.Get("ver") == "listas":
+		d.View, d.Title = "lists", "Mis listas"
+		company := ""
+		if c, _ := s.shopperCompany(r); c != nil {
+			company = c.ID
+		}
+		lists, err := s.reorderLists(r, tenant, customerID, company)
+		if err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+		if t, ok := s.Proj.Tenant(tenant); ok {
+			for i := range lists {
+				for _, it := range lists[i].Items {
+					ln := listLine{SKU: it.SKU, Qty: it.Qty}
+					if v, p, err := t.Catalog.VariantBySKU(it.SKU); err == nil && p.Status == "active" {
+						ln.Title, ln.Available = strings.TrimSpace(p.Title+" "+v.Title), t.Inventory.Available(it.SKU) > 0
+					} else {
+						ln.Title = it.SKU
+					}
+					lists[i].Lines = append(lists[i].Lines, ln)
+				}
+			}
+		}
+		d.Lists = lists
 	default:
 		d.View, d.Title = "home", "Mi cuenta"
 	}

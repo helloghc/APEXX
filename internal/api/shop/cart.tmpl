@@ -8,6 +8,8 @@
 <input id="coupon" name="coupon" autocomplete="off" autocapitalize="characters" maxlength="40" placeholder="Código"><button class="btn btn-ghost" type="submit">Aplicar</button>
 <p class="note" role="status" aria-live="polite" data-coupon-status></p></form>
 <p class="cart-actions"><a class="btn" href="{{.Base}}/checkout" data-to-checkout>Continuar al pago</a></p>
+<p class="cart-tools"><button class="linkbtn" type="button" data-save-list>Guardar como lista</button> · <a href="{{.Base}}/pedido-rapido">Pedido rápido por SKU</a></p>
+<p class="note" role="status" data-save-list-status></p>
 <details class="quote-req"><summary class="btn btn-ghost">¿Compras en volumen? Pide una cotización</summary>
 <form data-quote-request novalidate>
 <p class="muted">Te enviamos un precio especial por correo para los productos de tu carrito.</p>

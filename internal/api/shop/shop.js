@@ -589,3 +589,96 @@
     out.textContent = r.status === 429 ? "Enviaste varias solicitudes seguidas. Espera un minuto." : (r.body.detail || "No pudimos enviar tu solicitud. Intenta de nuevo.");
   });
 })();
+
+/* ==== quick order: SKU and quantity per line, or a CSV ==== */
+(() => {
+  const f = document.querySelector("[data-quick-order]"); if (!f) return;
+  const body = document.body, tenant = body.dataset.tenant, mk = document.documentElement.getAttribute("data-mk") || "";
+  const ta = f.querySelector("#qo-lines"), out = f.querySelector("[data-quick-status]"), res = f.querySelector("[data-quick-result]"), add = f.querySelector("[data-quick-add]");
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  let ready = [];
+  const parse = (text) => {
+    const lines = [], bad = [];
+    text.split(/\r?\n/).forEach((raw, i) => {
+      const l = raw.trim(); if (!l) return;
+      const parts = l.split(/[,;\t ]+/).filter(Boolean);
+      const sku = parts[0], qty = Number(parts[1] || "1");
+      if (i === 0 && /sku/i.test(sku)) return; // header row
+      if (!sku || !Number.isInteger(qty) || qty < 1 || qty > 100000) bad.push(i + 1); else lines.push({ sku, qty });
+    });
+    const merged = {}; lines.forEach((x) => { merged[x.sku] = (merged[x.sku] || 0) + x.qty; });
+    return { items: Object.entries(merged).map(([sku, qty]) => ({ sku, qty })), bad };
+  };
+  f.querySelector("#qo-file").addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    if (file.size > 1048576) { out.textContent = "El archivo pesa más de 1 MB."; return; }
+    const r = new FileReader(); r.onload = () => { ta.value = String(r.result || ""); check(); }; r.readAsText(file);
+  });
+  const check = async () => {
+    const { items, bad } = parse(ta.value); ready = []; add.disabled = true; res.innerHTML = "";
+    if (bad.length) { out.textContent = "Revisa las líneas " + bad.slice(0, 10).join(", ") + ": escribe SKU y cantidad."; return; }
+    if (!items.length) { out.textContent = "Escribe al menos un SKU."; return; }
+    if (items.length > 200) { out.textContent = "Hasta 200 productos por pedido rápido."; return; }
+    out.textContent = "Revisando…";
+    const r = await fetch("/s/" + tenant + "/api/simulate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel: mk || body.dataset.channel || "mx", items }) })
+      .then(async (x) => ({ ok: x.ok, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    if (!r.ok) { out.textContent = r.body.detail || "No pudimos revisar tu lista. Intenta de nuevo."; return; }
+    const found = {}; (r.body.lines || []).forEach((l) => { found[l.sku] = l; });
+    const notes = {}; (r.body.messages || []).forEach((m) => { if (m.sku) notes[m.sku] = m.text; });
+    let rows = "", okCount = 0;
+    items.forEach((it) => {
+      const l = found[it.sku];
+      const okLine = l && l.qty > 0;
+      if (okLine) { ready.push({ sku: it.sku, qty: l.qty }); okCount++; }
+      rows += "<tr><td><code>" + esc(it.sku) + "</code><br><small>" + esc(l ? l.title : "") + "</small></td><td class='num'>" + it.qty + "</td><td class='num'>" + (l ? l.qty : 0) + "</td><td>" + esc(notes[it.sku] || (okLine ? "Listo" : "No se encontró")) + "</td></tr>";
+    });
+    res.innerHTML = "<table><thead><tr><th>Producto</th><th class='num'>Pediste</th><th class='num'>Se agrega</th><th>Estado</th></tr></thead><tbody>" + rows + "</tbody></table>";
+    out.textContent = okCount ? okCount + " de " + items.length + " productos listos para agregar." : "Ningún producto se puede agregar.";
+    add.disabled = okCount === 0;
+  };
+  f.querySelector("[data-quick-check]").addEventListener("click", check);
+  f.addEventListener("submit", (e) => {
+    e.preventDefault(); if (!ready.length) return;
+    let cart = []; try { cart = JSON.parse(localStorage.getItem("apexx_cart_" + tenant) || "[]") || []; } catch (err) { cart = []; }
+    ready.forEach((x) => { const l = cart.find((c) => c.sku === x.sku && !c.plan); if (l) l.qty += x.qty; else cart.push({ sku: x.sku, qty: x.qty }); });
+    try { localStorage.setItem("apexx_cart_" + tenant, JSON.stringify(cart)); } catch (err) { out.textContent = "Tu navegador no permite guardar el carrito."; return; }
+    location.href = (body.dataset.base || "") + "/cart" + location.search;
+  });
+})();
+
+/* ==== reorder lists ==== */
+(() => {
+  const tenant = document.body.dataset.tenant;
+  const cartKey = "apexx_cart_" + tenant;
+  const readCart = () => { try { return JSON.parse(localStorage.getItem(cartKey) || "[]") || []; } catch (e) { return []; } };
+  const send = (method, path, body) => fetch("/s/" + tenant + "/api/lists" + path, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+    .then(async (x) => ({ ok: x.ok, status: x.status, body: await x.json().catch(() => ({})) })).catch(() => ({ ok: false, status: 0, body: {} }));
+  const save = document.querySelector("[data-save-list]");
+  if (save) save.addEventListener("click", async () => {
+    const out = document.querySelector("[data-save-list-status]");
+    const items = readCart().filter((l) => !l.plan).map((l) => ({ sku: l.sku, qty: l.qty }));
+    if (!items.length) { out.textContent = "Agrega productos antes de guardar una lista."; return; }
+    const name = prompt("Nombre de la lista", "Pedido de cada mes");
+    if (name === null) return;
+    const r = await send("POST", "", { name: name.trim() || "Mi lista", items });
+    if (r.ok) out.innerHTML = "Lista guardada. Encuéntrala en <a href='" + (document.body.dataset.base || "") + "/cuenta?ver=listas'>Mis listas</a>.";
+    else out.textContent = r.status === 401 ? "Entra a tu cuenta para guardar listas." : (r.body.detail || "No pudimos guardar la lista. Intenta de nuevo.");
+  });
+  document.querySelectorAll("[data-reorder]").forEach((box) => {
+    const out = box.querySelector("[data-reorder-status]");
+    box.querySelector("[data-reorder-add]").addEventListener("click", () => {
+      const cart = readCart();
+      box.querySelectorAll("tr[data-sku]").forEach((tr) => {
+        const sku = tr.dataset.sku, qty = Number(tr.dataset.qty) || 1;
+        const l = cart.find((c) => c.sku === sku && !c.plan); if (l) l.qty += qty; else cart.push({ sku, qty });
+      });
+      try { localStorage.setItem(cartKey, JSON.stringify(cart)); } catch (e) { out.textContent = "Tu navegador no permite guardar el carrito."; return; }
+      location.href = (document.body.dataset.base || "") + "/cart";
+    });
+    box.querySelector("[data-reorder-delete]").addEventListener("click", async (e) => {
+      if (!confirm(e.currentTarget.dataset.confirm)) return;
+      const r = await send("DELETE", "/" + encodeURIComponent(box.dataset.reorder));
+      if (r.ok) box.remove(); else out.textContent = r.body.detail || "No pudimos borrar la lista. Intenta de nuevo.";
+    });
+  });
+})();

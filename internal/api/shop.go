@@ -45,7 +45,7 @@ var shopFuncs = template.FuncMap{
 	"cents":  func(n int64) string { return pesos(money.New(n, "MXN")) },
 }
 
-var shopPages = localizedPages("catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval", "quote")
+var shopPages = localizedPages("catalog", "product", "cart", "checkout", "thanks", "policy", "favorites", "subscription", "form", "approval", "quote", "quickorder")
 
 // shopCSP allows only our own assets plus Stripe for the payment form.
 const shopCSP = "default-src 'self'; img-src * data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://js.stripe.com; " +
