@@ -41,6 +41,26 @@ node tools/qa/escala/run.js 50000   # 1000, 10000, 50000…
 
 `measure.js N` repite solo las latencias sobre una tienda ya cargada. Los resultados quedan en `$APEXX_QA_OUT` (por omisión `./out`).
 
+Con `APEXX_QA_WITH_LOAD="<comando>"`, `run.js` corre ese comando con el catálogo completo cargado, después de los vectores, y guarda su salida en el resultado. Por ejemplo, la medición del panel de la sección siguiente.
+
+## Carga de cada vista del panel
+
+```
+node tools/qa/carga/medir.js http://127.0.0.1:8097 audit dueno@qa.apexx.test "$APEXX_QA_PASSWORD" out/carga.json
+RTT=80 MBPS=20 node tools/qa/carga/medir.js https://host-con-http2 audit dueno@qa.apexx.test "$APEXX_QA_PASSWORD" out/carga-red.json
+```
+
+Recorre en un navegador real cada vista que se alcanza desde el menú: pestañas, subpáginas y una ficha por lista.
+
+Por cada vista mide, desde el clic hasta que queda completa (sin peticiones `/v1` en curso, sin esqueletos de carga, sin «Cargando…»):
+- su tiempo total;
+- las llamadas a la API y la más lenta;
+- el JavaScript que descargó.
+
+También mide la primera carga en frío.
+
+Con `RTT` (ms de ida y vuelta) y `MBPS` simula una red real, donde cada petición que espera a otra cuesta un viaje. Para medir como en producción, apúntalo a un servidor con HTTPS y HTTP/2, como Caddy. Por HTTP/1.1 el navegador abre solo 6 conexiones y las vistas con muchas llamadas hacen cola. Resultados en `docs/audit/carga-paneles.md`.
+
 ## Prueba de relevo (despliegue sin corte)
 
 ```

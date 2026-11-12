@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { FileText } from "lucide-react";
 import { errorMessage, request } from "@/api";
+import { pq } from "./productQueries";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { send } from "./api";
@@ -13,7 +14,7 @@ interface Sheet { file: string; text: string; lines: number; at: string }
 export function Datasheet({ productId, canEdit }: { productId: string; canEdit: boolean }) {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
-  const q = useQuery({ queryKey: ["datasheet", productId], queryFn: () => request<{ datasheet: Sheet | null }>("GET", `/v1/products/${encodeURIComponent(productId)}/datasheet`).then((r) => r.datasheet) });
+  const q = useQuery(pq.datasheet<Sheet>(productId));
   const up = useMutation({
     mutationFn: (f: File) => { const fd = new FormData(); fd.append("file", f); return send<Sheet>(`/v1/products/${encodeURIComponent(productId)}/datasheet`, fd, undefined, "PUT"); },
     onSuccess: (s) => { toast.success(`Ficha técnica leída: ${s.lines} renglones. Ya aparece en la tienda.`); void qc.invalidateQueries({ queryKey: ["datasheet", productId] }); },

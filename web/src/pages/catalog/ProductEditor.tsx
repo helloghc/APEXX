@@ -18,6 +18,7 @@ import { href, navigate } from "@/router";
 import { ErrorBox, Notice, StatusPill } from "../common";
 import { cat, type DigitalFile, type MediaItem, type Option, type ProductBody, type ProductDetail, type RelatedItem, type Variant } from "./api";
 import { ProductPicker } from "./ProductPicker";
+import { pq, prefetchProduct } from "./productQueries";
 import { Confirm, Field, MediaPicker, MultiPick, Skeleton, slug, TagInput, Thumb, Uploader } from "./shared";
 
 const NONE = "__none";
@@ -96,7 +97,9 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
   const isNew = id === "nuevo";
   const qc = useQueryClient();
   const canEdit = can(me, "catalog", "edit");
-  const detail = useQuery({ queryKey: ["product", id], queryFn: () => cat.product(id), enabled: !isNew });
+  const detail = useQuery({ ...pq.product(id), enabled: !isNew });
+  // Sections and variants start with the product, not after it is drawn.
+  useEffect(() => { if (!isNew) prefetchProduct(qc, id); }, [qc, id, isNew]);
   const categories = useQuery({ queryKey: ["categories"], queryFn: cat.categories });
   const brands = useQuery({ queryKey: ["brands"], queryFn: cat.brands });
   const attributes = useQuery({ queryKey: ["attributes"], queryFn: cat.attributes });
@@ -706,7 +709,7 @@ const TEXT_FIELDS: [string, string][] = [["title", "Nombre"], ["description", "D
  *  original it translates, so a change of the original is pointed out. */
 function Translations({ id, canEdit }: { id: string; canEdit: boolean }) {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["product", id, "translations"], queryFn: () => request<{ languages: string[]; source: Record<string, string>; texts: Record<string, Record<string, { text: string; outdated: boolean }>> }>("GET", `/v1/products/${encodeURIComponent(id)}/translations`) });
+  const q = useQuery(pq.translations<{ languages: string[]; source: Record<string, string>; texts: Record<string, Record<string, { text: string; outdated: boolean }>> }>(id));
   const [lang, setLang] = useState("");
   const [draft, setDraft] = useState<Record<string, Record<string, string>>>({});
   const [busy, setBusy] = useState(false);
@@ -761,7 +764,7 @@ interface CustomField { id?: string; label: string; kind: "text" | "select" | "c
  *  each one able to add to the price. The cart validates and charges it. */
 function Personalization({ id, canEdit }: { id: string; canEdit: boolean }) {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["product", id, "customs"], queryFn: () => request<{ fields: CustomField[] }>("GET", `/v1/products/${encodeURIComponent(id)}/customizations`) });
+  const q = useQuery(pq.customizations<{ fields: CustomField[] }>(id));
   const [fields, setFields] = useState<CustomField[]>([]);
   const [busy, setBusy] = useState(false);
   const [errs, setErrs] = useState<Record<string, string>>({});
@@ -834,7 +837,7 @@ function PreorderEditor({ skus, canEdit, canCollect }: { skus: string[]; canEdit
   const qc = useQueryClient();
   const [sku, setSku] = useState(skus[0] ?? "");
   useEffect(() => { if (!skus.includes(sku)) setSku(skus[0] ?? ""); }, [skus, sku]);
-  const q = useQuery({ queryKey: ["preorder", sku], queryFn: () => request<{ configured: boolean; preorder?: PreorderData; ordersOwing?: number }>("GET", `/v1/preorders/${encodeURIComponent(sku)}`), enabled: !!sku });
+  const q = useQuery(pq.preorder<{ configured: boolean; preorder?: PreorderData; ordersOwing?: number }>(sku));
   const empty = { shipsOn: "", deposit: "100", max: "", note: "", active: true };
   const [v, setV] = useState(empty);
   const [busy, setBusy] = useState(false);
@@ -922,7 +925,7 @@ function DigitalFiles({ skus, canEdit }: { skus: string[]; canEdit: boolean }) {
   const qc = useQueryClient();
   const [sku, setSku] = useState(skus[0] ?? "");
   useEffect(() => { if (!skus.includes(sku)) setSku(skus[0] ?? ""); }, [skus, sku]);
-  const q = useQuery({ queryKey: ["digital", sku], queryFn: () => cat.digitalFiles(sku), enabled: !!sku });
+  const q = useQuery(pq.digital(sku));
   const [busy, setBusy] = useState(false);
   const [maxD, setMaxD] = useState("5");
   const [days, setDays] = useState("30");
@@ -1020,7 +1023,7 @@ function KitEditor({ skus, canEdit }: { skus: string[]; canEdit: boolean }) {
   const qc = useQueryClient();
   const [sku, setSku] = useState(skus[0] ?? "");
   useEffect(() => { if (!skus.includes(sku)) setSku(skus[0] ?? ""); }, [skus, sku]);
-  const q = useQuery({ queryKey: ["bundle", sku], queryFn: () => request<KitView>("GET", `/v1/bundles/${encodeURIComponent(sku)}`), enabled: !!sku });
+  const q = useQuery(pq.bundle<KitView>(sku));
   const [parts, setParts] = useState<KitPart[]>([]);
   const [busy, setBusy] = useState(false);
   const [errs, setErrs] = useState<Record<string, string>>({});
@@ -1084,7 +1087,7 @@ interface CustomsData { hsCode?: string; origin?: string }
 /** Customs data for import duties: tariff code and country of origin. */
 function Customs({ id, canEdit }: { id: string; canEdit: boolean }) {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["product", id, "trade-customs"], queryFn: () => request<CustomsData>("GET", `/v1/product-classes/${encodeURIComponent(id)}`) });
+  const q = useQuery(pq.tradeCustoms<CustomsData>(id));
   const [v, setV] = useState<CustomsData>({});
   const [busy, setBusy] = useState(false);
   const [errs, setErrs] = useState<Record<string, string>>({});
@@ -1115,7 +1118,7 @@ function Customs({ id, canEdit }: { id: string; canEdit: boolean }) {
 
 function QtyRules({ id, canEdit }: { id: string; canEdit: boolean }) {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["product", id, "qty-rules"], queryFn: () => request<{ rules: QtyRule[] }>("GET", `/v1/products/${encodeURIComponent(id)}/quantity-rules`) });
+  const q = useQuery(pq.qtyRules<{ rules: QtyRule[] }>(id));
   const [rules, setRules] = useState<QtyRule[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");

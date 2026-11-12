@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import { href, navigate } from "@/router";
+import { pq } from "@/pages/catalog/productQueries";
 
 interface Sug { id: string; feature: string; targetId: string; proposal: Record<string, unknown>; status: string; sources: { text: string }[]; title?: string }
 
@@ -48,8 +49,9 @@ function SugRow({ s, canEdit, act, busy, showTitle }: { s: Sug; canEdit: boolean
 
 /** Suggestions for one product, in its editor. */
 export function ProductSuggestions({ productId, canEdit }: { productId: string; canEdit: boolean }) {
-  const key = ["suggestions", productId];
-  const q = useQuery({ queryKey: key, queryFn: () => request<{ items: Sug[] }>("GET", `/v1/products/${encodeURIComponent(productId)}/suggestions`).then((r) => r.items) });
+  const opts = pq.suggestions<Sug>(productId);
+  const key = opts.queryKey;
+  const q = useQuery(opts);
   const m = useSugActions([key, ["product", productId]]);
   const items = q.data ?? [];
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Revisando el producto…</p>;

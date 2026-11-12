@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 export type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 
 export interface Schema {
@@ -142,14 +140,50 @@ export interface Op {
   value?: Json;
 }
 
-// Problem documents (RFC 9457) are validated at the boundary.
-export const ProblemSchema = z.object({
-  type: z.string().optional(),
-  title: z.string().optional(),
-  status: z.number(),
-  code: z.string(),
-  detail: z.string().optional(),
-  errors: z.array(z.object({ field: z.string(), code: z.string(), message: z.string() })).optional(),
-  reports: z.record(z.unknown()).optional(),
-});
-export type Problem = z.infer<typeof ProblemSchema>;
+// Problem documents (RFC 9457) are validated at the boundary. A small check
+// written by hand: a schema library for this one shape weighed 150 KB in the
+// code every screen downloads first.
+export interface Problem {
+  type?: string;
+  title?: string;
+  status: number;
+  code: string;
+  detail?: string;
+  errors?: { field: string; code: string; message: string }[];
+  reports?: Record<string, unknown>;
+}
+
+const isStr = (v: unknown): v is string => typeof v === "string";
+const optStr = (v: unknown) => v === undefined || isStr(v);
+
+function parseProblem(v: unknown): Problem | null {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.status !== "number" || !isStr(o.code) || !optStr(o.type) || !optStr(o.title) || !optStr(o.detail)) return null;
+  const out: Problem = { status: o.status, code: o.code };
+  if (o.type !== undefined) out.type = o.type as string;
+  if (o.title !== undefined) out.title = o.title as string;
+  if (o.detail !== undefined) out.detail = o.detail as string;
+  if (o.errors !== undefined) {
+    if (!Array.isArray(o.errors)) return null;
+    const errs: { field: string; code: string; message: string }[] = [];
+    for (const e of o.errors as unknown[]) {
+      const x = e as Record<string, unknown> | null;
+      if (typeof x !== "object" || x === null || !isStr(x.field) || !isStr(x.code) || !isStr(x.message)) return null;
+      errs.push({ field: x.field, code: x.code, message: x.message });
+    }
+    out.errors = errs;
+  }
+  if (o.reports !== undefined) {
+    if (typeof o.reports !== "object" || o.reports === null || Array.isArray(o.reports)) return null;
+    out.reports = o.reports as Record<string, unknown>;
+  }
+  return out;
+}
+
+export const ProblemSchema = {
+  safeParse(v: unknown): { success: true; data: Problem } | { success: false } {
+    const data = parseProblem(v);
+    return data ? { success: true, data } : { success: false };
+  },
+};

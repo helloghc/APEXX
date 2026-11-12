@@ -99,6 +99,17 @@ async function storeTotal(q = '') {
     save();
   }
 
+  // 2c. Optional: with the whole catalog loaded, run another measurement
+  // (APEXX_QA_WITH_LOAD, a shell command; for example the load time of every
+  // panel view, tools/qa/carga/medir.js). Its output is kept in the result.
+  if (process.env.APEXX_QA_WITH_LOAD) {
+    const tw = performance.now();
+    const out = require('child_process').execSync(process.env.APEXX_QA_WITH_LOAD, { maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'inherit'] }).toString();
+    R.phases.withLoad = { ms: Math.round(performance.now() - tw), output: out.slice(0, 20000) };
+    log('medición con la carga completa:\n' + out.split('\n').slice(0, 30).join('\n'));
+    save();
+  }
+
   // 3. Latencies, one client and 16 at once.
   const mid = Math.ceil(N / 2);
   const pdpId = (await L.api('GET', `/v1/products?q=esc-${mid}&limit=1`)).items?.[0]?.id;

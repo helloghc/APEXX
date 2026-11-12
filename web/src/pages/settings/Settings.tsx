@@ -1,41 +1,86 @@
-import { lazy, Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus, Award, Gift, Newspaper, ShoppingCart, LayoutGrid, CalendarClock, MailPlus, Target } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
 import { Loading } from "./kit";
+import { lazyPage, whenIdle } from "@/lib/lazy";
 
-const StorePage = lazy(() => import("./Store").then((m) => ({ default: m.StorePage })));
-const Locations = lazy(() => import("./Locations").then((m) => ({ default: m.Locations })));
-const Shipping = lazy(() => import("./Shipping").then((m) => ({ default: m.Shipping })));
-const Taxes = lazy(() => import("./Taxes").then((m) => ({ default: m.Taxes })));
-const Channels = lazy(() => import("./Channels").then((m) => ({ default: m.Channels })));
-const Policies = lazy(() => import("./Policies").then((m) => ({ default: m.Policies })));
-const Navigation = lazy(() => import("./Navigation").then((m) => ({ default: m.Navigation })));
-const Redirects = lazy(() => import("./Redirects").then((m) => ({ default: m.Redirects })));
-const Domains = lazy(() => import("./Domains").then((m) => ({ default: m.Domains })));
-const Feeds = lazy(() => import("./Feeds").then((m) => ({ default: m.Feeds })));
-const Languages = lazy(() => import("./Languages").then((m) => ({ default: m.Languages })));
-const Fields = lazy(() => import("./Fields").then((m) => ({ default: m.Fields })));
-const CatalogSource = lazy(() => import("./CatalogSource").then((m) => ({ default: m.CatalogSource })));
-const ReturnsPolicy = lazy(() => import("./ReturnsPolicy").then((m) => ({ default: m.ReturnsPolicy })));
-const Fees = lazy(() => import("./Fees").then((m) => ({ default: m.Fees })));
-const AdConversions = lazy(() => import("./AdConversions").then((m) => ({ default: m.AdConversions })));
-const MailCampaigns = lazy(() => import("./MailCampaigns").then((m) => ({ default: m.MailCampaigns })));
-const DesignSchedules = lazy(() => import("./DesignSchedules").then((m) => ({ default: m.DesignSchedules })));
-const Blog = lazy(() => import("./Blog").then((m) => ({ default: m.Blog })));
-const Storefronts = lazy(() => import("./Storefronts").then((m) => ({ default: m.Storefronts })));
-const SalesChannels = lazy(() => import("./SalesChannels").then((m) => ({ default: m.SalesChannels })));
-const Gifts = lazy(() => import("./Gifts").then((m) => ({ default: m.Gifts })));
-const Loyalty = lazy(() => import("./Loyalty").then((m) => ({ default: m.Loyalty })));
-const CheckoutBlocks = lazy(() => import("./CheckoutBlocks").then((m) => ({ default: m.CheckoutBlocks })));
-const SSO = lazy(() => import("./SSO").then((m) => ({ default: m.SSO })));
-const Bulk = lazy(() => import("./Bulk").then((m) => ({ default: m.Bulk })));
-const Scripts = lazy(() => import("./Scripts").then((m) => ({ default: m.Scripts })));
-const CheckoutRules = lazy(() => import("./CheckoutRules").then((m) => ({ default: m.CheckoutRules })));
-const Automations = lazy(() => import("./Automations").then((m) => ({ default: m.Automations })));
-const Apps = lazy(() => import("./Apps").then((m) => ({ default: m.Apps })));
-const Checkout = lazy(() => import("./Checkout").then((m) => ({ default: m.Checkout })));
+const StorePage = lazyPage(() => import("./Store").then((m) => m.StorePage));
+const Locations = lazyPage(() => import("./Locations").then((m) => m.Locations));
+const Shipping = lazyPage(() => import("./Shipping").then((m) => m.Shipping));
+const Taxes = lazyPage(() => import("./Taxes").then((m) => m.Taxes));
+const Channels = lazyPage(() => import("./Channels").then((m) => m.Channels));
+const Policies = lazyPage(() => import("./Policies").then((m) => m.Policies));
+const Navigation = lazyPage(() => import("./Navigation").then((m) => m.Navigation));
+const Redirects = lazyPage(() => import("./Redirects").then((m) => m.Redirects));
+const Domains = lazyPage(() => import("./Domains").then((m) => m.Domains));
+const Feeds = lazyPage(() => import("./Feeds").then((m) => m.Feeds));
+const Languages = lazyPage(() => import("./Languages").then((m) => m.Languages));
+const Fields = lazyPage(() => import("./Fields").then((m) => m.Fields));
+const CatalogSource = lazyPage(() => import("./CatalogSource").then((m) => m.CatalogSource));
+const ReturnsPolicy = lazyPage(() => import("./ReturnsPolicy").then((m) => m.ReturnsPolicy));
+const Fees = lazyPage(() => import("./Fees").then((m) => m.Fees));
+const AdConversions = lazyPage(() => import("./AdConversions").then((m) => m.AdConversions));
+const MailCampaigns = lazyPage(() => import("./MailCampaigns").then((m) => m.MailCampaigns));
+const DesignSchedules = lazyPage(() => import("./DesignSchedules").then((m) => m.DesignSchedules));
+const Blog = lazyPage(() => import("./Blog").then((m) => m.Blog));
+const Storefronts = lazyPage(() => import("./Storefronts").then((m) => m.Storefronts));
+const SalesChannels = lazyPage(() => import("./SalesChannels").then((m) => m.SalesChannels));
+const Gifts = lazyPage(() => import("./Gifts").then((m) => m.Gifts));
+const Loyalty = lazyPage(() => import("./Loyalty").then((m) => m.Loyalty));
+const CheckoutBlocks = lazyPage(() => import("./CheckoutBlocks").then((m) => m.CheckoutBlocks));
+const SSO = lazyPage(() => import("./SSO").then((m) => m.SSO));
+const Bulk = lazyPage(() => import("./Bulk").then((m) => m.Bulk));
+const Scripts = lazyPage(() => import("./Scripts").then((m) => m.Scripts));
+const CheckoutRules = lazyPage(() => import("./CheckoutRules").then((m) => m.CheckoutRules));
+const Automations = lazyPage(() => import("./Automations").then((m) => m.Automations));
+const Apps = lazyPage(() => import("./Apps").then((m) => m.Apps));
+const Checkout = lazyPage(() => import("./Checkout").then((m) => m.Checkout));
+
+const PAGES: Record<string, { preload: () => Promise<void> }> = {
+  tienda: StorePage,
+  "ubicaciones": Locations,
+  "envios": Shipping,
+  "impuestos": Taxes,
+  "canales": Channels,
+  "politicas": Policies,
+  "navegacion": Navigation,
+  "redirecciones": Redirects,
+  "dominios": Domains,
+  "anuncios": Feeds,
+  "idiomas": Languages,
+  "campos": Fields,
+  "catalogo-maestro": CatalogSource,
+  "devoluciones": ReturnsPolicy,
+  "conversiones": AdConversions,
+  "campanas-correo": MailCampaigns,
+  "diseno-programado": DesignSchedules,
+  "blog": Blog,
+  "tiendas": Storefronts,
+  "canales-externos": SalesChannels,
+  "regalos": Gifts,
+  "lealtad": Loyalty,
+  "bloques-pago": CheckoutBlocks,
+  "sso": SSO,
+  "cambios-masivos": Bulk,
+  "scripts": Scripts,
+  "reglas-pago": CheckoutRules,
+  "automatizaciones": Automations,
+  "apps": Apps,
+  "cargos": Fees,
+  "checkout": Checkout,
+};
+
+/** preloadSettings fetches the code of one section (the store section when sub is unknown). */
+export function preloadSettings(sub?: string): Promise<void> {
+  return (PAGES[sub ?? ""] ?? StorePage).preload();
+}
+
+/** preloadAllSettings fetches the code of every section. */
+export function preloadAllSettings(): Promise<void> {
+  return Promise.all(Object.values(PAGES).map((p) => p.preload().catch(() => {}))).then(() => {});
+}
 
 export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "tienda", label: "Tienda", icon: Store, group: "General" },
@@ -75,6 +120,9 @@ export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group:
 export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string[] }) {
   const current = SETTINGS_NAV.find((n) => n.id === sub)?.id ?? "tienda";
   const groups = [...new Set(SETTINGS_NAV.map((n) => n.group))];
+  // The other sections load while the person reads this one, so moving
+  // between them never waits for code.
+  useEffect(() => whenIdle(() => void preloadAllSettings()), []);
   let body;
   switch (current) {
     case "ubicaciones":

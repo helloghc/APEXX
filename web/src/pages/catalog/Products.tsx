@@ -2,6 +2,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Boxes, Columns3, Download, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { errorMessage, type Me } from "@/api";
+import { prefetchOnIntent } from "./productQueries";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -360,7 +361,7 @@ export function Products({ me }: { me: Me }) {
                     <div className="flex min-w-48 items-center gap-3">
                       <Thumb media={p.thumb} />
                       <div className="min-w-0">
-                        <a className="font-medium text-foreground hover:text-primary hover:underline" href={href("catalogo", "productos", p.id)}>
+                        <a className="font-medium text-foreground hover:text-primary hover:underline" href={href("catalogo", "productos", p.id)} {...prefetchOnIntent(qc, p.id)}>
                           {p.title}
                         </a>
                         <div className="truncate text-xs text-muted-foreground">

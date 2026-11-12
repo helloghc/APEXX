@@ -1,5 +1,6 @@
 import type { Op, Problem, Release, Report, SectionDefinition, Template, ThemesResponse } from "./types";
 import { ProblemSchema } from "./types";
+import { navigated, noteRead, takeStarted } from "./routePrefetch";
 
 const KEY = "apexx.apiKey";
 
@@ -49,10 +50,17 @@ export async function request<T>(
   opts: { as?: "json" | "text" | "none"; headers?: Record<string, string> } = {},
 ): Promise<T> {
   const as = opts.as ?? "json";
+  const plainRead = method === "GET" && body === undefined && as === "json" && !opts.headers;
   const headers: Record<string, string> = { Accept: as === "text" ? "text/html" : "application/json", ...opts.headers };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (credentials.key) headers.Authorization = `Bearer ${credentials.key}`;
-  const res = await fetch(path, {
+  let res: Response | null = null;
+  if (plainRead) {
+    noteRead(path);
+    const early = takeStarted(path);
+    if (early) res = await early.catch(() => null);
+  }
+  res ??= await fetch(path, {
     method,
     headers,
     credentials: "same-origin",
@@ -73,6 +81,17 @@ export async function request<T>(
   }
   if (as === "none" || res.status === 204) return undefined as T;
   return (as === "json" ? res.json() : res.text()) as Promise<T>;
+}
+
+// Detail screens: their reads start at the navigation (see routePrefetch.ts).
+function startRead(path: string): Promise<Response> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (credentials.key) headers.Authorization = `Bearer ${credentials.key}`;
+  return fetch(path, { method: "GET", headers, credentials: "same-origin" });
+}
+if (typeof window !== "undefined") {
+  navigated(window.location.hash, startRead);
+  window.addEventListener("hashchange", () => navigated(window.location.hash, startRead));
 }
 
 const enc = encodeURIComponent;

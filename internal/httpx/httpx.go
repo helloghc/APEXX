@@ -108,14 +108,35 @@ var gzPool = sync.Pool{New: func() any { w, _ := gzip.NewWriterLevel(nil, gzip.B
 
 type gzWriter struct {
 	http.ResponseWriter
-	gz *gzip.Writer
+	gz          *gzip.Writer
+	wrote, pass bool
 }
 
-func (g *gzWriter) Write(b []byte) (int, error) { return g.gz.Write(b) }
-
+// WriteHeader decides the encoding once the handler has set its headers: a
+// response that is already encoded (assets compressed ahead of time) or has
+// no body goes out as is.
 func (g *gzWriter) WriteHeader(code int) {
-	g.Header().Del("Content-Length")
+	if !g.wrote {
+		g.wrote = true
+		h := g.Header()
+		if h.Get("Content-Encoding") != "" || code == http.StatusNoContent || code == http.StatusNotModified {
+			g.pass = true
+		} else {
+			h.Set("Content-Encoding", "gzip")
+			h.Del("Content-Length")
+		}
+	}
 	g.ResponseWriter.WriteHeader(code)
+}
+
+func (g *gzWriter) Write(b []byte) (int, error) {
+	if !g.wrote {
+		g.WriteHeader(http.StatusOK)
+	}
+	if g.pass {
+		return g.ResponseWriter.Write(b)
+	}
+	return g.gz.Write(b)
 }
 
 // Middleware adds compression, request timing and a request id.
@@ -127,9 +148,13 @@ func Middleware(next http.Handler) http.Handler {
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && !strings.HasPrefix(r.URL.Path, "/media/") {
 			gz := gzPool.Get().(*gzip.Writer)
 			gz.Reset(w)
-			w.Header().Set("Content-Encoding", "gzip")
 			gw := &gzWriter{ResponseWriter: w, gz: gz}
-			defer func() { _ = gz.Close(); gzPool.Put(gz) }()
+			defer func() {
+				if gw.wrote && !gw.pass {
+					_ = gz.Close()
+				}
+				gzPool.Put(gz)
+			}()
 			w = gw
 		}
 		w.Header().Set("Server-Timing", "app;dur=0")

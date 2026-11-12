@@ -6,6 +6,8 @@
     <title>Apexx · Admin</title>
     <link rel="icon" type="image/svg+xml" href="/admin/favicon.svg" />
     <meta name="theme-color" content="#2E44E8" />
+    <!-- Who is signed in: asked while the code downloads, not after. -->
+    <link rel="preload" href="/v1/me" as="fetch" crossorigin="anonymous" />
   </head>
   <body>
     <div id="root"></div>

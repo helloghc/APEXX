@@ -28,7 +28,7 @@ import { Home } from "@/pages/Home";
 // Each section loads on demand so the login screen and home stay light.
 // Every screen of the panel, loaded in the background once the person is in,
 // so moving between screens never waits for a download.
-const SCREENS = [() => import("@/pages/Connectors"), () => import("@/pages/pos/index"), () => import("@/pages/Payments"), () => import("@/pages/Team"), () => import("@/pages/account/index"), () => import("@/pages/b2b/index"), () => import("@/pages/catalog/index"), () => import("@/pages/customers/index"), () => import("@/pages/engage/index"), () => import("@/pages/marketplace/index"), () => import("@/pages/notifications/index"), () => import("@/pages/orders/index"), () => import("@/pages/promotions/index"), () => import("@/pages/reports/Ops"), () => import("@/pages/reports/Reports"), () => import("@/pages/settings/Settings"), () => import("@/pages/subscriptions/index"), () => import("@/pages/wallet/index"), () => import("@/pages/settings/Fees"), () => import("@/pages/settings/Channels"), () => import("@/pages/settings/Shipping"), () => import("@/pages/settings/Taxes")];
+const SCREENS = [() => import("@/pages/Connectors"), () => import("@/pages/pos/index"), () => import("@/pages/Payments"), () => import("@/pages/Team"), () => import("@/pages/account/index"), () => import("@/pages/b2b/index"), () => import("@/pages/catalog/index"), () => import("@/pages/customers/index"), () => import("@/pages/engage/index"), () => import("@/pages/marketplace/index"), () => import("@/pages/notifications/index"), () => import("@/pages/orders/index"), () => import("@/pages/promotions/index"), () => import("@/pages/reports/Ops"), () => import("@/pages/reports/Reports"), () => import("@/pages/settings/Settings"), () => import("@/pages/subscriptions/index"), () => import("@/pages/wallet/index"), () => import("@/pages/settings/Settings").then((m) => m.preloadAllSettings())];
 let preloaded = false;
 export function preloadScreens() {
   if (preloaded) return;
@@ -56,7 +56,14 @@ const Marketplace = lazy(() => import("@/pages/marketplace/index").then((m) => (
 const SellerPortal = lazy(() => import("@/pages/marketplace/index").then((m) => ({ default: m.SellerPortal })));
 const Companies = lazy(() => import("@/pages/b2b/index").then((m) => ({ default: m.Companies })));
 const CustomData = lazy(() => import("@/pages/b2b/index").then((m) => ({ default: m.CustomData })));
-const Settings = lazy(() => import("@/pages/settings/Settings").then((m) => ({ default: m.Settings })));
+// Settings and the section being opened load together, so the section does
+// not suspend a second time inside the page.
+const Settings = lazy(() =>
+  import("@/pages/settings/Settings").then(async (m) => {
+    await m.preloadSettings(window.location.hash.slice(1).split("/")[1]).catch(() => {});
+    return { default: m.Settings };
+  }),
+);
 const Reports = lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.Reports })));
 const Ops = lazy(() => import("@/pages/reports/Ops").then((m) => ({ default: m.Ops })));
 const PointOfSale = lazy(() => import("@/pages/pos/index").then((m) => ({ default: m.PointOfSale })));
