@@ -237,9 +237,18 @@ func ReserveTx(ctx context.Context, tx pgx.Tx, tenant, holder, sku string, qty i
 	return reserveSKUTx(ctx, tx, tenant, holder, sku, qty, ttl)
 }
 
+type preferKey struct{}
+
+// WithPreferredLocation makes reservations take from this location first (a
+// sale at a store's counter takes the units from that store).
+func WithPreferredLocation(ctx context.Context, loc string) context.Context {
+	return context.WithValue(ctx, preferKey{}, loc)
+}
+
 func reserveSKUTx(ctx context.Context, tx pgx.Tx, tenant, holder, sku string, qty int64, ttl time.Duration) error {
+	pref, _ := ctx.Value(preferKey{}).(string)
 	rows, err := tx.Query(ctx, `SELECT location_id, on_hand - reserved FROM stock_levels
-		WHERE tenant_id=$1 AND sku=$2 ORDER BY location_id FOR UPDATE`, tenant, sku)
+		WHERE tenant_id=$1 AND sku=$2 ORDER BY location_id = $3 DESC, location_id FOR UPDATE`, tenant, sku, pref)
 	if err != nil {
 		return err
 	}

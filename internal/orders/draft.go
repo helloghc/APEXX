@@ -25,6 +25,8 @@ type DraftInput struct {
 	Shipping   int64       `json:"shipping"`
 	Discount   int64       `json:"discount"`
 	Note       string      `json:"note"`
+	// WalkIn is a counter sale (set by the server, never by clients).
+	WalkIn bool `json:"-"`
 }
 
 // Draft is an order prepared by staff that is not paid yet.
@@ -147,10 +149,14 @@ func (s *Service) buildDraft(tenant string, in DraftInput) (Draft, []byte, error
 		return d, nil, err
 	}
 	email, ok := customers.NormalizeEmail(in.Customer.Email)
-	if !ok {
+	switch {
+	case ok:
+		in.Customer.Email = email
+	case in.WalkIn && strings.TrimSpace(in.Customer.Email) == "":
+		in.Customer.Email = "" // a counter sale may have no email: no customer record, no emails
+	default:
 		return d, nil, FieldError{"customer.email", "Escribe el correo del cliente"}
 	}
-	in.Customer.Email = email
 	in.Customer.Name, in.Customer.Phone, in.Customer.Address = strings.TrimSpace(in.Customer.Name), strings.TrimSpace(in.Customer.Phone), strings.TrimSpace(in.Customer.Address)
 	if in.Customer.Name == "" || len(in.Customer.Name) > 200 {
 		return d, nil, FieldError{"customer.name", "Escribe el nombre del cliente"}
