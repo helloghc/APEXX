@@ -5,8 +5,11 @@ Diseñada a partir de auditorías profundas de VTEX (`docs/audit/`) para resolve
 indexación lenta, stock desalineado, APIs inconsistentes, checkout antiguo y módulos difíciles de mover.
 
 - Plan, stack y estado: [`docs/plan.md`](docs/plan.md)
-- Fases documentadas con evidencia: [`docs/fases/`](docs/fases/)
-- Despliegue en Google Cloud: [`docs/deploy.md`](docs/deploy.md)
+- Fases documentadas con evidencia: [`docs/fases/`](docs/fases/) (índice en [`docs/fases/README.md`](docs/fases/README.md))
+- IA (búsqueda por significado, «Pregúntale a la tienda», asistentes, grafo, copilotos): [`docs/fases/resumen-ia.md`](docs/fases/resumen-ia.md)
+- Escala con 50 000 productos y reversión total: [`docs/audit/escala-50k.md`](docs/audit/escala-50k.md)
+- Despliegue en Google Cloud y despliegue sin corte: [`docs/deploy.md`](docs/deploy.md) (§7.1)
+- Guía de QA para personas (comprador, panel, roles, IA): [`docs/qa.md`](docs/qa.md); herramientas automáticas en [`tools/qa/`](tools/qa/)
 
 ## Arquitectura en una línea
 
@@ -21,11 +24,17 @@ apexx tenant -id demo -name "Demo" -owner-email dueno@tienda.mx -owner-password 
 apexx seed -tenant demo -n 2000
 apexx import -tenant demo -vtex-account micuenta -limit 500   # VTEX_APP_KEY / VTEX_APP_TOKEN, solo lectura
 apexx serve                   # API, storefront, editor (/admin/) y procesos de fondo supervisados
+apexx qa-setup -tenant qa -password '...' -n 300              # tienda de QA con productos, roles y clientes
+deploy/rolling.sh             # despliegue sin corte: reemplaza un nodo a la vez (docker compose)
 ```
 
 Variables de `serve`: `DATABASE_URL` (rol `apexx_app`), `SYSTEM_DATABASE_URL` (rol `apexx_system`),
 `APEXX_MASTER_KEY` (64 hex), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `APEXX_PLATFORM_FEE_BPS`,
-`APEXX_PAYMENTS=stripe|sandbox`, `APEXX_SECURE_COOKIES`, `APEXX_ADDR`. Ver `.env.example`.
+`APEXX_PAYMENTS=stripe|sandbox`, `APEXX_SECURE_COOKIES`, `APEXX_ADDR`, `APEXX_TRUST_PROXY` (detrás de Caddy),
+`APEXX_DRAIN` (segundos en que un nodo que se apaga deja de recibir tráfico antes de cerrar).
+IA, opcionales: `APEXX_ANTHROPIC_API_KEY` (Claude: contexto de fragmentos, respuestas escritas y textos),
+`APEXX_AI_MODEL`, `APEXX_AI_MODEL_FAST`, `APEXX_EMBEDDINGS=local|voyage` y `VOYAGE_API_KEY`.
+Sin ellas, toda la IA funciona en modo determinista. Ver `.env.example` y `docs/deploy.md` §7.2.
 
 ## Desarrollo
 
