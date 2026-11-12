@@ -20,6 +20,10 @@ import (
 
 const importBatch = 25
 
+// importSetChunk products of an import are written per transaction on the
+// set path (new products).
+const importSetChunk = 2000
+
 // importSummary is what the preview shows before anything is written.
 type importSummary struct {
 	Rows     int            `json:"rows"`
@@ -265,32 +269,58 @@ func (s *Server) runImport(tenant, actor, id string, todo []catalog.ImportProduc
 		}
 	}()
 	created, updated, failed := 0, 0, 0
-	// Batches of importBatch products, one transaction each, every product
-	// in its own savepoint: a bad product fails alone, as before, with one
-	// commit per batch instead of one per product.
-	for lo := 0; lo < len(todo); lo += importBatch {
-		hi := min(lo+importBatch, len(todo))
-		outs := s.DB.ApplyImportBatch(ctx, tenant, actor, todo[lo:hi], opt)
-		for k, o := range outs {
-			p := todo[lo+k]
-			var ae *store.ApplyError
-			switch {
-			case o.Err == nil && o.Created:
-				created++
-			case o.Err == nil:
-				updated++
-			default:
-				failed++
-				msg := "No se pudo guardar el producto; intenta de nuevo"
-				if errors.As(o.Err, &ae) {
-					msg = ae.Message
-				} else {
-					s.Log.Error("import product", "import", id, "row", p.Row, "err", o.Err)
-				}
-				if len(errs) < 1000 {
-					errs = append(errs, importError{Row: p.Row, Column: "", Code: "apply_failed", Message: msg, Handle: p.Handle})
+	record := func(p catalog.ImportProduct, o store.ImportOutcome) {
+		var ae *store.ApplyError
+		switch {
+		case o.Err == nil && o.Created:
+			created++
+		case o.Err == nil:
+			updated++
+		default:
+			failed++
+			msg := "No se pudo guardar el producto; intenta de nuevo"
+			if errors.As(o.Err, &ae) {
+				msg = ae.Message
+			} else {
+				s.Log.Error("import product", "import", id, "row", p.Row, "err", o.Err)
+			}
+			if len(errs) < 1000 {
+				errs = append(errs, importError{Row: p.Row, Column: "", Code: "apply_failed", Message: msg, Handle: p.Handle})
+			}
+		}
+	}
+	// One by one (savepoint each, batches of importBatch): products that
+	// already exist (merged field by field) and any chunk the set path could
+	// not write.
+	oneByOne := func(ps []catalog.ImportProduct) {
+		for lo := 0; lo < len(ps); lo += importBatch {
+			hi := min(lo+importBatch, len(ps))
+			for k, o := range s.DB.ApplyImportBatch(ctx, tenant, actor, ps[lo:hi], opt) {
+				record(ps[lo+k], o)
+			}
+		}
+	}
+	// New products go in chunks with a few set statements each.
+	for lo := 0; lo < len(todo); lo += importSetChunk {
+		hi := min(lo+importSetChunk, len(todo))
+		chunk := todo[lo:hi]
+		outs, existing, err := s.DB.ApplyNewProducts(ctx, tenant, actor, chunk, opt)
+		if err != nil {
+			s.Log.Warn("set import fell back to one by one", "import", id, "err", err)
+			oneByOne(chunk)
+		} else {
+			isExisting := map[int]bool{}
+			var again []catalog.ImportProduct
+			for _, i := range existing {
+				isExisting[i] = true
+				again = append(again, chunk[i])
+			}
+			for i, o := range outs {
+				if !isExisting[i] {
+					record(chunk[i], o)
 				}
 			}
+			oneByOne(again)
 		}
 		status := ""
 		if hi == len(todo) {

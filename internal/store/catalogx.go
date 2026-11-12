@@ -1432,31 +1432,7 @@ func applyImportTx(ctx context.Context, tx pgx.Tx, tenant, actor string, ip cata
 			return e
 		}
 	}
-	set := func(dst *string, v string) {
-		if v != "" {
-			*dst = v
-		}
-	}
-	set(&p.Title, ip.Title)
-	set(&p.Description, ip.Description)
-	set(&p.Status, ip.Status)
-	set(&p.Type, ip.Type)
-	set(&p.SEOTitle, ip.SEOTitle)
-	set(&p.SEODescription, ip.SEODescription)
-	if p.Status != "draft" {
-		p.PublishAt = nil
-	}
-	if ip.Tags != nil {
-		p.Tags = ip.Tags
-	}
-	if len(ip.Attributes) > 0 {
-		if p.Attributes == nil {
-			p.Attributes = map[string]string{}
-		}
-		for k, v := range ip.Attributes {
-			p.Attributes[k] = v
-		}
-	}
+	applyImportFields(&p, ip)
 	if ip.Brand != "" {
 		if p.BrandID, e = ensureBrandTx(ctx, tx, tenant, actor, ip.Brand); e != nil {
 			return e
@@ -1473,107 +1449,13 @@ func applyImportTx(ctx context.Context, tx pgx.Tx, tenant, actor string, ip cata
 		}
 	}
 
-	bySKU := map[string]int{}
-	for i, v := range p.Variants {
-		bySKU[v.SKU] = i
-	}
-	if len(ip.OptionNames) > 0 {
-		same := len(p.Options) == len(ip.OptionNames)
-		for i := 0; same && i < len(p.Options); i++ {
-			same = p.Options[i].Name == ip.OptionNames[i]
-		}
-		if !same {
-			// The file redefines the options: only its variants fit them.
-			p.Options = make([]catalog.Option, len(ip.OptionNames))
-			for i, n := range ip.OptionNames {
-				p.Options[i].Name = n
-			}
-			inFile := map[string]bool{}
-			for _, v := range ip.Variants {
-				inFile[v.SKU] = true
-			}
-			kept := p.Variants[:0]
-			for _, v := range p.Variants {
-				if inFile[v.SKU] {
-					kept = append(kept, v)
-				}
-			}
-			p.Variants = kept
-			bySKU = map[string]int{}
-			for i, v := range p.Variants {
-				bySKU[v.SKU] = i
-			}
-		}
-	} else if len(p.Options) > 0 {
-		for _, v := range ip.Variants {
-			if _, ok := bySKU[v.SKU]; !ok {
-				return &ApplyError{fmt.Sprintf("El SKU %s es nuevo y el producto usa opciones (%s); agrega las columnas option1_name/option1_value", v.SKU, p.Options[0].Name)}
-			}
-		}
-	}
-	w := ProductWrite{Channel: opt.Channel, Prices: map[string]PriceInput{}, Stock: map[string]map[string]int64{}, Create: *created}
-	for _, iv := range ip.Variants {
-		i, ok := bySKU[iv.SKU]
-		if !ok {
-			p.Variants = append(p.Variants, catalog.Variant{SKU: iv.SKU})
-			i = len(p.Variants) - 1
-			bySKU[iv.SKU] = i
-		}
-		v := &p.Variants[i]
-		if iv.Barcode != "" {
-			v.Barcode = iv.Barcode
-		}
-		if iv.WeightGrams != nil {
-			v.WeightGrams = *iv.WeightGrams
-		}
-		if len(iv.Options) > 0 {
-			v.Options = iv.Options
-			for oi := range p.Options {
-				val := iv.Options[p.Options[oi].Name]
-				found := false
-				for _, x := range p.Options[oi].Values {
-					found = found || x == val
-				}
-				if !found {
-					p.Options[oi].Values = append(p.Options[oi].Values, val)
-				}
-			}
-		}
-		if iv.Price != nil {
-			w.Prices[iv.SKU] = PriceInput{Amount: *iv.Price, CompareAt: iv.CompareAt, Currency: opt.Currency}
-		} else if iv.CompareAt != nil {
-			var cur int64
-			e := tx.QueryRow(ctx, `SELECT amount FROM prices WHERE tenant_id=$1 AND channel=$2 AND sku=$3 AND min_qty=1`, tenant, opt.Channel, iv.SKU).Scan(&cur)
-			if e != nil || *iv.CompareAt < cur {
-				return &ApplyError{fmt.Sprintf("compare_at_price del SKU %s necesita un price igual o menor", iv.SKU)}
-			}
-			w.Prices[iv.SKU] = PriceInput{Amount: cur, CompareAt: iv.CompareAt, Currency: opt.Currency}
-		}
-		if iv.Stock != nil {
-			w.Stock[iv.SKU] = map[string]int64{opt.Location: *iv.Stock}
-		}
-	}
-	for i := range p.Variants {
-		p.Variants[i].Title = catalog.VariantTitle(p.Options, p.Variants[i].Options)
-	}
-	// Option values no variant uses any more are dropped.
-	for oi := range p.Options {
-		used := p.Options[oi].Values[:0]
-		for _, val := range p.Options[oi].Values {
-			for _, v := range p.Variants {
-				if v.Options[p.Options[oi].Name] == val {
-					used = append(used, val)
-					break
-				}
-			}
-		}
-		p.Options[oi].Values = used
-	}
-	if e := catalog.ValidateVariantOptions(p.Options, p.Variants); e != nil {
-		return &ApplyError{e.Error()}
-	}
-	if len(p.Variants) > catalog.MaxVariants {
-		return &ApplyError{fmt.Sprintf("El producto quedaría con más de %d variantes", catalog.MaxVariants)}
+	w, e := importVariants(&p, ip, opt, *created, func(sku string) (int64, bool) {
+		var cur int64
+		err := tx.QueryRow(ctx, `SELECT amount FROM prices WHERE tenant_id=$1 AND channel=$2 AND sku=$3 AND min_qty=1`, tenant, opt.Channel, sku).Scan(&cur)
+		return cur, err == nil
+	})
+	if e != nil {
+		return e
 	}
 	w.Product = p
 	_, e = saveProductTx(ctx, tx, tenant, actor, w, 0)
@@ -1668,4 +1550,144 @@ func sendBatch(ctx context.Context, tx pgx.Tx, b *pgx.Batch, wrap func(i int, er
 		}
 	}
 	return br.Close()
+}
+
+// importVariants applies the variants, options, prices and stock of an
+// imported product to p (new or loaded), exactly as the import does, and
+// returns what to write. It reads nothing: curPrice gives the current price
+// of a SKU when the file brings only a "before" price.
+func importVariants(p *catalog.Product, ip catalog.ImportProduct, opt ImportOptions, created bool, curPrice func(sku string) (int64, bool)) (ProductWrite, error) {
+	var w ProductWrite
+	bySKU := map[string]int{}
+	for i, v := range p.Variants {
+		bySKU[v.SKU] = i
+	}
+	if len(ip.OptionNames) > 0 {
+		same := len(p.Options) == len(ip.OptionNames)
+		for i := 0; same && i < len(p.Options); i++ {
+			same = p.Options[i].Name == ip.OptionNames[i]
+		}
+		if !same {
+			// The file redefines the options: only its variants fit them.
+			p.Options = make([]catalog.Option, len(ip.OptionNames))
+			for i, n := range ip.OptionNames {
+				p.Options[i].Name = n
+			}
+			inFile := map[string]bool{}
+			for _, v := range ip.Variants {
+				inFile[v.SKU] = true
+			}
+			kept := p.Variants[:0]
+			for _, v := range p.Variants {
+				if inFile[v.SKU] {
+					kept = append(kept, v)
+				}
+			}
+			p.Variants = kept
+			bySKU = map[string]int{}
+			for i, v := range p.Variants {
+				bySKU[v.SKU] = i
+			}
+		}
+	} else if len(p.Options) > 0 {
+		for _, v := range ip.Variants {
+			if _, ok := bySKU[v.SKU]; !ok {
+				return w, &ApplyError{fmt.Sprintf("El SKU %s es nuevo y el producto usa opciones (%s); agrega las columnas option1_name/option1_value", v.SKU, p.Options[0].Name)}
+			}
+		}
+	}
+	w = ProductWrite{Channel: opt.Channel, Prices: map[string]PriceInput{}, Stock: map[string]map[string]int64{}, Create: created}
+	for _, iv := range ip.Variants {
+		i, ok := bySKU[iv.SKU]
+		if !ok {
+			p.Variants = append(p.Variants, catalog.Variant{SKU: iv.SKU})
+			i = len(p.Variants) - 1
+			bySKU[iv.SKU] = i
+		}
+		v := &p.Variants[i]
+		if iv.Barcode != "" {
+			v.Barcode = iv.Barcode
+		}
+		if iv.WeightGrams != nil {
+			v.WeightGrams = *iv.WeightGrams
+		}
+		if len(iv.Options) > 0 {
+			v.Options = iv.Options
+			for oi := range p.Options {
+				val := iv.Options[p.Options[oi].Name]
+				found := false
+				for _, x := range p.Options[oi].Values {
+					found = found || x == val
+				}
+				if !found {
+					p.Options[oi].Values = append(p.Options[oi].Values, val)
+				}
+			}
+		}
+		if iv.Price != nil {
+			w.Prices[iv.SKU] = PriceInput{Amount: *iv.Price, CompareAt: iv.CompareAt, Currency: opt.Currency}
+		} else if iv.CompareAt != nil {
+			cur, ok := curPrice(iv.SKU)
+			if !ok || *iv.CompareAt < cur {
+				return w, &ApplyError{fmt.Sprintf("compare_at_price del SKU %s necesita un price igual o menor", iv.SKU)}
+			}
+			w.Prices[iv.SKU] = PriceInput{Amount: cur, CompareAt: iv.CompareAt, Currency: opt.Currency}
+		}
+		if iv.Stock != nil {
+			w.Stock[iv.SKU] = map[string]int64{opt.Location: *iv.Stock}
+		}
+	}
+	for i := range p.Variants {
+		p.Variants[i].Title = catalog.VariantTitle(p.Options, p.Variants[i].Options)
+	}
+	// Option values no variant uses any more are dropped.
+	for oi := range p.Options {
+		used := p.Options[oi].Values[:0]
+		for _, val := range p.Options[oi].Values {
+			for _, v := range p.Variants {
+				if v.Options[p.Options[oi].Name] == val {
+					used = append(used, val)
+					break
+				}
+			}
+		}
+		p.Options[oi].Values = used
+	}
+	if e := catalog.ValidateVariantOptions(p.Options, p.Variants); e != nil {
+		return w, &ApplyError{e.Error()}
+	}
+	if len(p.Variants) > catalog.MaxVariants {
+		return w, &ApplyError{fmt.Sprintf("El producto quedaría con más de %d variantes", catalog.MaxVariants)}
+	}
+	return w, nil
+}
+
+// applyImportFields copies the product fields a CSV row brings onto p; an
+// empty cell keeps what p had.
+func applyImportFields(p *catalog.Product, ip catalog.ImportProduct) {
+	set := func(dst *string, v string) {
+		if v != "" {
+			*dst = v
+		}
+	}
+	set(&p.Title, ip.Title)
+	set(&p.Description, ip.Description)
+	set(&p.Status, ip.Status)
+	set(&p.Type, ip.Type)
+	set(&p.SEOTitle, ip.SEOTitle)
+	set(&p.SEODescription, ip.SEODescription)
+	if p.Status != "draft" {
+		p.PublishAt = nil
+	}
+	if ip.Tags != nil {
+		p.Tags = ip.Tags
+	}
+	if len(ip.Attributes) > 0 {
+		if p.Attributes == nil {
+			p.Attributes = map[string]string{}
+		}
+		for k, v := range ip.Attributes {
+			p.Attributes[k] = v
+		}
+	}
 }
