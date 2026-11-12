@@ -572,3 +572,10 @@ func (p *Projector) listenLoop(ctx context.Context) {
 		}
 	}
 }
+
+// QtyRulesOf returns the quantity rules of a product.
+func (t *Tenant) QtyRulesOf(productID string) []cart.QtyRule {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return append([]cart.QtyRule(nil), t.Cart.QtyRules[productID]...)
+}

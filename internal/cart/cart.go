@@ -4,6 +4,7 @@
 package cart
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -154,8 +155,9 @@ type Service struct {
 	Pricing   *pricing.Service
 	Promos    *promo.Engine
 	Channels  map[string]Channel
-	Logistics *logistics.Config // zones, options, estimates and tax regions; nil = legacy channel rules
-	Taxo      *catalog.Taxonomy // attribute names, for promotions that target attribute values
+	Logistics *logistics.Config    // zones, options, estimates and tax regions; nil = legacy channel rules
+	Taxo      *catalog.Taxonomy    // attribute names, for promotions that target attribute values
+	QtyRules  map[string][]QtyRule // product id -> quantity rules (general and per customer group)
 	Now       func() time.Time
 }
 
@@ -217,6 +219,13 @@ func (s *Service) Simulate(req Request) (Result, error) {
 			continue
 		}
 		qty := it.Qty
+		rule, hasRule := s.qtyRule(p.ID, req.Group)
+		if r, ok := rule, hasRule; ok {
+			if q2, code, text := r.Apply(qty); q2 != qty {
+				qty = q2
+				res.Messages = append(res.Messages, Message{Code: code, SKU: it.SKU, Text: text})
+			}
+		}
 		if ch.MaxQtyPerItem > 0 && qty > ch.MaxQtyPerItem {
 			qty = ch.MaxQtyPerItem
 			res.Messages = append(res.Messages, Message{Code: "max_qty_per_item", SKU: it.SKU, Text: "Se ajustó a la cantidad máxima por producto del canal"})
@@ -224,7 +233,31 @@ func (s *Service) Simulate(req Request) (Result, error) {
 		avail := s.Inventory.Available(it.SKU)
 		if qty > avail {
 			qty = avail
-			res.Messages = append(res.Messages, Message{Code: "insufficient_stock", SKU: it.SKU, Text: "Se ajustó a las unidades disponibles"})
+			// Lowering to the stock must still follow the rule: whole boxes
+			// only, and never below the minimum.
+			if hasRule {
+				step := max(rule.Step, 1)
+				qty = qty / step * step
+				if qty < max(rule.Min, 1) {
+					qty = 0
+				}
+			}
+			if qty == 0 && hasRule {
+				res.Messages = append(res.Messages, Message{Code: "qty_unavailable", SKU: it.SKU, Text: "No hay suficientes piezas para la compra mínima de este producto"})
+			} else {
+				res.Messages = append(res.Messages, Message{Code: "insufficient_stock", SKU: it.SKU, Text: "Se ajustó a las unidades disponibles"})
+			}
+		}
+		if hasRule && qty > 0 {
+			// Any lowering above (channel maximum) must also keep whole multiples.
+			step := max(rule.Step, 1)
+			if qty%step != 0 {
+				qty = qty / step * step
+				if qty < max(rule.Min, 1) {
+					qty = 0
+					res.Messages = append(res.Messages, Message{Code: "qty_unavailable", SKU: it.SKU, Text: "No hay suficientes piezas para la compra mínima de este producto"})
+				}
+			}
 		}
 		if qty != it.Qty {
 			// The tier may change with the adjusted quantity.
@@ -464,4 +497,53 @@ func (s *Service) attributesOf(p *catalog.Product) map[string]string {
 		}
 	}
 	return out
+}
+
+// QtyRule limits how many units of a product can be bought in one order:
+// at least Min, at most Max (0 = no limit) and in multiples of Step (a box of
+// 12). Group "" applies to everyone; a group rule applies to the companies
+// with that price group and wins over the general one.
+type QtyRule struct {
+	Group string `json:"group"`
+	Min   int64  `json:"min"`
+	Max   int64  `json:"max"`
+	Step  int64  `json:"step"`
+}
+
+// Apply returns the nearest quantity that follows the rule, with the reason.
+func (r QtyRule) Apply(qty int64) (int64, string, string) {
+	step := max(r.Step, 1)
+	min := max(r.Min, 1)
+	if min%step != 0 {
+		min = (min/step + 1) * step
+	}
+	switch {
+	case qty < min:
+		return min, "qty_min", fmt.Sprintf("Se compra a partir de %d piezas", min)
+	case qty%step != 0:
+		up := (qty/step + 1) * step
+		if r.Max > 0 && up > r.Max {
+			up = qty / step * step
+		}
+		return up, "qty_step", fmt.Sprintf("Se vende en múltiplos de %d", step)
+	case r.Max > 0 && qty > r.Max:
+		return r.Max / step * step, "qty_max", fmt.Sprintf("Máximo %d piezas por pedido", r.Max/step*step)
+	}
+	return qty, "", ""
+}
+
+func (s *Service) qtyRule(productID, group string) (QtyRule, bool) {
+	var general *QtyRule
+	for i, r := range s.QtyRules[productID] {
+		if group != "" && r.Group == group {
+			return r, true
+		}
+		if r.Group == "" {
+			general = &s.QtyRules[productID][i]
+		}
+	}
+	if general != nil {
+		return *general, true
+	}
+	return QtyRule{}, false
 }

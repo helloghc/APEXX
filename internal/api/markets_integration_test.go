@@ -118,3 +118,68 @@ func TestMarkets(t *testing.T) {
 		t.Fatal("the US market of one store appeared in another")
 	}
 }
+
+// B2B quantity rules and volume prices.
+func TestQuantityRulesAndVolumePrices(t *testing.T) {
+	e := setup(t)
+	if st, _ := e.do("PUT", "/v1/products/P1/quantity-rules", e.adminA, m{"rules": []m{{"min": 10, "max": 5}}}); st != 400 {
+		t.Fatalf("max below min accepted: %d", st)
+	}
+	e.must(200, "PUT", "/v1/products/P1/quantity-rules", e.adminA, m{"rules": []m{{"min": 1, "step": 1}, {"group": "mayoreo", "min": 6, "step": 6}}})
+	e.drain()
+	sim := func(qty int) m {
+		return e.simulate(m{"channel": "mx", "items": []m{{"sku": "S1", "qty": qty}}})
+	}
+	// The general rule allows anything; a company of the wholesale group buys in boxes of 6.
+	if q := sim(2)["lines"].([]any)[0].(map[string]any)["qty"].(float64); q != 2 {
+		t.Fatalf("general rule changed the quantity: %v", q)
+	}
+	e.must(200, "PUT", "/v1/products/P1/quantity-rules", e.adminA, m{"rules": []m{{"min": 3, "step": 1}}})
+	e.drain()
+	s := sim(1)
+	if q := s["lines"].([]any)[0].(map[string]any)["qty"].(float64); q != 3 {
+		t.Fatalf("minimum not applied: %v", q)
+	}
+	found := false
+	for _, x := range s["messages"].([]any) {
+		found = found || x.(map[string]any)["code"] == "qty_min"
+	}
+	if !found {
+		t.Fatal("the cart does not explain the minimum")
+	}
+	// Lowering to the stock (10) keeps whole boxes of 6 and never goes below the minimum.
+	e.must(200, "PUT", "/v1/products/P1/quantity-rules", e.adminA, m{"rules": []m{{"min": 6, "step": 6}}})
+	e.drain()
+	if q := sim(12)["lines"].([]any)[0].(map[string]any)["qty"].(float64); q != 6 {
+		t.Fatalf("stock adjustment broke the box of 6: %v", q)
+	}
+	e.must(200, "PUT", "/v1/products/P1/quantity-rules", e.adminA, m{"rules": []m{{"min": 12, "step": 1}}})
+	e.drain()
+	s12 := sim(12)
+	if q := s12["lines"].([]any)[0].(map[string]any)["qty"].(float64); q != 0 {
+		t.Fatalf("a minimum above the stock still sold: %v", q)
+	}
+	e.must(200, "PUT", "/v1/products/P1/quantity-rules", e.adminA, m{"rules": []m{{"min": 3, "step": 1}}})
+	e.drain()
+	// Checkout refuses a quantity below the minimum.
+	if st, b := e.do("POST", "/v1/checkout", e.sfA, m{"channel": "mx", "postalCode": "53129", "items": []m{{"sku": "S1", "qty": 1}},
+		"customer": m{"email": "min@example.com", "name": "Min", "address": "x"}, "paymentMethod": "pm_card_visa"}, "Idempotency-Key", "qty-rule-key-1"); st != 409 || b["code"] != "cart_changed" {
+		t.Fatalf("checkout below the minimum = %d %v", st, b)
+	}
+
+	// Volume prices: $90 from 4 pieces, $80 from 8, in a fixed-price list.
+	base := sim(3)["lines"].([]any)[0].(map[string]any)["unit"].(map[string]any)["amount"].(float64)
+	if st, _ := e.do("POST", "/v1/price-lists", e.adminA, m{"name": "Volumen", "kind": "override", "status": "active",
+		"items": []m{{"sku": "S1", "amount": base, "minQty": 1}, {"sku": "S1", "amount": 9000, "minQty": 4}, {"sku": "S1", "amount": 9500, "minQty": 4}}}); st != 400 {
+		t.Fatalf("repeated volume step accepted: %d", st)
+	}
+	e.must(201, "POST", "/v1/price-lists", e.adminA, m{"name": "Volumen", "kind": "override", "status": "active",
+		"items": []m{{"sku": "S1", "amount": base, "minQty": 1}, {"sku": "S1", "amount": 9000, "minQty": 4}, {"sku": "S1", "amount": 8000, "minQty": 8}}})
+	e.drain()
+	unit := func(q int) float64 {
+		return sim(q)["lines"].([]any)[0].(map[string]any)["unit"].(map[string]any)["amount"].(float64)
+	}
+	if unit(3) != base || unit(4) != 9000 || unit(9) != 8000 {
+		t.Fatalf("volume prices: 3=%v 4=%v 9=%v", unit(3), unit(4), unit(9))
+	}
+}

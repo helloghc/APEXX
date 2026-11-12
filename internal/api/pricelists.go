@@ -18,6 +18,7 @@ import (
 type priceListItemView struct {
 	SKU    string `json:"sku"`
 	Amount *int64 `json:"amount,omitempty"`
+	MinQty int64  `json:"minQty,omitempty"`
 	Title  string `json:"title"`
 	Base   *int64 `json:"basePrice,omitempty"` // regular price in the list's channel
 	Final  *int64 `json:"finalPrice,omitempty"`
@@ -42,7 +43,7 @@ func priceListView(t *projection.Tenant, l promostore.PriceList) map[string]any 
 	}
 	items := make([]priceListItemView, 0, len(l.Items))
 	for _, it := range l.Items {
-		v := priceListItemView{SKU: it.SKU, Amount: it.Amount}
+		v := priceListItemView{SKU: it.SKU, Amount: it.Amount, MinQty: it.MinQty}
 		if va, p, err := t.Catalog.VariantBySKU(it.SKU); err == nil {
 			v.Title = strings.TrimSpace(p.Title + " " + va.Title)
 		}

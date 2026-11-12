@@ -24,6 +24,8 @@ import (
 type PriceListItem struct {
 	SKU    string `json:"sku"`
 	Amount *int64 `json:"amount,omitempty"`
+	// MinQty: the price applies from this quantity upward (volume pricing).
+	MinQty int64 `json:"minQty,omitempty"`
 }
 
 // PriceList is a scheduled override or percentage adjustment.
@@ -71,10 +73,20 @@ func (l *PriceList) Normalize() {
 	items := l.Items[:0:0]
 	for _, it := range l.Items {
 		it.SKU = strings.TrimSpace(it.SKU)
-		if it.SKU == "" || seen[it.SKU] {
+		if it.MinQty < 1 {
+			it.MinQty = 1
+		}
+		// The same line sent twice is kept once; two prices for the same SKU
+		// and quantity are left for Validate to report.
+		amt := int64(-1)
+		if it.Amount != nil {
+			amt = *it.Amount
+		}
+		k := fmt.Sprintf("%s|%d|%d", it.SKU, it.MinQty, amt)
+		if it.SKU == "" || seen[k] {
 			continue
 		}
-		seen[it.SKU] = true
+		seen[k] = true
 		if l.Kind != "override" {
 			it.Amount = nil
 		}
@@ -104,12 +116,26 @@ func (l *PriceList) Validate() []promo.FieldError {
 		if len(l.Items) == 0 {
 			add("items", "Agrega al menos un producto con su precio.")
 		}
+		seen := map[string]bool{}
 		for i, it := range l.Items {
 			if it.Amount == nil || *it.Amount < 0 || *it.Amount > 1_000_000_000_00 {
 				add(fmt.Sprintf("items[%d].amount", i), "Escribe el precio de "+it.SKU+".")
 			}
+			if it.MinQty < 0 || it.MinQty > 1_000_000 {
+				add(fmt.Sprintf("items[%d].minQty", i), "La cantidad mínima va de 1 a 1,000,000.")
+			}
+			k := fmt.Sprintf("%s|%d", it.SKU, max(it.MinQty, 1))
+			if seen[k] {
+				add(fmt.Sprintf("items[%d].minQty", i), "Ya hay un precio de "+it.SKU+" desde esa cantidad.")
+			}
+			seen[k] = true
 		}
 	case "adjust":
+		for i, it := range l.Items {
+			if it.MinQty > 1 {
+				add(fmt.Sprintf("items[%d].minQty", i), "Los precios por volumen solo existen en listas de precio fijo.")
+			}
+		}
 		if l.AdjustBps == 0 || l.AdjustBps < -10000 || l.AdjustBps > 100000 {
 			add("adjustBps", "El ajuste va de -100% a +1000% y no puede ser 0.")
 		}
@@ -219,12 +245,13 @@ func (s *Store) SavePriceList(ctx context.Context, tenant, actor string, l Price
 		}
 		skus := make([]string, len(l.Items))
 		amounts := make([]*int64, len(l.Items))
+		mins := make([]int64, len(l.Items))
 		for i, it := range l.Items {
-			skus[i], amounts[i] = it.SKU, it.Amount
+			skus[i], amounts[i], mins[i] = it.SKU, it.Amount, max(it.MinQty, 1)
 		}
 		if len(skus) > 0 {
-			if _, err := tx.Exec(ctx, `INSERT INTO price_list_items (tenant_id, list_id, sku, amount, currency)
-				SELECT $1, $2, x.sku, x.amount, $5 FROM unnest($3::text[], $4::bigint[]) AS x(sku, amount)`, tenant, l.ID, skus, amounts, l.Currency); err != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO price_list_items (tenant_id, list_id, sku, amount, currency, min_qty)
+				SELECT $1, $2, x.sku, x.amount, $5, x.min_qty FROM unnest($3::text[], $4::bigint[], $6::bigint[]) AS x(sku, amount, min_qty)`, tenant, l.ID, skus, amounts, l.Currency, mins); err != nil {
 				return err
 			}
 		}
@@ -279,13 +306,13 @@ func (s *Store) GetPriceList(ctx context.Context, tenant, id string) (PriceList,
 		if err != nil {
 			return err
 		}
-		rows, err := tx.Query(ctx, `SELECT sku, amount FROM price_list_items WHERE tenant_id=$1 AND list_id=$2 ORDER BY sku`, tenant, id)
+		rows, err := tx.Query(ctx, `SELECT sku, amount, min_qty FROM price_list_items WHERE tenant_id=$1 AND list_id=$2 ORDER BY sku, min_qty`, tenant, id)
 		if err != nil {
 			return err
 		}
 		l.Items, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (PriceListItem, error) {
 			var it PriceListItem
-			return it, r.Scan(&it.SKU, &it.Amount)
+			return it, r.Scan(&it.SKU, &it.Amount, &it.MinQty)
 		})
 		return err
 	})
@@ -312,18 +339,25 @@ func (s *Store) LoadPriceLists(ctx context.Context, tenant, id string) ([]pricin
 		return nil, err
 	}
 	for i := range lists {
-		rows, err := s.DB.System.Query(ctx, `SELECT sku, COALESCE(amount,0), currency FROM price_list_items WHERE tenant_id=$1 AND list_id=$2`, tenant, lists[i].ID)
+		rows, err := s.DB.System.Query(ctx, `SELECT sku, COALESCE(amount,0), currency, min_qty FROM price_list_items WHERE tenant_id=$1 AND list_id=$2 ORDER BY sku, min_qty`, tenant, lists[i].ID)
 		if err != nil {
 			return nil, err
 		}
 		for rows.Next() {
 			var sku, cur string
-			var amt int64
-			if err := rows.Scan(&sku, &amt, &cur); err != nil {
+			var amt, minQty int64
+			if err := rows.Scan(&sku, &amt, &cur, &minQty); err != nil {
 				rows.Close()
 				return nil, err
 			}
-			lists[i].Items[sku] = amt
+			if minQty <= 1 {
+				lists[i].Items[sku] = amt
+			} else {
+				if lists[i].Tiers == nil {
+					lists[i].Tiers = map[string][]pricing.ListTier{}
+				}
+				lists[i].Tiers[sku] = append(lists[i].Tiers[sku], pricing.ListTier{MinQty: minQty, Amount: amt})
+			}
 			lists[i].Currency = money.Currency(cur)
 		}
 		rows.Close()

@@ -44,6 +44,15 @@ type List struct {
 	EndsAt        *time.Time
 	Items         map[string]int64 // sku -> override amount (ignored for adjust)
 	Currency      money.Currency   // currency of the override amounts ("" = MXN)
+	// Tiers are override prices from a quantity upward (volume pricing),
+	// sorted by MinQty; Items holds the price from 1 piece.
+	Tiers map[string][]ListTier
+}
+
+// ListTier is a volume price of a list.
+type ListTier struct {
+	MinQty int64
+	Amount int64
 }
 
 // Conversion lets a channel show prices of another channel in its own
@@ -259,6 +268,11 @@ func (s *Service) ResolveAt(channel, sku string, qty int64, group string, now ti
 		unit := q.Unit.Amount
 		if l.Kind == "override" {
 			amt, has := l.Items[sku]
+			for _, t := range l.Tiers[sku] {
+				if t.MinQty <= qty {
+					amt, has = t.Amount, true
+				}
+			}
 			if !has {
 				continue
 			}
@@ -321,4 +335,24 @@ func (s *Service) currencyOf(channel string) money.Currency {
 		}
 	}
 	return ""
+}
+
+// VolumeTiers returns the volume prices that apply to a SKU right now, from
+// the highest-priority fixed-price list that has them, to show as a table.
+func (s *Service) VolumeTiers(channel, sku, group string, now time.Time) []ListTier {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, l := range s.lists {
+		if l.Kind != "override" || !l.Applies(channel, group, now) {
+			continue
+		}
+		if _, has := l.Items[sku]; !has && len(l.Tiers[sku]) == 0 {
+			continue
+		}
+		if len(l.Tiers[sku]) == 0 {
+			return nil // the winning list has no volume prices for it
+		}
+		return append([]ListTier(nil), l.Tiers[sku]...)
+	}
+	return nil
 }

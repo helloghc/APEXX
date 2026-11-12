@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/helloghc/apexx/internal/cart"
 	"github.com/helloghc/apexx/internal/i18n"
 	"sync/atomic"
 
@@ -138,6 +139,22 @@ func (p *Projector) applySettings(ctx context.Context, t *Tenant, key string) er
 		}
 		cfg.Merge(texts)
 		t.langs.Store(&cfg)
+	}
+	if key == "" || key == store.KeyQtyRules {
+		docs, err := p.db.ListDocs(ctx, t.ID, "qty_rules")
+		if err != nil {
+			return err
+		}
+		rules := map[string][]cart.QtyRule{}
+		for _, d := range docs {
+			var rs []cart.QtyRule
+			if json.Unmarshal(d.Data, &rs) == nil && len(rs) > 0 {
+				rules[d.ID] = rs
+			}
+		}
+		t.mu.Lock()
+		t.Cart.QtyRules = rules
+		t.mu.Unlock()
 	}
 	if key == "" || key == store.KeySubscriptions {
 		var cfg subs.Config

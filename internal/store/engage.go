@@ -399,3 +399,6 @@ func (d *DB) SellerNames(ctx context.Context, tenant string) (map[string]string,
 
 // KeyLanguages is the TopicSettings key of the storefront languages.
 const KeyLanguages = "languages"
+
+// KeyQtyRules is the TopicSettings key of product quantity rules.
+const KeyQtyRules = "qty_rules"

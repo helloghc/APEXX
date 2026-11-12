@@ -7,6 +7,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/helloghc/apexx/internal/store"
 	"html"
 	"html/template"
@@ -15,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/helloghc/apexx/internal/builder"
 	"github.com/helloghc/apexx/internal/catalog"
@@ -534,6 +536,9 @@ type productPage struct {
 	Gallery          []template.HTML
 	Specs            []specView
 	Extras           []extraSection // records of the store's own entities linked to this product
+	QtyMin, QtyStep  int64          // quantity rules for everyone (the cart enforces them too)
+	QtyMax           int64
+	Volume           []specView // volume prices of the first variant: "Desde 12 piezas" -> "$90.00 MXN"
 	Similar          []cardView
 	Accessories      []cardView
 	Price, CompareAt string
@@ -617,6 +622,24 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	pg.Extras = s.extrasFor(r.Context(), t.ID, p.ID, p.Handle)
+	pg.QtyMin, pg.QtyStep = 1, 1
+	for _, rule := range t.QtyRulesOf(p.ID) {
+		if rule.Group == "" {
+			pg.QtyMin, pg.QtyStep, pg.QtyMax = max(rule.Min, 1), max(rule.Step, 1), rule.Max
+			if pg.QtyMin%pg.QtyStep != 0 {
+				pg.QtyMin = (pg.QtyMin/pg.QtyStep + 1) * pg.QtyStep
+			}
+		}
+	}
+	if len(p.Variants) > 0 {
+		for _, tier := range t.Pricing.VolumeTiers(pd.Channel, p.Variants[0].SKU, "", time.Now()) {
+			cur := money.Currency("MXN")
+			if c, ok := t.Channel(pd.Channel); ok {
+				cur = c.Currency
+			}
+			pg.Volume = append(pg.Volume, specView{fmt.Sprintf("Desde %d piezas", tier.MinQty), pesos(money.New(tier.Amount, cur))})
+		}
+	}
 	of := offerOf(t, pd.Channel)
 	related := func(ids []string) []cardView {
 		var out []cardView

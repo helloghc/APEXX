@@ -88,7 +88,7 @@ function PriceListDialog({ id, canEdit, onClose, onSaved }: { id: string; canEdi
     const d = detail.data.list;
     setL({ id: d.id, name: d.name, description: d.description, status: d.status, channel: d.channel, customerGroup: d.customerGroup, kind: d.kind, adjustBps: d.adjustBps, appliesTo: d.appliesTo, priority: d.priority, startsAt: d.startsAt, endsAt: d.endsAt, items: [] });
     setPercent(bpsToPercent(d.adjustBps));
-    setRows(detail.data.items.map((i) => (d.kind === "override" ? `${i.sku}, ${i.amount != null ? centsToPesos(i.amount) : ""}` : i.sku)).join("\n"));
+    setRows(detail.data.items.map((i) => (d.kind === "override" ? `${i.sku}, ${i.amount != null ? centsToPesos(i.amount) : ""}${i.minQty && i.minQty > 1 ? `, ${i.minQty}` : ""}` : i.sku)).join("\n"));
   }, [detail.data]);
 
   async function submit(e: FormEvent) {
@@ -96,11 +96,13 @@ function PriceListDialog({ id, canEdit, onClose, onSaved }: { id: string; canEdi
     const errs: Record<string, string> = {};
     const items: PriceListInput["items"] = [];
     rows.split("\n").map((r) => r.trim()).filter(Boolean).forEach((r, i) => {
-      const [sku = "", price = ""] = r.split(/[,\t;]/).map((x) => x.trim());
+      const [sku = "", price = "", from = ""] = r.split(/[\t;]|,(?=\s*[^\d\s])|,\s+/).map((x) => x.trim());
       if (l.kind === "override") {
         const amount = parsePesos(price);
+        const minQty = from ? Number(from.replace(/\D/g, "")) : 1;
         if (!sku || amount == null) errs.items = `Línea ${i + 1}: escribe “SKU, precio”.`;
-        else items.push({ sku, amount });
+        else if (!(minQty >= 1)) errs.items = `Línea ${i + 1}: la cantidad desde la que aplica debe ser 1 o más.`;
+        else items.push({ sku, amount, minQty });
       } else if (sku) items.push({ sku });
     });
     let adjustBps = 0;
@@ -167,8 +169,8 @@ function PriceListDialog({ id, canEdit, onClose, onSaved }: { id: string; canEdi
               <Field label="Prioridad" hint="Si dos listas coinciden, gana la mayor."><Input aria-label="Prioridad" inputMode="numeric" value={String(l.priority)} onChange={(e) => setL({ ...l, priority: Number(e.target.value.replace(/[^\d-]/g, "")) || 0 })} /></Field>
             </div>
             {(l.kind === "override" || l.appliesTo === "items") && (
-              <Field label={l.kind === "override" ? "SKUs y precios" : "SKUs"} hint={l.kind === "override" ? "Una línea por SKU: SKU, precio. Puedes pegar desde una hoja de cálculo." : "Un SKU por línea."} error={errors.items}>
-                <Textarea aria-label="SKUs" rows={6} className="font-mono text-sm" value={rows} onChange={(e) => setRows(e.target.value)} placeholder={l.kind === "override" ? "SKU-000001-1, 999.00" : "SKU-000001-1"} />
+              <Field label={l.kind === "override" ? "SKUs y precios" : "SKUs"} hint={l.kind === "override" ? "Una línea por precio: SKU, precio y, si es precio por volumen, la cantidad desde la que aplica (SKU-1, 90.00, 12). Puedes pegar desde una hoja de cálculo." : "Un SKU por línea."} error={errors.items}>
+                <Textarea aria-label="SKUs" rows={6} className="font-mono text-sm" value={rows} onChange={(e) => setRows(e.target.value)} placeholder={l.kind === "override" ? "SKU-000001-1, 999.00\nSKU-000001-1, 899.00, 12" : "SKU-000001-1"} />
               </Field>
             )}
           </fieldset>

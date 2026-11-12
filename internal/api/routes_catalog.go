@@ -25,6 +25,8 @@ func (s *Server) routesCatalog(handle func(string, http.HandlerFunc)) {
 	handle("POST /v1/products", s.authed("catalog", auth.Edit, s.createProduct))
 	handle("POST /v1/products/bulk", s.authed("catalog", auth.Edit, s.bulkProducts))
 	handle("GET /v1/products/{id}", s.authed("catalog", auth.Read, s.getProduct))
+	handle("GET /v1/products/{id}/quantity-rules", s.staff("catalog", auth.Read, s.getQtyRules))
+	handle("PUT /v1/products/{id}/quantity-rules", s.authed("catalog", auth.Edit, s.putQtyRules))
 	handle("GET /v1/products/{id}/translations", s.staff("catalog", auth.Read, s.getProductTexts))
 	handle("PUT /v1/products/{id}/translations", s.authed("catalog", auth.Edit, s.putProductTexts))
 	handle("PUT /v1/products/{id}", s.authed("catalog", auth.Edit, s.putProduct))

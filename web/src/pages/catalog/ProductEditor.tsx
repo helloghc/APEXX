@@ -579,6 +579,7 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
               <div className="line-clamp-2 text-muted-foreground">{d.seoDescription || d.description || "Descripción del producto."}</div>
             </div>
           </Section>
+          {!isNew && <QtyRules id={id} canEdit={canEdit} />}
           {!isNew && <Translations id={id} canEdit={canEdit} />}
         </div>
 
@@ -715,6 +716,52 @@ function Translations({ id, canEdit }: { id: string; canEdit: boolean }) {
             : <Input id={`tr-${lang}-${f}`} value={draft[lang]?.[f] ?? ""} placeholder={source[f]} disabled={!canEdit} onChange={(e) => setDraft((d) => ({ ...d, [lang]: { ...d[lang], [f]: e.target.value } }))} />}
         </Field>
       ))}
+    </Section>
+  );
+}
+
+interface QtyRule { group: string; min: number; max: number; step: number }
+
+/** Quantity rules: minimum, maximum and multiples per order, for everyone or
+ *  for the companies of one price group. The cart enforces them. */
+function QtyRules({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["product", id, "qty-rules"], queryFn: () => request<{ rules: QtyRule[] }>("GET", `/v1/products/${encodeURIComponent(id)}/quantity-rules`) });
+  const [rules, setRules] = useState<QtyRule[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => { if (q.data) setRules(q.data.rules); }, [q.data]);
+  if (!q.data) return null;
+  const set = (i: number, p: Partial<QtyRule>) => setRules((r) => r.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const num = (v: string) => Math.max(0, Number(v.replace(/\D/g, "")) || 0);
+  async function save() {
+    setBusy(true); setErr("");
+    try {
+      const r = await request<{ rules: QtyRule[] }>("PUT", `/v1/products/${encodeURIComponent(id)}/quantity-rules`, { rules });
+      setRules(r.rules);
+      toast.success("Reglas de cantidad guardadas. El carrito ya las aplica.");
+      void qc.invalidateQueries({ queryKey: ["product", id, "qty-rules"] });
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const dirty = JSON.stringify(rules) !== JSON.stringify(q.data.rules);
+  return (
+    <Section title="Cantidades por pedido" description="Por ejemplo, venta por caja de 12 o un mínimo de 6 piezas. Puedes poner una regla distinta para las empresas de un grupo de precios." actions={canEdit && <Button size="sm" disabled={!dirty || busy} onClick={() => void save()}>{busy ? "Guardando…" : "Guardar"}</Button>}>
+      {rules.length === 0 && <p className="text-sm text-muted-foreground">Sin reglas: se puede comprar cualquier cantidad.</p>}
+      {rules.map((r, i) => (
+        <div key={i} className="grid gap-2 rounded-md border p-3 sm:grid-cols-4 sm:items-end">
+          <Field label="Para" htmlFor={`qr-g-${i}`}><Input id={`qr-g-${i}`} value={r.group} disabled={!canEdit} placeholder="Todos" onChange={(e) => set(i, { group: e.target.value.trim() })} /></Field>
+          <Field label="Mínimo" htmlFor={`qr-min-${i}`}><Input id={`qr-min-${i}`} inputMode="numeric" value={r.min || ""} disabled={!canEdit} placeholder="1" onChange={(e) => set(i, { min: num(e.target.value) })} /></Field>
+          <Field label="Múltiplos de" htmlFor={`qr-step-${i}`}><Input id={`qr-step-${i}`} inputMode="numeric" value={r.step || ""} disabled={!canEdit} placeholder="1" onChange={(e) => set(i, { step: num(e.target.value) })} /></Field>
+          <div className="flex items-end gap-2"><Field label="Máximo" htmlFor={`qr-max-${i}`}><Input id={`qr-max-${i}`} inputMode="numeric" value={r.max || ""} disabled={!canEdit} placeholder="Sin límite" onChange={(e) => set(i, { max: num(e.target.value) })} /></Field>{canEdit && <Button type="button" size="icon" variant="ghost" aria-label="Quitar regla" onClick={() => setRules((x) => x.filter((_, j) => j !== i))}><Trash2 aria-hidden="true" /></Button>}</div>
+        </div>
+      ))}
+      {err && <p className="text-sm text-bad" role="alert">{err}</p>}
+      {canEdit && <div><Button type="button" variant="outline" size="sm" onClick={() => setRules((x) => [...x, { group: x.some((y) => y.group === "") ? "mayoreo" : "", min: 0, max: 0, step: 0 }])}><Plus aria-hidden="true" /> Agregar regla</Button></div>}
+      <p className="text-xs text-muted-foreground">“Para” vacío aplica a todos. Escribe el grupo de precios de una empresa (Empresas → grupo de precios) para una regla solo suya.</p>
     </Section>
   );
 }

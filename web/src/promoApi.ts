@@ -246,6 +246,7 @@ export interface Facets {
 export interface PriceListItem {
   sku: string;
   amount?: number;
+  minQty?: number;
   title?: string;
   basePrice?: number;
   finalPrice?: number;
@@ -284,7 +285,7 @@ export interface PriceListInput {
   priority: number;
   startsAt?: string;
   endsAt?: string;
-  items: { sku: string; amount?: number }[];
+  items: { sku: string; amount?: number; minQty?: number }[];
 }
 
 export interface BulkChange {
