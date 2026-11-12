@@ -1,6 +1,6 @@
 import { ProductPicker } from "../catalog/ProductPicker";
 import { CustomFields } from "@/components/CustomFields";
-import { AutopayCard, Branches, Members, Requests, RulesEditor, type Branch, type Rule } from "./CompanyDepth";
+import { AutopayCard, Branches, Members, Requests, Roles, RulesEditor, type Branch, type Rule } from "./CompanyDepth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Building2, Copy, Database, Download, Plus, Trash2 } from "lucide-react";
@@ -191,6 +191,7 @@ function CompanyPage({ id, isAdmin }: { id: string; isAdmin: boolean }) {
         </CardContent>
       </Card>
       <CustomFields resource="company" id={id} canEdit={isAdmin} />
+      <Roles id={id} canEdit={isAdmin} />
       <Members id={id} canEdit={isAdmin} onChanged={refresh} />
       <Branches id={id} canEdit={isAdmin} />
       <Requests id={id} />

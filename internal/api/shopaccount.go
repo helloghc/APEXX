@@ -518,7 +518,7 @@ func (s *Server) accountHome(w http.ResponseWriter, r *http.Request, d accountDa
 		a := d.Company
 		cur := "MXN"
 		p := &companyPortal{Spent: mon(a.MonthSpent, cur), BranchSpent: mon(a.LocationSpent, cur)}
-		if a.Terms != "prepaid" {
+		if a.Terms != "prepaid" && a.CanViewCredit {
 			p.Available = mon(a.Available, cur)
 		}
 		if a.MonthlyLimit > 0 {

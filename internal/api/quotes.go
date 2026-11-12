@@ -93,6 +93,10 @@ func (s *Server) shopRequestQuote(w http.ResponseWriter, r *http.Request) {
 	}
 	in := body.QuoteRequest
 	if c, email := s.shopperCompany(r); c != nil {
+		if !c.CanQuote {
+			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "role_forbidden", Detail: "Tu rol en la empresa no permite pedir cotizaciones"})
+			return
+		}
 		in.Company, in.Customer.Email = c, email
 	}
 	q, err := s.Orders.RequestQuote(r.Context(), t.ID, in)

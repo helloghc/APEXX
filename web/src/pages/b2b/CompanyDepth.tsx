@@ -14,13 +14,16 @@ import { centsToPesos, formatMoney, parsePesos } from "@/money";
 import { dateTime } from "../common";
 
 const enc = encodeURIComponent;
-export interface Member { email: string; approver: boolean; level: number; monthlyLimit: number; location: string; admin: boolean; substitute: string; awayUntil: string; monthSpent?: number }
+export interface Member { email: string; approver: boolean; level: number; monthlyLimit: number; location: string; admin: boolean; substitute: string; awayUntil: string; monthSpent?: number; role?: string }
+export interface RolePerms { buyCredit: boolean; viewCredit: boolean; quote: boolean; approve: boolean; level: number; manage: boolean }
+export interface CRole { id: string; name: string; perms: RolePerms; members: number }
 export interface Branch { id: string; name: string; priceGroup: string; monthlyLimit: number; address: Record<string, string>; monthSpent?: number }
 export interface Rule { minTotal: number; level: number; category?: string; location?: string }
 interface Step { level: number; action: string; at: string }
 interface Req { id: string; status: string; total: number; currency: string; level: number; requiredLevel: number; reason: string; requester: string; location?: string; orderId?: string; createdAt: string; expiresAt: string; decisions: Step[] }
 
 const api = {
+  roles: (id: string) => request<{ items: CRole[] }>("GET", `/v1/companies/${enc(id)}/roles`).then((r) => r.items),
   members: (id: string) => request<{ items: Member[] }>("GET", `/v1/companies/${enc(id)}/members`).then((r) => r.items),
   saveMembers: (id: string, items: Member[]) => request<{ items: Member[] }>("PUT", `/v1/companies/${enc(id)}/members`, { items }),
   branches: (id: string) => request<{ items: Branch[] }>("GET", `/v1/companies/${enc(id)}/locations`).then((r) => r.items),
@@ -62,7 +65,7 @@ export function Members({ id, canEdit, onChanged }: { id: string; canEdit: boole
             ))}</TableBody></Table></div>
         )}
       </CardContent>
-      {edit && q.data && <MembersDialog id={id} members={q.data} branches={br.data ?? []} onClose={() => setEdit(false)} onDone={() => { void qc.invalidateQueries({ queryKey: ["company-members", id] }); onChanged(); }} />}
+      {edit && q.data && <MembersDialog id={id} members={q.data} branches={br.data ?? []} onClose={() => setEdit(false)} onDone={() => { void qc.invalidateQueries({ queryKey: ["company-members", id] }); void qc.invalidateQueries({ queryKey: ["company-roles", id] }); onChanged(); }} />}
     </Card>
   );
 }
@@ -70,6 +73,7 @@ export function Members({ id, canEdit, onChanged }: { id: string; canEdit: boole
 const blank = (): Member => ({ email: "", approver: false, level: 1, monthlyLimit: 0, location: "", admin: false, substitute: "", awayUntil: "" });
 
 function MembersDialog({ id, members, branches, onClose, onDone }: { id: string; members: Member[]; branches: Branch[]; onClose: () => void; onDone: () => void }) {
+  const roles = useQuery({ queryKey: ["company-roles", id], queryFn: () => api.roles(id) });
   const [rows, setRows] = useState(members.map((m) => ({ ...m, cap: m.monthlyLimit ? centsToPesos(m.monthlyLimit) : "" })));
   const [error, setError] = useState("");
   const set = (i: number, p: Partial<(typeof rows)[number]>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
@@ -84,16 +88,19 @@ function MembersDialog({ id, members, branches, onClose, onDone }: { id: string;
         <DialogHeader><DialogTitle>Compradores de la empresa</DialogTitle><DialogDescription>Quien aprueba de nivel 2 firma lo que supera al nivel 1. Si alguien se ausenta, su suplente recibe los enlaces mientras tanto.</DialogDescription></DialogHeader>
         <form id="mem-form" className="grid max-h-[60vh] gap-3 overflow-auto pr-1" onSubmit={(e: FormEvent) => { e.preventDefault(); save.mutate(); }}>
           {rows.map((r, i) => (
-            <fieldset key={i} className="grid gap-2 rounded-md border p-3 sm:grid-cols-6">
+            <fieldset key={i} className="grid gap-2 rounded-md border p-3 sm:grid-cols-7">
               <legend className="sr-only">Comprador {i + 1}</legend>
               <div className="grid gap-1 sm:col-span-2"><Label htmlFor={`m-email-${i}`}>Correo</Label><Input id={`m-email-${i}`} type="email" className="font-mono" value={r.email} onChange={(e) => set(i, { email: e.target.value })} /></div>
               <div className="grid gap-1"><Label htmlFor={`m-cap-${i}`}>Tope al mes (MXN)</Label><Input id={`m-cap-${i}`} inputMode="decimal" placeholder="Sin tope" value={r.cap} onChange={(e) => set(i, { cap: e.target.value })} /></div>
               <div className="grid gap-1"><Label htmlFor={`m-loc-${i}`}>Sucursal</Label>
                 <select id={`m-loc-${i}`} className="h-9 rounded-md border bg-background px-2 text-sm" value={r.location} onChange={(e) => set(i, { location: e.target.value })}>
                   <option value="">Empresa</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
+              <div className="grid gap-1"><Label htmlFor={`m-role-${i}`}>Rol</Label>
+                <select id={`m-role-${i}`} className="h-9 rounded-md border bg-background px-2 text-sm" value={r.role ?? ""} onChange={(e) => { const ro = roles.data?.find((x) => x.id === e.target.value); set(i, ro ? { role: ro.id, approver: ro.perms.approve, admin: ro.perms.manage, level: ro.perms.approve ? ro.perms.level : 1 } : { role: "" }); }}>
+                  <option value="">Sin rol (casillas)</option>{roles.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
               <div className="grid content-end gap-1 text-sm">
-                <label className="flex items-center gap-2"><input type="checkbox" checked={r.approver} onChange={(e) => set(i, { approver: e.target.checked })} />Aprueba</label>
-                <label className="flex items-center gap-2"><input type="checkbox" checked={r.admin} onChange={(e) => set(i, { admin: e.target.checked })} />Administra</label>
+                <label className="flex items-center gap-2"><input type="checkbox" disabled={!!r.role} checked={r.approver} onChange={(e) => set(i, { approver: e.target.checked })} />Aprueba</label>
+                <label className="flex items-center gap-2"><input type="checkbox" disabled={!!r.role} checked={r.admin} onChange={(e) => set(i, { admin: e.target.checked })} />Administra</label>
               </div>
               <div className="flex items-end justify-end"><Button type="button" variant="ghost" size="icon" aria-label={`Quitar ${r.email || "comprador"}`} onClick={() => setRows(rows.filter((_, j) => j !== i))}><Trash2 className="size-4" /></Button></div>
               {r.approver && <>
@@ -257,6 +264,62 @@ export function AutopayCard({ id, isAdmin, credit }: { id: string; isAdmin: bool
           </form>
         </>}
       </CardContent>
+    </Card>
+  );
+}
+
+const PERMS: { key: keyof RolePerms; label: string }[] = [
+  { key: "buyCredit", label: "Compra a crédito" }, { key: "viewCredit", label: "Ve el crédito" }, { key: "quote", label: "Pide cotizaciones" },
+  { key: "approve", label: "Aprueba compras" }, { key: "manage", label: "Administra la empresa" },
+];
+
+/** Roles of a company: named sets of permissions given to its people. */
+export function Roles({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["company-roles", id], queryFn: () => api.roles(id) });
+  const [edit, setEdit] = useState<CRole | null>(null);
+  const empty: CRole = { id: "", name: "", perms: { buyCredit: true, viewCredit: true, quote: true, approve: false, level: 1, manage: false }, members: 0 };
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ["company-roles", id] }); void qc.invalidateQueries({ queryKey: ["company-members", id] }); };
+  async function save() {
+    if (!edit) return;
+    try {
+      await request(edit.id ? "PUT" : "POST", `/v1/companies/${enc(id)}/roles${edit.id ? "/" + enc(edit.id) : ""}`, { name: edit.name, perms: edit.perms });
+      toast.success(edit.id ? "Rol actualizado: sus personas ya tienen los permisos nuevos." : "Rol creado."); setEdit(null); refresh();
+    } catch (e) { toast.error(errorMessage(e)); }
+  }
+  async function remove(r: CRole) {
+    if (!window.confirm(`¿Borrar el rol «${r.name}»? Sus ${r.members} personas conservan lo que podían hacer, ahora con casillas.`)) return;
+    try { await request("DELETE", `/v1/companies/${enc(id)}/roles/${enc(r.id)}`, undefined, { as: "none" }); toast.success("Rol borrado."); refresh(); } catch (e) { toast.error(errorMessage(e)); }
+  }
+  return (
+    <Card data-company-roles>
+      <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Roles</CardTitle><CardDescription>Qué puede hacer cada persona de la empresa. La tienda lo revisa en cada compra y cotización.</CardDescription></div>
+        {canEdit && <Button variant="outline" onClick={() => setEdit(empty)}><Plus className="size-4" /> Nuevo rol</Button>}</CardHeader>
+      <CardContent>
+        {(q.data?.length ?? 0) === 0 ? <p className="text-sm text-muted-foreground">Sin roles: cada persona usa sus casillas de aprobación y administración.</p> : (
+          <Table><TableHeader><TableRow><TableHead>Rol</TableHead><TableHead>Permisos</TableHead><TableHead className="text-right">Personas</TableHead><TableHead /></TableRow></TableHeader>
+            <TableBody>{q.data!.map((r) => (
+              <TableRow key={r.id}><TableCell className="font-medium">{r.name}</TableCell>
+                <TableCell><div className="flex flex-wrap gap-1">{PERMS.filter((p) => r.perms[p.key]).map((p) => <Badge key={p.key} variant="secondary">{p.key === "approve" ? `Aprueba nivel ${r.perms.level}` : p.label}</Badge>)}</div></TableCell>
+                <TableCell className="text-right tabular-nums">{r.members}</TableCell>
+                <TableCell className="whitespace-nowrap text-right">{canEdit && <><Button size="sm" variant="ghost" onClick={() => setEdit(r)}>Editar</Button><Button size="icon" variant="ghost" aria-label={`Borrar rol ${r.name}`} onClick={() => void remove(r)}><Trash2 className="size-4" /></Button></>}</TableCell></TableRow>
+            ))}</TableBody></Table>
+        )}
+      </CardContent>
+      {edit && (
+        <Dialog open onOpenChange={(o) => !o && setEdit(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>{edit.id ? "Editar rol" : "Nuevo rol"}</DialogTitle><DialogDescription>Los cambios aplican de inmediato a todas las personas con este rol.</DialogDescription></DialogHeader>
+            <div className="grid gap-3">
+              <div className="grid gap-1.5"><Label htmlFor="cr-name">Nombre</Label><Input id="cr-name" maxLength={60} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="Comprador de planta" /></div>
+              {PERMS.map((p) => <label key={p.key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!edit.perms[p.key]} onChange={(e) => setEdit({ ...edit, perms: { ...edit.perms, [p.key]: e.target.checked } })} />{p.label}</label>)}
+              {edit.perms.approve && <div className="grid gap-1.5"><Label htmlFor="cr-level">Nivel de aprobación</Label>
+                <select id="cr-level" className="h-9 rounded-md border bg-background px-2 text-sm" value={edit.perms.level || 1} onChange={(e) => setEdit({ ...edit, perms: { ...edit.perms, level: Number(e.target.value) } })}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>}
+            </div>
+            <DialogFooter><Button variant="outline" onClick={() => setEdit(null)}>Cancelar</Button><Button disabled={!edit.name.trim()} onClick={() => void save()}>Guardar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 }

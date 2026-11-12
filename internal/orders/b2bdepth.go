@@ -196,13 +196,14 @@ type Member struct {
 	Substitute   string `json:"substitute"` // email of another member who approves while this one is away
 	AwayUntil    string `json:"awayUntil"`
 	MonthSpent   int64  `json:"monthSpent"`
+	Role         string `json:"role"` // a company role; it sets approval and administration
 }
 
 // Members lists the buyers of a company with their roles and month.
 func (s *Service) Members(ctx context.Context, tenant, company string) ([]Member, error) {
 	var out []Member
 	err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT b.email_hash, b.email, b.approver, b.approver_level, b.monthly_limit, b.location_id, b.admin, b.substitute_hash, COALESCE(to_char(b.away_until,'YYYY-MM-DD'),''),
+		rows, err := tx.Query(ctx, `SELECT b.email_hash, b.email, b.approver, b.approver_level, b.monthly_limit, b.location_id, b.admin, b.substitute_hash, COALESCE(to_char(b.away_until,'YYYY-MM-DD'),''), COALESCE(b.role_id,''),
 				COALESCE((SELECT sum(amount) FROM company_entries e WHERE e.tenant_id=b.tenant_id AND e.company_id=b.company_id AND e.buyer_hash=b.email_hash
 					AND e.kind IN ('charge','release') AND e.created_at >= date_trunc('month', now())),0)
 			FROM company_buyers b WHERE b.tenant_id=$1 AND b.company_id=$2`, tenant, company)
@@ -216,7 +217,7 @@ func (s *Service) Members(ctx context.Context, tenant, company string) ([]Member
 		list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (row, error) {
 			var x row
 			var enc []byte
-			if err := r.Scan(&x.hash, &enc, &x.m.Approver, &x.m.Level, &x.m.MonthlyLimit, &x.m.Location, &x.m.Admin, &x.sub, &x.m.AwayUntil, &x.m.MonthSpent); err != nil {
+			if err := r.Scan(&x.hash, &enc, &x.m.Approver, &x.m.Level, &x.m.MonthlyLimit, &x.m.Location, &x.m.Admin, &x.sub, &x.m.AwayUntil, &x.m.Role, &x.m.MonthSpent); err != nil {
 				return x, err
 			}
 			if p, err := s.Keys.Decrypt(tenant, enc, "buyer:"+company); err == nil {
@@ -254,6 +255,30 @@ func (s *Service) SaveMembers(ctx context.Context, tenant, actor, company, by st
 		return nil, FieldError{"members", "Máximo 500 compradores por empresa"}
 	}
 	by = strings.ToLower(strings.TrimSpace(by))
+	// A role sets the approval and administration switches of its members.
+	var roles map[string]RolePerms
+	if err := s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		var err error
+		roles, err = rolesByIDTx(ctx, tx, tenant, company)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+	for i := range in {
+		m := &in[i]
+		m.Role = strings.TrimSpace(m.Role)
+		if m.Role == "" {
+			continue
+		}
+		p, ok := roles[m.Role]
+		if !ok {
+			return nil, FieldError{"members", m.Email + ": ese rol no existe en la empresa"}
+		}
+		m.Approver, m.Admin = p.Approve, p.Manage
+		if p.Approve {
+			m.Level = p.Level
+		}
+	}
 	seen := map[string]bool{}
 	for i := range in {
 		m := &in[i]
@@ -348,12 +373,12 @@ func (s *Service) SaveMembers(ctx context.Context, tenant, actor, company, by st
 			if m.Substitute != "" {
 				sub = hash[m.Substitute]
 			}
-			ct, err := tx.Exec(ctx, `INSERT INTO company_buyers (tenant_id, company_id, email_hash, email, approver, approver_level, monthly_limit, location_id, admin, substitute_hash, away_until)
-				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULLIF($11,'')::date)
+			ct, err := tx.Exec(ctx, `INSERT INTO company_buyers (tenant_id, company_id, email_hash, email, approver, approver_level, monthly_limit, location_id, admin, substitute_hash, away_until, role_id)
+				VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULLIF($11,'')::date,NULLIF($12,''))
 				ON CONFLICT (tenant_id, email_hash) DO UPDATE SET approver=EXCLUDED.approver, approver_level=EXCLUDED.approver_level, monthly_limit=EXCLUDED.monthly_limit,
-					location_id=EXCLUDED.location_id, admin=EXCLUDED.admin, substitute_hash=EXCLUDED.substitute_hash, away_until=EXCLUDED.away_until
+					location_id=EXCLUDED.location_id, admin=EXCLUDED.admin, substitute_hash=EXCLUDED.substitute_hash, away_until=EXCLUDED.away_until, role_id=EXCLUDED.role_id
 				WHERE company_buyers.company_id=EXCLUDED.company_id`,
-				tenant, company, hash[m.Email], enc, m.Approver, m.Level, m.MonthlyLimit, m.Location, m.Admin, sub, m.AwayUntil)
+				tenant, company, hash[m.Email], enc, m.Approver, m.Level, m.MonthlyLimit, m.Location, m.Admin, sub, m.AwayUntil, m.Role)
 			if err != nil {
 				return err
 			}

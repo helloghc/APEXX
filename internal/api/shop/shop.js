@@ -327,10 +327,10 @@ function downloadsBox(ds) {
       if (!c || !coBox) return;
       company = c; $("#email").value = c.email; $("#email").readOnly = true;
       coBox.innerHTML = "<p class='testnote'>Compras para <strong>" + esc(c.name) + "</strong>" + (c.discountBps ? " con " + c.discountBps / 100 + "% de precio de empresa" : "") + ".</p>" +
-        (c.terms !== "prepaid" ? "<div class='testcards'>" + (c.creditOnly ? "" : "<label><input type='radio' name='paymode' value='card' checked> Pagar con tarjeta</label>") + "<label><input type='radio' name='paymode' id='paycredit' value='credit'" + (c.creditOnly ? " checked" : "") + "> Pagar a crédito de la empresa (" + (TERMS[c.terms] || "") + ") · disponible " + money({ amount: c.available, currency: "MXN" }) + "</label></div>" : "") +
+        (c.terms !== "prepaid" && c.canCredit !== false ? "<div class='testcards'>" + (c.creditOnly ? "" : "<label><input type='radio' name='paymode' value='card' checked> Pagar con tarjeta</label>") + "<label><input type='radio' name='paymode' id='paycredit' value='credit'" + (c.creditOnly ? " checked" : "") + "> Pagar a crédito de la empresa (" + (TERMS[c.terms] || "") + ")" + (c.available >= 0 ? " · disponible " + money({ amount: c.available, currency: "MXN" }) : "") + "</label></div>" : "") +
         "<div class='field'><label for='po'>Orden de compra" + (c.requirePO ? "" : " (opcional)") + "</label><input id='po' name='po' maxlength='60' autocomplete='off'" + (c.requirePO ? " required" : "") + "></div>";
       coBox.addEventListener("change", () => { payBox.hidden = onCredit(); if (instBox && onCredit()) instBox.innerHTML = ""; payBtn.textContent = onCredit() ? "Confirmar pedido a crédito" : payBtn.textContent; if (!onCredit()) paintWallet(); });
-      if (c.creditOnly) { payBox.hidden = true; payBtn.textContent = "Confirmar pedido a crédito"; }
+      if (c.creditOnly && c.canCredit !== false) { payBox.hidden = true; payBtn.textContent = "Confirmar pedido a crédito"; }
       refresh();
     }).catch(() => {});
     const gcApply = $("[data-gc-apply]");

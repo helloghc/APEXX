@@ -100,6 +100,11 @@ type CompanyAccess struct {
 	Rules             []ApprovalRule `json:"-"`
 	BuyerHash         []byte         `json:"-"`
 	CatalogRestricted bool           `json:"catalogRestricted,omitempty"`
+	// What the buyer's role allows (everything when they have no role).
+	CanCredit     bool   `json:"canCredit"`
+	CanViewCredit bool   `json:"canViewCredit"`
+	CanQuote      bool   `json:"canQuote"`
+	Role          string `json:"role,omitempty"`
 }
 
 var termDays = map[string]int{"prepaid": 0, "net15": 15, "net30": 30, "net60": 60}
@@ -436,16 +441,24 @@ func (s *Service) CompanyForEmail(ctx context.Context, tenant, email string) (*C
 	var limit, balance int64
 	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		var locGroup string
+		var perms *RolePerms
 		if err := tx.QueryRow(ctx, `SELECT c.id, c.name, c.terms, c.discount_bps, c.credit_limit,
 				COALESCE((SELECT sum(amount) FROM company_entries e WHERE e.tenant_id=c.tenant_id AND e.company_id=c.id),0), c.price_group, c.approval_threshold, b.approver,
 				c.tax_exempt AND (c.tax_exempt_until IS NULL OR c.tax_exempt_until >= current_date), c.require_po, c.credit_only,
-				b.approver_level, b.monthly_limit, b.admin, c.approval_rules, c.catalog_restricted, COALESCE(l.id,''), COALESCE(l.name,''), COALESCE(l.price_group,''), COALESCE(l.monthly_limit,0)
+				b.approver_level, b.monthly_limit, b.admin, c.approval_rules, c.catalog_restricted, COALESCE(l.id,''), COALESCE(l.name,''), COALESCE(l.price_group,''), COALESCE(l.monthly_limit,0),
+				COALESCE(r.name,''), r.perms
 			FROM company_buyers b JOIN companies c ON c.tenant_id=b.tenant_id AND c.id=b.company_id
+			LEFT JOIN company_roles r ON r.tenant_id=b.tenant_id AND r.company_id=b.company_id AND r.id=b.role_id
 			LEFT JOIN company_locations l ON l.tenant_id=b.tenant_id AND l.company_id=b.company_id AND l.id=b.location_id
 			WHERE b.tenant_id=$1 AND b.email_hash=$2 AND c.status='active'`, tenant, hash).Scan(&a.ID, &a.Name, &a.Terms, &a.DiscountBps, &limit, &balance, &a.PriceGroup, &a.ApprovalThreshold, &a.Approver, &a.TaxExempt, &a.RequirePO, &a.CreditOnly,
-			&a.ApproverLevel, &a.MonthlyLimit, &a.Admin, &a.Rules, &a.CatalogRestricted, &a.Location, &a.LocationName, &locGroup, &a.LocationLimit); err != nil {
+			&a.ApproverLevel, &a.MonthlyLimit, &a.Admin, &a.Rules, &a.CatalogRestricted, &a.Location, &a.LocationName, &locGroup, &a.LocationLimit, &a.Role, &perms); err != nil {
 			return err
 		}
+		p := FullPerms
+		if perms != nil {
+			p = *perms
+		}
+		a.CanCredit, a.CanViewCredit, a.CanQuote = p.BuyCredit, p.ViewCredit, p.Quote
 		if locGroup != "" {
 			a.PriceGroup = locGroup // the branch buys with its own price list
 		}
@@ -482,7 +495,7 @@ func (s *Service) CompanyAccessByID(ctx context.Context, tenant, id string) (*Co
 	}
 	// A server-side integration acts for the company itself: it needs no approval.
 	a := &CompanyAccess{ID: c.ID, Name: c.Name, Terms: c.Terms, DiscountBps: c.DiscountBps, PriceGroup: c.PriceGroup, ApprovalThreshold: c.ApprovalThreshold, Approver: true, ApproverLevel: maxApprovalLevel, Rules: c.ApprovalRules, CatalogRestricted: c.CatalogRestricted,
-		TaxExempt: c.TaxExempt && (c.TaxExemptUntil == "" || c.TaxExemptUntil >= time.Now().Format("2006-01-02")), RequirePO: c.RequirePO, CreditOnly: c.CreditOnly}
+		TaxExempt: c.TaxExempt && (c.TaxExemptUntil == "" || c.TaxExemptUntil >= time.Now().Format("2006-01-02")), RequirePO: c.RequirePO, CreditOnly: c.CreditOnly, CanCredit: true, CanViewCredit: true, CanQuote: true}
 	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error { return applyHierarchyTx(ctx, tx, tenant, a, false) })
 	return a, err
 }
@@ -505,6 +518,9 @@ func (e *CreditError) Error() string { return e.Message }
 func creditChargeTx(ctx context.Context, tx pgx.Tx, tenant, actor, orderID string, c *CompanyAccess, amount int64) error {
 	if c == nil {
 		return &CreditError{"credit_unavailable", "Para pagar a crédito entra con la cuenta de un comprador de empresa"}
+	}
+	if !c.CanCredit {
+		return &CreditError{"role_forbidden", "Tu rol en la empresa no permite comprar a crédito; paga con tarjeta o pide a quien administra tu empresa que te dé ese permiso"}
 	}
 	// The pool's root is locked: the parent and its subsidiaries that share
 	// its credit cannot spend the same money at once.
