@@ -44,6 +44,10 @@ func (s *Server) routesSettings(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/product-classes", s.authed(mod, auth.Read, s.listProductClasses))
 	handle("GET /v1/product-classes/{id}", s.authed(mod, auth.Read, s.getProductClass))
 	handle("PUT /v1/product-classes/{id}", s.authed(mod, auth.Admin, s.putProductClass))
+	handle("GET /v1/bundles", s.authed(mod, auth.Read, s.listBundles))
+	handle("GET /v1/bundles/{sku}", s.authed(mod, auth.Read, s.getBundle))
+	handle("PUT /v1/bundles/{sku}", s.authed(mod, auth.Admin, s.putBundle))
+	handle("DELETE /v1/bundles/{sku}", s.authed(mod, auth.Admin, s.deleteBundle))
 	handle("GET /v1/product-search", s.authed(mod, auth.Read, s.productSearch))
 
 	// Sales channels (GET/PUT by id live in commerce.go).

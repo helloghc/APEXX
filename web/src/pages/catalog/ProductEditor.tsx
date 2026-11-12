@@ -100,6 +100,8 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
   const attributes = useQuery({ queryKey: ["attributes"], queryFn: cat.attributes });
   const tagTerms = useQuery({ queryKey: ["terms", "tags"], queryFn: () => cat.terms("tags") });
   const typeTerms = useQuery({ queryKey: ["terms", "types"], queryFn: () => cat.terms("types") });
+  const bundles = useQuery({ queryKey: ["bundles"], queryFn: () => request<{ items: { sku: string }[] }>("GET", "/v1/bundles"), enabled: !isNew });
+  const kitSkus = useMemo(() => new Set((bundles.data?.items ?? []).map((b) => b.sku)), [bundles.data]);
 
   const [d, setD] = useState<Draft>(emptyDraft);
   const [version, setVersion] = useState(0);
@@ -202,6 +204,7 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
         }
       } else if (d.status === "active") errs[`price.${v.sku}`] = "Un producto activo necesita precio.";
       for (const loc of locations) {
+        if (kitSkus.has(v.sku)) break;
         const s = d.stock[v.sku]?.[loc]?.trim();
         if (s === undefined || s === "") continue;
         if (!/^\d+$/.test(s)) errs[`stock.${v.sku}.${loc}`] = "Número entero.";
@@ -442,8 +445,9 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
                         </TableCell>
                         {locations.map((l) => (
                           <TableCell key={l}>
-                            <Input aria-label={`Existencias en ${l}`} inputMode="numeric" placeholder="0" className={cell(`stock.${v.sku}.${l}`)}
-                              value={d.stock[v.sku]?.[l] ?? ""}
+                            <Input aria-label={`Existencias en ${l}`} inputMode="numeric" placeholder={kitSkus.has(v.sku) ? "Kit" : "0"} className={cell(`stock.${v.sku}.${l}`)}
+                              disabled={kitSkus.has(v.sku)} title={kitSkus.has(v.sku) ? "Es un kit: sus existencias salen de sus componentes" : undefined}
+                              value={kitSkus.has(v.sku) ? "" : d.stock[v.sku]?.[l] ?? ""}
                               onChange={(e) => set("stock", { ...d.stock, [v.sku]: { ...(d.stock[v.sku] ?? {}), [l]: e.target.value } })} />
                           </TableCell>
                         ))}
@@ -579,6 +583,7 @@ export function ProductEditor({ me, id }: { me: Me; id: string }) {
               <div className="line-clamp-2 text-muted-foreground">{d.seoDescription || d.description || "Descripción del producto."}</div>
             </div>
           </Section>
+          {!isNew && d.variants.length > 0 && <KitEditor skus={d.variants.map((v) => v.sku).filter(Boolean)} canEdit={can(me, "settings", "admin")} />}
           {!isNew && <QtyRules id={id} canEdit={canEdit} />}
           {!isNew && <Customs id={id} canEdit={can(me, "settings", "admin")} />}
           {!isNew && <Translations id={id} canEdit={canEdit} />}
@@ -722,6 +727,73 @@ function Translations({ id, canEdit }: { id: string; canEdit: boolean }) {
 }
 
 interface QtyRule { group: string; min: number; max: number; step: number }
+
+interface KitPart { sku: string; qty: number; title?: string; available?: number }
+interface KitView { sku: string; components: KitPart[]; available: number }
+
+/** Kit (bundle): this SKU is sold as a set of other SKUs. It has no stock of
+ *  its own: it is available while every component is, and each sale,
+ *  cancellation or return moves the components' stock. */
+function KitEditor({ skus, canEdit }: { skus: string[]; canEdit: boolean }) {
+  const qc = useQueryClient();
+  const [sku, setSku] = useState(skus[0] ?? "");
+  useEffect(() => { if (!skus.includes(sku)) setSku(skus[0] ?? ""); }, [skus, sku]);
+  const q = useQuery({ queryKey: ["bundle", sku], queryFn: () => request<KitView>("GET", `/v1/bundles/${encodeURIComponent(sku)}`), enabled: !!sku });
+  const [parts, setParts] = useState<KitPart[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  const [err, setErr] = useState("");
+  useEffect(() => { if (q.data) setParts(q.data.components); }, [q.data]);
+  if (!q.data) return null;
+  const clean = (ps: KitPart[]) => ps.map((p) => ({ sku: p.sku.trim(), qty: p.qty }));
+  const dirty = JSON.stringify(clean(parts)) !== JSON.stringify(clean(q.data.components));
+  const setPart = (i: number, p: Partial<KitPart>) => setParts((x) => x.map((y, j) => (j === i ? { ...y, ...p } : y)));
+  async function save() {
+    setBusy(true); setErrs({}); setErr("");
+    try {
+      const body = clean(parts).filter((p) => p.sku);
+      const r = body.length
+        ? await request<KitView>("PUT", `/v1/bundles/${encodeURIComponent(sku)}`, { components: body })
+        : (await request("DELETE", `/v1/bundles/${encodeURIComponent(sku)}`), { sku, components: [], available: 0 });
+      qc.setQueryData(["bundle", sku], r);
+      setParts(r.components);
+      toast.success(body.length ? "Kit guardado. Su disponibilidad ya sale de sus componentes." : "Ya no es kit: vuelve a llevar sus propias existencias.");
+      void qc.invalidateQueries({ queryKey: ["bundles"] });
+    } catch (e) {
+      setErrs(fieldErrors(e)); setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const isKit = q.data.components.length > 0;
+  return (
+    <Section title="Kit" description="Vende este producto como un conjunto de otros productos. No lleva existencias propias: se puede vender mientras haya de todos sus componentes, y cada venta, cancelación o devolución mueve las existencias de cada uno."
+      actions={canEdit && <Button size="sm" disabled={!dirty || busy} onClick={() => void save()}>{busy ? "Guardando…" : "Guardar"}</Button>}>
+      {skus.length > 1 && (
+        <Field label="Variante" htmlFor="kit-sku">
+          <select id="kit-sku" className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={sku} onChange={(e) => setSku(e.target.value)}>
+            {skus.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </Field>
+      )}
+      {isKit ? <Notice tone={q.data.available > 0 ? "ok" : "warn"}>Se pueden vender <strong>{q.data.available}</strong> kits con las existencias actuales.</Notice>
+        : parts.length === 0 && <p className="text-sm text-muted-foreground">No es un kit: se vende con sus propias existencias.</p>}
+      {parts.map((p, i) => (
+        <div key={i} className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_7rem_auto] sm:items-end">
+          <Field label="SKU del componente" htmlFor={`kit-c-${i}`} hint={errs[`components[${i}].sku`] || (p.title ? `${p.title} · ${p.available ?? 0} disponibles` : undefined)}>
+            <Input id={`kit-c-${i}`} className="font-mono" value={p.sku} disabled={!canEdit} onChange={(e) => setPart(i, { sku: e.target.value, title: undefined })} />
+          </Field>
+          <Field label="Piezas por kit" htmlFor={`kit-q-${i}`} hint={errs[`components[${i}].qty`]}>
+            <Input id={`kit-q-${i}`} inputMode="numeric" value={p.qty || ""} disabled={!canEdit} onChange={(e) => setPart(i, { qty: Number(e.target.value.replace(/\D/g, "")) || 0 })} />
+          </Field>
+          {canEdit && <Button type="button" size="icon" variant="ghost" aria-label={`Quitar ${p.sku || "componente"}`} onClick={() => setParts((x) => x.filter((_, j) => j !== i))}><Trash2 aria-hidden="true" /></Button>}
+        </div>
+      ))}
+      {err && <p className="text-sm text-bad" role="alert">{err}</p>}
+      {canEdit && parts.length < 30 && <div><Button type="button" variant="outline" size="sm" onClick={() => setParts((x) => [...x, { sku: "", qty: 1 }])}><Plus aria-hidden="true" /> Agregar componente</Button></div>}
+    </Section>
+  );
+}
 
 /** Quantity rules: minimum, maximum and multiples per order, for everyone or
  *  for the companies of one price group. The cart enforces them. */

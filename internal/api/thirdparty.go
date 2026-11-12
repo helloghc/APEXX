@@ -144,7 +144,14 @@ func (s *Server) deliverWarehouse(ctx context.Context, tenant, orderID, location
 		titles[l.SKU] = l.Title
 	}
 	items := []map[string]any{}
+	t, _ := s.Proj.Tenant(tenant)
 	for _, a := range alloc {
+		// A kit is picked as its components: name them from the catalog.
+		if titles[a.SKU] == "" && t != nil {
+			if v, p, err := t.Catalog.VariantBySKU(a.SKU); err == nil {
+				titles[a.SKU] = variantTitle(p.Title, v.Title)
+			}
+		}
 		items = append(items, map[string]any{"sku": a.SKU, "title": titles[a.SKU], "qty": a.Qty})
 	}
 	ship := map[string]any{"postalCode": o.PostalCode}

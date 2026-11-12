@@ -40,6 +40,14 @@ type Snapshot struct {
 	Available int64     `json:"available"`
 	Levels    []Level   `json:"levels"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	// Components is set for a kit: its stock is derived from these SKUs.
+	Components []Component `json:"components,omitempty"`
+}
+
+// Component is one SKU (and how many units) inside a kit.
+type Component struct {
+	SKU string `json:"sku"`
+	Qty int64  `json:"qty"`
 }
 
 type reservation struct {
@@ -54,6 +62,7 @@ type Service struct {
 	levels       map[string]map[string]*Level // sku -> location -> level
 	updated      map[string]time.Time
 	reservations map[string][]reservation // holder (cart id) -> reservations
+	bundles      map[string][]Component   // kit sku -> components
 	bus          *events.Bus
 	now          func() time.Time
 }
@@ -64,6 +73,7 @@ func New(bus *events.Bus) *Service {
 		levels:       map[string]map[string]*Level{},
 		updated:      map[string]time.Time{},
 		reservations: map[string][]reservation{},
+		bundles:      map[string][]Component{},
 		bus:          bus,
 		now:          time.Now,
 	}
@@ -101,10 +111,56 @@ func (s *Service) Get(sku string) (Snapshot, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.expireLocked()
+	if comps, ok := s.bundles[sku]; ok {
+		return s.bundleLocked(sku, comps), true
+	}
 	if _, ok := s.levels[sku]; !ok {
 		return Snapshot{}, false
 	}
 	return s.snapshotLocked(sku), true
+}
+
+// SetBundle makes sku a kit built from comps; nil or empty turns it back into
+// a normal SKU. A kit is sellable while every component is: its availability
+// is the smallest whole number of kits the components can still form.
+func (s *Service) SetBundle(sku string, comps []Component) {
+	s.mu.Lock()
+	if len(comps) == 0 {
+		delete(s.bundles, sku)
+	} else {
+		s.bundles[sku] = append([]Component(nil), comps...)
+	}
+	s.updated[sku] = s.now()
+	s.mu.Unlock()
+}
+
+// Bundle returns the components of a kit (nil for a normal SKU).
+func (s *Service) Bundle(sku string) []Component {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]Component(nil), s.bundles[sku]...)
+}
+
+func (s *Service) bundleLocked(sku string, comps []Component) Snapshot {
+	snap := Snapshot{SKU: sku, UpdatedAt: s.updated[sku].UTC(), Components: append([]Component(nil), comps...)}
+	first := true
+	for _, c := range comps {
+		if c.Qty <= 0 {
+			continue
+		}
+		var avail int64
+		for _, l := range s.levels[c.SKU] {
+			avail += l.Available()
+		}
+		if n := avail / c.Qty; first || n < snap.Available {
+			snap.Available = n
+		}
+		if t := s.updated[c.SKU]; t.After(snap.UpdatedAt) {
+			snap.UpdatedAt = t.UTC()
+		}
+		first = false
+	}
+	return snap
 }
 
 // Available returns sellable units for sku across locations.

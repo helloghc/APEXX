@@ -523,6 +523,40 @@ func (s *Service) refundLineTx(ctx context.Context, tx pgx.Tx, tenant, orderID s
 // order_allocations (the exact places they were sold from) and shrinks the
 // allocations. It reports where each unit went.
 func restockFromAllocationsTx(ctx context.Context, tx pgx.Tx, tenant, orderID, sku string, n int64) (map[string]int64, error) {
+	// A kit was sold as its components: put back each component, with the
+	// composition recorded on the order line when it was sold.
+	var raw []byte
+	err := tx.QueryRow(ctx, `SELECT components FROM order_lines WHERE tenant_id=$1 AND order_id=$2 AND sku=$3 AND components IS NOT NULL LIMIT 1`, tenant, orderID, sku).Scan(&raw)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+	if len(raw) > 0 {
+		var comps []struct {
+			SKU string `json:"sku"`
+			Qty int64  `json:"qty"`
+		}
+		if err := json.Unmarshal(raw, &comps); err != nil {
+			return nil, err
+		}
+		out := map[string]int64{}
+		for _, c := range comps {
+			where, err := restockSKUTx(ctx, tx, tenant, orderID, c.SKU, n*c.Qty)
+			if err != nil {
+				return nil, err
+			}
+			for l, q := range where {
+				out[l] += q / c.Qty
+			}
+		}
+		if err := store.Emit(ctx, tx, tenant, store.TopicStock, sku, nil); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+	return restockSKUTx(ctx, tx, tenant, orderID, sku, n)
+}
+
+func restockSKUTx(ctx context.Context, tx pgx.Tx, tenant, orderID, sku string, n int64) (map[string]int64, error) {
 	rows, err := tx.Query(ctx, `SELECT location_id, qty FROM order_allocations WHERE tenant_id=$1 AND order_id=$2 AND sku=$3 ORDER BY location_id FOR UPDATE`, tenant, orderID, sku)
 	if err != nil {
 		return nil, err

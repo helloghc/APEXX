@@ -653,6 +653,10 @@ func validateProduct(t *projection.Tenant, b *productBody) []apierr.FieldError {
 			errs = append(errs, fe("stock."+sku, "not_found", "Las existencias son de un SKU que no está en el producto: "+sku))
 			continue
 		}
+		if len(locs) > 0 && len(t.Inventory.Bundle(sku)) > 0 {
+			errs = append(errs, fe("stock."+sku, "kit", "El SKU "+sku+" es un kit: sus existencias salen de sus componentes"))
+			continue
+		}
 		for loc, n := range locs {
 			if !locationRe.MatchString(loc) || n < 0 || n > 1e9 {
 				errs = append(errs, fe("stock."+sku+"."+loc, "invalid", "Existencias inválidas para "+sku))

@@ -41,6 +41,10 @@ func (s *Server) putInventory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := principal(r)
+	if t, ok := s.Proj.Tenant(p.Tenant); ok && len(t.Inventory.Bundle(r.PathValue("sku"))) > 0 {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "kit_stock", Detail: "Este SKU es un kit: su stock sale de sus componentes. Ajusta el stock de cada componente."})
+		return
+	}
 	if err := s.DB.SetStock(r.Context(), p.Tenant, p.Actor(), r.PathValue("sku"), r.PathValue("location"), body.OnHand); err != nil {
 		internalError(w, s.Log, err)
 		return

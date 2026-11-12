@@ -113,3 +113,4 @@ Se cobra a: || Charged to: || Débité sur : || Cobrado em: || Ditagihkan ke: ||
 Se envía a: || Ships to: || Livré à : || Enviado para: || Dikirim ke: || 配送先：
 No pudimos quitar la tarjeta. Intenta de nuevo. || We couldn't remove the card. Please try again. || Impossible de retirer la carte. Réessayez. || Não foi possível remover o cartão. Tente novamente. || Kami tidak dapat menghapus kartu. Coba lagi. || カードを削除できませんでした。もう一度お試しください。
 No pudimos completar la compra. Intenta desde el carrito. || We couldn't complete the purchase. Try from the cart. || Impossible de finaliser l'achat. Essayez depuis le panier. || Não foi possível concluir a compra. Tente pelo carrinho. || Kami tidak dapat menyelesaikan pembelian. Coba dari keranjang. || 購入を完了できませんでした。カートからお試しください。
+Este kit incluye || This kit includes || Ce coffret comprend || Este kit inclui || Paket ini berisi || このセットの内容

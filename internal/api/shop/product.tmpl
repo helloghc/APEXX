@@ -26,6 +26,7 @@
 </form>
 <button type="button" class="wish" data-wish="{{.Handle}}" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20s-7-4.4-7-9.6A4 4 0 0 1 12 8a4 4 0 0 1 7 2.4C19 15.6 12 20 12 20z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span data-wish-text>Guardar en favoritos</span></button>
 <ul class="perks"><li>Envío gratis desde $1,499</li><li>Cambios sin costo durante 30 días</li><li>Pago seguro con Stripe</li></ul>
+{{if .Kit}}<div class="desc"><h2>Este kit incluye</h2><table class="specs kit"><tbody>{{range .Kit}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}
 {{with .P.Description}}<div class="desc"><h2>Descripción</h2><p>{{.}}</p></div>{{end}}
 {{if .Specs}}<div class="desc"><h2>Especificaciones</h2><table class="specs"><tbody>{{range .Specs}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}
 {{range .Extras}}<div class="desc"><h2>{{.Title}}</h2><table class="specs"><tbody>{{range .Rows}}<tr><th scope="row">{{.Name}}</th><td>{{.Value}}</td></tr>{{end}}</tbody></table></div>{{end}}

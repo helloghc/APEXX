@@ -217,6 +217,23 @@ func (d *DB) SetStock(ctx context.Context, tenant, actor, sku, location string, 
 // ReserveTx reserves qty of sku for holder inside tx, allocating across
 // locations in order. Rows are locked, so concurrent checkouts cannot oversell.
 func ReserveTx(ctx context.Context, tx pgx.Tx, tenant, holder, sku string, qty int64, ttl time.Duration) error {
+	// A kit reserves its components: the kit itself holds no stock.
+	comps, err := bundleTx(ctx, tx, tenant, sku)
+	if err != nil {
+		return err
+	}
+	if len(comps) > 0 {
+		for _, c := range comps {
+			if err := reserveSKUTx(ctx, tx, tenant, holder, c.SKU, qty*c.Qty, ttl); err != nil {
+				return err
+			}
+		}
+		return Emit(ctx, tx, tenant, TopicStock, sku, nil)
+	}
+	return reserveSKUTx(ctx, tx, tenant, holder, sku, qty, ttl)
+}
+
+func reserveSKUTx(ctx context.Context, tx pgx.Tx, tenant, holder, sku string, qty int64, ttl time.Duration) error {
 	rows, err := tx.Query(ctx, `SELECT location_id, on_hand - reserved FROM stock_levels
 		WHERE tenant_id=$1 AND sku=$2 ORDER BY location_id FOR UPDATE`, tenant, sku)
 	if err != nil {
@@ -324,6 +341,101 @@ func RestockTx(ctx context.Context, tx pgx.Tx, tenant, sku, location string, qty
 		}
 	}
 	return Emit(ctx, tx, tenant, TopicStock, sku, nil)
+}
+
+// ---------- kits ----------
+
+func bundleTx(ctx context.Context, tx pgx.Tx, tenant, sku string) ([]inventory.Component, error) {
+	rows, err := tx.Query(ctx, `SELECT component_sku, qty FROM bundle_components WHERE tenant_id=$1 AND bundle_sku=$2 ORDER BY position, component_sku`, tenant, sku)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (inventory.Component, error) {
+		var c inventory.Component
+		return c, r.Scan(&c.SKU, &c.Qty)
+	})
+}
+
+// Bundle returns the components of a kit (empty for a normal SKU).
+func (d *DB) Bundle(ctx context.Context, tenant, sku string) ([]inventory.Component, error) {
+	var out []inventory.Component
+	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		var err error
+		out, err = bundleTx(ctx, tx, tenant, sku)
+		return err
+	})
+	return out, err
+}
+
+// LoadBundles returns every kit of a tenant (system pool, for the projector).
+func (d *DB) LoadBundles(ctx context.Context, tenant, sku string) (map[string][]inventory.Component, error) {
+	q := `SELECT bundle_sku, component_sku, qty FROM bundle_components WHERE tenant_id=$1 ORDER BY bundle_sku, position, component_sku`
+	args := []any{tenant}
+	if sku != "" {
+		q = `SELECT bundle_sku, component_sku, qty FROM bundle_components WHERE tenant_id=$1 AND bundle_sku=$2 ORDER BY position, component_sku`
+		args = append(args, sku)
+	}
+	rows, err := d.System.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]inventory.Component{}
+	for rows.Next() {
+		var b string
+		var c inventory.Component
+		if err := rows.Scan(&b, &c.SKU, &c.Qty); err != nil {
+			return nil, err
+		}
+		out[b] = append(out[b], c)
+	}
+	return out, rows.Err()
+}
+
+// ErrBundle explains why a kit cannot be saved.
+var ErrBundle = errors.New("kit no válido")
+
+// SetBundle replaces the components of kit sku (empty removes the kit). A
+// component cannot itself be a kit, and a kit cannot be a component, so
+// availability never needs more than one level.
+func (d *DB) SetBundle(ctx context.Context, tenant, actor, sku string, comps []inventory.Component) error {
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		// One kit edit at a time per store, so two edits cannot nest kits.
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1 || ':bundles'))`, tenant); err != nil {
+			return err
+		}
+		if len(comps) > 0 {
+			var used bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM bundle_components WHERE tenant_id=$1 AND component_sku=$2)`, tenant, sku).Scan(&used); err != nil {
+				return err
+			}
+			if used {
+				return fmt.Errorf("%w: %s ya es componente de otro kit", ErrBundle, sku)
+			}
+		}
+		for _, c := range comps {
+			var nested bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM bundle_components WHERE tenant_id=$1 AND bundle_sku=$2)`, tenant, c.SKU).Scan(&nested); err != nil {
+				return err
+			}
+			if nested {
+				return fmt.Errorf("%w: %s es un kit; un kit no puede contener otro kit", ErrBundle, c.SKU)
+			}
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM bundle_components WHERE tenant_id=$1 AND bundle_sku=$2`, tenant, sku); err != nil {
+			return err
+		}
+		for i, c := range comps {
+			if _, err := tx.Exec(ctx, `INSERT INTO bundle_components (tenant_id, bundle_sku, component_sku, qty, position) VALUES ($1,$2,$3,$4,$5)`,
+				tenant, sku, c.SKU, c.Qty, i); err != nil {
+				return err
+			}
+		}
+		if err := Emit(ctx, tx, tenant, TopicStock, sku, nil); err != nil {
+			return err
+		}
+		return Audit(ctx, tx, tenant, actor, "bundle.set", sku, map[string]any{"components": comps})
+	})
 }
 
 // ExpireReservations releases reservations past their expiry for all tenants.

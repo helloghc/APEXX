@@ -233,9 +233,18 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 		return err
 	}
 	for _, sku := range skus {
-		if err := p.applyStock(ctx, t, sku); err != nil {
+		levels, err := p.db.LoadStock(ctx, id, sku)
+		if err != nil {
 			return err
 		}
+		t.Inventory.Load(sku, levels)
+	}
+	kits, err := p.db.LoadBundles(ctx, id, "")
+	if err != nil {
+		return err
+	}
+	for sku, comps := range kits {
+		t.Inventory.SetBundle(sku, comps)
 	}
 	keys, err := p.db.PriceKeys(ctx, id)
 	if err != nil {
@@ -353,6 +362,11 @@ func (p *Projector) applyStock(ctx context.Context, t *Tenant, sku string) error
 		return err
 	}
 	t.Inventory.Load(sku, levels)
+	kits, err := p.db.LoadBundles(ctx, t.ID, sku)
+	if err != nil {
+		return err
+	}
+	t.Inventory.SetBundle(sku, kits[sku])
 	return nil
 }
 

@@ -539,6 +539,7 @@ type productPage struct {
 	QtyMin, QtyStep  int64          // quantity rules for everyone (the cart enforces them too)
 	QtyMax           int64
 	Volume           []specView // volume prices of the first variant: "Desde 12 piezas" -> "$90.00 MXN"
+	Kit              []specView // what a kit contains: component -> "× 2"
 	Similar          []cardView
 	Accessories      []cardView
 	Price, CompareAt string
@@ -632,6 +633,13 @@ func (s *Server) shopProduct(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(p.Variants) > 0 {
+		for _, c := range t.Inventory.Bundle(p.Variants[0].SKU) {
+			name := c.SKU
+			if v, cp, err := t.Catalog.VariantBySKU(c.SKU); err == nil {
+				name = variantTitle(cp.Title, v.Title)
+			}
+			pg.Kit = append(pg.Kit, specView{name, "× " + strconv.FormatInt(c.Qty, 10)})
+		}
 		for _, tier := range t.Pricing.VolumeTiers(pd.Channel, p.Variants[0].SKU, "", time.Now()) {
 			cur := money.Currency("MXN")
 			if c, ok := t.Channel(pd.Channel); ok {
