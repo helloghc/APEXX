@@ -60,8 +60,32 @@ section{display:grid;gap:20px}
 .tab:focus-visible,.pill:focus-visible,.row-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .timeline{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
 .seg{height:8px;border-radius:4px;background:var(--line)}
-.seg.pre{background:var(--signal)}
-.seg.on{background:var(--primary)}
+.seg.done{background:var(--ok)}
+.seg.doing{background:var(--signal)}
+.overview{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.ov{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:8px;align-content:start}
+.ov:hover{border-color:var(--primary)}
+.ov:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ov[aria-current="true"]{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.ov .id{font:600 12px var(--f-mono);color:var(--muted)}
+.ov b{font-family:var(--f-head);font-size:15px;line-height:1.25}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;width:fit-content;border:1px solid var(--line)}
+.pill.done{color:var(--ok);border-color:var(--ok)}
+.pill.doing{color:var(--signal);border-color:var(--signal)}
+.pill.todo{color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok)}
+.bar i.doing{background:var(--signal)}
+.count{font-size:12.5px;color:var(--muted)}
+.tab .dot{width:7px;height:7px;margin-right:6px;display:inline-block;vertical-align:middle}
+.tab .dot.done{background:var(--ok)} .tab .dot.doing{background:var(--signal)} .tab .dot.todo{background:var(--line)}
+ul.marks{list-style:none;padding-left:0!important}
+ul.marks li{display:grid;grid-template-columns:22px 1fr;gap:6px;align-items:start}
+.mk-s{font:700 13px var(--f-mono);line-height:1.55}
+.mk-s.done{color:var(--ok)} .mk-s.doing{color:var(--signal)} .mk-s.todo{color:var(--muted)}
+li.todo span:last-child{color:var(--muted)}
+.gate.done{border-left-color:var(--ok)} .gate.doing{border-left-color:var(--signal)} .gate.todo{border-left-color:var(--line)}
+.legend2{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
 .phase{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:24px;display:grid;gap:20px}
 .phase-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start}
 .phase-top .title{display:grid;gap:6px;min-width:0}
@@ -145,7 +169,9 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
 </section>
 
 <section aria-labelledby="h-phases">
-  <div class="sec-head"><p class="eyebrow">Fases</p><h2 id="h-phases">Siete fases, cada una con criterio de cierre medible</h2></div>
+  <div class="sec-head"><p class="eyebrow">Fases y avance</p><h2 id="h-phases">Lo cerrado y lo que falta, fase por fase</h2><p class="lede" id="summary"></p></div>
+  <div class="legend2"><span><span class="pill done">Cerrada</span> todo entregado y medido</span><span><span class="pill doing">En curso</span> parte entregada</span><span><span class="pill todo">Pendiente</span> sin empezar</span></div>
+  <div class="overview" id="overview"></div>
   <div class="timeline" id="timeline" aria-hidden="true"></div>
   <div class="tabs" role="tablist" id="tabs" aria-label="Fases del plan"></div>
   <div id="phase"></div>
@@ -182,7 +208,7 @@ const PHASES = [
   deliver:["✓ Simulación 1 000 / 10 000 / 50 000 con carga por CSV, latencias, propagación y borrado","✓ Outbox sin huecos: ningún evento se pierde con escritores concurrentes","✓ Catálogo, categoría y sugerencias: un cálculo por versión (340 ms → 3,3 ms)","✓ Índice de palabras: búsqueda del panel 46 ms → 1,2 ms","✓ Panel: abrir producto 31 → 2,4 ms; inicio 102 → 3,9 ms","✓ Arranque 44 s → 0,45 s (carga por conjuntos)","✓ Reversión de precios exacta en 100 000 líneas","✓ Borrado masivo en el panel, por conjuntos: 50 000 en 22 s, sin restos","✓ Importación por conjuntos: 50 000 en 39 s (antes 270 s), idéntica al camino anterior","… Arranque sin corte: foto de la proyección en disco y relevo con /readyz"],
   panels:["Catálogo","Importar","Tienda","Inicio"], tech:[],
   gate:["✓ Tras el borrado, cero productos visibles y todas las tablas iguales a la foto inicial","✓ Percentil 95 de la tienda estable al pasar de 1 000 a 50 000","✓ 50 000 productos importados en 39 s; mediciones sin respuestas 429, 0 errores","… Un reinicio o despliegue no deja la tienda sin servicio"],
-  status:"9 de 10 listos"},
+  },
  {id:"IA-0", name:"Cimientos", goal:"La infraestructura que todas las demás fases usan, con aislamiento y reversión desde el primer día.",
   deliver:["pgvector y tablas ai_chunks, kg_edges, ai_suggestions, ai_usage con RLS forzada","Flujo de embeddings por el outbox; borrar un producto borra sus vectores","Índice vectorial int8 en la memoria de la proyección","Presupuesto mensual y apagado por tienda y función","Arnés de evaluación con búsquedas reales etiquetadas en español"],
   panels:["Recomendaciones e IA","Operación"], tech:["V"],
@@ -264,17 +290,36 @@ const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let current = 0, tech = null, open = null;
 
+// "✓ " = done, "… " = in progress, nothing = pending.
+const mark = (t) => t.startsWith("✓ ") ? { st: "done", text: t.slice(2) } : t.startsWith("… ") ? { st: "doing", text: t.slice(2) } : { st: "todo", text: t };
+const SYM = { done: "✓", doing: "◐", todo: "○" };
+const LABEL = { done: "Cerrada", doing: "En curso", todo: "Pendiente" };
+function stateOf(p) {
+  const ms = p.deliver.map(mark);
+  const done = ms.filter((m) => m.st === "done").length;
+  const st = done === ms.length ? "done" : done > 0 || ms.some((m) => m.st === "doing") ? "doing" : "todo";
+  return { st, done, total: ms.length };
+}
+
 function renderPhase(){
   const p = PHASES[current];
-  $("#timeline").innerHTML = PHASES.map((x,i)=>`<div class="seg ${x.pre?"pre":""} ${i<=current&&!x.pre?"on":""}"></div>`).join("");
-  $("#tabs").innerHTML = PHASES.map((x,i)=>`<button class="tab" role="tab" id="tab-${i}" aria-selected="${i===current}" aria-controls="phase" tabindex="${i===current?0:-1}">${x.id}</button>`).join("");
+  const states = PHASES.map(stateOf);
+  const closed = states.filter((x) => x.st === "done").length, doing = states.filter((x) => x.st === "doing").length;
+  $("#summary").textContent = `${closed} de ${PHASES.length} fases cerradas · ${doing} en curso · ${PHASES.length - closed - doing} pendientes. Pulsa una fase para ver qué está hecho y qué falta.`;
+  $("#overview").innerHTML = PHASES.map((x, i) => { const s = states[i]; return `<button class="ov" aria-current="${i===current}" data-i="${i}"><span class="id">${x.id}</span><b>${esc(x.name)}</b><span class="pill ${s.st}">${LABEL[s.st]}</span><span class="bar"><i class="${s.st==="doing"?"doing":""}" style="width:${s.total ? (s.done / s.total) * 100 : 0}%"></i></span><span class="count">${s.done} de ${s.total} entregables</span></button>`; }).join("");
+  document.querySelectorAll(".ov").forEach((b) => b.onclick = () => { current = +b.dataset.i; renderPhase(); document.getElementById("phase").scrollIntoView({ block: "nearest" }); });
+  $("#timeline").innerHTML = PHASES.map((x,i)=>`<div class="seg ${states[i].st}"></div>`).join("");
+  $("#tabs").innerHTML = PHASES.map((x,i)=>`<button class="tab" role="tab" id="tab-${i}" aria-selected="${i===current}" aria-controls="phase" tabindex="${i===current?0:-1}"><span class="dot ${states[i].st}"></span>${x.id}</button>`).join("");
+  const st = states[current];
+  const items = (arr, cls) => arr.map(mark).map((m) => `<li class="${m.st}"><span class="mk-s ${m.st}" aria-label="${LABEL[m.st]}">${SYM[m.st]}</span><span>${esc(m.text)}</span></li>`).join("");
   $("#phase").innerHTML = `<article class="phase" role="tabpanel" aria-labelledby="tab-${current}">
-    <div class="phase-top"><div class="title"><span class="eyebrow">${p.id}${p.status?" · "+p.status:""}</span><h3 style="font-size:22px">${esc(p.name)}</h3><p class="lede">${esc(p.goal)}</p></div>
+    <div class="phase-top"><div class="title"><span class="eyebrow">${p.id}</span><h3 style="font-size:22px">${esc(p.name)}</h3><p class="lede">${esc(p.goal)}</p>
+      <span class="pill ${st.st}">${LABEL[st.st]} · ${st.done} de ${st.total} entregables</span></div>
       <div class="tags">${p.tech.map(t=>`<span class="chip">${TECH[t]}</span>`).join("")||'<span class="chip"><span class="dot live"></span>Sin IA: mide el núcleo</span>'}</div></div>
     <div class="cols">
-      <div class="block"><span class="eyebrow">Entregables</span><ul>${p.deliver.map(d=>`<li>${esc(d)}</li>`).join("")}</ul></div>
+      <div class="block"><span class="eyebrow">Entregables</span><ul class="marks">${items(p.deliver)}</ul></div>
       <div class="block"><span class="eyebrow">Paneles que toca</span><div class="tags">${p.panels.map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</div>
-        <span class="eyebrow" style="margin-top:8px">Se cierra cuando</span>${p.gate.map(g=>`<div class="gate"><span>${esc(g)}</span></div>`).join("")}</div>
+        <span class="eyebrow" style="margin-top:8px">Se cierra cuando</span>${p.gate.map(mark).map((g)=>`<div class="gate ${g.st}"><span><span class="mk-s ${g.st}">${SYM[g.st]}</span> ${esc(g.text)}</span></div>`).join("")}</div>
     </div></article>`;
   document.querySelectorAll(".tab").forEach((b,i)=>{
     b.onclick=()=>{current=i;renderPhase();document.getElementById("tab-"+i).focus()};
