@@ -17,12 +17,25 @@ import (
 
 // EachProduct calls fn with every product of the tenant and its variants.
 func (d *DB) EachProduct(ctx context.Context, tenant string, fn func(catalog.Product)) error {
+	return d.eachProduct(ctx, tenant, nil, fn)
+}
+
+// EachProductIn calls fn with the products among ids that exist; ids that
+// are not there (deleted) are simply not called.
+func (d *DB) EachProductIn(ctx context.Context, tenant string, ids []string, fn func(catalog.Product)) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return d.eachProduct(ctx, tenant, ids, fn)
+}
+
+func (d *DB) eachProduct(ctx context.Context, tenant string, ids []string, fn func(catalog.Product)) error {
 	type vrow struct {
 		v       catalog.Variant
 		product string
 	}
 	vrows, err := d.System.Query(ctx, `SELECT product_id, sku, title, options, barcode, weight_grams FROM variants
-		WHERE tenant_id=$1 ORDER BY product_id, position`, tenant)
+		WHERE tenant_id=$1 AND ($2::text[] IS NULL OR product_id = ANY($2)) ORDER BY product_id, position`, tenant, ids)
 	if err != nil {
 		return err
 	}
@@ -43,7 +56,7 @@ func (d *DB) EachProduct(ctx context.Context, tenant string, fn func(catalog.Pro
 	}
 	rows, err := d.System.Query(ctx, `SELECT id, handle, title, description, brand, categories, attributes, status, updated_at, version,
 			brand_id, product_type, tags, options, seo_title, seo_description, publish_at, media, variant_media, related, created_at
-		FROM products WHERE tenant_id=$1 ORDER BY id`, tenant)
+		FROM products WHERE tenant_id=$1 AND ($2::text[] IS NULL OR id = ANY($2)) ORDER BY id`, tenant, ids)
 	if err != nil {
 		return err
 	}

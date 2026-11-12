@@ -792,6 +792,24 @@ func (s *Server) bulkProducts(w http.ResponseWriter, r *http.Request) {
 				errs = append(errs, fe("brandId", "not_found", "La marca no existe"))
 			}
 		}
+	case "delete":
+		// Same level as deleting one product.
+		if !pr.Permissions.Allows("catalog", auth.Admin) {
+			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: forbiddenDetail("catalog", "admin")})
+			return
+		}
+		if len(errs) > 0 {
+			apierr.BadRequest(w, "La edición masiva tiene errores", errs...)
+			return
+		}
+		n, err := s.DB.DeleteProducts(r.Context(), pr.Tenant, pr.Actor(), body.IDs)
+		if err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+		s.settle(r.Context())
+		httpx.JSON(w, r, http.StatusOK, map[string]any{"selected": len(body.IDs), "changed": n})
+		return
 	case "price_percent":
 		if !pr.Permissions.Allows("pricing", auth.Edit) {
 			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: forbiddenDetail("pricing", "edit")})
@@ -802,7 +820,7 @@ func (s *Server) bulkProducts(w http.ResponseWriter, r *http.Request) {
 			errs = append(errs, fe("percent", "out_of_range", "El porcentaje va de -90 a 1000 y no puede ser 0"))
 		}
 	default:
-		errs = append(errs, fe("action", "invalid", "action: status, category_add, category_remove, brand o price_percent"))
+		errs = append(errs, fe("action", "invalid", "action: status, category_add, category_remove, brand, price_percent o delete"))
 	}
 	if len(errs) > 0 {
 		apierr.BadRequest(w, "La edición masiva tiene errores", errs...)

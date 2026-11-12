@@ -62,7 +62,7 @@ export function priceRange(p: Pick<ProductRow, "priceMin" | "priceMax" | "curren
   return formatMoney(p.priceMin, p.currency);
 }
 
-type Bulk = null | "status" | "category_add" | "category_remove" | "brand" | "price_percent";
+type Bulk = null | "status" | "category_add" | "category_remove" | "brand" | "price_percent" | "delete";
 
 export function Products({ me }: { me: Me }) {
   const qc = useQueryClient();
@@ -275,6 +275,7 @@ export function Products({ me }: { me: Me }) {
               <DropdownMenuItem onSelect={() => setBulk("category_remove")}>Quitar de una categoría…</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setBulk("brand")}>Cambiar marca…</DropdownMenuItem>
               {can(me, "pricing", "edit") && <DropdownMenuItem onSelect={() => setBulk("price_percent")}>Subir o bajar precios (%)…</DropdownMenuItem>}
+              {can(me, "catalog", "admin") && <DropdownMenuItem className="text-destructive" onSelect={() => setBulk("delete")}>Eliminar…</DropdownMenuItem>}
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
@@ -470,6 +471,7 @@ function BulkDialog({
     category_remove: "Quitar de una categoría",
     brand: "Cambiar marca",
     price_percent: "Subir o bajar precios",
+    delete: "Eliminar productos",
   };
   const valid = action === "status" || action === "brand" || (action === "price_percent" ? pctOk : categoryId !== "");
 
@@ -488,7 +490,9 @@ function BulkDialog({
         keepOldPrice: action === "price_percent" ? direction === "down" && keepOld : undefined,
       });
       toast.success(
-        action === "price_percent"
+        action === "delete"
+          ? `${r.changed} ${r.changed === 1 ? "producto eliminado" : "productos eliminados"}`
+          : action === "price_percent"
           ? `Precios actualizados en ${r.changed} ${r.changed === 1 ? "variante" : "variantes"}`
           : r.changed === 0
             ? "Nada que cambiar: la selección ya estaba así"
@@ -498,6 +502,7 @@ function BulkDialog({
     } catch (e) {
       setErr(errorMessage(e));
       setConfirm(false);
+      if (action === "delete") toast.error(errorMessage(e)); // no options dialog to show it in
     } finally {
       setBusy(false);
     }
@@ -505,7 +510,7 @@ function BulkDialog({
 
   return (
     <>
-      <Dialog open={action !== null && !confirm} onOpenChange={(v) => !v && !busy && onClose()}>
+      <Dialog open={action !== null && action !== "delete" && !confirm} onOpenChange={(v) => !v && !busy && onClose()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{action ? titles[action] : ""}</DialogTitle>
@@ -626,18 +631,20 @@ function BulkDialog({
         </DialogContent>
       </Dialog>
       <Confirm
-        open={confirm}
+        open={confirm || action === "delete"}
         busy={busy}
-        title={action === "price_percent" ? `¿${direction === "down" ? "Bajar" : "Subir"} ${percent}% los precios de ${n} ${n === 1 ? "producto" : "productos"}?` : `¿Archivar ${n} ${n === 1 ? "producto" : "productos"}?`}
+        title={action === "delete" ? `¿Eliminar ${n} ${n === 1 ? "producto" : "productos"}?` : action === "price_percent" ? `¿${direction === "down" ? "Bajar" : "Subir"} ${percent}% los precios de ${n} ${n === 1 ? "producto" : "productos"}?` : `¿Archivar ${n} ${n === 1 ? "producto" : "productos"}?`}
         description={
-          action === "price_percent"
+          action === "delete"
+            ? "Se borran con sus variantes, precios y existencias, y dejan de verse en la tienda. No se puede deshacer: si solo quieres ocultarlos, mejor archívalos."
+            : action === "price_percent"
             ? "El cambio se aplica a todas sus variantes y se ve en la tienda de inmediato. Queda registrado en la auditoría."
             : "Dejarán de verse en la tienda. Puedes volver a activarlos cuando quieras."
         }
-        confirmLabel={action === "price_percent" ? "Cambiar precios" : "Archivar"}
+        confirmLabel={action === "delete" ? "Eliminar" : action === "price_percent" ? "Cambiar precios" : "Archivar"}
         destructive={action !== "price_percent"}
         onConfirm={() => void run()}
-        onClose={() => setConfirm(false)}
+        onClose={() => (action === "delete" ? onClose() : setConfirm(false))}
       />
     </>
   );

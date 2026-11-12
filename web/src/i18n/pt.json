@@ -3636,5 +3636,12 @@
 "Tu acceso no permite esto: necesitas permiso para {} en «{}». Pídelo a un administrador de la tienda.": "Seu acesso não permite isso: você precisa de permissão para {} em «{}». Peça a um administrador da loja.",
 "ver": "ver",
 "editar": "editar",
-"administrar": "administrar"
+"administrar": "administrar",
+"Eliminar…": "Excluir…",
+"Eliminar productos": "Excluir produtos",
+"¿Eliminar # productos?": "Excluir # produtos?",
+"¿Eliminar # producto?": "Excluir # produto?",
+"Se borran con sus variantes, precios y existencias, y dejan de verse en la tienda. No se puede deshacer: si solo quieres ocultarlos, mejor archívalos.": "São excluídos com variantes, preços e estoque, e somem da loja. Não dá para desfazer: se quiser apenas ocultá-los, arquive-os.",
+"# productos eliminados": "# produtos excluídos",
+"# producto eliminado": "# produto excluído"
 }

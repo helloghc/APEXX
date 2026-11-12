@@ -305,7 +305,33 @@ func dropSKUTx(ctx context.Context, tx pgx.Tx, tenant, sku string) error {
 // DeleteProduct removes a product, its variants, their prices and idle stock,
 // and takes it out of manual collections.
 func (d *DB) DeleteProduct(ctx context.Context, tenant, actor, id string) error {
-	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error { return deleteProductTx(ctx, tx, tenant, actor, id) })
+}
+
+// DeleteProducts deletes up to 500 products in one transaction, each exactly
+// as DeleteProduct does (with its own audit entry). Ids that no longer exist
+// are skipped; it returns how many were deleted.
+func (d *DB) DeleteProducts(ctx context.Context, tenant, actor string, ids []string) (int, error) {
+	n := 0
+	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		n = 0
+		for _, id := range ids {
+			err := deleteProductTx(ctx, tx, tenant, actor, id)
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			n++
+		}
+		return nil
+	})
+	return n, err
+}
+
+func deleteProductTx(ctx context.Context, tx pgx.Tx, tenant, actor, id string) error {
+	{
 		rows, err := tx.Query(ctx, `SELECT sku FROM variants WHERE tenant_id=$1 AND product_id=$2`, tenant, id)
 		if err != nil {
 			return err
@@ -345,7 +371,7 @@ func (d *DB) DeleteProduct(ctx context.Context, tenant, actor, id string) error 
 			return err
 		}
 		return Audit(ctx, tx, tenant, actor, "product.delete", id, map[string]any{"title": title, "skus": len(skus)})
-	})
+	}
 }
 
 // BulkOp is one bulk edit over a selection of products.
@@ -1270,176 +1296,212 @@ type ApplyError struct{ Message string }
 
 func (e *ApplyError) Error() string { return e.Message }
 
-// ApplyImportProduct creates or updates one product from its CSV rows, in one
-// transaction. Empty cells keep the current value; brands and categories that
-// do not exist yet are created.
-func (d *DB) ApplyImportProduct(ctx context.Context, tenant, actor string, ip catalog.ImportProduct, opt ImportOptions) (created bool, err error) {
-	err = d.Tx(ctx, tenant, func(tx pgx.Tx) error {
-		var id string
-		e := tx.QueryRow(ctx, `SELECT id FROM products WHERE tenant_id=$1 AND handle=$2 FOR UPDATE`, tenant, ip.Handle).Scan(&id)
-		var p catalog.Product
-		switch {
-		case errors.Is(e, pgx.ErrNoRows):
-			created = true
-			p = catalog.Product{ID: NewID("prod_"), Handle: ip.Handle, Status: "draft"}
-		case e != nil:
-			return e
-		default:
-			if p, e = loadProduct(ctx, tx, tenant, id); e != nil {
-				return e
-			}
-		}
-		set := func(dst *string, v string) {
-			if v != "" {
-				*dst = v
-			}
-		}
-		set(&p.Title, ip.Title)
-		set(&p.Description, ip.Description)
-		set(&p.Status, ip.Status)
-		set(&p.Type, ip.Type)
-		set(&p.SEOTitle, ip.SEOTitle)
-		set(&p.SEODescription, ip.SEODescription)
-		if p.Status != "draft" {
-			p.PublishAt = nil
-		}
-		if ip.Tags != nil {
-			p.Tags = ip.Tags
-		}
-		if len(ip.Attributes) > 0 {
-			if p.Attributes == nil {
-				p.Attributes = map[string]string{}
-			}
-			for k, v := range ip.Attributes {
-				p.Attributes[k] = v
-			}
-		}
-		if ip.Brand != "" {
-			if p.BrandID, e = ensureBrandTx(ctx, tx, tenant, actor, ip.Brand); e != nil {
-				return e
-			}
-		}
-		if len(ip.Categories) > 0 {
-			p.Categories = p.Categories[:0]
-			for _, path := range ip.Categories {
-				cid, e := ensureCategoryPathTx(ctx, tx, tenant, actor, path)
-				if e != nil {
-					return e
-				}
-				p.Categories = append(p.Categories, cid)
-			}
-		}
+// ImportOutcome is what happened to one product of an import batch.
+type ImportOutcome struct {
+	Created bool
+	Err     error
+}
 
-		bySKU := map[string]int{}
-		for i, v := range p.Variants {
-			bySKU[v.SKU] = i
-		}
-		if len(ip.OptionNames) > 0 {
-			same := len(p.Options) == len(ip.OptionNames)
-			for i := 0; same && i < len(p.Options); i++ {
-				same = p.Options[i].Name == ip.OptionNames[i]
+// ApplyImportBatch applies several products in one transaction, each in
+// its own savepoint: a product that fails is rolled back alone and the rest
+// are kept, as with one transaction per product, but with one commit for
+// the batch instead of one per product. If the batch itself cannot commit,
+// every product of it reports that error.
+func (d *DB) ApplyImportBatch(ctx context.Context, tenant, actor string, ips []catalog.ImportProduct, opt ImportOptions) []ImportOutcome {
+	out := make([]ImportOutcome, len(ips))
+	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		for i, ip := range ips {
+			sp, err := tx.Begin(ctx) // savepoint
+			if err != nil {
+				return err
 			}
-			if !same {
-				// The file redefines the options: only its variants fit them.
-				p.Options = make([]catalog.Option, len(ip.OptionNames))
-				for i, n := range ip.OptionNames {
-					p.Options[i].Name = n
+			var created bool
+			if err := applyImportTx(ctx, sp, tenant, actor, ip, opt, &created); err != nil {
+				if rerr := sp.Rollback(ctx); rerr != nil {
+					return rerr
 				}
-				inFile := map[string]bool{}
-				for _, v := range ip.Variants {
-					inFile[v.SKU] = true
-				}
-				kept := p.Variants[:0]
-				for _, v := range p.Variants {
-					if inFile[v.SKU] {
-						kept = append(kept, v)
-					}
-				}
-				p.Variants = kept
-				bySKU = map[string]int{}
-				for i, v := range p.Variants {
-					bySKU[v.SKU] = i
-				}
+				out[i] = ImportOutcome{Err: err}
+				continue
 			}
-		} else if len(p.Options) > 0 {
-			for _, v := range ip.Variants {
-				if _, ok := bySKU[v.SKU]; !ok {
-					return &ApplyError{fmt.Sprintf("El SKU %s es nuevo y el producto usa opciones (%s); agrega las columnas option1_name/option1_value", v.SKU, p.Options[0].Name)}
-				}
+			if err := sp.Commit(ctx); err != nil { // release savepoint
+				return err
 			}
+			out[i] = ImportOutcome{Created: created}
 		}
-		w := ProductWrite{Channel: opt.Channel, Prices: map[string]PriceInput{}, Stock: map[string]map[string]int64{}, Create: created}
-		for _, iv := range ip.Variants {
-			i, ok := bySKU[iv.SKU]
-			if !ok {
-				p.Variants = append(p.Variants, catalog.Variant{SKU: iv.SKU})
-				i = len(p.Variants) - 1
-				bySKU[iv.SKU] = i
-			}
-			v := &p.Variants[i]
-			if iv.Barcode != "" {
-				v.Barcode = iv.Barcode
-			}
-			if iv.WeightGrams != nil {
-				v.WeightGrams = *iv.WeightGrams
-			}
-			if len(iv.Options) > 0 {
-				v.Options = iv.Options
-				for oi := range p.Options {
-					val := iv.Options[p.Options[oi].Name]
-					found := false
-					for _, x := range p.Options[oi].Values {
-						found = found || x == val
-					}
-					if !found {
-						p.Options[oi].Values = append(p.Options[oi].Values, val)
-					}
-				}
-			}
-			if iv.Price != nil {
-				w.Prices[iv.SKU] = PriceInput{Amount: *iv.Price, CompareAt: iv.CompareAt, Currency: opt.Currency}
-			} else if iv.CompareAt != nil {
-				var cur int64
-				e := tx.QueryRow(ctx, `SELECT amount FROM prices WHERE tenant_id=$1 AND channel=$2 AND sku=$3 AND min_qty=1`, tenant, opt.Channel, iv.SKU).Scan(&cur)
-				if e != nil || *iv.CompareAt < cur {
-					return &ApplyError{fmt.Sprintf("compare_at_price del SKU %s necesita un price igual o menor", iv.SKU)}
-				}
-				w.Prices[iv.SKU] = PriceInput{Amount: cur, CompareAt: iv.CompareAt, Currency: opt.Currency}
-			}
-			if iv.Stock != nil {
-				w.Stock[iv.SKU] = map[string]int64{opt.Location: *iv.Stock}
-			}
-		}
-		for i := range p.Variants {
-			p.Variants[i].Title = catalog.VariantTitle(p.Options, p.Variants[i].Options)
-		}
-		// Option values no variant uses any more are dropped.
-		for oi := range p.Options {
-			used := p.Options[oi].Values[:0]
-			for _, val := range p.Options[oi].Values {
-				for _, v := range p.Variants {
-					if v.Options[p.Options[oi].Name] == val {
-						used = append(used, val)
-						break
-					}
-				}
-			}
-			p.Options[oi].Values = used
-		}
-		if e := catalog.ValidateVariantOptions(p.Options, p.Variants); e != nil {
-			return &ApplyError{e.Error()}
-		}
-		if len(p.Variants) > catalog.MaxVariants {
-			return &ApplyError{fmt.Sprintf("El producto quedaría con más de %d variantes", catalog.MaxVariants)}
-		}
-		w.Product = p
-		_, e = saveProductTx(ctx, tx, tenant, actor, w, 0)
-		if errors.Is(e, ErrConflict) {
-			return &ApplyError{"Un SKU del producto ya pertenece a otro producto"}
-		}
-		return e
+		return nil
 	})
-	return created, err
+	if err != nil {
+		for i := range out {
+			out[i] = ImportOutcome{Err: err}
+		}
+	}
+	return out
+}
+
+func applyImportTx(ctx context.Context, tx pgx.Tx, tenant, actor string, ip catalog.ImportProduct, opt ImportOptions, created *bool) error {
+	var id string
+	e := tx.QueryRow(ctx, `SELECT id FROM products WHERE tenant_id=$1 AND handle=$2 FOR UPDATE`, tenant, ip.Handle).Scan(&id)
+	var p catalog.Product
+	switch {
+	case errors.Is(e, pgx.ErrNoRows):
+		*created = true
+		p = catalog.Product{ID: NewID("prod_"), Handle: ip.Handle, Status: "draft"}
+	case e != nil:
+		return e
+	default:
+		if p, e = loadProduct(ctx, tx, tenant, id); e != nil {
+			return e
+		}
+	}
+	set := func(dst *string, v string) {
+		if v != "" {
+			*dst = v
+		}
+	}
+	set(&p.Title, ip.Title)
+	set(&p.Description, ip.Description)
+	set(&p.Status, ip.Status)
+	set(&p.Type, ip.Type)
+	set(&p.SEOTitle, ip.SEOTitle)
+	set(&p.SEODescription, ip.SEODescription)
+	if p.Status != "draft" {
+		p.PublishAt = nil
+	}
+	if ip.Tags != nil {
+		p.Tags = ip.Tags
+	}
+	if len(ip.Attributes) > 0 {
+		if p.Attributes == nil {
+			p.Attributes = map[string]string{}
+		}
+		for k, v := range ip.Attributes {
+			p.Attributes[k] = v
+		}
+	}
+	if ip.Brand != "" {
+		if p.BrandID, e = ensureBrandTx(ctx, tx, tenant, actor, ip.Brand); e != nil {
+			return e
+		}
+	}
+	if len(ip.Categories) > 0 {
+		p.Categories = p.Categories[:0]
+		for _, path := range ip.Categories {
+			cid, e := ensureCategoryPathTx(ctx, tx, tenant, actor, path)
+			if e != nil {
+				return e
+			}
+			p.Categories = append(p.Categories, cid)
+		}
+	}
+
+	bySKU := map[string]int{}
+	for i, v := range p.Variants {
+		bySKU[v.SKU] = i
+	}
+	if len(ip.OptionNames) > 0 {
+		same := len(p.Options) == len(ip.OptionNames)
+		for i := 0; same && i < len(p.Options); i++ {
+			same = p.Options[i].Name == ip.OptionNames[i]
+		}
+		if !same {
+			// The file redefines the options: only its variants fit them.
+			p.Options = make([]catalog.Option, len(ip.OptionNames))
+			for i, n := range ip.OptionNames {
+				p.Options[i].Name = n
+			}
+			inFile := map[string]bool{}
+			for _, v := range ip.Variants {
+				inFile[v.SKU] = true
+			}
+			kept := p.Variants[:0]
+			for _, v := range p.Variants {
+				if inFile[v.SKU] {
+					kept = append(kept, v)
+				}
+			}
+			p.Variants = kept
+			bySKU = map[string]int{}
+			for i, v := range p.Variants {
+				bySKU[v.SKU] = i
+			}
+		}
+	} else if len(p.Options) > 0 {
+		for _, v := range ip.Variants {
+			if _, ok := bySKU[v.SKU]; !ok {
+				return &ApplyError{fmt.Sprintf("El SKU %s es nuevo y el producto usa opciones (%s); agrega las columnas option1_name/option1_value", v.SKU, p.Options[0].Name)}
+			}
+		}
+	}
+	w := ProductWrite{Channel: opt.Channel, Prices: map[string]PriceInput{}, Stock: map[string]map[string]int64{}, Create: *created}
+	for _, iv := range ip.Variants {
+		i, ok := bySKU[iv.SKU]
+		if !ok {
+			p.Variants = append(p.Variants, catalog.Variant{SKU: iv.SKU})
+			i = len(p.Variants) - 1
+			bySKU[iv.SKU] = i
+		}
+		v := &p.Variants[i]
+		if iv.Barcode != "" {
+			v.Barcode = iv.Barcode
+		}
+		if iv.WeightGrams != nil {
+			v.WeightGrams = *iv.WeightGrams
+		}
+		if len(iv.Options) > 0 {
+			v.Options = iv.Options
+			for oi := range p.Options {
+				val := iv.Options[p.Options[oi].Name]
+				found := false
+				for _, x := range p.Options[oi].Values {
+					found = found || x == val
+				}
+				if !found {
+					p.Options[oi].Values = append(p.Options[oi].Values, val)
+				}
+			}
+		}
+		if iv.Price != nil {
+			w.Prices[iv.SKU] = PriceInput{Amount: *iv.Price, CompareAt: iv.CompareAt, Currency: opt.Currency}
+		} else if iv.CompareAt != nil {
+			var cur int64
+			e := tx.QueryRow(ctx, `SELECT amount FROM prices WHERE tenant_id=$1 AND channel=$2 AND sku=$3 AND min_qty=1`, tenant, opt.Channel, iv.SKU).Scan(&cur)
+			if e != nil || *iv.CompareAt < cur {
+				return &ApplyError{fmt.Sprintf("compare_at_price del SKU %s necesita un price igual o menor", iv.SKU)}
+			}
+			w.Prices[iv.SKU] = PriceInput{Amount: cur, CompareAt: iv.CompareAt, Currency: opt.Currency}
+		}
+		if iv.Stock != nil {
+			w.Stock[iv.SKU] = map[string]int64{opt.Location: *iv.Stock}
+		}
+	}
+	for i := range p.Variants {
+		p.Variants[i].Title = catalog.VariantTitle(p.Options, p.Variants[i].Options)
+	}
+	// Option values no variant uses any more are dropped.
+	for oi := range p.Options {
+		used := p.Options[oi].Values[:0]
+		for _, val := range p.Options[oi].Values {
+			for _, v := range p.Variants {
+				if v.Options[p.Options[oi].Name] == val {
+					used = append(used, val)
+					break
+				}
+			}
+		}
+		p.Options[oi].Values = used
+	}
+	if e := catalog.ValidateVariantOptions(p.Options, p.Variants); e != nil {
+		return &ApplyError{e.Error()}
+	}
+	if len(p.Variants) > catalog.MaxVariants {
+		return &ApplyError{fmt.Sprintf("El producto quedaría con más de %d variantes", catalog.MaxVariants)}
+	}
+	w.Product = p
+	_, e = saveProductTx(ctx, tx, tenant, actor, w, 0)
+	if errors.Is(e, ErrConflict) {
+		return &ApplyError{"Un SKU del producto ya pertenece a otro producto"}
+	}
+	return e
 }
 
 // ensureBrandTx finds a brand by name (ignoring case and accents) or creates it.

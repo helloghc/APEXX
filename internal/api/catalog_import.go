@@ -265,39 +265,44 @@ func (s *Server) runImport(tenant, actor, id string, todo []catalog.ImportProduc
 		}
 	}()
 	created, updated, failed := 0, 0, 0
-	for i, p := range todo {
-		isNew, err := s.DB.ApplyImportProduct(ctx, tenant, actor, p, opt)
-		var ae *store.ApplyError
-		switch {
-		case err == nil && isNew:
-			created++
-		case err == nil:
-			updated++
-		default:
-			failed++
-			msg := "No se pudo guardar el producto; intenta de nuevo"
-			if errors.As(err, &ae) {
-				msg = ae.Message
-			} else {
-				s.Log.Error("import product", "import", id, "row", p.Row, "err", err)
-			}
-			if len(errs) < 1000 {
-				errs = append(errs, importError{Row: p.Row, Column: "", Code: "apply_failed", Message: msg, Handle: p.Handle})
-			}
-		}
-		if (i+1)%importBatch == 0 || i == len(todo)-1 {
-			status := ""
-			if i == len(todo)-1 {
-				status = "done"
-				if created+updated == 0 {
-					status = "failed"
+	// Batches of importBatch products, one transaction each, every product
+	// in its own savepoint: a bad product fails alone, as before, with one
+	// commit per batch instead of one per product.
+	for lo := 0; lo < len(todo); lo += importBatch {
+		hi := min(lo+importBatch, len(todo))
+		outs := s.DB.ApplyImportBatch(ctx, tenant, actor, todo[lo:hi], opt)
+		for k, o := range outs {
+			p := todo[lo+k]
+			var ae *store.ApplyError
+			switch {
+			case o.Err == nil && o.Created:
+				created++
+			case o.Err == nil:
+				updated++
+			default:
+				failed++
+				msg := "No se pudo guardar el producto; intenta de nuevo"
+				if errors.As(o.Err, &ae) {
+					msg = ae.Message
+				} else {
+					s.Log.Error("import product", "import", id, "row", p.Row, "err", o.Err)
+				}
+				if len(errs) < 1000 {
+					errs = append(errs, importError{Row: p.Row, Column: "", Code: "apply_failed", Message: msg, Handle: p.Handle})
 				}
 			}
-			if err := s.DB.ImportProgress(ctx, tenant, id, i+1, created, updated, failed, errs, status); err != nil {
-				s.Log.Error("import progress", "import", id, "err", err)
-			}
-			s.settle(ctx)
 		}
+		status := ""
+		if hi == len(todo) {
+			status = "done"
+			if created+updated == 0 {
+				status = "failed"
+			}
+		}
+		if err := s.DB.ImportProgress(ctx, tenant, id, hi, created, updated, failed, errs, status); err != nil {
+			s.Log.Error("import progress", "import", id, "err", err)
+		}
+		s.settle(ctx)
 	}
 }
 

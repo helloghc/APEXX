@@ -86,3 +86,30 @@ func TestBrowseCachePanicReleasesWaiters(t *testing.T) {
 		t.Fatal("a panic left the key locked")
 	}
 }
+
+type fakeCatalog map[string]catalog.Product
+
+func (f fakeCatalog) Get(id string) (catalog.Product, error) {
+	p, ok := f[id]
+	if !ok {
+		return p, catalog.ErrNotFound
+	}
+	return p, nil
+}
+
+func TestLiveOnlyDropsGoneProductsWithoutTouchingTheCache(t *testing.T) {
+	a, b, c := &catalog.Product{ID: "a"}, &catalog.Product{ID: "b"}, &catalog.Product{ID: "c"}
+	cached := catalog.BrowseResult{Items: []*catalog.Product{a, b, c}, Offers: []catalog.Offer{{Price: 1}, {Price: 2}, {Price: 3}}, Total: 30}
+	now := fakeCatalog{"a": {ID: "a", Status: "active"}, "c": {ID: "c", Status: "archived"}} // b deleted, c hidden
+	got := liveOnly(now, cached)
+	if len(got.Items) != 1 || got.Items[0].ID != "a" || got.Offers[0].Price != 1 || got.Total != 28 {
+		t.Fatalf("live result = %+v", got)
+	}
+	if len(cached.Items) != 3 || cached.Items[1].ID != "b" || cached.Offers[2].Price != 3 || cached.Total != 30 {
+		t.Fatalf("the cached result was modified: %+v", cached)
+	}
+	all := fakeCatalog{"a": {Status: "active"}, "b": {Status: "active"}, "c": {Status: "active"}}
+	if r := liveOnly(all, cached); len(r.Items) != 3 {
+		t.Fatalf("nothing gone, but got %d", len(r.Items))
+	}
+}

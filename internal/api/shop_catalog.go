@@ -331,6 +331,7 @@ func (s *Server) renderBrowse(w http.ResponseWriter, r *http.Request, t *project
 		narrow(t, &q)
 		return catalog.Browse(t.Catalog.Products(), t.Taxo, offerOf(t, pd.Channel), q)
 	})
+	res = liveOnly(t.Catalog, res)
 	if st.q != "" && st.page == 1 && !st.filtered() {
 		s.noteSearch(t.ID, st.q, res.Total)
 	}

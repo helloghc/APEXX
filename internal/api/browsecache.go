@@ -182,3 +182,34 @@ func ruleKey(q catalog.BrowseQuery) string {
 	}
 	return strconv.FormatUint(h.Sum64(), 36)
 }
+
+// liveOnly drops from a (possibly stale) result the products that were
+// deleted or hidden since it was computed, so a shopper never gets a link
+// to a product that is gone. It looks up only the products on the page and
+// returns new slices: the cached result is shared and never modified.
+func liveOnly(cat interface {
+	Get(id string) (catalog.Product, error)
+}, res catalog.BrowseResult) catalog.BrowseResult {
+	gone := 0
+	for _, p := range res.Items {
+		if cur, err := cat.Get(p.ID); err != nil || cur.Status != "active" {
+			gone++
+		}
+	}
+	if gone == 0 {
+		return res
+	}
+	items := make([]*catalog.Product, 0, len(res.Items)-gone)
+	offers := make([]catalog.Offer, 0, len(res.Items)-gone)
+	for i, p := range res.Items {
+		if cur, err := cat.Get(p.ID); err != nil || cur.Status != "active" {
+			continue
+		}
+		items = append(items, p)
+		if i < len(res.Offers) {
+			offers = append(offers, res.Offers[i])
+		}
+	}
+	res.Items, res.Offers, res.Total = items, offers, max(res.Total-gone, 0)
+	return res
+}

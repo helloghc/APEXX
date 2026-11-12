@@ -3636,5 +3636,12 @@
 "Tu acceso no permite esto: necesitas permiso para {} en «{}». Pídelo a un administrador de la tienda.": "この操作は許可されていません: {}の権限（「{}」）が必要です。ストアの管理者に依頼してください。",
 "ver": "閲覧",
 "editar": "編集",
-"administrar": "管理"
+"administrar": "管理",
+"Eliminar…": "削除…",
+"Eliminar productos": "商品を削除",
+"¿Eliminar # productos?": "# 件の商品を削除しますか？",
+"¿Eliminar # producto?": "# 件の商品を削除しますか？",
+"Se borran con sus variantes, precios y existencias, y dejan de verse en la tienda. No se puede deshacer: si solo quieres ocultarlos, mejor archívalos.": "バリエーション、価格、在庫ごと削除され、ストアから消えます。元に戻せません。非表示にするだけならアーカイブしてください。",
+"# productos eliminados": "# 件の商品を削除しました",
+"# producto eliminado": "# 件の商品を削除しました"
 }

@@ -394,6 +394,7 @@ func (s *Server) shopSuggest(w http.ResponseWriter, r *http.Request) {
 			narrow(t, &q)
 			return catalog.Browse(t.Catalog.Products(), t.Taxo, of, q)
 		})
+		res = liveOnly(t.Catalog, res)
 		cards := make([]cardJSON, 0, len(res.Items))
 		for i, p := range res.Items {
 			cards = append(cards, cardJSONOf(t, pd, p, res.Offers[i]))

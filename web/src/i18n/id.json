@@ -3636,5 +3636,12 @@
 "Tu acceso no permite esto: necesitas permiso para {} en «{}». Pídelo a un administrador de la tienda.": "Akses Anda tidak mengizinkan ini: Anda perlu izin untuk {} di «{}». Mintalah kepada administrator toko.",
 "ver": "melihat",
 "editar": "mengedit",
-"administrar": "mengelola"
+"administrar": "mengelola",
+"Eliminar…": "Hapus…",
+"Eliminar productos": "Hapus produk",
+"¿Eliminar # productos?": "Hapus # produk?",
+"¿Eliminar # producto?": "Hapus # produk?",
+"Se borran con sus variantes, precios y existencias, y dejan de verse en la tienda. No se puede deshacer: si solo quieres ocultarlos, mejor archívalos.": "Produk dihapus beserta varian, harga, dan stoknya, dan hilang dari toko. Tidak bisa dibatalkan: jika hanya ingin menyembunyikan, arsipkan saja.",
+"# productos eliminados": "# produk dihapus",
+"# producto eliminado": "# produk dihapus"
 }

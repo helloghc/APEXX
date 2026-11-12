@@ -114,6 +114,7 @@ type Stats struct {
 
 // Projector keeps every tenant's read models in sync with the database.
 type Projector struct {
+	pre     map[[2]string]*catalog.Product // products prefetched for the batch being drained (drain only)
 	db      *store.DB
 	ps      *promostore.Store
 	listen  string // connection string for LISTEN (system role)
@@ -279,7 +280,47 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 	return nil
 }
 
+// prefetchProducts loads, with one query per store, every product the
+// batch of events touches, so applying 500 product events does not read the
+// database 500 times. Only the drain goroutine uses p.pre.
+func (p *Projector) prefetchProducts(ctx context.Context, evs []store.OutboxEvent) error {
+	p.pre = nil
+	ids := map[string][]string{}
+	seen := map[[2]string]bool{}
+	for _, e := range evs {
+		if e.Topic != store.TopicProduct || seen[[2]string{e.Tenant, e.Key}] {
+			continue
+		}
+		seen[[2]string{e.Tenant, e.Key}] = true
+		ids[e.Tenant] = append(ids[e.Tenant], e.Key)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	p.pre = map[[2]string]*catalog.Product{}
+	for tenant, list := range ids {
+		for _, id := range list {
+			p.pre[[2]string{tenant, id}] = nil // nil: not found (deleted)
+		}
+		if err := p.db.EachProductIn(ctx, tenant, list, func(prod catalog.Product) {
+			p.pre[[2]string{tenant, prod.ID}] = &prod
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *Projector) applyProduct(ctx context.Context, t *Tenant, id string) error {
+	if pre, ok := p.pre[[2]string{t.ID, id}]; ok {
+		delete(p.pre, [2]string{t.ID, id}) // later events of the batch read fresh
+		if pre == nil {
+			t.Catalog.Delete(id)
+		} else {
+			t.Catalog.Upsert(*pre)
+		}
+		return nil
+	}
 	prod, err := p.db.LoadProduct(ctx, t.ID, id)
 	if err == store.ErrNotFound {
 		t.Catalog.Delete(id) // deleted: drop it from the read model
@@ -587,6 +628,9 @@ func (p *Projector) drain(ctx context.Context) error {
 		}
 		if len(evs) == 0 {
 			return nil
+		}
+		if err := p.prefetchProducts(ctx, evs); err != nil {
+			return err
 		}
 		for _, e := range evs {
 			if err := p.apply(ctx, e); err != nil {
