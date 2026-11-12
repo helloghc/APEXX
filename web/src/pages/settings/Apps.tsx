@@ -10,7 +10,7 @@ import { can } from "@/perms";
 import { ErrorBox } from "../common";
 import { Loading, Section, SubPage } from "./kit";
 
-interface App { id: string; name: string; developer: string; url: string; permissions: Record<string, string>; createdAt: string; lastUsedAt?: string; revokedAt?: string }
+interface App { id: string; name: string; developer: string; url: string; adminPage?: string; orderBlock?: string; permissions: Record<string, string>; createdAt: string; lastUsedAt?: string; revokedAt?: string }
 const MODULE: Record<string, string> = { catalog: "Catálogo", pricing: "Precios", inventory: "Inventario", promotions: "Promociones", orders: "Pedidos", customers: "Clientes", payments: "Pagos", builder: "Diseño de la tienda", settings: "Configuración", reports: "Reportes", marketplace: "Marketplace" };
 const LEVEL: Record<string, string> = { none: "Sin acceso", read: "Ver", edit: "Editar", admin: "Administrar" };
 const fmt = (d?: string) => (d ? new Date(d).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "");
@@ -105,9 +105,35 @@ export function Apps({ me }: { me: Me }) {
         <Section key={a.id} title={a.name} description={`${a.developer ? a.developer + " · " : ""}Instalada ${fmt(a.createdAt)}${a.lastUsedAt ? " · último uso " + fmt(a.lastUsedAt) : " · sin uso todavía"}`}
           actions={canEdit && <Button variant="outline" size="sm" disabled={busy === a.id} onClick={() => void revoke(a)}>Revocar</Button>}>
           <PermGrid idp={a.id} value={a.permissions} disabled={!canEdit || busy === a.id} onChange={(m, l) => void setPerm(a, m, l)} />
+          <Extensions app={a} canEdit={canEdit} onSaved={refresh} />
         </Section>
       ))}
       {revoked.length > 0 && <p className="text-sm text-muted-foreground">Revocadas: {revoked.map((a) => `${a.name} (${fmt(a.revokedAt)})`).join(", ")}.</p>}
     </SubPage>
+  );
+}
+
+/** Where the app shows itself in the panel, and the secret it checks sessions with. */
+function Extensions({ app, canEdit, onSaved }: { app: App; canEdit: boolean; onSaved: () => void }) {
+  const [page, setPage] = useState(app.adminPage ?? "");
+  const [block, setBlock] = useState(app.orderBlock ?? "");
+  const [secret, setSecret] = useState("");
+  const dirty = page !== (app.adminPage ?? "") || block !== (app.orderBlock ?? "");
+  async function save() {
+    try { await request("PUT", `/v1/apps/${app.id}/extensions`, { adminPage: page, orderBlock: block }); toast.success("Vistas de la app guardadas."); onSaved(); } catch (e) { toast.error(errorMessage(e)); }
+  }
+  async function reveal() {
+    try { setSecret((await request<{ secret: string }>("GET", `/v1/apps/${app.id}/extension-secret`)).secret); } catch (e) { toast.error(errorMessage(e)); }
+  }
+  return (
+    <details className="rounded-md border p-3 text-sm" data-app-ext>
+      <summary className="cursor-pointer font-medium">Vistas en el panel</summary>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-1.5"><Label htmlFor={`ap-p-${app.id}`}>Página propia (https)</Label><Input id={`ap-p-${app.id}`} disabled={!canEdit} value={page} onChange={(e) => setPage(e.target.value)} placeholder="https://" /></div>
+        <div className="grid gap-1.5"><Label htmlFor={`ap-b-${app.id}`}>Bloque en cada pedido (https)</Label><Input id={`ap-b-${app.id}`} disabled={!canEdit} value={block} onChange={(e) => setBlock(e.target.value)} placeholder="https://" /></div>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground">Se cargan aisladas (sin acceso al panel) con una sesión firmada que vence en 5 minutos e indica tienda, persona y pedido.</p>
+      {canEdit && <div className="mt-2 flex flex-wrap items-center gap-2"><Button size="sm" disabled={!dirty} onClick={() => void save()}>Guardar vistas</Button><Button size="sm" variant="ghost" onClick={() => void reveal()}>Ver secreto de sesiones</Button>{secret && <code className="break-all rounded bg-muted px-2 py-1 text-xs">{secret}</code>}</div>}
+    </details>
   );
 }

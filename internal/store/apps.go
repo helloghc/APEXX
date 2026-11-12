@@ -20,6 +20,8 @@ type App struct {
 	Name        string            `json:"name"`
 	Developer   string            `json:"developer"`
 	URL         string            `json:"url"`
+	AdminPage   string            `json:"adminPage"`  // https page shown inside the panel
+	OrderBlock  string            `json:"orderBlock"` // https block shown in each order
 	Permissions map[string]string `json:"permissions"`
 	CreatedBy   string            `json:"createdBy"`
 	CreatedAt   time.Time         `json:"createdAt"`
@@ -27,12 +29,12 @@ type App struct {
 	RevokedAt   *time.Time        `json:"revokedAt,omitempty"`
 }
 
-const appCols = `id, name, developer, url, permissions, created_by, created_at, last_used_at, revoked_at`
+const appCols = `id, name, developer, url, permissions, created_by, created_at, last_used_at, revoked_at, admin_page, order_block`
 
 func scanApp(r pgx.CollectableRow) (App, error) {
 	var a App
 	var perms []byte
-	err := r.Scan(&a.ID, &a.Name, &a.Developer, &a.URL, &perms, &a.CreatedBy, &a.CreatedAt, &a.LastUsedAt, &a.RevokedAt)
+	err := r.Scan(&a.ID, &a.Name, &a.Developer, &a.URL, &perms, &a.CreatedBy, &a.CreatedAt, &a.LastUsedAt, &a.RevokedAt, &a.AdminPage, &a.OrderBlock)
 	_ = json.Unmarshal(perms, &a.Permissions)
 	return a, err
 }
@@ -55,8 +57,8 @@ func (d *DB) CreateApp(ctx context.Context, tenant, actor string, a App) (App, s
 		if n >= 50 {
 			return errors.New("límite de 50 apps activas")
 		}
-		rows, err := tx.Query(ctx, `INSERT INTO apps (id, tenant_id, name, developer, url, permissions, secret_hash, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING `+appCols,
-			a.ID, tenant, a.Name, a.Developer, a.URL, perms, sum[:], actor)
+		rows, err := tx.Query(ctx, `INSERT INTO apps (id, tenant_id, name, developer, url, permissions, secret_hash, created_by, admin_page, order_block) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING `+appCols,
+			a.ID, tenant, a.Name, a.Developer, a.URL, perms, sum[:], actor, a.AdminPage, a.OrderBlock)
 		if err != nil {
 			return err
 		}
@@ -95,6 +97,20 @@ func (d *DB) UpdateAppPermissions(ctx context.Context, tenant, actor, id string,
 			return ErrNotFound
 		}
 		return Audit(ctx, tx, tenant, actor, "app.permissions", id, map[string]any{"permissions": perms})
+	})
+}
+
+// SetAppExtensions changes where an active app shows itself in the panel.
+func (d *DB) SetAppExtensions(ctx context.Context, tenant, actor, id, adminPage, orderBlock string) error {
+	return d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		ct, err := tx.Exec(ctx, `UPDATE apps SET admin_page=$3, order_block=$4 WHERE tenant_id=$1 AND id=$2 AND revoked_at IS NULL`, tenant, id, adminPage, orderBlock)
+		if err != nil {
+			return err
+		}
+		if ct.RowsAffected() == 0 {
+			return ErrNotFound
+		}
+		return Audit(ctx, tx, tenant, actor, "app.extensions", id, map[string]any{"adminPage": adminPage, "orderBlock": orderBlock})
 	})
 }
 

@@ -18,6 +18,7 @@ import { can } from "@/perms";
 import { href } from "@/router";
 import { sale, type OTotals, type Order, type Quote } from "@/saleApi";
 import { dateTime, ErrorBox, Notice, StatusPill } from "../common";
+import { AppFrame, appExtensions } from "../apps/index";
 
 export const REASONS: Record<string, string> = { size: "Talla o medida", defective: "Defectuoso o dañado", not_as_described: "No es como se describe", wrong_item: "Producto equivocado", changed_mind: "Cambió de opinión", arrived_late: "Llegó tarde", other: "Otro" };
 const EVENT: Record<string, string> = {
@@ -99,6 +100,7 @@ export function OrderDetail({ me, id }: { me: Me; id: string }) {
 
       <WarehouseStatus id={o.id} />
       {!!o.downloads?.length && <Downloads order={o} canEdit={can(me, "orders", "edit")} />}
+      <OrderAppBlocks orderId={o.id} />
       {!!o.checkoutFields?.length && (
         <Card data-checkout-fields><CardHeader><CardTitle className="text-base">Datos del pago</CardTitle></CardHeader>
           <CardContent className="grid gap-1 text-sm">{o.checkoutFields.map((f) => <p key={f.id}><span className="text-muted-foreground">{f.label}:</span> {f.value}</p>)}</CardContent></Card>
@@ -558,6 +560,14 @@ function CancelDialog({ order, onClose, onDone }: DP) {
       <div className="grid gap-1.5"><Label htmlFor="cn-reason">Motivo (opcional)</Label><Input id="cn-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
     </Shell>
   );
+}
+
+/** OrderAppBlocks: the order views that installed apps add, each in its sandboxed frame. */
+function OrderAppBlocks({ orderId }: { orderId: string }) {
+  const q = useQuery({ queryKey: ["app-extensions"], queryFn: appExtensions, staleTime: 60_000 });
+  const blocks = (q.data ?? []).filter((a) => a.orderBlock);
+  if (!blocks.length) return null;
+  return <>{blocks.map((a) => <Card key={a.id}><CardHeader><CardTitle className="text-base">{a.name}</CardTitle></CardHeader><CardContent><AppFrame id={a.id} place="order" order={orderId} height={200} /></CardContent></Card>)}</>;
 }
 
 /** Downloads: the buyer's access to the files of the digital products. */

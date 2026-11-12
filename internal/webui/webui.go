@@ -20,9 +20,10 @@ import (
 var dist embed.FS
 
 // csp allows the preview iframe (srcdoc inherits this policy) to show inline styles
-// and remote images, but no scripts other than the editor's own bundle.
+// and remote images, but no scripts other than the editor's own bundle. Apps'
+// panel pages load in https iframes the panel sandboxes (no same-origin access).
 const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-	"img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; " +
+	"img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-src 'self' https:; " +
 	"frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'"
 
 // Handler serves the editor with SPA fallback to index.html.

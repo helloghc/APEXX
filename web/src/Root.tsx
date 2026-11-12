@@ -1,8 +1,8 @@
 import { PANEL_LANGUAGES, currentLanguage, setLanguage } from "./i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat, Store, Building2, Database } from "lucide-react";
-import { api, ApiError, credentials, errorMessage, UNAUTHORIZED_EVENT, type Me } from "@/api";
+import { Boxes, Cable, CreditCard, Home as HomeIcon, LayoutTemplate, LogOut, Receipt, Users, BadgePercent, Contact, Mails, Settings2, Activity, BarChart3, SearchCheck, Gift, Repeat, Store, Building2, Database, Blocks } from "lucide-react";
+import { api, ApiError, credentials, errorMessage, request, UNAUTHORIZED_EVENT, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form";
@@ -50,6 +50,7 @@ const Wallet = lazy(() => import("@/pages/wallet/index").then((m) => ({ default:
 const Subscriptions = lazy(() => import("@/pages/subscriptions/index").then((m) => ({ default: m.Subscriptions })));
 const Account = lazy(() => import("@/pages/account/index").then((m) => ({ default: m.Account })));
 const AcceptInvite = lazy(() => import("@/pages/account/index").then((m) => ({ default: m.AcceptInvite })));
+const AppsHub = lazy(() => import("@/pages/apps/index").then((m) => ({ default: m.AppsHub })));
 const Marketplace = lazy(() => import("@/pages/marketplace/index").then((m) => ({ default: m.Marketplace })));
 const SellerPortal = lazy(() => import("@/pages/marketplace/index").then((m) => ({ default: m.SellerPortal })));
 const Companies = lazy(() => import("@/pages/b2b/index").then((m) => ({ default: m.Companies })));
@@ -409,6 +410,7 @@ const ICONS: Record<string, typeof HomeIcon> = {
   conectores: Cable,
   reportes: BarChart3,
   operacion: Activity,
+  apps: Blocks,
 };
 
 function Shell({ me }: { me: Me }) {
@@ -419,6 +421,9 @@ function Shell({ me }: { me: Me }) {
   const nav = me.sellerId ? [{ route: "inicio", label: "Portal de vendedor" }] : visibleNav(me);
   const section = route[0] ?? "inicio";
   // "cuenta" is every member's own security page; it needs no module permission.
+  // Apps that add pages to the panel get their own section.
+  const exts = useQuery({ queryKey: ["app-extensions"], queryFn: () => request<{ items: { id: string; adminPage: boolean }[] }>("GET", "/v1/app-extensions").then((r) => r.items), enabled: !me.sellerId && !credentials.key, staleTime: 60_000 });
+  if (!me.sellerId && (exts.data ?? []).some((a) => a.adminPage) && !nav.some((n) => n.route === "apps")) nav.push({ route: "apps", label: "Apps" } as (typeof nav)[number]);
   const active = section === "cuenta" || nav.find((n) => n.route === section) ? section : null;
 
   async function logout() {
@@ -452,6 +457,9 @@ function Shell({ me }: { me: Me }) {
       break;
     case "pedidos":
       body = <Orders me={me} route={route} />;
+      break;
+    case "apps":
+      body = <AppsHub route={route} />;
       break;
     case "clientes":
       body = <Customers me={me} route={route} />;
