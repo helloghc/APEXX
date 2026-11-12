@@ -37,7 +37,11 @@ func dropAIOf(ctx context.Context, tx pgx.Tx, tenant, kind, id string) error {
 		if _, err := tx.Exec(ctx, `DELETE FROM tenant_docs WHERE tenant_id=$1 AND kind='datasheet' AND id=$2`, tenant, id); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `DELETE FROM ai_chunks WHERE tenant_id=$1 AND source_kind='datasheet' AND source_id=$2`, tenant, id)
+		if _, err := tx.Exec(ctx, `DELETE FROM ai_chunks WHERE tenant_id=$1 AND source_kind='datasheet' AND source_id=$2`, tenant, id); err != nil {
+			return err
+		}
+		// Its suggestions (the audit log keeps what was decided).
+		_, err := tx.Exec(ctx, `DELETE FROM ai_suggestions WHERE tenant_id=$1 AND target_kind='product' AND target_id=$2`, tenant, id)
 		return err
 	}
 	return nil

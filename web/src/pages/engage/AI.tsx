@@ -97,6 +97,7 @@ export function AIPanel({ canEdit, canAdmin }: { canEdit: boolean; canAdmin: boo
 /** Search by meaning: one vector per product, kept in step with the catalog. */
 function SemanticCard({ sem, cur, canAdmin, busy, put }: { sem: Semantic; cur: Settings; canAdmin: boolean; busy: boolean; put: (p: Partial<Settings>) => void }) {
   const [budget, setBudget] = useState(String(cur.budgetUsd || sem.budgetUsd));
+  const ev = useQuery({ queryKey: ["ai-eval"], queryFn: () => request<{ queries: number; lexical: { ndcg10: number }; hybrid: { ndcg10: number }; advice: string }>("GET", "/v1/ai/eval"), staleTime: 300_000 });
   const pct = sem.products ? Math.min(100, Math.round((sem.vectors / sem.products) * 100)) : 100;
   return (
     <Card data-ai-semantic className="xl:col-span-2">
@@ -113,6 +114,11 @@ function SemanticCard({ sem, cur, canAdmin, busy, put }: { sem: Semantic; cur: S
             <Button type="submit" variant="outline" disabled={busy}>Guardar presupuesto</Button>
           </form>}
           <p className="text-muted-foreground">Al llegar al tope se pausan las huellas nuevas hasta el mes siguiente; la búsqueda sigue funcionando.</p>
+        </div>}
+        {ev.data && <div className="grid gap-1 rounded-md border p-3" data-ai-eval>
+          <p className="font-medium">Calidad con tus búsquedas reales</p>
+          {ev.data.queries > 0 && <p className="text-muted-foreground">Búsquedas donde tus clientes eligieron un producto: <span className="tabular-nums">{ev.data.queries}</span>. Qué tan arriba aparece lo que eligieron (de 0 a 100): solo palabras <span className="tabular-nums">{Math.round(ev.data.lexical.ndcg10 * 100)}</span> · con significado <span className="tabular-nums">{Math.round(ev.data.hybrid.ndcg10 * 100)}</span>.</p>}
+          <p className="text-muted-foreground">{ev.data.advice}</p>
         </div>}
         {sem.lastError && <Notice tone="warn">El último intento de actualizar huellas falló; se reintenta solo. Detalle: {sem.lastError}</Notice>}
       </CardContent>

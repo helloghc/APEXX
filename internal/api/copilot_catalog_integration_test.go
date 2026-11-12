@@ -92,6 +92,13 @@ func TestCatalogCopilot(t *testing.T) {
 	if c, _ := e.do("POST", "/v1/ai/suggestions/"+sid+"/apply", e.adminB, nil); c != 404 {
 		t.Fatalf("other store applied a suggestion: %d", c)
 	}
+	// Deleting the product deletes its suggestions; the audit keeps the trail.
+	e.must(204, "DELETE", "/v1/products/"+id, e.adminA, nil)
+	var left int
+	_ = e.db.System.QueryRow(context.Background(), `SELECT count(*) FROM ai_suggestions WHERE tenant_id='store-a' AND target_id=$1`, id).Scan(&left)
+	if left != 0 {
+		t.Fatalf("%d suggestions left after deleting the product", left)
+	}
 }
 
 // Rejected suggestions are not proposed again; near duplicates are flagged

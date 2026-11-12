@@ -39,6 +39,7 @@ func (s *Server) routesEngage(handle func(string, http.HandlerFunc)) {
 	s.routesCopilots(handle)
 	s.routesPanelCopilots(handle)
 	s.routesWrite(handle)
+	handle("GET /v1/ai/eval", s.staff("catalog", auth.Read, s.getStoreEval))
 	handle("POST /v1/ai/rfq", s.staff("orders", auth.Read, s.postRFQ))
 	handle("GET /s/{tenant}/api/reviews/{handle}", s.shopReviews)
 	handle("POST /s/{tenant}/api/reviews/{handle}", s.shopReviewCreate)

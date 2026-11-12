@@ -3753,5 +3753,13 @@
 "Atributos que tus textos ya dicen, categoría para productos sin una, títulos y descripciones para buscadores, y posibles duplicados. Cada una dice por qué; aplicas solo lo que te sirva y puedes deshacerlo.": "Attributs que vos textes mentionnent déjà, catégorie pour les produits sans catégorie, titres et descriptions pour les moteurs de recherche, et doublons possibles. Chacune indique pourquoi ; appliquez seulement ce qui vous sert et annulez quand vous voulez.",
 "{} sugerencias nuevas.": "{} nouvelles suggestions.",
 "Revisa estas cifras: no venían en lo que escribiste ({}).": "Vérifiez ces chiffres : ils n'étaient pas dans votre texte ({}).",
-"No se pudo copiar; selecciónala y cópiala.": "Copie impossible ; sélectionnez-la et copiez-la."
+"No se pudo copiar; selecciónala y cópiala.": "Copie impossible ; sélectionnez-la et copiez-la.",
+"Calidad con tus búsquedas reales": "Qualité avec vos vraies recherches",
+"Búsquedas donde tus clientes eligieron un producto:": "Recherches où vos clients ont choisi un produit :",
+"Qué tan arriba aparece lo que eligieron (de 0 a 100): solo palabras": "À quelle hauteur apparaît ce qu'ils ont choisi (0 à 100) : mots seulement",
+"· con significado": "· avec le sens",
+"Todavía hay pocas búsquedas con clics para decidir. Se mide sola conforme tus clientes buscan y eligen.": "Il y a encore trop peu de recherches avec clics pour décider. La mesure se fait seule au fil des recherches et des choix de vos clients.",
+"La búsqueda ya ordena bien lo que tus clientes eligen. Entrenar un modelo propio no se justifica.": "La recherche classe déjà bien ce que choisissent vos clients. Entraîner un modèle propre ne se justifie pas.",
+"Antes de entrenar, prueba un proveedor de vectores semánticos y vuelve a medir con estas mismas búsquedas.": "Avant d'entraîner, essayez un fournisseur de vecteurs sémantiques et mesurez à nouveau avec ces mêmes recherches.",
+"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "Avec un fournisseur sémantique, la recherche reste sous l'objectif. Ces recherches peuvent entraîner le reclassement ou les vecteurs ; comparez le résultat avec cette même mesure avant de l'utiliser."
 }

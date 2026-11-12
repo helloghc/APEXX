@@ -3753,5 +3753,13 @@
 "Atributos que tus textos ya dicen, categoría para productos sin una, títulos y descripciones para buscadores, y posibles duplicados. Cada una dice por qué; aplicas solo lo que te sirva y puedes deshacerlo.": "Atribut yang sudah disebut di teks Anda, kategori untuk produk tanpa kategori, judul dan deskripsi untuk mesin pencari, serta kemungkinan duplikat. Masing-masing menyebutkan alasannya; terapkan yang berguna dan batalkan kapan saja.",
 "{} sugerencias nuevas.": "{} saran baru.",
 "Revisa estas cifras: no venían en lo que escribiste ({}).": "Periksa angka ini: tidak ada di tulisan Anda ({}).",
-"No se pudo copiar; selecciónala y cópiala.": "Tidak bisa disalin; pilih lalu salin."
+"No se pudo copiar; selecciónala y cópiala.": "Tidak bisa disalin; pilih lalu salin.",
+"Calidad con tus búsquedas reales": "Kualitas dengan pencarian nyata Anda",
+"Búsquedas donde tus clientes eligieron un producto:": "Pencarian tempat pelanggan memilih produk:",
+"Qué tan arriba aparece lo que eligieron (de 0 a 100): solo palabras": "Seberapa atas pilihan mereka muncul (0–100): hanya kata",
+"· con significado": "· dengan makna",
+"Todavía hay pocas búsquedas con clics para decidir. Se mide sola conforme tus clientes buscan y eligen.": "Pencarian dengan klik masih terlalu sedikit untuk memutuskan. Diukur otomatis saat pelanggan mencari dan memilih.",
+"La búsqueda ya ordena bien lo que tus clientes eligen. Entrenar un modelo propio no se justifica.": "Pencarian sudah mengurutkan dengan baik pilihan pelanggan. Melatih model sendiri tidak diperlukan.",
+"Antes de entrenar, prueba un proveedor de vectores semánticos y vuelve a medir con estas mismas búsquedas.": "Sebelum melatih, coba penyedia vektor semantik dan ukur lagi dengan pencarian yang sama.",
+"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "Dengan penyedia semantik, pencarian masih di bawah target. Pencarian ini bisa melatih pengurut ulang atau vektor; bandingkan hasilnya dengan pengukuran yang sama sebelum dipakai."
 }

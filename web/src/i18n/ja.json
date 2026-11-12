@@ -3753,5 +3753,13 @@
 "Atributos que tus textos ya dicen, categoría para productos sin una, títulos y descripciones para buscadores, y posibles duplicados. Cada una dice por qué; aplicas solo lo que te sirva y puedes deshacerlo.": "テキストに書かれている属性、カテゴリー未設定の商品へのカテゴリー、検索エンジン用のタイトルと説明、重複の可能性。それぞれ理由を表示し、必要なものだけ適用して、いつでも元に戻せます。",
 "{} sugerencias nuevas.": "新しい提案：{}件",
 "Revisa estas cifras: no venían en lo que escribiste ({}).": "次の数値を確認してください：入力内容にはありませんでした（{}）。",
-"No se pudo copiar; selecciónala y cópiala.": "コピーできませんでした。選択してコピーしてください。"
+"No se pudo copiar; selecciónala y cópiala.": "コピーできませんでした。選択してコピーしてください。",
+"Calidad con tus búsquedas reales": "実際の検索での品質",
+"Búsquedas donde tus clientes eligieron un producto:": "お客様が商品を選んだ検索：",
+"Qué tan arriba aparece lo que eligieron (de 0 a 100): solo palabras": "選ばれた商品の表示位置（0〜100）：単語のみ",
+"· con significado": "・意味あり",
+"Todavía hay pocas búsquedas con clics para decidir. Se mide sola conforme tus clientes buscan y eligen.": "判断するにはクリックのある検索がまだ少なすぎます。お客様の検索と選択に合わせて自動で測定されます。",
+"La búsqueda ya ordena bien lo que tus clientes eligen. Entrenar un modelo propio no se justifica.": "検索はすでにお客様の選ぶ商品を上位に表示しています。独自モデルの学習は不要です。",
+"Antes de entrenar, prueba un proveedor de vectores semánticos y vuelve a medir con estas mismas búsquedas.": "学習の前に、意味ベクトルのプロバイダーを試して同じ検索で再測定してください。",
+"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "意味プロバイダーでも目標に届いていません。これらの検索で並べ替えモデルやベクトルを学習できます。使う前に同じ測定で比較してください。"
 }

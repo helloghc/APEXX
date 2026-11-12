@@ -3753,5 +3753,13 @@
 "Atributos que tus textos ya dicen, categoría para productos sin una, títulos y descripciones para buscadores, y posibles duplicados. Cada una dice por qué; aplicas solo lo que te sirva y puedes deshacerlo.": "Atributos que seus textos já dizem, categoria para produtos sem uma, títulos e descrições para buscadores e possíveis duplicados. Cada uma diz por quê; aplique só o que servir e desfaça quando quiser.",
 "{} sugerencias nuevas.": "{} novas sugestões.",
 "Revisa estas cifras: no venían en lo que escribiste ({}).": "Confira estes números: não estavam no que você escreveu ({}).",
-"No se pudo copiar; selecciónala y cópiala.": "Não foi possível copiar; selecione e copie."
+"No se pudo copiar; selecciónala y cópiala.": "Não foi possível copiar; selecione e copie.",
+"Calidad con tus búsquedas reales": "Qualidade com suas buscas reais",
+"Búsquedas donde tus clientes eligieron un producto:": "Buscas em que seus clientes escolheram um produto:",
+"Qué tan arriba aparece lo que eligieron (de 0 a 100): solo palabras": "Quão alto aparece o que escolheram (0 a 100): só palavras",
+"· con significado": "· com significado",
+"Todavía hay pocas búsquedas con clics para decidir. Se mide sola conforme tus clientes buscan y eligen.": "Ainda há poucas buscas com cliques para decidir. A medição acontece sozinha conforme seus clientes buscam e escolhem.",
+"La búsqueda ya ordena bien lo que tus clientes eligen. Entrenar un modelo propio no se justifica.": "A busca já ordena bem o que seus clientes escolhem. Treinar um modelo próprio não se justifica.",
+"Antes de entrenar, prueba un proveedor de vectores semánticos y vuelve a medir con estas mismas búsquedas.": "Antes de treinar, teste um provedor de vetores semânticos e meça de novo com estas mesmas buscas.",
+"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "Com um provedor semântico a busca continua abaixo da meta. Estas buscas servem para treinar o reordenador ou os vetores; compare o resultado com esta mesma medição antes de usar."
 }

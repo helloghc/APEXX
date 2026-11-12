@@ -3753,5 +3753,13 @@
 "Atributos que tus textos ya dicen, categoría para productos sin una, títulos y descripciones para buscadores, y posibles duplicados. Cada una dice por qué; aplicas solo lo que te sirva y puedes deshacerlo.": "Attributes your texts already mention, a category for products without one, titles and descriptions for search engines, and possible duplicates. Each one says why; apply only what helps you, and undo it anytime.",
 "{} sugerencias nuevas.": "{} new suggestions.",
 "Revisa estas cifras: no venían en lo que escribiste ({}).": "Check these figures: they were not in what you wrote ({}).",
-"No se pudo copiar; selecciónala y cópiala.": "Could not copy; select it and copy it."
+"No se pudo copiar; selecciónala y cópiala.": "Could not copy; select it and copy it.",
+"Calidad con tus búsquedas reales": "Quality with your real searches",
+"Búsquedas donde tus clientes eligieron un producto:": "Searches where your customers chose a product:",
+"Qué tan arriba aparece lo que eligieron (de 0 a 100): solo palabras": "How high what they chose appears (0 to 100): words only",
+"· con significado": "· with meaning",
+"Todavía hay pocas búsquedas con clics para decidir. Se mide sola conforme tus clientes buscan y eligen.": "There are still too few searches with clicks to decide. It measures itself as your customers search and choose.",
+"La búsqueda ya ordena bien lo que tus clientes eligen. Entrenar un modelo propio no se justifica.": "Search already ranks well what your customers choose. Training a model of our own is not justified.",
+"Antes de entrenar, prueba un proveedor de vectores semánticos y vuelve a medir con estas mismas búsquedas.": "Before training, try a semantic vector provider and measure again with these same searches.",
+"Con un proveedor semántico la búsqueda sigue abajo de la meta. Estas búsquedas sirven para entrenar el reordenador o los vectores; compara el resultado con esta misma medición antes de usarlo.": "With a semantic provider, search is still below the goal. These searches can train the re-ranker or the vectors; compare the result with this same measurement before using it."
 }
