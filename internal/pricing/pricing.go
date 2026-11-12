@@ -193,6 +193,28 @@ func (s *Service) Tiers(channel, sku string) []Tier {
 	return append([]Tier(nil), s.prices[channel][sku]...)
 }
 
+// WithFirstTiers gives fn a lookup of the lowest-quantity tier of a SKU in
+// channel (its plain price) under one read lock, for reports over a whole
+// catalog. fn must not call back into the service.
+func (s *Service) WithFirstTiers(channel string, fn func(first func(sku string) (Tier, bool))) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	m := s.prices[channel]
+	fn(func(sku string) (Tier, bool) {
+		ts := m[sku]
+		if len(ts) == 0 {
+			return Tier{}, false
+		}
+		best := ts[0]
+		for _, t := range ts[1:] {
+			if t.MinQty < best.MinQty {
+				best = t
+			}
+		}
+		return best, true
+	})
+}
+
 // Resolve picks the tier with the highest MinQty <= qty and applies the price
 // list in force right now, if any (no customer group).
 func (s *Service) Resolve(channel, sku string, qty int64) (Quote, bool) {

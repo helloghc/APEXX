@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/helloghc/apexx/internal/auth"
+	"github.com/helloghc/apexx/internal/pricing"
 	"github.com/helloghc/apexx/internal/reports"
 )
 
@@ -41,6 +42,53 @@ func (s *Server) routesReports(handle func(string, http.HandlerFunc)) {
 			low, out := t.Inventory.StockCounts(threshold)
 			cache[tenant] = counted{v, low, out, threshold}
 			return low, out, true
+		}
+	}
+	if s.Reports.StockLines == nil && s.Proj != nil {
+		// Built once per projection version and channel (read only after).
+		type built struct {
+			version uint64
+			lines   []reports.StockLine
+		}
+		var linesMu sync.Mutex
+		linesCache := map[string]built{}
+		s.Reports.StockLines = func(tenant, channel string) ([]reports.StockLine, bool) {
+			t, ok := s.Proj.Tenant(tenant)
+			if !ok {
+				return nil, false
+			}
+			key, v := tenant+"\x00"+channel, t.Version()
+			linesMu.Lock()
+			defer linesMu.Unlock()
+			if c, ok := linesCache[key]; ok && c.version == v {
+				return c.lines, true
+			}
+			var out []reports.StockLine
+			t.Inventory.EachTotal(func(sku string, on, res int64) {
+				out = append(out, reports.StockLine{SKU: sku, OnHand: on, Reserved: res, Price: -1})
+			})
+			t.Pricing.WithFirstTiers(channel, func(first func(string) (pricing.Tier, bool)) {
+				for i := range out {
+					if tr, ok := first(out[i].SKU); ok {
+						out[i].Price, out[i].Currency = tr.Unit.Amount, string(tr.Unit.Currency)
+					}
+				}
+			})
+			linesCache[key] = built{v, out}
+			return out, true
+		}
+		s.Reports.SKUTitles = func(tenant string, skus []string) map[string]reports.SKUTitle {
+			m := map[string]reports.SKUTitle{}
+			t, ok := s.Proj.Tenant(tenant)
+			if !ok {
+				return m
+			}
+			for _, sku := range skus {
+				if v, p, err := t.Catalog.VariantBySKU(sku); err == nil {
+					m[sku] = reports.SKUTitle{ProductID: p.ID, Product: p.Title, Variant: v.Title}
+				}
+			}
+			return m
 		}
 	}
 	s.eventsLimiter = &shopLimiter{n: eventsPerMinute}

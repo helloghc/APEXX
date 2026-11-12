@@ -80,16 +80,18 @@ type Server struct {
 	uploadSlots   chan struct{} // bounds concurrent image processing
 	rules         rulesCache    // checkout rules app: settings and answers
 	scripts       scriptsCache  // third-party scripts of each store
-	sso           ssoProviders  // identity providers already discovered
-	engage        engageState   // search terms and review cache
-	learn         learnState    // recommendations and learning search
-	sem           semState      // vectors per product (semantic index)
-	qvec          qcache        // query vectors, reused across searches
-	know          knowState     // store documents in chunks (policies, blog, long descriptions)
-	revSum        revSumState   // review summaries, cached a few minutes
-	graph         graphState    // approved product relations (knowledge graph)
-	patterns      []string      // every registered route, for the access audit
-	eventsLimiter *shopLimiter  // analytics beacon: per store and address
+	summaryMu     sync.Mutex
+	summaries     map[string]summaryAt // catalog summary per store, at a projection version
+	sso           ssoProviders         // identity providers already discovered
+	engage        engageState          // search terms and review cache
+	learn         learnState           // recommendations and learning search
+	sem           semState             // vectors per product (semantic index)
+	qvec          qcache               // query vectors, reused across searches
+	know          knowState            // store documents in chunks (policies, blog, long descriptions)
+	revSum        revSumState          // review summaries, cached a few minutes
+	graph         graphState           // approved product relations (knowledge graph)
+	patterns      []string             // every registered route, for the access audit
+	eventsLimiter *shopLimiter         // analytics beacon: per store and address
 }
 
 // Routes builds the HTTP handler.

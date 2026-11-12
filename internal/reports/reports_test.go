@@ -858,3 +858,61 @@ func TestDashboardPerformance(t *testing.T) {
 	}
 	t.Logf("products by category, 12 months: %s", time.Since(s0).Round(time.Millisecond))
 }
+
+// The operations counts are the same whether the rollup has run or not, and
+// with new rows after its mark: rollup plus the rows after it, never twice.
+func TestActivityRollupExact(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	write := func(i int) {
+		_ = f.db.Tx(ctx, "store-a", func(tx pgx.Tx) error {
+			if err := store.Audit(ctx, tx, "store-a", fmt.Sprintf("member:m_%d", i%3), []string{"order.created", "product.updated"}[i%2], fmt.Sprintf("x_%d", i), nil); err != nil {
+				return err
+			}
+			return store.Emit(ctx, tx, "store-a", "test.topic", fmt.Sprintf("k%d", i), nil)
+		})
+	}
+	counts := func() (int64, map[string]int64) {
+		_, _ = f.db.SequenceOutbox(ctx)
+		h := f.svc.Health(ctx, "store-a")
+		actors, actions, _, err := f.svc.AuditFacets(ctx, "store-a")
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := map[string]int64{}
+		for _, a := range actors {
+			m["actor "+a.Value] = a.Count
+		}
+		for _, a := range actions {
+			m["action "+a.Value] = a.Count
+		}
+		return h.Outbox.Last24h, m
+	}
+	for i := 0; i < 12; i++ {
+		write(i)
+	}
+	raw24, rawFacets := counts()
+	if raw24 < 12 {
+		t.Fatalf("without rollup: %d changes", raw24)
+	}
+	if _, err := f.svc.RollupActivity(ctx, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	r24, rFacets := counts()
+	if r24 != raw24 || fmt.Sprint(rFacets) != fmt.Sprint(rawFacets) {
+		t.Fatalf("after rollup: %d vs %d · %v vs %v", r24, raw24, rFacets, rawFacets)
+	}
+	for i := 12; i < 17; i++ {
+		write(i)
+	}
+	n24, nFacets := counts()
+	if n24 != raw24+5 || nFacets["actor member:m_0"] != rawFacets["actor member:m_0"]+2 {
+		t.Fatalf("new rows after the mark: %d (want %d) · %v", n24, raw24+5, nFacets)
+	}
+	if _, err := f.svc.RollupActivity(ctx, time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if a24, aFacets := counts(); a24 != n24 || fmt.Sprint(aFacets) != fmt.Sprint(nFacets) {
+		t.Fatalf("second rollup changed the counts: %d vs %d · %v vs %v", a24, n24, aFacets, nFacets)
+	}
+}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/helloghc/apexx/internal/reports"
@@ -38,8 +39,33 @@ func TestStockCountsFromMemoryMatchDatabase(t *testing.T) {
 		t.Fatalf("set stock = %d %v", st, b)
 	}
 	compare("after running out")
+	sameInventory(t, e, "after running out")
 	ta, _ := e.proj.Tenant("store-a")
 	if _, out := ta.Inventory.StockCounts(reports.LowStockThreshold); out == 0 {
 		t.Fatal("S2 at zero is not counted as out of stock")
+	}
+}
+
+// The inventory report from memory equals the one from the database: same
+// totals, same rows in the same order, for every filter.
+func sameInventory(t *testing.T, e *env, label string) {
+	t.Helper()
+	ctx := context.Background()
+	mem := e.server.Reports
+	sql := &reports.Service{DB: mem.DB, Keys: mem.Keys, Log: mem.Log, StockCounts: mem.StockCounts}
+	if mem.StockLines == nil {
+		t.Fatal("the server does not answer the inventory from memory")
+	}
+	for _, st := range []string{"", "low", "out", "ok"} {
+		for _, limit := range []int{1, 500} {
+			a, err1 := mem.InventoryReport(ctx, "store-a", "", st, 5, limit)
+			b, err2 := sql.InventoryReport(ctx, "store-a", "", st, 5, limit)
+			if err1 != nil || err2 != nil {
+				t.Fatalf("%s: %v %v", label, err1, err2)
+			}
+			if fmt.Sprintf("%+v", a) != fmt.Sprintf("%+v", b) {
+				t.Fatalf("%s state=%q limit=%d:\nmemory   %+v\ndatabase %+v", label, st, limit, a, b)
+			}
+		}
 	}
 }

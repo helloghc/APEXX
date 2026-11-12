@@ -345,6 +345,12 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		_, err := rep.RollupTraffic(ctx)
 		return err
 	})
+	// Counts of the operations screens (changes in 24 h, audit by person and
+	// action): only what is new is added up (internal/reports/activity.go).
+	every("activity-rollup", 10*time.Second, func(ctx context.Context) error {
+		_, err := rep.RollupActivity(ctx, 3*time.Second)
+		return err
+	})
 	every("analytics-retention", 6*time.Hour, func(ctx context.Context) error {
 		_, err := rep.Purge(ctx)
 		return err

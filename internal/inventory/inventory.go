@@ -207,8 +207,38 @@ func (s *Service) bundleLocked(sku string, comps []Component) Snapshot {
 
 // Available returns sellable units for sku across locations.
 func (s *Service) Available(sku string) int64 {
-	snap, _ := s.Get(sku)
-	return snap.Available
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.expireLocked()
+	return s.availableLocked(sku)
+}
+
+// WithAvailable gives fn a lookup of sellable units that takes the lock
+// once, for summaries over a whole catalog (50 000 products asked one by one
+// took 190 ms). fn must not call back into the service.
+func (s *Service) WithAvailable(fn func(avail func(sku string) int64)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.expireLocked()
+	fn(s.availableLocked)
+}
+
+// availableLocked is Get(sku).Available without building the snapshot.
+func (s *Service) availableLocked(sku string) int64 {
+	if p, ok := s.preorders[sku]; ok {
+		if p.Left < 0 {
+			return Unlimited
+		}
+		return p.Left
+	}
+	if comps, ok := s.bundles[sku]; ok {
+		return s.bundleLocked(sku, comps).Available
+	}
+	var n int64
+	for _, l := range s.levels[sku] {
+		n += l.Available()
+	}
+	return n
 }
 
 // Reserve holds qty units of sku for holder until ttl expires. It allocates
@@ -315,6 +345,25 @@ func (s *Service) snapshotLocked(sku string) Snapshot {
 func (s *Service) publish(snap Snapshot) {
 	if s.bus != nil {
 		s.bus.Publish(events.Event{Topic: TopicChanged, Key: snap.SKU, Data: snap})
+	}
+}
+
+// EachTotal calls fn with every SKU that has stock rows and its units on
+// hand and reserved, summed over locations: the rows the inventory report
+// shows, from memory. fn must not call back into the service.
+func (s *Service) EachTotal(fn func(sku string, onHand, reserved int64)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for sku, locs := range s.levels {
+		if len(locs) == 0 {
+			continue
+		}
+		var on, res int64
+		for _, l := range locs {
+			on += l.OnHand
+			res += l.Reserved
+		}
+		fn(sku, on, res)
 	}
 }
 

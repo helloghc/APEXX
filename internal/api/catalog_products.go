@@ -889,22 +889,52 @@ func (s *Server) catalogSummary(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	v := t.Version()
+	s.summaryMu.Lock()
+	if c, ok := s.summaries[t.ID]; ok && c.version == v {
+		s.summaryMu.Unlock()
+		httpx.JSON(w, r, http.StatusOK, c.body)
+		return
+	}
+	s.summaryMu.Unlock()
 	by := map[string]int{}
 	out, low := 0, 0
-	for _, p := range t.Catalog.Products() {
-		by[p.Status]++
-		if p.Status != "archived" {
-			switch n := totalStock(t, p); {
+	products := t.Catalog.Products()
+	t.Inventory.WithAvailable(func(avail func(string) int64) {
+		for _, p := range products {
+			by[p.Status]++
+			if p.Status == "archived" {
+				continue
+			}
+			var n int64
+			for _, v := range p.Variants {
+				n += avail(v.SKU)
+			}
+			switch {
 			case n <= 0:
 				out++
 			case n <= lowStock:
 				low++
 			}
 		}
-	}
+	})
 	cats, brands, cols, attrs, media := t.Taxo.Counts()
-	httpx.JSON(w, r, http.StatusOK, map[string]any{
+	body := map[string]any{
 		"products": t.Catalog.Count(), "byStatus": by, "outOfStock": out, "lowStock": low,
 		"categories": cats, "brands": brands, "collections": cols, "attributes": attrs, "media": media,
-	})
+	}
+	// Kept until the next change of the store (the version moves with
+	// every event): opening the catalog again does not walk 50 000 products.
+	s.summaryMu.Lock()
+	if s.summaries == nil {
+		s.summaries = map[string]summaryAt{}
+	}
+	s.summaries[t.ID] = summaryAt{v, body}
+	s.summaryMu.Unlock()
+	httpx.JSON(w, r, http.StatusOK, body)
+}
+
+type summaryAt struct {
+	version uint64
+	body    map[string]any
 }

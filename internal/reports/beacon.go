@@ -73,6 +73,11 @@ type Service struct {
 	// StockCounts answers the low and out of stock counts from memory (the
 	// projection) instead of summing every stock row; ok=false falls back.
 	StockCounts func(tenant string, threshold int64) (low, out int64, ok bool)
+	// StockLines and SKUTitles answer the inventory report from memory: every
+	// SKU with stock and its plain price in a channel, and the titles of the
+	// rows shown. ok=false falls back to the database.
+	StockLines func(tenant, channel string) ([]StockLine, bool)
+	SKUTitles  func(tenant string, skus []string) map[string]SKUTitle
 
 	saltMu sync.Mutex
 	salts  map[string][]byte

@@ -88,22 +88,33 @@ type Facet struct {
 
 // AuditFacets lists the actors and actions seen in the last 90 days.
 func (s *Service) AuditFacets(ctx context.Context, tenant string) (actors, actions []Facet, total int64, err error) {
-	since := s.now().Add(-90 * 24 * time.Hour)
+	// The last 90 days, from the start of that day (UTC): the daily rollup
+	// plus the entries after its mark (see activity.go).
+	since := s.now().Add(-90 * 24 * time.Hour).UTC().Truncate(24 * time.Hour)
+	_, auditMark := s.activityMarks(ctx, tenant)
 	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		scan := func(r pgx.CollectableRow) (Facet, error) {
 			var f Facet
 			return f, r.Scan(&f.Value, &f.Label, &f.Count)
 		}
-		rows, err := tx.Query(ctx, `SELECT a.actor, COALESCE(NULLIF(max(m.name), ''), max(m.email), a.actor), count(*) FROM audit_log a
-			LEFT JOIN members m ON m.tenant_id = a.tenant_id AND a.actor = 'member:' || m.id
-			WHERE a.tenant_id = $1 AND a.at >= $2 GROUP BY a.actor ORDER BY 3 DESC LIMIT 100`, tenant, since)
+		rows, err := tx.Query(ctx, `WITH x AS (
+				SELECT key, sum(n)::bigint AS n FROM activity_rollup WHERE tenant_id = $1 AND kind = 'actor' AND bucket >= $2 GROUP BY key
+				UNION ALL
+				SELECT actor, count(*) FROM audit_log WHERE tenant_id = $1 AND seq > $3 AND at >= $2 GROUP BY actor)
+			SELECT x.key, COALESCE(NULLIF(max(m.name), ''), max(m.email), x.key), sum(x.n)::bigint FROM x
+			LEFT JOIN members m ON m.tenant_id = $1 AND x.key = 'member:' || m.id
+			GROUP BY x.key ORDER BY 3 DESC, 1 LIMIT 100`, tenant, since, auditMark)
 		if err != nil {
 			return err
 		}
 		if actors, err = pgx.CollectRows(rows, scan); err != nil {
 			return err
 		}
-		rows, err = tx.Query(ctx, `SELECT action, action, count(*) FROM audit_log WHERE tenant_id = $1 AND at >= $2 GROUP BY action ORDER BY 3 DESC LIMIT 200`, tenant, since)
+		rows, err = tx.Query(ctx, `WITH x AS (
+				SELECT key, sum(n)::bigint AS n FROM activity_rollup WHERE tenant_id = $1 AND kind = 'action' AND bucket >= $2 GROUP BY key
+				UNION ALL
+				SELECT action, count(*) FROM audit_log WHERE tenant_id = $1 AND seq > $3 AND at >= $2 GROUP BY action)
+			SELECT key, key, sum(n)::bigint FROM x GROUP BY key ORDER BY 3 DESC, 1 LIMIT 200`, tenant, since, auditMark)
 		if err != nil {
 			return err
 		}
@@ -175,6 +186,7 @@ func (s *Service) Health(ctx context.Context, tenant string) Health {
 	h.DB.PingMs = float64(time.Since(start).Microseconds()) / 1000
 	h.DB.OK, h.DB.Version = true, version
 	now := s.now()
+	outboxMark, _ := s.activityMarks(ctx, tenant)
 	_ = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		c, err := s.opsCounts(ctx, tx, tenant, now)
 		if err != nil {
@@ -187,11 +199,15 @@ func (s *Service) Health(ctx context.Context, tenant string) Health {
 		h.Stock.Low, h.Stock.Out = c.LowStock, c.OutOfStock
 		return tx.QueryRow(ctx, `SELECT
 				COALESCE((SELECT max(id) FROM outbox WHERE tenant_id = $1), 0),
-				(SELECT count(*) FROM outbox WHERE tenant_id = $1 AND created_at >= $2::timestamptz - interval '1 day'),
+				-- Changes in the last 24 hours, by whole hours: the hourly rollup plus
+				-- the events after its mark and those not sequenced yet.
+				(SELECT COALESCE(sum(n), 0) FROM activity_rollup WHERE tenant_id = $1 AND kind = 'outbox' AND bucket >= date_trunc('hour', $2::timestamptz - interval '23 hours', 'UTC'))::bigint
+				+ (SELECT count(*) FROM outbox WHERE tenant_id = $1 AND seq > $3 AND created_at >= date_trunc('hour', $2::timestamptz - interval '23 hours', 'UTC'))
+				+ (SELECT count(*) FROM outbox WHERE tenant_id = $1 AND seq IS NULL),
 				(SELECT count(*) FROM analytics_events WHERE tenant_id = $1 AND at >= $2::timestamptz - interval '1 day'),
 				(SELECT count(*) FROM orders o WHERE o.tenant_id = $1 AND o.updated_at >= $2::timestamptz - interval '1 day' AND NOT EXISTS (
 					SELECT 1 FROM analytics_orders a WHERE a.tenant_id = o.tenant_id AND a.order_id = o.id AND a.src_version = o.version))`,
-			tenant, now).Scan(&h.Outbox.LastID, &h.Outbox.Last24h, &h.Analytics.Events24h, &h.Analytics.OrdersBehind)
+			tenant, now, outboxMark).Scan(&h.Outbox.LastID, &h.Outbox.Last24h, &h.Analytics.Events24h, &h.Analytics.OrdersBehind)
 	})
 	rows, err := s.DB.System.Query(ctx, `SELECT name, at FROM analytics_state`)
 	if err == nil {

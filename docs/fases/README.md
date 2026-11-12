@@ -27,6 +27,7 @@ Cada documento dice qué se construyó, cómo se probó y qué quedó pendiente,
 | Documento | Contenido |
 |---|---|
 | [../audit/escala-50k.md](../audit/escala-50k.md) | Simulación con 1 000, 10 000 y 50 000 productos, con reversión total |
+| [../audit/carga-paneles.md](../audit/carga-paneles.md) | Carga de cada vista del panel, en local y con red real, con 120 y 50 000 productos |
 | [../deploy.md](../deploy.md) §7–7.2 | Varios nodos, despliegue sin corte y variables de IA |
 
 ## Plan de IA

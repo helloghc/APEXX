@@ -10,7 +10,7 @@ const R = { n: N, at: new Date().toISOString(), phases: {} };
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 const save = () => fs.writeFileSync(OUT, JSON.stringify(R, null, 1));
 // Tables that only ever grow: history, by design (who did what, what changed).
-const HISTORY = new Set(['audit_log', 'outbox', 'price_history', 'import_jobs', 'bulk_jobs', 'idempotency_keys', 'stock_movements', 'inventory_ledger', 'search_terms_daily', 'ai_usage']);
+const HISTORY = new Set(['audit_log', 'outbox', 'price_history', 'import_jobs', 'bulk_jobs', 'idempotency_keys', 'stock_movements', 'inventory_ledger', 'search_terms_daily', 'ai_usage', 'activity_rollup']);
 
 async function allProducts() {
   const ids = []; let cursor = '';
@@ -172,7 +172,8 @@ async function storeTotal(q = '') {
   for (const id of jobs) for (;;) { const j = await L.api('GET', `/v1/bulk-operations/${id}`); if (j.status === 'done' || j.status === 'failed') break; await L.sleep(250); }
   const tRestore = performance.now() - tr;
   const after = priceSnap();
-  const diffLines = before.split('\n').filter((l, i) => after.split('\n')[i] !== l).length;
+  const afterLines = after.split('\n'); // once: splitting it per line was quadratic (minutes at 100 000 prices)
+  const diffLines = before.split('\n').filter((l, i) => afterLines[i] !== l).length;
   R.phases.priceReversion = { bulkChanged: bulk.changed ?? bulk.count ?? bulk, bulkMs: Math.round(tBulk), changedInDB: changed, restoreMs: Math.round(tRestore), restoredExactly: after === before, linesDifferent: diffLines };
   log('reversión de precios:', JSON.stringify(R.phases.priceReversion));
   save();
