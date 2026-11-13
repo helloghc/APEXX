@@ -159,4 +159,7 @@ Lo construido, con sus pruebas y mediciones, está en [`docs/sandbox.md`](../san
 - **Cupos por plan:** Apexx no tenía planes comerciales. Se agregó `tenant_plans`, que fija el operador con `apexx tenant plan`: cuántos sandboxes, cuántos productos caben en cada uno, y si incluye datos de prueba y publicaciones programadas.
 - **Publicación programada, contraseña opcional, métricas por sandbox y relevo de nodos:** construidos y probados. Ver `docs/sandbox.md`.
 - **Webhooks, canales y conversiones del servidor:** no se copian y conectarlos dentro del sandbox se rechaza. Las automatizaciones y los almacenes externos copiados registran «Capturado en el sandbox» en vez de llamar afuera.
+- **Sandbox ligero, traer y enviar productos:** a petición del dueño del producto. Un sandbox puede nacer sin productos y traer solo los que se quieren probar, o enviarlos a otro sandbox. Así ocupa una fracción del disco de una copia completa.
+- **Existencias de pedidos de prueba:** nunca viajan a producción; solo lo que una persona fija a mano.
+- **Superadmin:** operadores de la plataforma con su propia cuenta y verificación en dos pasos obligatoria. Fijan el plan de cada tienda; el equipo de cada tienda sigue siendo ilimitado (no hay asientos).
 

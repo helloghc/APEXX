@@ -139,8 +139,8 @@ func (d *DB) diffTx(ctx context.Context, tx pgx.Tx, sb Sandbox, areas []string, 
 			if strings.Contains(scope, "$4") {
 				args = append(args, products)
 			}
-			q := `WITH s AS (SELECT ` + pkExpr("x", t) + ` AS pk, ` + rowHash("x") + ` AS h, (` + visible + `) AS vis FROM ` + quoteIdent(tn) + ` x WHERE x.tenant_id = $1 AND (` + scope + `)),
-				p AS (SELECT ` + pkExpr("x", t) + ` AS pk, ` + rowHash("x") + ` AS h, (` + visible + `) AS vis FROM ` + quoteIdent(tn) + ` x WHERE x.tenant_id = $2 AND (` + scope + `)),
+			q := `WITH s AS (SELECT ` + pkExpr("x", t) + ` AS pk, ` + rowHash("x", tn) + ` AS h, (` + visible + `) AS vis FROM ` + quoteIdent(tn) + ` x WHERE x.tenant_id = $1 AND (` + scope + `)),
+				p AS (SELECT ` + pkExpr("x", t) + ` AS pk, ` + rowHash("x", tn) + ` AS h, (` + visible + `) AS vis FROM ` + quoteIdent(tn) + ` x WHERE x.tenant_id = $2 AND (` + scope + `)),
 				b AS (SELECT pk, hash AS h FROM sandbox_base WHERE sandbox_id = $1 AND tbl = $3)
 				SELECT COALESCE(s.pk, p.pk, b.pk), COALESCE(s.h, ''), COALESCE(p.h, ''), COALESCE(b.h, '')
 				FROM s FULL JOIN p ON p.pk = s.pk FULL JOIN b ON b.pk = COALESCE(s.pk, p.pk)
@@ -341,6 +341,12 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 		})); err != nil {
 			return err
 		}
+		// A temporary table is never analyzed on its own: without its real
+		// size the planner can choose a plan that is quadratic at 100 000
+		// rows (minutes instead of seconds).
+		if _, err := tx.Exec(ctx, `ANALYZE _pub`); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `INSERT INTO sandbox_publishes (id, parent_id, sandbox_id, areas, summary, published_by) VALUES ($1,$2,$3,$4,$5,$6)`,
 			res.ID, sb.ParentID, sb.ID, mustJSON(areas), mustJSON(diffs), actor); err != nil {
 			return err
@@ -397,7 +403,7 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 				if c == "tenant_id" || slices.Contains(t.pk, c) {
 					continue
 				}
-				set = append(set, quoteIdent(c)+" = s."+quoteIdent(c))
+				set = append(set, quoteIdent(c)+" = "+publishValue(tn, c, "s", "p"))
 			}
 			if len(set) > 0 {
 				if _, err := tx.Exec(ctx, `UPDATE `+quoteIdent(tn)+` p SET `+strings.Join(set, ", ")+` FROM `+quoteIdent(tn)+` s
@@ -439,7 +445,7 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 			sel := make([]string, len(t.cols))
 			for i, c := range t.cols {
 				cols[i] = quoteIdent(c)
-				sel[i] = "s." + quoteIdent(c)
+				sel[i] = publishValue(tn, c, "s", "")
 				if c == "tenant_id" {
 					sel[i] = "$1"
 				}
@@ -453,7 +459,7 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 		// changed them since.
 		for _, tn := range tnames {
 			t := byName[tn]
-			if _, err := tx.Exec(ctx, `UPDATE sandbox_publish_rows r SET after_hash = `+rowHash("x")+` FROM `+quoteIdent(tn)+` x
+			if _, err := tx.Exec(ctx, `UPDATE sandbox_publish_rows r SET after_hash = `+rowHash("x", tn)+` FROM `+quoteIdent(tn)+` x
 				WHERE r.publish_id = $1 AND r.tbl = $2 AND x.tenant_id = $3 AND `+keyEq("x", t, "r.pk", typed[tn]), res.ID, tn, sb.ParentID); err != nil {
 				return err
 			}
@@ -513,6 +519,27 @@ const analyzeAfter = 1000
 
 // saveCascade saves the production rows that deleting t's chosen rows would
 // remove through ON DELETE CASCADE, when they are not deleted on their own.
+// publishValue is what a publish writes in column c from the sandbox row s
+// (p: production's row on an update, "" on an insert). Stock carries the
+// team's adjustments only: what test orders took is added back, and
+// production's reservations stay as they are.
+func publishValue(table, c, s, p string) string {
+	if table == "stock_levels" {
+		switch c {
+		case "on_hand":
+			return s + ".on_hand + " + consumedBy(s)
+		case "reserved":
+			if p == "" {
+				return "0"
+			}
+			return p + ".reserved"
+		case "updated_at":
+			return "now()"
+		}
+	}
+	return s + "." + quoteIdent(c)
+}
+
 // sameKey is "rows a and b have the same key", by columns.
 func sameKey(a, b string, t tableInfo) string {
 	if len(t.pk) == 0 {
@@ -682,7 +709,7 @@ func (d *DB) RevertPublish(ctx context.Context, parent, publishID, actor string,
 			t := byName[tn]
 			typed := typedKeys(ctx, tx, t, `SELECT pk FROM sandbox_publish_rows WHERE publish_id = $1 AND tbl = $2`, publishID, tn)
 			crow, err := tx.Query(ctx, `SELECT r.pk FROM sandbox_publish_rows r LEFT JOIN `+quoteIdent(tn)+` x ON x.tenant_id = $3 AND `+keyEq("x", t, "r.pk", typed)+`
-				WHERE r.publish_id = $1 AND r.tbl = $2 AND COALESCE(`+rowHash("x")+`, '') <> r.after_hash AND NOT (x.tenant_id IS NULL AND r.after_hash = '')`, publishID, tn, parent)
+				WHERE r.publish_id = $1 AND r.tbl = $2 AND COALESCE(`+rowHash("x", tn)+`, '') <> r.after_hash AND NOT (x.tenant_id IS NULL AND r.after_hash = '')`, publishID, tn, parent)
 			if err != nil {
 				return err
 			}
@@ -738,7 +765,9 @@ func (d *DB) RevertPublish(ctx context.Context, parent, publishID, actor string,
 					conflict = append(conflict, quoteIdent(c))
 				}
 				for _, c := range t.cols {
-					if c != "tenant_id" && !slices.Contains(t.pk, c) {
+					// Production's reservations are live orders: a revert of
+					// stock never writes them back.
+					if c != "tenant_id" && !slices.Contains(t.pk, c) && !(t.name == "stock_levels" && c == "reserved") {
 						set = append(set, quoteIdent(c)+" = EXCLUDED."+quoteIdent(c))
 					}
 				}

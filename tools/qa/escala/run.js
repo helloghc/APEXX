@@ -174,6 +174,30 @@ async function storeTotal(q = '') {
     log('sandbox borrado:', JSON.stringify(R2.delete));
     R.phases.sandbox = R2;
     save();
+
+    // 2e. A light sandbox in the same store: created without products, 500
+    // brought, nothing to publish until changed, deleted with nothing left.
+    const R3 = {};
+    let t = performance.now();
+    const light = (await L.api('POST', '/v1/sandboxes', { name: 'Ligero escala', scope: 'light' })).sandbox.id;
+    for (;;) { const v = await L.api('GET', '/v1/sandboxes/' + light); if (v.sandbox.status !== 'copying') break; await L.sleep(100); }
+    R3.create = { ms: Math.round(performance.now() - t), products: Number(L.psql(`SELECT count(*) FROM products WHERE tenant_id='${light}'`)) };
+    log('sandbox ligero creado:', JSON.stringify(R3.create));
+    const ids = L.psql(`SELECT id FROM products WHERE tenant_id='${L.T}' ORDER BY id LIMIT 500`).split('\n');
+    t = performance.now();
+    const br = await L.api('POST', `/v1/sandboxes/${light}/products`, { products: ids });
+    R3.bring = { ms: Math.round(performance.now() - t), products: br.products, variants: Number(L.psql(`SELECT count(*) FROM variants WHERE tenant_id='${light}'`)), prices: Number(L.psql(`SELECT count(*) FROM prices WHERE tenant_id='${light}'`)) };
+    log('500 productos traídos:', JSON.stringify(R3.bring));
+    t = performance.now();
+    const dl = await L.api('GET', `/v1/sandboxes/${light}/diff?areas=catalog,prices,stock`);
+    R3.diff = { ms: Math.round(performance.now() - t), changes: dl.areas.reduce((n, a) => n + a.inserts + a.updates + a.deletes, 0) };
+    log('diferencia del ligero sin cambios:', JSON.stringify(R3.diff));
+    t = performance.now();
+    await L.api('DELETE', '/v1/sandboxes/' + light, undefined, true);
+    R3.delete = { ms: Math.round(performance.now() - t), tenantRow: L.psql(`SELECT count(*) FROM tenants WHERE id='${light}'`) };
+    log('sandbox ligero borrado:', JSON.stringify(R3.delete));
+    R.phases.sandboxLight = R3;
+    save();
   }
 
   // 3. Latencies, one client and 16 at once.

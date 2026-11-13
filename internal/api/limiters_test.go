@@ -5,7 +5,7 @@ package api
 func resetLimiters() {
 	for _, l := range []*shopLimiter{suggestLimiter, reviewLimiter, formLimiter, feedLimiter, quoteLimiter, listLimiter, askLimiter, simLimiter, couponLimiter,
 		checkoutLimiter, browseLimiter, codeLimiter, verifyLimiter, newsletterLimiter, trackLimiter, accountLimiter, subLimiter, giftCardLimiter,
-		passwordIPLimiter, passwordAllLimiter} {
+		passwordIPLimiter, passwordAllLimiter, operatorIPLimiter, operatorEmailLimiter} {
 		l.reset()
 	}
 }

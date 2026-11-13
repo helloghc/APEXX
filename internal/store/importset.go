@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 
@@ -264,6 +265,9 @@ func (d *DB) ApplyNewProducts(ctx context.Context, tenant, actor string, ips []c
 				SELECT $1, s, l, q FROM unnest($2::text[], $3::text[], $4::bigint[]) AS x(s, l, q)
 				ON CONFLICT (tenant_id, sku, location_id) DO UPDATE SET on_hand=EXCLUDED.on_hand, updated_at=now()`,
 				tenant, sSKU, sLoc, sQty)
+			if strings.HasPrefix(tenant, SandboxPrefix) {
+				bt.Queue(`DELETE FROM sandbox_stock_moves WHERE tenant_id=$1 AND (sku, location_id) IN (SELECT s, l FROM unnest($2::text[], $3::text[]) AS x(s, l))`, tenant, sSKU, sLoc)
+			}
 		}
 		bt.Queue(`INSERT INTO outbox (tenant_id, topic, key, payload) SELECT $1, t, k, p::jsonb FROM unnest($2::text[], $3::text[], $4::text[]) AS x(t, k, p)`,
 			tenant, eTopic, eKey, ePay)

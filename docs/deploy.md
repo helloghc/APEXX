@@ -186,7 +186,15 @@ Cada tienda tiene un presupuesto mensual (10 USD por omisión) en *Búsqueda y o
 
 Cada tienda puede tener sandboxes: copias completas y privadas (ver `docs/sandbox.md`). No hace falta ningún servicio adicional; cada uno es una tienda más dentro de la misma base.
 
-**Plan de cada tienda.** Por omisión, una tienda tiene 1 sandbox, sin límite de productos, con datos de prueba y publicaciones programadas. El operador lo cambia por tienda:
+**Superadmin.** Crea al menos un operador al instalar, y entra en `https://APEXX_DOMAIN/admin/#superadmin`:
+
+```
+docker compose exec apexx apexx operator create --email tu@empresa.mx --name "Tu nombre" --password '…'
+```
+
+Guarda el secreto que imprime en tu app de autenticación: se muestra una sola vez.
+
+**Plan de cada tienda.** Por omisión, una tienda tiene 1 sandbox, sin límite de productos, con datos de prueba y publicaciones programadas. El operador lo cambia por tienda en el superadmin, o con el comando:
 
 ```
 docker compose exec apexx apexx tenant plan --id mitienda --plan pro --sandboxes 3 --sandbox-products 100000

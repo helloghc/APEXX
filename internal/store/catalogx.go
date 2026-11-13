@@ -278,6 +278,9 @@ func saveProductTx(ctx context.Context, tx pgx.Tx, tenant, actor string, w Produ
 			second.Queue(`INSERT INTO stock_levels (tenant_id, sku, location_id, on_hand) VALUES ($1,$2,$3,$4)
 				ON CONFLICT (tenant_id, sku, location_id) DO UPDATE SET on_hand=EXCLUDED.on_hand, updated_at=now()`,
 				tenant, sku, loc, onHand)
+			if strings.HasPrefix(tenant, SandboxPrefix) {
+				second.Queue(`DELETE FROM sandbox_stock_moves WHERE tenant_id=$1 AND (sku, location_id) IN (SELECT s, l FROM unnest($2::text[], $3::text[]) AS x(s, l))`, tenant, []string{sku}, []string{loc})
+			}
 		}
 		if err := emit(TopicStock, sku, nil); err != nil {
 			return 0, err

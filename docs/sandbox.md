@@ -13,10 +13,38 @@ Este documento es la referencia técnica. La guía de QA para personas está en 
   - `160_sandbox.sql`: modelo, base de comparación, publicaciones y sus filas, con RLS forzada.
   - `161_sandbox_wipe.sql`: permite borrar historial de solo-anexar únicamente dentro de un sandbox y con `apexx.sandbox_wipe = 'on'`.
   - `162_sandbox_plans.sql`: varios sandboxes con nombre, contraseña opcional, planes (`tenant_plans`) y publicaciones programadas (`sandbox_schedules`).
+  - `165_sandbox_scope.sql`: sandbox ligero o completo.
+  - `166_sandbox_stock_moves.sql`: lo que tomaron los pedidos de prueba.
+  - `167_operators.sql`: operadores, sus sesiones y su registro, y llaves de la plataforma.
+
+## Sandbox ligero: traer y enviar productos
+
+Al crearlo se elige qué se copia:
+- **Ligero (recomendado):** todo menos los productos (diseño, configuración, categorías, marcas, promociones, imágenes). Ocupa muy poco disco.
+- **Completo:** también el catálogo entero, con precios y existencias.
+
+En cualquiera de los dos, la sección *Productos del sandbox* permite:
+- **Traer de tu tienda real** (`POST /v1/sandboxes/{id}/products`): eliges productos y llegan con todo lo que les pertenece (variantes, precios, listas de precios, existencias, preventas, archivos digitales, imágenes, búsqueda con IA, relaciones del grafo entre ellos, campos propios y opiniones).
+  - **Base:** se guarda como base la versión de producción, así que solo lo que cambies después aparece para publicar.
+  - **Reinicio:** un producto que ya estaba se deja como está, salvo que se pida dejarlo como en producción (`reset`).
+- **Enviar a otro sandbox** (`POST /v1/sandboxes/{id}/send`): copia los productos tal como están, reemplazando su versión en el otro sandbox.
+  - **Base:** el destino recibe la base del origen, así que publica los mismos cambios.
+  - **Imágenes:** las que se subieron en el origen se copian.
+- **Elegir** (`GET /v1/sandboxes/{id}/pick?from=production|sandbox&q=`): busca por nombre, handle, id o SKU y dice cuáles ya están.
+
+Un producto que nunca se trajo no aparece en la comparación: nunca se publica ni se borra desde un sandbox ligero. Refrescar un sandbox ligero vuelve a traer los mismos productos, como están en producción. El límite de productos del plan se revisa al traer y al enviar. Qué filas viajan con un producto está definido en un solo lugar (`productRows`, en `internal/store/sandbox_products.go`).
+
+## Existencias de los pedidos de prueba
+
+Lo que reservan o venden los pedidos de prueba de un sandbox nunca llega a producción.
+- **Registro aparte:** en un sandbox, cada venta registra lo que tomó en `sandbox_stock_moves` (una devolución lo resta).
+- **Comparación:** las existencias se comparan como «existencias + lo que tomaron los pedidos de prueba», sin las reservas.
+- **Publicar:** se escribe ese número, y las reservas de producción (pedidos reales en curso) no se tocan. Revertir tampoco las pisa.
+- **Ajustes manuales:** cuando una persona fija una cantidad (inventario, cambios masivos, producto, importación), ese número es el que vale y el registro de esa fila se reinicia.
 
 ## Plan de la tienda
 
-Lo que incluye el plan de cada tienda lo fija el operador de la plataforma, nunca la tienda:
+Lo que incluye el plan de cada tienda lo fija el operador de la plataforma, nunca la tienda. Se hace desde el superadmin (abajo) o con el comando:
 
 ```
 apexx tenant plan --id mitienda --plan pro --sandboxes 3 --sandbox-products 100000
@@ -34,6 +62,27 @@ apexx tenant plan --id mitienda --show
 - **Tamaño:** se revisa al copiar y al refrescar (contra los productos de producción). Dentro del sandbox se revisa en cada producto que se guarda o importa, en la misma transacción, que se deshace si se pasa. Producción nunca paga esta revisión: solo corre para ids `sbx-`.
 - **Respuesta:** lo que el plan no incluye responde 409 `plan_limit` con el motivo en palabras.
 - **En el panel:** se muestra arriba del sandbox («Plan pro: incluye 3 sandboxes, usas 1»).
+- **No hay asientos:** las personas del equipo son ilimitadas en todas las tiendas. El plan solo limita los sandboxes, que son lo que ocupa disco.
+
+## Superadmin
+
+Los operadores de la plataforma (el equipo de Apexx) entran en `/admin/#superadmin`. Es una identidad aparte: no es miembro de ninguna tienda, y una sesión o llave de tienda responde 403 ahí.
+
+- **Cuentas:** solo por comando. La contraseña es de 12 o más caracteres y la verificación en dos pasos es obligatoria. El secreto se muestra una sola vez y se guarda cifrado con una llave de la plataforma.
+
+  ```
+  apexx operator create --email ana@apexx.mx --name "Ana" --password '…'
+  apexx operator disable --email ana@apexx.mx
+  ```
+
+- **Entrar:** correo, contraseña y código de 6 dígitos.
+  - Cada código sirve una sola vez.
+  - Hay 10 intentos por minuto por dirección y 5 por cuenta.
+  - Un correo desconocido tarda lo mismo que una contraseña equivocada.
+  - La sesión dura 8 horas y vive en su propia cookie, limitada a `/v1/operator`.
+- **Tiendas:** plan, personas, productos y tamaño estimado. El tamaño son las filas de las tablas grandes por el tamaño medio de una muestra de filas vivas. Se listan los sandboxes de cada tienda con tipo, productos y tamaño. «Cambiar plan» fija cuántos sandboxes, el máximo de productos por sandbox, los datos de prueba y la programación.
+- **Registro:** entradas, intentos fallidos y cambios de plan quedan en `operator_log`. El cambio de plan también aparece en la Actividad de la tienda, con el operador como autor.
+- **Carga:** el panel de las tiendas no carga el código del superadmin (es un archivo aparte que solo se pide en `#superadmin`).
 
 ## Copia
 
@@ -155,6 +204,17 @@ Medido con `tools/qa/escala/run.js 50000` y `APEXX_QA_SANDBOX=1`, en el entorno 
 | Revertir la publicación | 8.8 s, 100 000 filas, idéntico a la foto |
 | Borrar el sandbox | 5.8 s, ninguna fila restante |
 | Base de datos al final de toda la corrida | Ninguna tabla distinta a la foto inicial |
+
+**Sandbox ligero en la misma tienda de 50 000 productos**
+
+| Paso | Resultado |
+| --- | --- |
+| Crearlo (sin productos) | 0.5 s |
+| Traer 500 productos (1 000 variantes, 1 000 precios) | 0.3 s |
+| Comparar con producción sin cambios | 1.3 s, 0 cambios falsos |
+| Borrarlo | 0.2 s, ninguna fila restante |
+
+**Lo que estas mediciones encontraron y se corrigió:** publicar 100 000 precios llegó a tardar 5 minutos en vez de 11 s. La tabla temporal de la publicación (`_pub`) no tenía estadísticas, porque Postgres nunca las calcula solo para tablas temporales, y según el momento el planificador elegía un plan cuadrático. Ahora se analiza al cargarla, y la publicación tarda 11 s siempre.
 
 ## Relevo de nodos con sandboxes activos
 

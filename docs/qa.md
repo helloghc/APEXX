@@ -275,3 +275,10 @@ Pantalla: *Configuración › Sandbox*. Detalle técnico: `docs/sandbox.md`.
 | S22 | Programar | Cambia un producto en el sandbox; en «Publicar a producción», «En una fecha y hora», dentro de 2 minutos | Aparece en «Publicaciones programadas»; a la hora, «Publicada» y la tienda real muestra el cambio; se puede revertir |
 | S23 | Cancelar | Programa otra y pulsa «Cancelar» | Queda «Cancelada» y no se publica |
 | S24 | Métricas | Abre *Operación › Estado* | La tabla «Sandboxes» con productos, última copia, solicitudes, errores, publicaciones, correos capturados e IA |
+| S25 | Sandbox ligero | «Crear sandbox» con «Ligero» | Listo en segundos; «0 productos en este sandbox»; el diseño y la configuración son los de tu tienda |
+| S26 | Traer productos | En «Traer de tu tienda real» busca «Playera», marca 3 y «Traer 3 productos» | «3 productos en este sandbox», con sus precios y existencias; «Publicar a producción» dice que no hay cambios |
+| S27 | Volver a la versión real | Cambia un producto traído; tráelo otra vez con «dejarlo como en tu tienda real» marcado | El producto vuelve a como está en tu tienda real |
+| S28 | Enviar a otro sandbox | Con dos sandboxes, en «Enviar a otro sandbox» marca 2 productos y «Enviar 2 productos» | El otro sandbox los tiene tal como estaban, y su «Publicar a producción» muestra los mismos cambios |
+| S29 | Pedidos de prueba | Compra en la tienda del sandbox y revisa «Publicar a producción» | «Existencias» no aparece por la compra. Si fijas a mano una cantidad, esa sí aparece y se publica tal cual, sin tocar las reservas de tu tienda real |
+| S30 | Superadmin | El operador corre `apexx operator create …` y entra en `/admin/#superadmin` con su código | Lista de tiendas con plan, personas, productos y sandboxes con su tamaño; «Cambiar plan» a 3 sandboxes; la tienda lo ve y su Actividad dice qué operador lo cambió |
+| S31 | Superadmin cerrado | Abre `/admin/#superadmin` con la sesión de una tienda; prueba un código ya usado | La tienda no entra; un código no sirve dos veces |

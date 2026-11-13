@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/helloghc/apexx/internal/auth"
 	"github.com/helloghc/apexx/internal/store"
 )
@@ -541,4 +543,233 @@ func TestSandboxPublishDerived(t *testing.T) {
 	if id, st, n := edgeOf("P2", "compatible_with", "P3"); n != 1 || id != "edge_same" || st != "proposed" {
 		t.Fatalf("copied edge after revert = %d %s %s", n, id, st)
 	}
+}
+
+// TestSandboxLight: a light sandbox copies the store without products; the
+// team brings the ones it wants, edits them, sends them to another sandbox
+// and publishes from either. Products never brought are never touched.
+func TestSandboxLight(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	owner := sandboxOwner(t, e)
+	count := func(tenant, table string) int {
+		var n int
+		_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM `+table+` WHERE tenant_id=$1`, tenant).Scan(&n)
+		return n
+	}
+	if st, out := e.do("POST", "/v1/sandboxes", owner, m{"name": "Ligero", "scope": "light", "dataMode": "demo"}); st != 400 {
+		t.Fatalf("light with test orders = %d %v", st, out)
+	}
+	created := e.must(202, "POST", "/v1/sandboxes", owner, m{"name": "Ligero", "scope": "light"})
+	a := created["sandbox"].(map[string]any)["id"].(string)
+	e.server.WaitSandboxCopies()
+	e.drain()
+	if sb := e.must(200, "GET", "/v1/sandboxes/"+a, owner, nil)["sandbox"].(map[string]any); sb["status"] != "ready" || sb["scope"] != "light" {
+		t.Fatalf("light sandbox = %v", sb)
+	}
+	if count(a, "products") != 0 || count(a, "variants") != 0 || count(a, "prices") != 0 {
+		t.Fatal("a light sandbox copied products")
+	}
+	if count(a, "store_settings") != count("store-a", "store_settings") || count(a, "channels") != count("store-a", "channels") {
+		t.Fatal("a light sandbox did not copy the store's configuration")
+	}
+
+	// Pick from production; bring two products with everything they carry.
+	pick := e.must(200, "GET", "/v1/sandboxes/"+a+"/pick?q=S1", owner, nil)
+	if items := pick["items"].([]any); len(items) != 1 || items[0].(map[string]any)["id"] != "P1" || items[0].(map[string]any)["inSandbox"] != false {
+		t.Fatalf("pick by SKU = %v", pick)
+	}
+	if st, out := e.do("POST", "/v1/sandboxes/"+a+"/products", owner, m{"products": []string{"P1", "NOPE"}}); st != 404 || out["code"] != "products_not_found" {
+		t.Fatalf("bring a missing product = %d %v", st, out)
+	}
+	if count(a, "products") != 0 {
+		t.Fatal("a failed bring left products")
+	}
+	res := e.must(200, "POST", "/v1/sandboxes/"+a+"/products", owner, m{"products": []string{"P1", "P2"}})
+	if res["products"].(float64) != 2 {
+		t.Fatalf("bring = %v", res)
+	}
+	var prodVariants, sbxVariants, prodPrices, sbxPrices int
+	_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM variants WHERE tenant_id='store-a' AND product_id IN ('P1','P2')`).Scan(&prodVariants)
+	_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM variants WHERE tenant_id=$1`, a).Scan(&sbxVariants)
+	_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM prices WHERE tenant_id='store-a' AND sku IN (SELECT sku FROM variants WHERE tenant_id='store-a' AND product_id IN ('P1','P2'))`).Scan(&prodPrices)
+	_ = e.db.System.QueryRow(ctx, `SELECT count(*) FROM prices WHERE tenant_id=$1`, a).Scan(&sbxPrices)
+	if count(a, "products") != 2 || sbxVariants != prodVariants || sbxPrices != prodPrices || sbxPrices == 0 {
+		t.Fatalf("brought %d products, %d/%d variants, %d/%d prices", count(a, "products"), sbxVariants, prodVariants, sbxPrices, prodPrices)
+	}
+	e.drain()
+	if _, ok := e.proj.Tenant(a); !ok {
+		t.Fatal("light sandbox not in memory")
+	}
+
+	// Nothing changed yet: nothing to publish (products not brought are no
+	// deletions).
+	inside := e.must(200, "POST", "/v1/sandboxes/"+a+"/enter", owner, nil)["token"].(string)
+	if st, out := e.do("POST", "/v1/sandbox/publish", inside, m{"areas": []string{"catalog", "prices", "stock"}}); st != 409 || out["code"] != "nothing_to_publish" {
+		t.Fatalf("publish right after bringing = %d %v", st, out)
+	}
+	// Edit inside; bringing again keeps the edit; reset puts it back.
+	e.must(200, "PUT", "/v1/products/P1", inside, m{"handle": "p1", "title": "P1 en prueba", "variants": []m{{"sku": "S1", "title": "Única"}}})
+	again := e.must(200, "POST", "/v1/sandboxes/"+a+"/products", inside, m{"products": []string{"P1"}})
+	if sk := again["skipped"].([]any); len(sk) != 1 || sk[0] != "P1" {
+		t.Fatalf("bring again = %v", again)
+	}
+	var title string
+	_ = e.db.System.QueryRow(ctx, `SELECT title FROM products WHERE tenant_id=$1 AND id='P1'`, a).Scan(&title)
+	if title != "P1 en prueba" {
+		t.Fatalf("bring without reset overwrote the edit: %q", title)
+	}
+	e.must(200, "POST", "/v1/sandboxes/"+a+"/products", inside, m{"products": []string{"P1"}, "reset": true})
+	var prodTitle string
+	_ = e.db.System.QueryRow(ctx, `SELECT title FROM products WHERE tenant_id='store-a' AND id='P1'`).Scan(&prodTitle)
+	_ = e.db.System.QueryRow(ctx, `SELECT title FROM products WHERE tenant_id=$1 AND id='P1'`, a).Scan(&title)
+	if title != prodTitle {
+		t.Fatalf("reset = %q, production %q", title, prodTitle)
+	}
+	e.must(200, "PUT", "/v1/products/P1", inside, m{"handle": "p1", "title": "P1 en prueba", "variants": []m{{"sku": "S1", "title": "Única"}}})
+	e.must(204, "PUT", "/v1/prices/mx/S2", inside, m{"tiers": []m{{"minQty": 1, "unit": m{"amount": 12345, "currency": "MXN"}}}})
+	diff := e.must(200, "GET", "/v1/sandbox/diff?areas=catalog,prices", inside, nil)["areas"].([]any)
+	cat, pri := diff[0].(map[string]any), diff[1].(map[string]any)
+	if cat["deletes"].(float64) != 0 || cat["updates"].(float64) < 1 || pri["updates"].(float64) != 1 || pri["deletes"].(float64) != 0 {
+		t.Fatalf("diff of a light sandbox = catalog %v prices %v", cat, pri)
+	}
+
+	// A second light sandbox; send both products there as they are.
+	if err := e.db.SetTenantPlan(ctx, "store-a", "test", store.Plan{Sandboxes: 2, SandboxSchedule: true}); err != nil {
+		t.Fatal(err)
+	}
+	owner = sandboxOwnerAgain(t, e)
+	b := e.must(202, "POST", "/v1/sandboxes", owner, m{"name": "Segunda ronda", "scope": "light"})["sandbox"].(map[string]any)["id"].(string)
+	e.server.WaitSandboxCopies()
+	e.drain()
+	if st, _ := e.do("POST", "/v1/sandboxes/"+a+"/send", inside, m{"to": "sbx-otra-tienda", "products": []string{"P1"}}); st != 404 {
+		t.Fatalf("send to an unknown sandbox = %d", st)
+	}
+	e.must(200, "POST", "/v1/sandboxes/"+a+"/send", inside, m{"to": b, "products": []string{"P1", "P2"}})
+	var bTitle string
+	var bPrice int64
+	_ = e.db.System.QueryRow(ctx, `SELECT title FROM products WHERE tenant_id=$1 AND id='P1'`, b).Scan(&bTitle)
+	_ = e.db.System.QueryRow(ctx, `SELECT amount FROM prices WHERE tenant_id=$1 AND sku='S2' AND min_qty=1`, b).Scan(&bPrice)
+	if bTitle != "P1 en prueba" || bPrice != 12345 {
+		t.Fatalf("sent: title %q price %d", bTitle, bPrice)
+	}
+	// From the second sandbox the same changes show and publish.
+	inB := e.must(200, "POST", "/v1/sandboxes/"+b+"/enter", inside, nil)["token"].(string)
+	diffB := e.must(200, "GET", "/v1/sandbox/diff?areas=prices", inB, nil)["areas"].([]any)[0].(map[string]any)
+	if diffB["updates"].(float64) != 1 || diffB["deletes"].(float64) != 0 {
+		t.Fatalf("diff of the second sandbox = %v", diffB)
+	}
+	e.must(200, "POST", "/v1/sandbox/publish", inB, m{"areas": []string{"prices"}})
+	var prodPrice int64
+	_ = e.db.System.QueryRow(ctx, `SELECT amount FROM prices WHERE tenant_id='store-a' AND sku='S2' AND min_qty=1`).Scan(&prodPrice)
+	if prodPrice != 12345 {
+		t.Fatalf("production price after publishing from the second sandbox = %d", prodPrice)
+	}
+	if count("store-a", "products") < 3 {
+		t.Fatal("a light publish deleted products that were never brought")
+	}
+
+	// Refresh keeps the products a light sandbox had, as production has them.
+	owner = sandboxOwnerAgain(t, e)
+	e.must(202, "POST", "/v1/sandboxes/"+a+"/refresh", owner, nil)
+	e.server.WaitSandboxCopies()
+	_ = e.db.System.QueryRow(ctx, `SELECT title FROM products WHERE tenant_id=$1 AND id='P1'`, a).Scan(&title)
+	if count(a, "products") != 2 || title != prodTitle {
+		t.Fatalf("refreshed light sandbox: %d products, title %q", count(a, "products"), title)
+	}
+
+	// Size limit: bringing past it is refused and leaves nothing.
+	if err := e.db.SetTenantPlan(ctx, "store-a", "test", store.Plan{Sandboxes: 2, SandboxMaxProducts: 2}); err != nil {
+		t.Fatal(err)
+	}
+	if st, out := e.do("POST", "/v1/sandboxes/"+a+"/products", owner, m{"products": []string{"P3"}}); st != 409 || out["code"] != "plan_limit" {
+		t.Fatalf("bring past the size limit = %d %v", st, out)
+	}
+	if count(a, "products") != 2 {
+		t.Fatal("a refused bring left products")
+	}
+	// Another store never reaches these sandboxes.
+	if st, _ := e.do("POST", "/v1/sandboxes/"+a+"/products", e.adminB, m{"products": []string{"P1"}}); st != 404 {
+		t.Fatalf("another store brings into the sandbox = %d", st)
+	}
+}
+
+// sandboxOwnerAgain signs store-a's owner in again (entering a sandbox ends
+// the session that entered).
+func sandboxOwnerAgain(t *testing.T, e *env) string {
+	t.Helper()
+	_, login := e.do("POST", "/v1/auth/login", "", m{"store": "store-a", "email": "dueno@a.test", "password": "owner-password-123"})
+	return login["token"].(string)
+}
+
+// TestSandboxStockFromTestOrders: what test orders of a sandbox reserve or
+// take is never published; what a person sets is, and production's own
+// reservations are never touched by a publish or a revert.
+func TestSandboxStockFromTestOrders(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	owner := sandboxOwner(t, e)
+	sbx := newSandbox(t, e, owner, "Existencias")
+	inside := e.must(200, "POST", "/v1/sandboxes/"+sbx+"/enter", owner, nil)["token"].(string)
+	level := func(tenant, sku string) (loc string, onHand, reserved int64) {
+		_ = e.db.System.QueryRow(ctx, `SELECT location_id, on_hand, reserved FROM stock_levels WHERE tenant_id=$1 AND sku=$2 ORDER BY location_id LIMIT 1`, tenant, sku).Scan(&loc, &onHand, &reserved)
+		return
+	}
+	stockDiff := func() map[string]any {
+		return e.must(200, "GET", "/v1/sandbox/diff?areas=stock", inside, nil)["areas"].([]any)[0].(map[string]any)
+	}
+	loc1, before1, _ := level(sbx, "S1")
+
+	// A test purchase: reserves, then (paid) takes the units.
+	sf, _ := e.db.CreateAPIKey(ctx, sbx, "sf", "storefront")
+	body := m{"channel": "mx", "postalCode": "53129", "items": []m{{"sku": "S1", "qty": 2}}, "customer": m{"email": "prueba@example.com", "name": "Prueba"}, "paymentMethod": "pm_card_visa"}
+	if c, o := e.do("POST", "/v1/checkout", sf, body, "Idempotency-Key", "stock-test-1"); c != 201 {
+		t.Fatalf("test checkout = %d %v", c, o)
+	}
+	if d := stockDiff(); d["updates"].(float64)+d["inserts"].(float64)+d["deletes"].(float64) != 0 {
+		t.Fatalf("a test order's reservation shows as a stock change: %v", d)
+	}
+	var holder string
+	_ = e.db.System.QueryRow(ctx, `SELECT holder FROM reservations WHERE tenant_id=$1 LIMIT 1`, sbx).Scan(&holder)
+	if holder != "" {
+		if err := e.db.Tx(ctx, sbx, func(tx pgx.Tx) error { return store.CommitTx(ctx, tx, sbx, holder) }); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, after, _ := level(sbx, "S1"); after != before1-2 {
+		t.Fatalf("the test sale did not take the units in the sandbox: %d -> %d", before1, after)
+	}
+	if d := stockDiff(); d["updates"].(float64) != 0 {
+		t.Fatalf("a test sale shows as a stock change: %v", d)
+	}
+
+	// A person sets stock: that is published, as written.
+	loc2, _, _ := level(sbx, "S2")
+	e.must(204, "PUT", "/v1/inventory/S2/"+loc2, inside, m{"onHand": 77})
+	e.must(204, "PUT", "/v1/inventory/S1/"+loc1, inside, m{"onHand": 40}) // after the test sale
+	if d := stockDiff(); d["updates"].(float64) != 2 {
+		t.Fatalf("stock set by a person = %v", d)
+	}
+	// Production has live reservations of its own.
+	if _, err := e.db.System.Exec(ctx, `UPDATE stock_levels SET reserved = 3 WHERE tenant_id='store-a' AND sku='S2' AND location_id=$1`, loc2); err != nil {
+		t.Fatal(err)
+	}
+	pub := e.must(200, "POST", "/v1/sandbox/publish", inside, m{"areas": []string{"stock"}})["publish"].(map[string]any)
+	_, on1, _ := level("store-a", "S1")
+	_, on2, res2 := level("store-a", "S2")
+	if on1 != 40 || on2 != 77 || res2 != 3 {
+		t.Fatalf("production after publishing stock: S1 %d (want 40), S2 %d (want 77), reserved %d (want 3)", on1, on2, res2)
+	}
+	// Production reserves more meanwhile; a revert gives stock back and
+	// leaves its reservations alone.
+	if _, err := e.db.System.Exec(ctx, `UPDATE stock_levels SET reserved = 5 WHERE tenant_id='store-a' AND sku='S2' AND location_id=$1`, loc2); err != nil {
+		t.Fatal(err)
+	}
+	e.must(200, "POST", "/v1/sandbox/publishes/"+pub["id"].(string)+"/revert", inside, nil)
+	_, on2, res2 = level("store-a", "S2")
+	_, on1, _ = level("store-a", "S1")
+	if on1 != before1 || res2 != 5 {
+		t.Fatalf("after revert: S1 %d (want %d), S2 reserved %d (want 5)", on1, before1, res2)
+	}
+	_ = on2
 }

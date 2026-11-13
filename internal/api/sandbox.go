@@ -145,6 +145,11 @@ func (s *Server) routesSandbox(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/sandboxes/{id}/diff", s.authed("settings", auth.Read, s.sandboxDiff))
 	handle("POST /v1/sandboxes/{id}/publish", s.authed("settings", auth.Admin, s.publishSandbox))
 	handle("GET /v1/sandboxes/{id}/mail", s.authed("settings", auth.Read, s.sandboxMail))
+	// Products in and out of a sandbox: pick, bring from production, send
+	// to another sandbox of the store.
+	handle("GET /v1/sandboxes/{id}/pick", s.staff("catalog", auth.Read, s.pickProducts))
+	handle("POST /v1/sandboxes/{id}/products", s.authed("catalog", auth.Edit, s.bringProducts))
+	handle("POST /v1/sandboxes/{id}/send", s.authed("catalog", auth.Edit, s.sendProducts))
 }
 
 // sandboxHooks keep every node's copies right when a store is reloaded
@@ -393,8 +398,21 @@ func (s *Server) createSandbox(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Name     string `json:"name"`
 		DataMode string `json:"dataMode"`
+		Scope    string `json:"scope"` // full (default) or light
 	}
 	if r.ContentLength != 0 && !decode(w, r, &body) {
+		return
+	}
+	if body.Scope == "" {
+		body.Scope = "full"
+	}
+	if body.Scope != "full" && body.Scope != "light" {
+		apierr.BadRequest(w, "Revisa la copia", apierr.FieldError{Field: "scope", Code: "invalid", Message: "Elige: copia completa, o ligera (sin productos)"})
+		return
+	}
+	if body.Scope == "light" && body.DataMode == "demo" {
+		apierr.BadRequest(w, "Revisa los datos", apierr.FieldError{Field: "dataMode", Code: "needs_products",
+			Message: "Los pedidos de prueba se generan con tus productos: elige la copia completa, o crea el sandbox ligero sin ellos"})
 		return
 	}
 	if body.Name == "" {
@@ -421,7 +439,7 @@ func (s *Server) createSandbox(w http.ResponseWriter, r *http.Request) {
 		internalError(w, s.Log, err)
 		return
 	}
-	if err := s.DB.StartSandbox(r.Context(), pr.Tenant, id, name, pr.Actor(), body.DataMode, wrapped); err != nil {
+	if err := s.DB.StartSandbox(r.Context(), pr.Tenant, id, name, body.Scope, pr.Actor(), body.DataMode, wrapped); err != nil {
 		if errors.Is(err, store.ErrSandboxExists) {
 			apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "sandbox_exists", Detail: "Ya tienes un sandbox llamado «" + name + "». Usa otro nombre, o refréscalo o bórralo."})
 			return
@@ -434,7 +452,7 @@ func (s *Server) createSandbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = s.DB.Tx(r.Context(), pr.Tenant, func(tx pgx.Tx) error {
-		return store.Audit(r.Context(), tx, pr.Tenant, pr.Actor(), "sandbox.create", id, map[string]any{"dataMode": body.DataMode, "name": name})
+		return store.Audit(r.Context(), tx, pr.Tenant, pr.Actor(), "sandbox.create", id, map[string]any{"dataMode": body.DataMode, "name": name, "scope": body.Scope})
 	})
 	s.forgetEnv(pr.Tenant)
 	s.runSandboxCopy(id, pr.Tenant, body.DataMode, false)
@@ -459,6 +477,15 @@ func (s *Server) runSandboxCopy(id, parent, dataMode string, refresh bool) {
 			s.Log.Error("sandbox copy", "sandbox", id, "err", err)
 			_ = s.DB.SetSandboxStatus(ctx, id, "failed", "La copia no terminó: "+err.Error(), 0)
 		}
+		// A light sandbox keeps the products it had: they come back as
+		// production has them now.
+		var keepProducts []string
+		if sb, err := s.DB.SandboxByID(ctx, id); err == nil && sb.Scope == "light" && refresh {
+			if keepProducts, err = s.DB.SandboxProductIDs(ctx, id); err != nil {
+				fail(err)
+				return
+			}
+		}
 		if refresh {
 			if err := s.DB.WipeSandbox(ctx, id, true); err != nil {
 				fail(err)
@@ -468,6 +495,18 @@ func (s *Server) runSandboxCopy(id, parent, dataMode string, refresh bool) {
 		if _, err := s.DB.CopySandbox(ctx, id); err != nil {
 			fail(err)
 			return
+		}
+		if len(keepProducts) > 0 {
+			rows, err := s.DB.System.Query(ctx, `SELECT id FROM products WHERE tenant_id = $1 AND id = ANY($2)`, parent, keepProducts)
+			if err == nil {
+				still, _ := pgx.CollectRows(rows, pgx.RowTo[string])
+				if len(still) > 0 {
+					if _, err := s.DB.BringProducts(ctx, id, still, true); err != nil {
+						fail(err)
+						return
+					}
+				}
+			}
 		}
 		if err := s.copyEncrypted(ctx, parent, id); err != nil {
 			fail(err)
@@ -597,9 +636,11 @@ func (s *Server) refreshSandbox(w http.ResponseWriter, r *http.Request) {
 	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
 		return
 	}
-	if err := s.planRoom(r.Context(), parent); err != nil {
-		internalError(w, s.Log, err)
-		return
+	if sb.Scope != "light" {
+		if err := s.planRoom(r.Context(), parent); err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
 	}
 	if sb.Status == "copying" {
 		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "copying", Detail: "El sandbox se está copiando. Espera a que termine."})

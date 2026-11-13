@@ -1,6 +1,20 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { CalendarClock, Copy, ExternalLink, History, KeyRound, Pencil, RefreshCw, Rocket, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  Copy,
+  ExternalLink,
+  History,
+  KeyRound,
+  Package,
+  PackagePlus,
+  Pencil,
+  RefreshCw,
+  Rocket,
+  Search,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { ApiError, errorMessage, request, type Me } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +28,7 @@ import { Confirm, Loading, Section, SubPage } from "./kit";
 interface SandboxState {
   id: string;
   name: string;
+  scope: "full" | "light";
   hasPassword: boolean;
   status: "copying" | "ready" | "failed" | "deleting";
   dataMode: "none" | "demo";
@@ -46,10 +61,36 @@ interface List {
   used: number;
   areas: { id: string; label: string }[];
 }
-interface RowChange { table: string; pk: string; action: "insert" | "update" | "delete"; conflict: boolean; label?: string }
-interface AreaDiff { area: string; label: string; inserts: number; updates: number; deletes: number; conflicts: number; sample: RowChange[] }
-interface Diff { areas: AreaDiff[]; tags?: string[] }
-interface Publish { id: string; sandboxId: string; areas: string[]; publishedBy: string; publishedAt: string; revertedAt?: string; revertedBy?: string; rows: number }
+interface RowChange {
+  table: string;
+  pk: string;
+  action: "insert" | "update" | "delete";
+  conflict: boolean;
+  label?: string;
+}
+interface AreaDiff {
+  area: string;
+  label: string;
+  inserts: number;
+  updates: number;
+  deletes: number;
+  conflicts: number;
+  sample: RowChange[];
+}
+interface Diff {
+  areas: AreaDiff[];
+  tags?: string[];
+}
+interface Publish {
+  id: string;
+  sandboxId: string;
+  areas: string[];
+  publishedBy: string;
+  publishedAt: string;
+  revertedAt?: string;
+  revertedBy?: string;
+  rows: number;
+}
 interface Schedule {
   id: string;
   sandboxId: string;
@@ -61,9 +102,25 @@ interface Schedule {
   createdBy: string;
 }
 
-const ACTION: Record<RowChange["action"], string> = { insert: "Nuevo", update: "Cambia", delete: "Se borra" };
-const SCHEDULE_STATUS: Record<Schedule["status"], string> = { pending: "Programada", running: "Publicando", done: "Publicada", failed: "No se publicó", canceled: "Cancelada" };
-const when = (iso?: string) => (iso ? new Date(iso).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "");
+const ACTION: Record<RowChange["action"], string> = {
+  insert: "Nuevo",
+  update: "Cambia",
+  delete: "Se borra",
+};
+const SCHEDULE_STATUS: Record<Schedule["status"], string> = {
+  pending: "Programada",
+  running: "Publicando",
+  done: "Publicada",
+  failed: "No se publicó",
+  canceled: "Cancelada",
+};
+const when = (iso?: string) =>
+  iso
+    ? new Date(iso).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "";
 const base = (id: string) => `/v1/sandboxes/${encodeURIComponent(id)}`;
 const num = (n: number) => n.toLocaleString("es-MX");
 
@@ -74,17 +131,25 @@ export function Sandbox({ me }: { me: Me }) {
   const q = useQuery({
     queryKey: ["sandbox"],
     queryFn: () => request<List>("GET", "/v1/sandboxes"),
-    refetchInterval: (query) => (query.state.data?.items.some((v) => v.sandbox.status === "copying") ? 1000 : false),
+    refetchInterval: (query) =>
+      query.state.data?.items.some((v) => v.sandbox.status === "copying")
+        ? 1000
+        : false,
   });
   const [picked, setPicked] = useState("");
   if (q.isPending) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} />;
   const l = q.data;
   const inSandbox = l.env === "sandbox";
-  const selectedId = inSandbox ? l.current : l.items.some((v) => v.sandbox.id === picked) ? picked : (l.items[0]?.sandbox.id ?? "");
+  const selectedId = inSandbox
+    ? l.current
+    : l.items.some((v) => v.sandbox.id === picked)
+      ? picked
+      : (l.items[0]?.sandbox.id ?? "");
   const selected = l.items.find((v) => v.sandbox.id === selectedId);
   const refresh = () => void qc.invalidateQueries({ queryKey: ["sandbox"] });
-  const labels = (ids: string[]) => ids.map((a) => l.areas.find((x) => x.id === a)?.label ?? a).join(", ");
+  const labels = (ids: string[]) =>
+    ids.map((a) => l.areas.find((x) => x.id === a)?.label ?? a).join(", ");
 
   return (
     <SubPage
@@ -94,36 +159,98 @@ export function Sandbox({ me }: { me: Me }) {
       <PlanLine plan={l.plan} used={l.used} />
 
       {l.items.length > 1 && (
-        <Section title="Tus sandboxes" description={inSandbox ? "Puedes pasar a otro sandbox de tu tienda sin volver a producción." : "Elige con cuál trabajar."}>
-          <SandboxPicker items={l.items} selected={selectedId} current={l.current} onPick={setPicked} />
+        <Section
+          title="Tus sandboxes"
+          description={
+            inSandbox
+              ? "Puedes pasar a otro sandbox de tu tienda sin volver a producción."
+              : "Elige con cuál trabajar."
+          }
+        >
+          <SandboxPicker
+            items={l.items}
+            selected={selectedId}
+            current={l.current}
+            onPick={setPicked}
+          />
         </Section>
       )}
 
-      {selected && <SandboxDetail key={selected.sandbox.id} v={selected} inSandbox={inSandbox} here={l.current === selected.sandbox.id} admin={admin} plan={l.plan} areas={l.areas} onChange={refresh} />}
+      {selected && (
+        <SandboxDetail
+          key={selected.sandbox.id}
+          v={selected}
+          inSandbox={inSandbox}
+          here={l.current === selected.sandbox.id}
+          admin={admin}
+          editCatalog={can(me, "catalog", "edit")}
+          others={l.items
+            .filter(
+              (x) =>
+                x.sandbox.id !== selected.sandbox.id &&
+                x.sandbox.status === "ready",
+            )
+            .map((x) => x.sandbox)}
+          plan={l.plan}
+          areas={l.areas}
+          onChange={refresh}
+        />
+      )}
 
-      {!inSandbox && admin && l.used < l.plan.sandboxes && <CreateSandbox plan={l.plan} first={l.items.length === 0} onCreated={(id) => { setPicked(id); refresh(); }} />}
-      {!inSandbox && !admin && l.items.length === 0 && <p className="text-sm text-muted-foreground">Pide a un administrador que cree el sandbox.</p>}
+      {!inSandbox && admin && l.used < l.plan.sandboxes && (
+        <CreateSandbox
+          plan={l.plan}
+          first={l.items.length === 0}
+          onCreated={(id) => {
+            setPicked(id);
+            refresh();
+          }}
+        />
+      )}
+      {!inSandbox && !admin && l.items.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Pide a un administrador que cree el sandbox.
+        </p>
+      )}
 
       {l.items.length > 0 && <Schedules admin={admin} labels={labels} />}
-      {l.items.length > 0 && <PublishHistory admin={admin} labels={labels} names={new Map(l.items.map((v) => [v.sandbox.id, v.sandbox.name]))} />}
+      {l.items.length > 0 && (
+        <PublishHistory
+          admin={admin}
+          labels={labels}
+          names={new Map(l.items.map((v) => [v.sandbox.id, v.sandbox.name]))}
+        />
+      )}
     </SubPage>
   );
 }
 
 /** What the store's plan includes, in one line. */
 function PlanLine({ plan, used }: { plan: Plan; used: number }) {
-  if (plan.sandboxes === 0) return <Notice tone="warn">Tu plan no incluye sandbox. Pide que lo agreguen a tu plan.</Notice>;
+  if (plan.sandboxes === 0)
+    return (
+      <Notice tone="warn">
+        Tu plan no incluye sandbox. Pide que lo agreguen a tu plan.
+      </Notice>
+    );
   const parts = [
     plan.plan ? `Plan ${plan.plan}:` : "",
-    plan.sandboxes === 1 ? "incluye 1 sandbox;" : `incluye ${plan.sandboxes} sandboxes;`,
+    plan.sandboxes === 1
+      ? "incluye 1 sandbox;"
+      : `incluye ${plan.sandboxes} sandboxes;`,
     `usas ${used}.`,
-    plan.sandboxMaxProducts > 0 ? `Cada uno admite hasta ${num(plan.sandboxMaxProducts)} productos.` : "",
+    plan.sandboxMaxProducts > 0
+      ? `Cada uno admite hasta ${num(plan.sandboxMaxProducts)} productos.`
+      : "",
     plan.sandboxDemoData ? "" : "Sin datos de prueba.",
     plan.sandboxSchedule ? "" : "Sin publicaciones programadas.",
   ].filter(Boolean);
   // One text per phrase: each one is translated on its own.
   return (
-    <p className="flex flex-wrap gap-x-1 text-sm text-muted-foreground" data-plan>
+    <p
+      className="flex flex-wrap gap-x-1 text-sm text-muted-foreground"
+      data-plan
+    >
       {parts.map((x) => (
         <span key={x}>{x}</span>
       ))}
@@ -131,7 +258,17 @@ function PlanLine({ plan, used }: { plan: Plan; used: number }) {
   );
 }
 
-function SandboxPicker({ items, selected, current, onPick }: { items: View[]; selected: string; current: string; onPick: (id: string) => void }) {
+function SandboxPicker({
+  items,
+  selected,
+  current,
+  onPick,
+}: {
+  items: View[];
+  selected: string;
+  current: string;
+  onPick: (id: string) => void;
+}) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState("");
   async function enter(id: string) {
@@ -152,19 +289,43 @@ function SandboxPicker({ items, selected, current, onPick }: { items: View[]; se
         const sb = v.sandbox;
         const isHere = current === sb.id;
         return (
-          <li key={sb.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 ${sb.id === selected ? "border-primary" : ""}`}>
+          <li
+            key={sb.id}
+            className={`flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 ${sb.id === selected ? "border-primary" : ""}`}
+          >
             <span className="grid">
               <span className="font-medium">{sb.name}</span>
-              <span className="text-xs text-muted-foreground">{isHere ? "Estás aquí" : sb.status === "ready" ? `Copiado el ${when(sb.copiedAt)}` : sb.status === "copying" ? "Copiando…" : sb.status === "failed" ? "La copia no terminó" : "Borrando…"}</span>
+              <span className="text-xs text-muted-foreground">
+                {isHere
+                  ? "Estás aquí"
+                  : sb.status === "ready"
+                    ? `Copiado el ${when(sb.copiedAt)}`
+                    : sb.status === "copying"
+                      ? "Copiando…"
+                      : sb.status === "failed"
+                        ? "La copia no terminó"
+                        : "Borrando…"}
+              </span>
             </span>
             {current ? (
-              !isHere && sb.status === "ready" && (
-                <Button size="sm" variant="outline" disabled={busy !== ""} onClick={() => void enter(sb.id)}>
+              !isHere &&
+              sb.status === "ready" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy !== ""}
+                  onClick={() => void enter(sb.id)}
+                >
                   {busy === sb.id ? "Entrando…" : `Pasar a ${sb.name}`}
                 </Button>
               )
             ) : (
-              <Button size="sm" variant={sb.id === selected ? "default" : "outline"} aria-pressed={sb.id === selected} onClick={() => onPick(sb.id)}>
+              <Button
+                size="sm"
+                variant={sb.id === selected ? "default" : "outline"}
+                aria-pressed={sb.id === selected}
+                onClick={() => onPick(sb.id)}
+              >
                 {sb.id === selected ? "Seleccionado" : `Ver ${sb.name}`}
               </Button>
             )}
@@ -175,14 +336,31 @@ function SandboxPicker({ items, selected, current, onPick }: { items: View[]; se
   );
 }
 
-function CreateSandbox({ plan, first, onCreated }: { plan: Plan; first: boolean; onCreated: (id: string) => void }) {
+function CreateSandbox({
+  plan,
+  first,
+  onCreated,
+}: {
+  plan: Plan;
+  first: boolean;
+  onCreated: (id: string) => void;
+}) {
   const [name, setName] = useState(first ? "Sandbox" : "");
   const [dataMode, setDataMode] = useState<"none" | "demo">("none");
+  const [scope, setScope] = useState<"full" | "light">("light");
   const [busy, setBusy] = useState(false);
   async function create() {
     setBusy(true);
     try {
-      const r = await request<{ sandbox: SandboxState }>("POST", "/v1/sandboxes", { name: name.trim(), dataMode });
+      const r = await request<{ sandbox: SandboxState }>(
+        "POST",
+        "/v1/sandboxes",
+        {
+          name: name.trim(),
+          dataMode: scope === "light" ? "none" : dataMode,
+          scope,
+        },
+      );
       toast.success("Copiando tu tienda al sandbox…");
       setName("");
       onCreated(r.sandbox.id);
@@ -195,7 +373,7 @@ function CreateSandbox({ plan, first, onCreated }: { plan: Plan; first: boolean;
   return (
     <Section
       title={first ? "Crea tu sandbox" : "Crear otro sandbox"}
-      description="Se copia todo lo de tu tienda en segundos. No se copian los datos personales de tus clientes, los pedidos reales ni las credenciales (pagos, llaves, conexiones): en el sandbox se pone lo de prueba."
+      description="Una copia privada de tu tienda en segundos. Nunca se copian los datos personales de tus clientes, los pedidos reales ni las credenciales (pagos, llaves, conexiones): en el sandbox se pone lo de prueba."
     >
       <form
         className="grid gap-3"
@@ -206,22 +384,87 @@ function CreateSandbox({ plan, first, onCreated }: { plan: Plan; first: boolean;
       >
         <div className="grid max-w-sm gap-1.5">
           <Label htmlFor="sbx-name">Nombre</Label>
-          <Input id="sbx-name" required maxLength={60} value={name} placeholder="Por ejemplo: Black Friday" onChange={(e) => setName(e.target.value)} />
+          <Input
+            id="sbx-name"
+            required
+            maxLength={60}
+            value={name}
+            placeholder="Por ejemplo: Black Friday"
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium">Clientes y pedidos en el sandbox</legend>
+          <legend className="text-sm font-medium">Qué se copia</legend>
           <label className="flex items-start gap-2 text-sm">
-            <input type="radio" name="dm" checked={dataMode === "none"} onChange={() => setDataMode("none")} className="mt-1" />
-            <span>Sin clientes ni pedidos (recomendado). Ningún dato personal sale de producción.</span>
-          </label>
-          <label className={`flex items-start gap-2 text-sm ${plan.sandboxDemoData ? "" : "text-muted-foreground"}`}>
-            <input type="radio" name="dm" checked={dataMode === "demo"} disabled={!plan.sandboxDemoData} onChange={() => setDataMode("demo")} className="mt-1" />
+            <input
+              type="radio"
+              name="scope"
+              checked={scope === "light"}
+              onChange={() => setScope("light")}
+              className="mt-1"
+            />
             <span>
-              Con clientes y pedidos de prueba, generados con tus productos (300 pedidos de 90 días), para probar reportes, segmentos y campañas.
-              {!plan.sandboxDemoData && " Tu plan no lo incluye."}
+              <b className="font-medium">Ligero (recomendado):</b> diseño,
+              configuración, categorías y promociones, sin productos. Después
+              traes de tu tienda real solo los que quieres probar, o creas
+              nuevos. Ocupa muy poco espacio.
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="scope"
+              checked={scope === "full"}
+              onChange={() => setScope("full")}
+              className="mt-1"
+            />
+            <span>
+              <b className="font-medium">Completo:</b> también todo el catálogo,
+              con precios y existencias. Para probar cambios grandes en toda la
+              tienda.
+              {plan.sandboxMaxProducts > 0 &&
+                ` Tu plan admite hasta ${num(plan.sandboxMaxProducts)} productos por sandbox.`}
             </span>
           </label>
         </fieldset>
+        {scope === "full" && (
+          <fieldset className="grid gap-2">
+            <legend className="text-sm font-medium">
+              Clientes y pedidos en el sandbox
+            </legend>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="dm"
+                checked={dataMode === "none"}
+                onChange={() => setDataMode("none")}
+                className="mt-1"
+              />
+              <span>
+                Sin clientes ni pedidos (recomendado). Ningún dato personal sale
+                de producción.
+              </span>
+            </label>
+            <label
+              className={`flex items-start gap-2 text-sm ${plan.sandboxDemoData ? "" : "text-muted-foreground"}`}
+            >
+              <input
+                type="radio"
+                name="dm"
+                checked={dataMode === "demo"}
+                disabled={!plan.sandboxDemoData}
+                onChange={() => setDataMode("demo")}
+                className="mt-1"
+              />
+              <span>
+                Con clientes y pedidos de prueba, generados con tus productos
+                (300 pedidos de 90 días), para probar reportes, segmentos y
+                campañas.
+                {!plan.sandboxDemoData && " Tu plan no lo incluye."}
+              </span>
+            </label>
+          </fieldset>
+        )}
         <div>
           <Button type="submit" disabled={busy || name.trim() === ""}>
             {busy ? "Creando…" : "Crear sandbox"}
@@ -232,11 +475,33 @@ function CreateSandbox({ plan, first, onCreated }: { plan: Plan; first: boolean;
   );
 }
 
-function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v: View; inSandbox: boolean; here: boolean; admin: boolean; plan: Plan; areas: { id: string; label: string }[]; onChange: () => void }) {
+function SandboxDetail({
+  v,
+  inSandbox,
+  here,
+  admin,
+  editCatalog,
+  others,
+  plan,
+  areas,
+  onChange,
+}: {
+  v: View;
+  inSandbox: boolean;
+  here: boolean;
+  admin: boolean;
+  editCatalog: boolean;
+  others: SandboxState[];
+  plan: Plan;
+  areas: { id: string; label: string }[];
+  onChange: () => void;
+}) {
   const sb = v.sandbox;
   const [busy, setBusy] = useState("");
   const [confirm, setConfirm] = useState<"" | "refresh" | "delete">("");
-  const [share, setShare] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [share, setShare] = useState<{ url: string; expiresAt: string } | null>(
+    null,
+  );
   const [hours, setHours] = useState(24);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(sb.name);
@@ -261,13 +526,24 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
     });
   const openStore = () =>
     act("open", async () => {
-      const r = await request<{ url: string }>("POST", `${base(sb.id)}/preview`, { hours: 12 });
+      const r = await request<{ url: string }>(
+        "POST",
+        `${base(sb.id)}/preview`,
+        { hours: 12 },
+      );
       window.open(r.url, "_blank", "noopener");
     });
   const makeShare = () =>
     act("share", async () => {
-      const r = await request<{ url: string; expiresAt: string }>("POST", `${base(sb.id)}/preview`, { hours });
-      setShare({ url: r.url.startsWith("http") ? r.url : window.location.origin + r.url, expiresAt: r.expiresAt });
+      const r = await request<{ url: string; expiresAt: string }>(
+        "POST",
+        `${base(sb.id)}/preview`,
+        { hours },
+      );
+      setShare({
+        url: r.url.startsWith("http") ? r.url : window.location.origin + r.url,
+        expiresAt: r.expiresAt,
+      });
     });
   const rename = () =>
     act(
@@ -279,7 +555,15 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
       "Nombre guardado",
     );
 
-  const title = here ? `Estás en «${sb.name}»` : sb.status === "ready" ? `«${sb.name}» está listo` : sb.status === "copying" ? `Copiando tu tienda a «${sb.name}»…` : sb.status === "failed" ? `La copia de «${sb.name}» no terminó` : "Borrando…";
+  const title = here
+    ? `Estás en «${sb.name}»`
+    : sb.status === "ready"
+      ? `«${sb.name}» está listo`
+      : sb.status === "copying"
+        ? `Copiando tu tienda a «${sb.name}»…`
+        : sb.status === "failed"
+          ? `La copia de «${sb.name}» no terminó`
+          : "Borrando…";
   return (
     <>
       <Section
@@ -293,8 +577,20 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
         }
       >
         {sb.status === "copying" && (
-          <div className="h-2 overflow-hidden rounded bg-muted" role="progressbar" aria-label="Avance de la copia" aria-valuemin={0} aria-valuemax={sb.progress?.total ?? 1} aria-valuenow={sb.progress?.done ?? 0}>
-            <div className="h-full bg-primary transition-all" style={{ width: `${Math.round(((sb.progress?.done ?? 0) / Math.max(1, sb.progress?.total ?? 1)) * 100)}%` }} />
+          <div
+            className="h-2 overflow-hidden rounded bg-muted"
+            role="progressbar"
+            aria-label="Avance de la copia"
+            aria-valuemin={0}
+            aria-valuemax={sb.progress?.total ?? 1}
+            aria-valuenow={sb.progress?.done ?? 0}
+          >
+            <div
+              className="h-full bg-primary transition-all"
+              style={{
+                width: `${Math.round(((sb.progress?.done ?? 0) / Math.max(1, sb.progress?.total ?? 1)) * 100)}%`,
+              }}
+            />
           </div>
         )}
         {sb.status === "ready" && (
@@ -304,7 +600,11 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
                 {busy === "enter" ? "Entrando…" : `Entrar a «${sb.name}»`}
               </Button>
             )}
-            <Button variant="outline" disabled={busy !== ""} onClick={() => void openStore()}>
+            <Button
+              variant="outline"
+              disabled={busy !== ""}
+              onClick={() => void openStore()}
+            >
               <ExternalLink className="size-4" /> Ver la tienda del sandbox
             </Button>
           </div>
@@ -321,26 +621,55 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
               >
                 <div className="grid gap-1.5">
                   <Label htmlFor="sbx-rename">Nombre del sandbox</Label>
-                  <Input id="sbx-rename" required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+                  <Input
+                    id="sbx-rename"
+                    required
+                    maxLength={60}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoFocus
+                  />
                 </div>
-                <Button type="submit" disabled={busy !== "" || name.trim() === ""}>
+                <Button
+                  type="submit"
+                  disabled={busy !== "" || name.trim() === ""}
+                >
                   {busy === "rename" ? "Guardando…" : "Guardar"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => { setRenaming(false); setName(sb.name); }}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setRenaming(false);
+                    setName(sb.name);
+                  }}
+                >
                   Cancelar
                 </Button>
               </form>
             ) : (
-              <Button variant="ghost" disabled={busy !== ""} onClick={() => setRenaming(true)}>
+              <Button
+                variant="ghost"
+                disabled={busy !== ""}
+                onClick={() => setRenaming(true)}
+              >
                 <Pencil className="size-4" /> Cambiar nombre
               </Button>
             )}
             {!inSandbox && !renaming && (
               <>
-                <Button variant="outline" disabled={busy !== ""} onClick={() => setConfirm("refresh")}>
+                <Button
+                  variant="outline"
+                  disabled={busy !== ""}
+                  onClick={() => setConfirm("refresh")}
+                >
                   <RefreshCw className="size-4" /> Refrescar desde producción
                 </Button>
-                <Button variant="ghost" disabled={busy !== ""} onClick={() => setConfirm("delete")}>
+                <Button
+                  variant="ghost"
+                  disabled={busy !== ""}
+                  onClick={() => setConfirm("delete")}
+                >
                   <Trash2 className="size-4" /> Borrar «{sb.name}»
                 </Button>
               </>
@@ -350,13 +679,18 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
       </Section>
 
       {sb.status === "ready" && (
-        <Section title="Dirección del sandbox" description="Tu sandbox es privado: solo lo ve tu equipo con sesión, quien reciba un enlace de vista previa o quien sepa su contraseña, si le pones una. Nunca aparece en buscadores.">
+        <Section
+          title="Dirección del sandbox"
+          description="Tu sandbox es privado: solo lo ve tu equipo con sesión, quien reciba un enlace de vista previa o quien sepa su contraseña, si le pones una. Nunca aparece en buscadores."
+        >
           <div className="grid gap-1 text-sm">
             <span className="text-muted-foreground">Dirección temporal</span>
             <code className="break-all">{v.url}</code>
             {v.domains.length > 0 && (
               <>
-                <span className="mt-2 text-muted-foreground">Tus dominios del sandbox</span>
+                <span className="mt-2 text-muted-foreground">
+                  Tus dominios del sandbox
+                </span>
                 {v.domains.map((d) => (
                   <code key={d}>{d}</code>
                 ))}
@@ -364,16 +698,23 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
             )}
           </div>
           <p className="text-sm text-muted-foreground">
-            ¿Prefieres tu propio subdominio, como pruebas.mitienda.com? {here ? "Agrégalo en " : "Entra al sandbox y agrégalo en "}
+            ¿Prefieres tu propio subdominio, como pruebas.mitienda.com?{" "}
+            {here ? "Agrégalo en " : "Entra al sandbox y agrégalo en "}
             <a className="underline" href={href("configuracion", "dominios")}>
               Configuración › Dominios
             </a>
-            : te damos el registro DNS, el certificado HTTPS sale solo y ese subdominio queda ligado al sandbox, nunca a tu tienda real.
+            : te damos el registro DNS, el certificado HTTPS sale solo y ese
+            subdominio queda ligado al sandbox, nunca a tu tienda real.
           </p>
           <div className="flex flex-wrap items-end gap-2">
             <div className="grid gap-1.5">
               <Label htmlFor="sbx-hours">Compartir vista previa por</Label>
-              <select id="sbx-hours" className="h-9 rounded-md border bg-background px-2 text-sm" value={hours} onChange={(e) => setHours(Number(e.target.value))}>
+              <select
+                id="sbx-hours"
+                className="h-9 rounded-md border bg-background px-2 text-sm"
+                value={hours}
+                onChange={(e) => setHours(Number(e.target.value))}
+              >
                 <option value={1}>1 hora</option>
                 <option value={24}>1 día</option>
                 <option value={72}>3 días</option>
@@ -381,15 +722,27 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
                 <option value={336}>14 días</option>
               </select>
             </div>
-            <Button variant="outline" disabled={busy !== ""} onClick={() => void makeShare()}>
+            <Button
+              variant="outline"
+              disabled={busy !== ""}
+              onClick={() => void makeShare()}
+            >
               Crear enlace
             </Button>
           </div>
           {share && (
             <div className="grid gap-1.5">
-              <Label htmlFor="sbx-share">Enlace (vence el {when(share.expiresAt)})</Label>
+              <Label htmlFor="sbx-share">
+                Enlace (vence el {when(share.expiresAt)})
+              </Label>
               <div className="flex gap-2">
-                <Input id="sbx-share" readOnly value={share.url} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+                <Input
+                  id="sbx-share"
+                  readOnly
+                  value={share.url}
+                  className="font-mono text-xs"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
                 <Button
                   variant="outline"
                   size="icon"
@@ -409,8 +762,31 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
         </Section>
       )}
 
-      {sb.status === "ready" && <PasswordPanel id={sb.id} has={sb.hasPassword} admin={admin} onChange={onChange} />}
-      {sb.status === "ready" && <PublishPanel id={sb.id} name={sb.name} admin={admin} areas={areas} canSchedule={plan.sandboxSchedule} />}
+      {sb.status === "ready" && (
+        <SandboxProducts
+          sb={sb}
+          edit={editCatalog}
+          others={others}
+          onChange={onChange}
+        />
+      )}
+      {sb.status === "ready" && (
+        <PasswordPanel
+          id={sb.id}
+          has={sb.hasPassword}
+          admin={admin}
+          onChange={onChange}
+        />
+      )}
+      {sb.status === "ready" && (
+        <PublishPanel
+          id={sb.id}
+          name={sb.name}
+          admin={admin}
+          areas={areas}
+          canSchedule={plan.sandboxSchedule}
+        />
+      )}
       {sb.status === "ready" && <CapturedMail id={sb.id} />}
 
       <Confirm
@@ -420,7 +796,13 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
         confirmLabel="Refrescar"
         busy={busy === "refresh"}
         onClose={() => setConfirm("")}
-        onConfirm={() => act("refresh", () => request("POST", `${base(sb.id)}/refresh`), "Copiando tu tienda al sandbox…").then(() => setConfirm(""))}
+        onConfirm={() =>
+          act(
+            "refresh",
+            () => request("POST", `${base(sb.id)}/refresh`),
+            "Copiando tu tienda al sandbox…",
+          ).then(() => setConfirm(""))
+        }
       />
       <Confirm
         open={confirm === "delete"}
@@ -429,14 +811,314 @@ function SandboxDetail({ v, inSandbox, here, admin, plan, areas, onChange }: { v
         confirmLabel="Borrar sandbox"
         busy={busy === "delete"}
         onClose={() => setConfirm("")}
-        onConfirm={() => act("delete", () => request("DELETE", base(sb.id), undefined, { as: "none" }), "Sandbox borrado").then(() => setConfirm(""))}
+        onConfirm={() =>
+          act(
+            "delete",
+            () => request("DELETE", base(sb.id), undefined, { as: "none" }),
+            "Sandbox borrado",
+          ).then(() => setConfirm(""))
+        }
       />
     </>
   );
 }
 
+interface PickItem {
+  id: string;
+  title: string;
+  handle: string;
+  skus: string[];
+  inSandbox: boolean;
+}
+
+/** A list of products to choose from, with search. */
+function ProductPicker({
+  id,
+  from,
+  label,
+  chosen,
+  setChosen,
+}: {
+  id: string;
+  from: "production" | "sandbox";
+  label: string;
+  chosen: string[];
+  setChosen: (v: string[]) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [term, setTerm] = useState("");
+  const list = useQuery({
+    queryKey: ["sandbox", "pick", id, from, term],
+    queryFn: () =>
+      request<{ items: PickItem[]; total: number }>(
+        "GET",
+        `${base(id)}/pick?from=${from}&q=${encodeURIComponent(term)}`,
+      ),
+  });
+  const inputID = `pick-${from}-${id}`;
+  return (
+    <div className="grid gap-2">
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setTerm(q.trim());
+        }}
+      >
+        <div className="grid min-w-0 flex-1 gap-1.5">
+          <Label htmlFor={inputID}>{label}</Label>
+          <Input
+            id={inputID}
+            value={q}
+            placeholder="Nombre, handle o SKU"
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+        <Button type="submit" variant="outline">
+          <Search className="size-4" /> Buscar
+        </Button>
+      </form>
+      {list.isPending ? (
+        <Loading rows={2} />
+      ) : list.error ? (
+        <ErrorBox error={list.error} />
+      ) : list.data.items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {from === "sandbox"
+            ? "Este sandbox aún no tiene productos."
+            : "No hay productos con esa búsqueda."}
+        </p>
+      ) : (
+        <ul
+          className="grid max-h-80 gap-1 overflow-y-auto rounded-md border p-2"
+          aria-label={`Resultados · ${label}`}
+        >
+          {list.data.items.map((p) => (
+            <li key={p.id}>
+              <label className="flex items-start gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={chosen.includes(p.id)}
+                  onChange={(e) =>
+                    setChosen(
+                      e.target.checked
+                        ? [...chosen, p.id]
+                        : chosen.filter((x) => x !== p.id),
+                    )
+                  }
+                />
+                <span className="grid min-w-0">
+                  <span className="truncate">{p.title}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {p.skus.slice(0, 4).join(" · ")}
+                    {from === "production" && p.inSandbox
+                      ? " · ya está en el sandbox"
+                      : ""}
+                  </span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      {list.data && list.data.items.length >= 50 && (
+        <p className="text-xs text-muted-foreground">
+          Se muestran 50 de {num(list.data.total)}: busca para afinar.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** What products the sandbox has: bring them from production, or send them to another sandbox. */
+function SandboxProducts({
+  sb,
+  edit,
+  others,
+  onChange,
+}: {
+  sb: SandboxState;
+  edit: boolean;
+  others: SandboxState[];
+  onChange: () => void;
+}) {
+  const qc = useQueryClient();
+  const [bring, setBring] = useState<string[]>([]);
+  const [reset, setReset] = useState(false);
+  const [send, setSend] = useState<string[]>([]);
+  const [to, setTo] = useState(others[0]?.id ?? "");
+  const [busy, setBusy] = useState("");
+  const count = useQuery({
+    queryKey: ["sandbox", "pick", sb.id, "count"],
+    queryFn: () =>
+      request<{ total: number }>("GET", `${base(sb.id)}/pick?from=sandbox&q=`),
+  });
+  const after = () => {
+    void qc.invalidateQueries({ queryKey: ["sandbox"] });
+    onChange();
+  };
+  async function doBring() {
+    setBusy("bring");
+    try {
+      const r = await request<{ products: number; skipped: string[] }>(
+        "POST",
+        `${base(sb.id)}/products`,
+        { products: bring, reset },
+      );
+      toast.success(
+        r.skipped.length > 0
+          ? `Traídos ${r.products}; ${r.skipped.length} ya estaban en el sandbox y se dejaron como están.`
+          : reset
+            ? `Listo: ${bring.length} productos quedaron como en tu tienda real.`
+            : `Traídos ${r.products} productos de tu tienda real.`,
+      );
+      setBring([]);
+      setReset(false);
+      after();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy("");
+    }
+  }
+  async function doSend() {
+    setBusy("send");
+    try {
+      const dest = others.find((x) => x.id === to);
+      await request("POST", `${base(sb.id)}/send`, { to, products: send });
+      toast.success(
+        `Enviados ${send.length} productos a «${dest?.name ?? to}», tal como están aquí.`,
+      );
+      setSend([]);
+      after();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy("");
+    }
+  }
+  return (
+    <Section
+      title="Productos del sandbox"
+      description={
+        sb.scope === "light"
+          ? "Sandbox ligero: tiene solo los productos que traes. Lo que no traes queda intacto en tu tienda real y nunca se publica ni se borra desde aquí."
+          : "Copia completa: tiene todo tu catálogo. Puedes volver a traer un producto para dejarlo como en tu tienda real."
+      }
+    >
+      <p className="flex items-center gap-2 text-sm">
+        <Package className="size-4 text-muted-foreground" aria-hidden="true" />
+        {count.data
+          ? `${num(count.data.total)} productos en este sandbox`
+          : "Contando productos…"}
+      </p>
+      {edit ? (
+        <>
+          <div className="grid gap-3 rounded-md border p-3">
+            <h3 className="font-medium">Traer de tu tienda real</h3>
+            <ProductPicker
+              id={sb.id}
+              from="production"
+              label="Buscar en tu tienda real"
+              chosen={bring}
+              setChosen={setBring}
+            />
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={reset}
+                onChange={(e) => setReset(e.target.checked)}
+              />
+              <span>
+                Si alguno ya está en el sandbox, dejarlo como en tu tienda real
+                (se pierde lo que le cambiaste aquí).
+              </span>
+            </label>
+            <div>
+              <Button
+                disabled={busy !== "" || bring.length === 0}
+                onClick={() => void doBring()}
+              >
+                <PackagePlus className="size-4" />{" "}
+                {busy === "bring"
+                  ? "Trayendo…"
+                  : bring.length
+                    ? `Traer ${bring.length} productos`
+                    : "Traer productos"}
+              </Button>
+            </div>
+          </div>
+          {others.length > 0 && (
+            <div className="grid gap-3 rounded-md border p-3">
+              <h3 className="font-medium">Enviar a otro sandbox</h3>
+              <p className="text-sm text-muted-foreground">
+                Copia los productos tal como están aquí (con sus precios,
+                existencias e imágenes) al otro sandbox, reemplazando su
+                versión. Para la siguiente ronda de pruebas.
+              </p>
+              <ProductPicker
+                id={sb.id}
+                from="sandbox"
+                label="Productos de este sandbox"
+                chosen={send}
+                setChosen={setSend}
+              />
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor={`send-to-${sb.id}`}>Enviar a</Label>
+                  <select
+                    id={`send-to-${sb.id}`}
+                    className="h-9 rounded-md border bg-background px-2 text-sm"
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                  >
+                    {others.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={busy !== "" || send.length === 0 || !to}
+                  onClick={() => void doSend()}
+                >
+                  <Send className="size-4" />{" "}
+                  {busy === "send"
+                    ? "Enviando…"
+                    : send.length
+                      ? `Enviar ${send.length} productos`
+                      : "Enviar productos"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Para traer o enviar productos necesitas permiso para editar el
+          catálogo.
+        </p>
+      )}
+    </Section>
+  );
+}
+
 /** Optional password for the sandbox's storefront: for people outside the team without a link. */
-function PasswordPanel({ id, has, admin, onChange }: { id: string; has: boolean; admin: boolean; onChange: () => void }) {
+function PasswordPanel({
+  id,
+  has,
+  admin,
+  onChange,
+}: {
+  id: string;
+  has: boolean;
+  admin: boolean;
+  onChange: () => void;
+}) {
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
   async function save(value: string) {
@@ -474,8 +1156,20 @@ function PasswordPanel({ id, has, admin, onChange }: { id: string; has: boolean;
           }}
         >
           <div className="grid gap-1.5">
-            <Label htmlFor="sbx-pw">{has ? "Nueva contraseña" : "Contraseña"}</Label>
-            <Input id="sbx-pw" type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={pw} onChange={(e) => setPw(e.target.value)} aria-describedby="sbx-pw-hint" />
+            <Label htmlFor="sbx-pw">
+              {has ? "Nueva contraseña" : "Contraseña"}
+            </Label>
+            <Input
+              id="sbx-pw"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={128}
+              required
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              aria-describedby="sbx-pw-hint"
+            />
             <span id="sbx-pw-hint" className="text-xs text-muted-foreground">
               Al menos 8 caracteres.
             </span>
@@ -484,7 +1178,12 @@ function PasswordPanel({ id, has, admin, onChange }: { id: string; has: boolean;
             {busy ? "Guardando…" : "Guardar contraseña"}
           </Button>
           {has && (
-            <Button type="button" variant="ghost" disabled={busy} onClick={() => void save("")}>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => void save("")}
+            >
               Quitar contraseña
             </Button>
           )}
@@ -503,34 +1202,68 @@ function tomorrowAtNine() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-function PublishPanel({ id, name, admin, areas, canSchedule }: { id: string; name: string; admin: boolean; areas: { id: string; label: string }[]; canSchedule: boolean }) {
+function PublishPanel({
+  id,
+  name,
+  admin,
+  areas,
+  canSchedule,
+}: {
+  id: string;
+  name: string;
+  admin: boolean;
+  areas: { id: string; label: string }[];
+  canSchedule: boolean;
+}) {
   const qc = useQueryClient();
   const [chosen, setChosen] = useState<string[]>([]);
   const [force, setForce] = useState(false);
   const [mode, setMode] = useState<"now" | "later">("now");
   const [at, setAt] = useState(tomorrowAtNine);
   const [busy, setBusy] = useState(false);
-  const diff = useQuery({ queryKey: ["sandbox", "diff", id], queryFn: () => request<Diff>("GET", `${base(id)}/diff`) });
+  const diff = useQuery({
+    queryKey: ["sandbox", "diff", id],
+    queryFn: () => request<Diff>("GET", `${base(id)}/diff`),
+  });
   if (diff.isPending) return <Loading rows={3} />;
   if (diff.error) return <ErrorBox error={diff.error} />;
   const byArea = new Map(diff.data.areas.map((a) => [a.area, a]));
   const tagChanges = diff.data.tags ?? [];
-  const total = (a?: AreaDiff) => (a ? a.inserts + a.updates + a.deletes + a.conflicts : 0);
-  const pending = areas.filter((a) => (a.id === "tags" ? tagChanges.length > 0 : total(byArea.get(a.id)) > 0));
-  const conflicts = chosen.reduce((n, a) => n + (byArea.get(a)?.conflicts ?? 0), 0);
+  const total = (a?: AreaDiff) =>
+    a ? a.inserts + a.updates + a.deletes + a.conflicts : 0;
+  const pending = areas.filter((a) =>
+    a.id === "tags" ? tagChanges.length > 0 : total(byArea.get(a.id)) > 0,
+  );
+  const conflicts = chosen.reduce(
+    (n, a) => n + (byArea.get(a)?.conflicts ?? 0),
+    0,
+  );
 
   async function publish() {
     setBusy(true);
     try {
       if (mode === "later") {
         const runAt = new Date(at);
-        if (Number.isNaN(runAt.getTime())) throw new Error("Elige una fecha y hora");
-        await request("POST", `${base(id)}/publish`, { areas: chosen, force, runAt: runAt.toISOString() });
-        toast.success(`Publicación programada para el ${when(runAt.toISOString())}. Se publicará lo que tenga «${name}» a esa hora.`);
+        if (Number.isNaN(runAt.getTime()))
+          throw new Error("Elige una fecha y hora");
+        await request("POST", `${base(id)}/publish`, {
+          areas: chosen,
+          force,
+          runAt: runAt.toISOString(),
+        });
+        toast.success(
+          `Publicación programada para el ${when(runAt.toISOString())}. Se publicará lo que tenga «${name}» a esa hora.`,
+        );
       } else {
-        const r = await request<{ publish?: { applied: number; skipped: number } | null; tags?: { version: number } }>("POST", `${base(id)}/publish`, { areas: chosen, force });
+        const r = await request<{
+          publish?: { applied: number; skipped: number } | null;
+          tags?: { version: number };
+        }>("POST", `${base(id)}/publish`, { areas: chosen, force });
         const parts = [];
-        if (r.publish) parts.push(`${r.publish.applied} cambios publicados${r.publish.skipped ? `, ${r.publish.skipped} conflictos sin tocar` : ""}`);
+        if (r.publish)
+          parts.push(
+            `${r.publish.applied} cambios publicados${r.publish.skipped ? `, ${r.publish.skipped} conflictos sin tocar` : ""}`,
+          );
         if (r.tags) parts.push(`etiquetas en la versión ${r.tags.version}`);
         toast.success(`Publicado a producción: ${parts.join(" y ")}.`);
       }
@@ -545,9 +1278,14 @@ function PublishPanel({ id, name, admin, areas, canSchedule }: { id: string; nam
   }
 
   return (
-    <Section title="Publicar a producción" description="Lo que cambiaste en el sandbox, por área. Si alguien cambió lo mismo en tu tienda real después de copiar, aparece como conflicto y no se toca salvo que lo confirmes.">
+    <Section
+      title="Publicar a producción"
+      description="Lo que cambiaste en el sandbox, por área. Si alguien cambió lo mismo en tu tienda real después de copiar, aparece como conflicto y no se toca salvo que lo confirmes."
+    >
       {pending.length === 0 ? (
-        <p className="text-sm text-muted-foreground">El sandbox está igual a tu tienda real: no hay nada que publicar.</p>
+        <p className="text-sm text-muted-foreground">
+          El sandbox está igual a tu tienda real: no hay nada que publicar.
+        </p>
       ) : (
         <ul className="grid gap-3">
           {pending.map((a) => {
@@ -556,20 +1294,42 @@ function PublishPanel({ id, name, admin, areas, canSchedule }: { id: string; nam
             return (
               <li key={a.id} className="rounded-md border p-3">
                 <label className="flex flex-wrap items-center gap-2 font-medium">
-                  <input type="checkbox" checked={on} disabled={!admin} onChange={(e) => setChosen((c) => (e.target.checked ? [...c, a.id] : c.filter((x) => x !== a.id)))} />
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    disabled={!admin}
+                    onChange={(e) =>
+                      setChosen((c) =>
+                        e.target.checked
+                          ? [...c, a.id]
+                          : c.filter((x) => x !== a.id),
+                      )
+                    }
+                  />
                   {a.label}
                   <span className="text-xs font-normal text-muted-foreground">
                     {a.id === "tags"
                       ? `${tagChanges.length} cambios`
-                      : [d!.inserts && `${d!.inserts} nuevos`, d!.updates && `${d!.updates} cambiados`, d!.deletes && `${d!.deletes} por borrar`, d!.conflicts && `${d!.conflicts} en conflicto`].filter(Boolean).join(" · ")}
+                      : [
+                          d!.inserts && `${d!.inserts} nuevos`,
+                          d!.updates && `${d!.updates} cambiados`,
+                          d!.deletes && `${d!.deletes} por borrar`,
+                          d!.conflicts && `${d!.conflicts} en conflicto`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                   </span>
                 </label>
                 <ul className="mt-2 grid gap-0.5 text-sm text-muted-foreground">
                   {a.id === "tags"
                     ? tagChanges.slice(0, 8).map((c, i) => <li key={i}>{c}</li>)
                     : d!.sample.slice(0, 8).map((c, i) => (
-                        <li key={i} className={c.conflict ? "text-bad" : undefined}>
-                          {c.conflict ? "Conflicto" : ACTION[c.action]}: {c.label || c.pk}
+                        <li
+                          key={i}
+                          className={c.conflict ? "text-bad" : undefined}
+                        >
+                          {c.conflict ? "Conflicto" : ACTION[c.action]}:{" "}
+                          {c.label || c.pk}
                         </li>
                       ))}
                 </ul>
@@ -582,36 +1342,82 @@ function PublishPanel({ id, name, admin, areas, canSchedule }: { id: string; nam
         <div className="grid gap-3">
           {conflicts > 0 && (
             <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} className="mt-1" />
-              <span>Publicar también los {conflicts} conflictos: la versión del sandbox reemplaza la de tu tienda real.</span>
+              <input
+                type="checkbox"
+                checked={force}
+                onChange={(e) => setForce(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                Publicar también los {conflicts} conflictos: la versión del
+                sandbox reemplaza la de tu tienda real.
+              </span>
             </label>
           )}
           {canSchedule && (
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium">Cuándo</legend>
               <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name={`when-${id}`} checked={mode === "now"} onChange={() => setMode("now")} />
+                <input
+                  type="radio"
+                  name={`when-${id}`}
+                  checked={mode === "now"}
+                  onChange={() => setMode("now")}
+                />
                 Ahora
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <input type="radio" name={`when-${id}`} checked={mode === "later"} onChange={() => setMode("later")} />
+                <input
+                  type="radio"
+                  name={`when-${id}`}
+                  checked={mode === "later"}
+                  onChange={() => setMode("later")}
+                />
                 En una fecha y hora
               </label>
               {mode === "later" && (
                 <div className="grid max-w-xs gap-1.5 pl-6">
-                  <Label htmlFor={`at-${id}`}>Fecha y hora (tu hora local)</Label>
-                  <Input id={`at-${id}`} type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} required aria-describedby={`at-hint-${id}`} />
-                  <span id={`at-hint-${id}`} className="text-xs text-muted-foreground">
-                    Se publica lo que tenga el sandbox a esa hora. Hasta 90 días.
+                  <Label htmlFor={`at-${id}`}>
+                    Fecha y hora (tu hora local)
+                  </Label>
+                  <Input
+                    id={`at-${id}`}
+                    type="datetime-local"
+                    value={at}
+                    onChange={(e) => setAt(e.target.value)}
+                    required
+                    aria-describedby={`at-hint-${id}`}
+                  />
+                  <span
+                    id={`at-hint-${id}`}
+                    className="text-xs text-muted-foreground"
+                  >
+                    Se publica lo que tenga el sandbox a esa hora. Hasta 90
+                    días.
                   </span>
                 </div>
               )}
             </fieldset>
           )}
           <div>
-            <Button disabled={busy || chosen.length === 0 || (mode === "later" && !at)} onClick={() => void publish()}>
-              {mode === "later" ? <CalendarClock className="size-4" /> : <Rocket className="size-4" />}
-              {busy ? (mode === "later" ? "Programando…" : "Publicando…") : mode === "later" ? "Programar publicación" : "Publicar a producción"}
+            <Button
+              disabled={
+                busy || chosen.length === 0 || (mode === "later" && !at)
+              }
+              onClick={() => void publish()}
+            >
+              {mode === "later" ? (
+                <CalendarClock className="size-4" />
+              ) : (
+                <Rocket className="size-4" />
+              )}
+              {busy
+                ? mode === "later"
+                  ? "Programando…"
+                  : "Publicando…"
+                : mode === "later"
+                  ? "Programar publicación"
+                  : "Publicar a producción"}
             </Button>
           </div>
         </div>
@@ -620,18 +1426,37 @@ function PublishPanel({ id, name, admin, areas, canSchedule }: { id: string; nam
   );
 }
 
-function Schedules({ admin, labels }: { admin: boolean; labels: (ids: string[]) => string }) {
+function Schedules({
+  admin,
+  labels,
+}: {
+  admin: boolean;
+  labels: (ids: string[]) => string;
+}) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState("");
   const list = useQuery({
     queryKey: ["sandbox", "schedules"],
-    queryFn: () => request<{ items: Schedule[] }>("GET", "/v1/sandbox/schedules").then((r) => r.items),
-    refetchInterval: (query) => (query.state.data?.some((x) => x.status === "pending" || x.status === "running") ? 30_000 : false),
+    queryFn: () =>
+      request<{ items: Schedule[] }>("GET", "/v1/sandbox/schedules").then(
+        (r) => r.items,
+      ),
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        (x) => x.status === "pending" || x.status === "running",
+      )
+        ? 30_000
+        : false,
   });
   async function cancel(id: string) {
     setBusy(id);
     try {
-      await request("DELETE", `/v1/sandbox/schedules/${encodeURIComponent(id)}`, undefined, { as: "none" });
+      await request(
+        "DELETE",
+        `/v1/sandbox/schedules/${encodeURIComponent(id)}`,
+        undefined,
+        { as: "none" },
+      );
       toast.success("Publicación cancelada");
       void qc.invalidateQueries({ queryKey: ["sandbox"] });
     } catch (e) {
@@ -642,22 +1467,39 @@ function Schedules({ admin, labels }: { admin: boolean; labels: (ids: string[]) 
   }
   if (list.isPending || !list.data?.length) return null;
   return (
-    <Section title="Publicaciones programadas" description="A la hora elegida se publica lo que tenga el sandbox en ese momento. Quien la programó debe seguir siendo administrador.">
+    <Section
+      title="Publicaciones programadas"
+      description="A la hora elegida se publica lo que tenga el sandbox en ese momento. Quien la programó debe seguir siendo administrador."
+    >
       <ul className="grid gap-2">
         {list.data.map((x) => (
-          <li key={x.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+          <li
+            key={x.id}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+          >
             <span className="grid">
               <span className="flex items-center gap-2">
-                <CalendarClock className="size-4 text-muted-foreground" aria-hidden="true" />
-                {when(x.runAt)} · {x.sandbox || "Sandbox borrado"} · {labels(x.areas)}
+                <CalendarClock
+                  className="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                {when(x.runAt)} · {x.sandbox || "Sandbox borrado"} ·{" "}
+                {labels(x.areas)}
               </span>
-              <span className={`text-xs ${x.status === "failed" ? "text-bad" : "text-muted-foreground"}`}>
+              <span
+                className={`text-xs ${x.status === "failed" ? "text-bad" : "text-muted-foreground"}`}
+              >
                 {SCHEDULE_STATUS[x.status]}
                 {x.result ? `: ${x.result}` : ""}
               </span>
             </span>
             {admin && x.status === "pending" && (
-              <Button variant="outline" size="sm" disabled={busy !== ""} onClick={() => void cancel(x.id)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy !== ""}
+                onClick={() => void cancel(x.id)}
+              >
                 {busy === x.id ? "Cancelando…" : "Cancelar"}
               </Button>
             )}
@@ -668,20 +1510,44 @@ function Schedules({ admin, labels }: { admin: boolean; labels: (ids: string[]) 
   );
 }
 
-function PublishHistory({ admin, names, labels }: { admin: boolean; names: Map<string, string>; labels: (ids: string[]) => string }) {
+function PublishHistory({
+  admin,
+  names,
+  labels,
+}: {
+  admin: boolean;
+  names: Map<string, string>;
+  labels: (ids: string[]) => string;
+}) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState("");
-  const [askForce, setAskForce] = useState<{ id: string; detail: string } | null>(null);
-  const list = useQuery({ queryKey: ["sandbox", "publishes"], queryFn: () => request<{ items: Publish[] }>("GET", "/v1/sandbox/publishes").then((r) => r.items) });
+  const [askForce, setAskForce] = useState<{
+    id: string;
+    detail: string;
+  } | null>(null);
+  const list = useQuery({
+    queryKey: ["sandbox", "publishes"],
+    queryFn: () =>
+      request<{ items: Publish[] }>("GET", "/v1/sandbox/publishes").then(
+        (r) => r.items,
+      ),
+  });
   async function revert(id: string, force = false) {
     setBusy(id);
     try {
-      const r = await request<{ rows: number }>("POST", `/v1/sandbox/publishes/${id}/revert`, { force });
-      toast.success(`Revertido: ${r.rows} elementos regresaron a como estaban.`);
+      const r = await request<{ rows: number }>(
+        "POST",
+        `/v1/sandbox/publishes/${id}/revert`,
+        { force },
+      );
+      toast.success(
+        `Revertido: ${r.rows} elementos regresaron a como estaban.`,
+      );
       setAskForce(null);
       void qc.invalidateQueries({ queryKey: ["sandbox"] });
     } catch (e) {
-      if (e instanceof ApiError && e.problem.code === "changed_since") setAskForce({ id, detail: errorMessage(e) });
+      if (e instanceof ApiError && e.problem.code === "changed_since")
+        setAskForce({ id, detail: errorMessage(e) });
       else toast.error(errorMessage(e));
     } finally {
       setBusy("");
@@ -689,18 +1555,39 @@ function PublishHistory({ admin, names, labels }: { admin: boolean; names: Map<s
   }
   if (list.isPending || !list.data?.length) return null;
   return (
-    <Section title="Publicaciones" description="Cada publicación guarda cómo estaba tu tienda real antes. Revertir la deja exactamente así.">
+    <Section
+      title="Publicaciones"
+      description="Cada publicación guarda cómo estaba tu tienda real antes. Revertir la deja exactamente así."
+    >
       <ul className="grid gap-2">
         {list.data.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+          <li
+            key={p.id}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+          >
             <span className="flex items-center gap-2">
-              <History className="size-4 text-muted-foreground" aria-hidden="true" />
+              <History
+                className="size-4 text-muted-foreground"
+                aria-hidden="true"
+              />
               {when(p.publishedAt)}
-              {names.size > 1 && names.get(p.sandboxId) ? ` · ${names.get(p.sandboxId)}` : ""} · {labels(p.areas)} · {p.rows} elementos
-              {p.revertedAt && <span className="text-xs text-muted-foreground">(revertida el {when(p.revertedAt)})</span>}
+              {names.size > 1 && names.get(p.sandboxId)
+                ? ` · ${names.get(p.sandboxId)}`
+                : ""}{" "}
+              · {labels(p.areas)} · {p.rows} elementos
+              {p.revertedAt && (
+                <span className="text-xs text-muted-foreground">
+                  (revertida el {when(p.revertedAt)})
+                </span>
+              )}
             </span>
             {admin && !p.revertedAt && (
-              <Button variant="outline" size="sm" disabled={busy !== ""} onClick={() => void revert(p.id)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy !== ""}
+                onClick={() => void revert(p.id)}
+              >
                 {busy === p.id ? "Revirtiendo…" : "Revertir"}
               </Button>
             )}
@@ -721,9 +1608,19 @@ function PublishHistory({ admin, names, labels }: { admin: boolean; names: Map<s
 }
 
 function CapturedMail({ id }: { id: string }) {
-  const mail = useQuery({ queryKey: ["sandbox", "mail", id], queryFn: () => request<{ items: { id: string; template: string; createdAt: string }[] }>("GET", `${base(id)}/mail`).then((r) => r.items) });
+  const mail = useQuery({
+    queryKey: ["sandbox", "mail", id],
+    queryFn: () =>
+      request<{ items: { id: string; template: string; createdAt: string }[] }>(
+        "GET",
+        `${base(id)}/mail`,
+      ).then((r) => r.items),
+  });
   return (
-    <Section title="Correos capturados" description="Los correos que el sandbox habría enviado. Se guardan aquí y nunca llegan a nadie.">
+    <Section
+      title="Correos capturados"
+      description="Los correos que el sandbox habría enviado. Se guardan aquí y nunca llegan a nadie."
+    >
       {mail.isPending ? (
         <Loading rows={2} />
       ) : !mail.data?.length ? (

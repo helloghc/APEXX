@@ -16,6 +16,8 @@ func TestEveryRouteRequiresAccess(t *testing.T) {
 	public := map[string]bool{
 		"POST /v1/auth/login": true, "POST /v1/auth/stores": true, "GET /v1/invitations/{token}": true, "POST /v1/invitations/{token}/accept": true,
 		"POST /v1/stripe/webhook/{tenant}": true,
+		// The superadmin signs in with its own account (not a store's).
+		"POST /v1/operator/login": true,
 		// Single sign-on: the login itself, before any session exists.
 		"GET /v1/auth/sso/available": true, "GET /v1/auth/sso/start": true, "GET /v1/auth/sso/callback": true,
 	}

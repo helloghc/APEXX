@@ -79,6 +79,8 @@ func main() {
 		log.Info("migrated", "applied", applied)
 	case "tenant":
 		cmdTenant(ctx, log, os.Args[2:])
+	case "operator":
+		cmdOperator(ctx, log, os.Args[2:])
 	case "seed":
 		cmdSeed(ctx, log, os.Args[2:])
 	case "serve":
@@ -576,4 +578,32 @@ func cmdTenantPlan(ctx context.Context, log *slog.Logger, args []string) {
 	}
 	fmt.Printf("Tienda %q · plan %q\nSandboxes: %d\nProductos por sandbox: %s\nDatos de prueba: %v\nPublicaciones programadas: %v\n",
 		*id, p.Plan, p.Sandboxes, limit, p.SandboxDemoData, p.SandboxSchedule)
+}
+
+// cmdOperator manages the platform's operators (superadmin):
+//
+//	apexx operator create --email ana@apexx.mx --name "Ana" --password '…'
+//	apexx operator disable --email ana@apexx.mx
+//
+// create prints the two-step secret once: add it to an authenticator app.
+func cmdOperator(ctx context.Context, log *slog.Logger, args []string) {
+	if len(args) == 0 || (args[0] != "create" && args[0] != "disable") {
+		fmt.Fprintln(os.Stderr, "uso: apexx operator create|disable --email …")
+		os.Exit(2)
+	}
+	fs := flag.NewFlagSet("operator "+args[0], flag.ExitOnError)
+	email := fs.String("email", "", "operator email")
+	name := fs.String("name", "", "operator name (create)")
+	pass := fs.String("password", "", "password, 12+ characters (create)")
+	_ = fs.Parse(args[1:])
+	db, keys := open(ctx, log)
+	defer db.Close()
+	if args[0] == "disable" {
+		must(log, db.DisableOperator(ctx, *email), "disable operator")
+		fmt.Printf("Operador %s desactivado; sus sesiones terminaron.\n", *email)
+		return
+	}
+	op, secret, uri, err := api.CreateOperator(ctx, db, keys, *email, *name, *pass)
+	must(log, err, "create operator")
+	fmt.Printf("Operador %s creado (%s).\nAgrega este secreto a tu app de autenticación (se muestra una sola vez):\n  %s\n  %s\nEntra en /admin/#superadmin con tu correo, contraseña y el código de 6 dígitos.\n", op.Email, op.ID, secret, uri)
 }

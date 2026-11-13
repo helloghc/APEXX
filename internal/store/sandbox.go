@@ -73,7 +73,7 @@ var sandboxTables = map[string]tableRule{
 	"members": {mode: ruleMembers},
 	// Never copied: credentials and sessions.
 	"api_keys": {mode: ruleSkip}, "apps": {mode: ruleSkip}, "sessions": {mode: ruleSkip}, "payment_accounts": {mode: ruleSkip},
-	"channel_accounts": {mode: ruleSkip}, "channel_listings": {mode: ruleSkip}, "channel_orders": {mode: ruleSkip}, "tenant_keys": {mode: ruleSkip}, "tenant_plans": {mode: ruleSkip},
+	"channel_accounts": {mode: ruleSkip}, "channel_listings": {mode: ruleSkip}, "channel_orders": {mode: ruleSkip}, "tenant_keys": {mode: ruleSkip}, "tenant_plans": {mode: ruleSkip}, "sandbox_stock_moves": {mode: ruleSkip},
 	"webhook_subscriptions": {mode: ruleSkip}, "webhook_deliveries": {mode: ruleSkip}, "notification_settings": {mode: ruleSkip},
 	"domains": {mode: ruleSkip}, "invitations": {mode: ruleSkip}, "rep_handoffs": {mode: ruleSkip},
 	// Never copied: history (the sandbox starts its own).
@@ -138,6 +138,7 @@ type Sandbox struct {
 	ID          string         `json:"id"`
 	Name        string         `json:"name"`
 	HasPassword bool           `json:"hasPassword"`
+	Scope       string         `json:"scope"` // full, light (no products until brought)
 	ParentID    string         `json:"parentId"`
 	Status      string         `json:"status"`
 	DataMode    string         `json:"dataMode"`
@@ -151,12 +152,12 @@ type Sandbox struct {
 	WarnedAt    *time.Time     `json:"warnedAt,omitempty"`
 }
 
-const sandboxCols = `id, name, password_hash <> '', parent_id, status, data_mode, progress, error, created_by, created_at, copied_at, copy_ms, last_used_at, warned_at`
+const sandboxCols = `id, name, password_hash <> '', scope, parent_id, status, data_mode, progress, error, created_by, created_at, copied_at, copy_ms, last_used_at, warned_at`
 
 func scanSandbox(row pgx.Row) (Sandbox, error) {
 	var s Sandbox
 	var prog []byte
-	err := row.Scan(&s.ID, &s.Name, &s.HasPassword, &s.ParentID, &s.Status, &s.DataMode, &prog, &s.Error, &s.CreatedBy, &s.CreatedAt, &s.CopiedAt, &s.CopyMs, &s.LastUsedAt, &s.WarnedAt)
+	err := row.Scan(&s.ID, &s.Name, &s.HasPassword, &s.Scope, &s.ParentID, &s.Status, &s.DataMode, &prog, &s.Error, &s.CreatedBy, &s.CreatedAt, &s.CopiedAt, &s.CopyMs, &s.LastUsedAt, &s.WarnedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return s, ErrNotFound
 	}
@@ -219,7 +220,10 @@ var ErrSandboxExists = errors.New("store: the store already has a sandbox with t
 
 // StartSandbox creates the sandbox tenant (with its own data key) and marks
 // it as copying.
-func (d *DB) StartSandbox(ctx context.Context, parent, id, name, actor, dataMode string, wrappedKey []byte) error {
+func (d *DB) StartSandbox(ctx context.Context, parent, id, name, scope, actor, dataMode string, wrappedKey []byte) error {
+	if scope != "light" {
+		scope = "full"
+	}
 	if name == "" {
 		name = "Sandbox"
 	}
@@ -250,7 +254,7 @@ func (d *DB) StartSandbox(ctx context.Context, parent, id, name, actor, dataMode
 		if n >= plan.Sandboxes {
 			return &ErrSandboxQuota{What: "sandboxes", Plan: plan}
 		}
-		if plan.SandboxMaxProducts > 0 {
+		if plan.SandboxMaxProducts > 0 && scope == "full" {
 			var products int
 			if err := tx.QueryRow(ctx, `SELECT count(*) FROM products WHERE tenant_id=$1`, parent).Scan(&products); err != nil {
 				return err
@@ -265,7 +269,7 @@ func (d *DB) StartSandbox(ctx context.Context, parent, id, name, actor, dataMode
 		if _, err := tx.Exec(ctx, `INSERT INTO tenant_keys (tenant_id, wrapped_key) VALUES ($1,$2)`, id, wrappedKey); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO sandboxes (id, name, parent_id, status, data_mode, created_by) VALUES ($1,$2,$3,'copying',$4,$5)`, id, name, parent, dataMode, actor)
+		_, err := tx.Exec(ctx, `INSERT INTO sandboxes (id, name, scope, parent_id, status, data_mode, created_by) VALUES ($1,$2,$3,$4,'copying',$5,$6)`, id, name, scope, parent, dataMode, actor)
 		if isUnique(err) {
 			return ErrSandboxExists
 		}
@@ -493,9 +497,19 @@ func typedKey(t tableInfo, pk string) bool {
 	return len(t.pk) > 0 && len(t.pkTypes) == len(t.pk) && strings.Count(pk, "|")+1 == len(t.pk)
 }
 
-// rowHash is the fingerprint of a row's content (without tenant_id).
-func rowHash(alias string) string {
+// rowHash is the fingerprint of a row's content (without tenant_id). Stock
+// is compared as the team set it: reservations and what test orders of a
+// sandbox took are not changes.
+func rowHash(alias, table string) string {
+	if table == "stock_levels" {
+		return "md5(((to_jsonb(" + alias + ".*) - 'tenant_id' - 'reserved' - 'updated_at') || jsonb_build_object('on_hand', " + alias + ".on_hand + " + consumedBy(alias) + "))::text)"
+	}
 	return "md5((to_jsonb(" + alias + ".*) - 'tenant_id')::text)"
+}
+
+// consumedBy is what test orders took from a stock row (0 in production).
+func consumedBy(alias string) string {
+	return "COALESCE((SELECT m.consumed FROM sandbox_stock_moves m WHERE m.tenant_id = " + alias + ".tenant_id AND m.sku = " + alias + ".sku AND m.location_id = " + alias + ".location_id), 0)"
 }
 
 func publishable() map[string]bool {
@@ -509,26 +523,33 @@ func publishable() map[string]bool {
 }
 
 // copySQL copies one table from src to dst inside tx.
-func copySQL(t tableInfo, rule tableRule) string {
+func copySQL(t tableInfo, rule tableRule) string { return copyWhereSQL(t, rule, "", "$1", "$2") }
+
+// copyWhereSQL copies the rows of tenant src (a placeholder) into tenant dst
+// that also meet extra (alias x), with the table's copy rule applied.
+func copyWhereSQL(t tableInfo, rule tableRule, extra, dst, src string) string {
 	cols := make([]string, len(t.cols))
 	sel := make([]string, len(t.cols))
 	for i, c := range t.cols {
 		cols[i] = quoteIdent(c)
 		switch {
 		case c == "tenant_id":
-			sel[i] = "$1"
+			sel[i] = dst
 		case rule.set[c] != "":
 			sel[i] = rule.set[c]
 		default:
-			sel[i] = quoteIdent(c)
+			sel[i] = "x." + quoteIdent(c)
 		}
 	}
-	where := "tenant_id = $2"
+	where := "x.tenant_id = " + src
 	if rule.where != "" {
 		where += " AND (" + rule.where + ")"
 	}
+	if extra != "" {
+		where += " AND (" + extra + ")"
+	}
 	return "INSERT INTO " + quoteIdent(t.name) + " (" + strings.Join(cols, ", ") + ") SELECT " + strings.Join(sel, ", ") +
-		" FROM " + quoteIdent(t.name) + " WHERE " + where
+		" FROM " + quoteIdent(t.name) + " x WHERE " + where
 }
 
 // CopySandbox copies production into the sandbox, in one snapshot, and
@@ -558,13 +579,19 @@ func (d *DB) CopySandbox(ctx context.Context, id string) (map[string]int64, erro
 		}
 	}
 	for i, t := range copyTables {
-		tag, err := tx.Exec(ctx, copySQL(t, sandboxTables[t.name]), id, sb.ParentID)
+		q := copySQL(t, sandboxTables[t.name])
+		if sb.Scope == "light" {
+			if skip, ok := lightSkip[t.name]; ok {
+				q = copyWhereSQL(t, sandboxTables[t.name], "NOT ("+skip+")", "$1", "$2")
+			}
+		}
+		tag, err := tx.Exec(ctx, q, id, sb.ParentID)
 		if err != nil {
 			return nil, fmt.Errorf("copy %s: %w", t.name, err)
 		}
 		counts[t.name] = tag.RowsAffected()
 		if pub[t.name] {
-			if _, err := tx.Exec(ctx, `INSERT INTO sandbox_base (sandbox_id, tbl, pk, hash) SELECT $1, $2, `+pkExpr("x", t)+`, `+rowHash("x")+` FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1`, id, t.name); err != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO sandbox_base (sandbox_id, tbl, pk, hash) SELECT $1, $2, `+pkExpr("x", t)+`, `+rowHash("x", t.name)+` FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1`, id, t.name); err != nil {
 				return nil, fmt.Errorf("base %s: %w", t.name, err)
 			}
 		}

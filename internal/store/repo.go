@@ -211,6 +211,9 @@ func (d *DB) SetStock(ctx context.Context, tenant, actor, sku, location string, 
 			tenant, sku, location, onHand); err != nil {
 			return err
 		}
+		if err := resetSandboxStockMoves(ctx, tx, tenant, []string{sku}, []string{location}); err != nil {
+			return err
+		}
 		if err := Emit(ctx, tx, tenant, TopicStock, sku, nil); err != nil {
 			return err
 		}
@@ -346,6 +349,11 @@ func settleTx(ctx context.Context, tx pgx.Tx, tenant, holder string, consume boo
 		if _, err := tx.Exec(ctx, q, tenant, x.sku, x.loc, x.qty); err != nil {
 			return err
 		}
+		if consume {
+			if err := sandboxStockMove(ctx, tx, tenant, x.sku, x.loc, x.qty); err != nil {
+				return err
+			}
+		}
 		if !seen[x.sku] {
 			seen[x.sku] = true
 			if err := Emit(ctx, tx, tenant, TopicStock, x.sku, nil); err != nil {
@@ -354,6 +362,27 @@ func settleTx(ctx context.Context, tx pgx.Tx, tenant, holder string, consume boo
 		}
 	}
 	return nil
+}
+
+// sandboxStockMove records, in a sandbox only, what a test order took from
+// stock (qty > 0) or gave back (qty < 0): a publish of stock leaves it out.
+func sandboxStockMove(ctx context.Context, tx pgx.Tx, tenant, sku, location string, qty int64) error {
+	if !strings.HasPrefix(tenant, SandboxPrefix) {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO sandbox_stock_moves (tenant_id, sku, location_id, consumed) VALUES ($1,$2,$3,$4)
+		ON CONFLICT (tenant_id, sku, location_id) DO UPDATE SET consumed = sandbox_stock_moves.consumed + EXCLUDED.consumed`, tenant, sku, location, qty)
+	return err
+}
+
+// resetSandboxStockMoves: a person set these stock levels in a sandbox; the
+// number they wrote is the one to publish, whatever test orders took before.
+func resetSandboxStockMoves(ctx context.Context, tx pgx.Tx, tenant string, skus, locations []string) error {
+	if !strings.HasPrefix(tenant, SandboxPrefix) || len(skus) == 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `DELETE FROM sandbox_stock_moves WHERE tenant_id=$1 AND (sku, location_id) IN (SELECT s, l FROM unnest($2::text[], $3::text[]) AS x(s, l))`, tenant, skus, locations)
+	return err
 }
 
 // RestockTx adds qty back to on-hand stock (cancellation or return).
@@ -367,6 +396,9 @@ func RestockTx(ctx context.Context, tx pgx.Tx, tenant, sku, location string, qty
 	ct, err := tx.Exec(ctx, `UPDATE stock_levels SET on_hand=on_hand+$4, updated_at=now()
 		WHERE tenant_id=$1 AND sku=$2 AND location_id=$3`, tenant, sku, location, qty)
 	if err != nil {
+		return err
+	}
+	if err := sandboxStockMove(ctx, tx, tenant, sku, location, -qty); err != nil {
 		return err
 	}
 	if ct.RowsAffected() == 0 {

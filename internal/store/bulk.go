@@ -32,6 +32,9 @@ func BulkSetStockTx(ctx context.Context, tx pgx.Tx, tenant string, items []Stock
 		ON CONFLICT (tenant_id, sku, location_id) DO UPDATE SET on_hand=EXCLUDED.on_hand, updated_at=now()`, tenant, skus, locs, qty); err != nil {
 		return err
 	}
+	if err := resetSandboxStockMoves(ctx, tx, tenant, skus, locs); err != nil {
+		return err
+	}
 	seen := map[string]bool{}
 	for _, s := range skus {
 		if !seen[s] {
