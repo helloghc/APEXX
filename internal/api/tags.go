@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -453,6 +454,10 @@ func (s *Server) tagsOf(tenant string) *tagsEntry {
 		return &tagsEntry{until: time.Now().Add(5 * time.Second)}
 	}
 	e = buildTags(tenant, c)
+	if s.isSandbox(tenant) && e.active > 0 {
+		// The sandbox's traffic is marked, so analytics can leave it out.
+		e.js = bytes.Replace(e.js, []byte(`"mode":`), []byte(`"env":"sandbox","mode":`), 1)
+	}
 	s.tags.mu.Lock()
 	if s.tags.m == nil {
 		s.tags.m = map[string]*tagsEntry{}
@@ -949,10 +954,21 @@ func (s *Server) publishTags(w http.ResponseWriter, r *http.Request, c TagsConfi
 		apierr.BadRequest(w, "Revisa las etiquetas", errs...)
 		return
 	}
-	cur, err := s.loadTags(r.Context(), pr.Tenant)
+	c, err := s.saveTagsVersion(r.Context(), pr.Tenant, pr, c, restored, "")
 	if err != nil {
 		internalError(w, s.Log, err)
 		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"config": c})
+}
+
+// saveTagsVersion writes c (already valid) as the store's next version, with
+// what it changed in words; note, when not empty, goes first in the changes
+// ("Publicado desde el sandbox").
+func (s *Server) saveTagsVersion(ctx context.Context, tenant string, pr auth.Principal, c TagsConfig, restored int64, note string) (TagsConfig, error) {
+	cur, err := s.loadTags(ctx, tenant)
+	if err != nil {
+		return c, err
 	}
 	c.Version, c.PublishedAt, c.PublishedBy, c.PublisherName, c.RestoredFrom = cur.Version+1, time.Now().UTC(), pr.Actor(), firstNonEmpty(pr.Name, pr.Email, pr.ID), restored
 	// What changed, in words: kept with the version and in the audit log
@@ -961,28 +977,30 @@ func (s *Server) publishTags(w http.ResponseWriter, r *http.Request, c TagsConfi
 	if restored > 0 {
 		c.Changes = append([]string{fmt.Sprintf("Restauró la versión %d", restored)}, c.Changes...)
 	}
+	if note != "" {
+		c.Changes = append([]string{note}, c.Changes...)
+	}
 	// The configuration and its copy in the history, in one transaction; the
 	// event makes every node rebuild it.
-	err = s.DB.Tx(r.Context(), pr.Tenant, func(tx pgx.Tx) error {
-		if err := store.SetDocTx(r.Context(), tx, pr.Tenant, pr.Actor(), "store_tags", "config", store.KeyTags, c); err != nil {
+	err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		if err := store.SetDocTx(ctx, tx, tenant, pr.Actor(), "store_tags", "config", store.KeyTags, c); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(r.Context(), `INSERT INTO tenant_docs (tenant_id, kind, id, data, updated_at) VALUES ($1, 'store_tags_history', $2, $3, now())
-			ON CONFLICT (tenant_id, kind, id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, pr.Tenant, fmt.Sprintf("%010d", c.Version), mustJSONBytes(c)); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO tenant_docs (tenant_id, kind, id, data, updated_at) VALUES ($1, 'store_tags_history', $2, $3, now())
+			ON CONFLICT (tenant_id, kind, id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, tenant, fmt.Sprintf("%010d", c.Version), mustJSONBytes(c)); err != nil {
 			return err
 		}
-		_, err := tx.Exec(r.Context(), `DELETE FROM tenant_docs WHERE tenant_id = $1 AND kind = 'store_tags_history' AND id < $2`, pr.Tenant, fmt.Sprintf("%010d", c.Version-tagsHistory+1))
+		_, err := tx.Exec(ctx, `DELETE FROM tenant_docs WHERE tenant_id = $1 AND kind = 'store_tags_history' AND id < $2`, tenant, fmt.Sprintf("%010d", c.Version-tagsHistory+1))
 		return err
 	})
 	if err != nil {
-		internalError(w, s.Log, err)
-		return
+		return c, err
 	}
 	// This node at once; the others when the event arrives (milliseconds).
 	s.tags.mu.Lock()
-	delete(s.tags.m, pr.Tenant)
+	delete(s.tags.m, tenant)
 	s.tags.mu.Unlock()
-	httpx.JSON(w, r, http.StatusOK, map[string]any{"config": c})
+	return c, nil
 }
 
 func mustJSONBytes(v any) []byte {

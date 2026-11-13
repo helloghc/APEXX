@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -412,6 +413,12 @@ func (s *Server) automationAction(ctx context.Context, tenant, actor, autID, nam
 		}
 		return "Cliente etiquetado: " + x.Tag, nil
 	case "webhook":
+		if s.isSandbox(tenant) {
+			if u, err := url.Parse(x.URL); err == nil {
+				return sandboxCaptured + " a " + u.Host, nil
+			}
+			return sandboxCaptured, nil
+		}
 		lines := make([]map[string]any, len(o.Lines))
 		for i, l := range o.Lines {
 			lines[i] = map[string]any{"sku": l.SKU, "title": l.Title, "qty": l.Qty, "total": l.Total}

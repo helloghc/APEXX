@@ -7,7 +7,10 @@ window.apexxTrack = (event, ecommerce) => {
   (w.apexxEvents = w.apexxEvents || []).push(ev);
   w.dataLayer = w.dataLayer || [];
   w.dataLayer.push({ ecommerce: null });
-  w.dataLayer.push(ecommerce ? { event, ecommerce } : { event });
+  const env = document.body && document.body.dataset.env;
+  const msg = ecommerce ? { event, ecommerce } : { event };
+  if (env) msg.apexx_env = env; // the sandbox's events are marked
+  w.dataLayer.push(msg);
   try { w.dispatchEvent(new CustomEvent("apexx:track", { detail: ev })); } catch {}
 };
 const apexxItem = (sku, name, cents, qty, currency) => ({ item_id: sku, item_name: name || sku, price: cents != null && cents !== "" ? Number(cents) / 100 : undefined, quantity: qty || 1, currency });

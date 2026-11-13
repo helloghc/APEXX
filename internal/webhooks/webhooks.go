@@ -363,7 +363,8 @@ func (s *Service) Dispatch(ctx context.Context) (int, error) {
 		for _, e := range evs {
 			list, ok := subs[e.tenant]
 			if !ok {
-				r, err := tx.Query(ctx, `SELECT id, types FROM webhook_subscriptions WHERE tenant_id=$1 AND active`, e.tenant)
+				r, err := tx.Query(ctx, `SELECT id, types FROM webhook_subscriptions WHERE tenant_id=$1 AND active
+					AND EXISTS (SELECT 1 FROM tenants WHERE id=$1 AND kind='production')`, e.tenant)
 				if err != nil {
 					return err
 				}

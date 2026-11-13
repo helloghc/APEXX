@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +33,12 @@ type PaymentAccounts struct {
 	PlatformFeeBps         int64
 	Sandbox                payments.Provider
 	Breakers               *resilience.Breakers
+	// IsSandbox says whether a store is a sandbox: a sandbox never charges
+	// for real (only Stripe test keys or the simulated provider).
+	IsSandbox func(tenant string) bool
+
+	test     payments.Provider
+	testOnce sync.Once
 
 	mu    sync.Mutex
 	cache map[string]orders.Account
@@ -52,6 +59,9 @@ func (pa *PaymentAccounts) Resolve(ctx context.Context, tenant string) (orders.A
 		return a, nil
 	}
 	pa.mu.Unlock()
+	if pa.IsSandbox != nil && pa.IsSandbox(tenant) {
+		return pa.resolveSandbox(ctx, tenant)
+	}
 	row, err := pa.DB.GetPaymentAccount(ctx, tenant)
 	if err != nil {
 		if pa.Sandbox != nil && errors.Is(err, store.ErrNotFound) {
@@ -191,4 +201,20 @@ func (bp breakerProvider) DescribeCard(ctx context.Context, account, pm string) 
 		return d.DescribeCard(ctx, account, pm)
 	}
 	return payments.CardInfo{}, nil
+}
+
+// resolveSandbox: a sandbox store pays with its own Stripe test keys when it
+// set them, and with the simulated provider otherwise. Live keys never work
+// from a sandbox.
+func (pa *PaymentAccounts) resolveSandbox(ctx context.Context, tenant string) (orders.Account, error) {
+	if row, err := pa.DB.GetPaymentAccount(ctx, tenant); err == nil && row.Mode == "own_keys" {
+		if sk, err := pa.Keys.Decrypt(tenant, row.SecretEnc, "stripe-secret"); err == nil && strings.HasPrefix(string(sk), "sk_test_") {
+			return orders.Account{Provider: pa.wrap(tenant, payments.NewStripe(string(sk)))}, nil
+		}
+	}
+	if pa.Sandbox != nil {
+		return orders.Account{Provider: pa.wrap(tenant, pa.Sandbox)}, nil
+	}
+	pa.testOnce.Do(func() { pa.test = payments.NewSandbox() })
+	return orders.Account{Provider: pa.wrap(tenant, pa.test)}, nil
 }

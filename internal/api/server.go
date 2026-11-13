@@ -77,9 +77,11 @@ type Server struct {
 
 	metrics *metrics
 
-	uploadSlots   chan struct{} // bounds concurrent image processing
-	rules         rulesCache    // checkout rules app: settings and answers
-	tags          tagsCache     // tags and pixels of each store, built per version
+	uploadSlots   chan struct{}  // bounds concurrent image processing
+	rules         rulesCache     // checkout rules app: settings and answers
+	tags          tagsCache      // tags and pixels of each store, built per version
+	env           envCache       // production or sandbox, per store
+	sandboxCopies sync.WaitGroup // copies running in the background (tests wait on it)
 	summaryMu     sync.Mutex
 	summaries     map[string]summaryAt // catalog summary per store, at a projection version
 	sso           ssoProviders         // identity providers already discovered
@@ -112,6 +114,10 @@ func (s *Server) Routes() http.Handler {
 		s.Proj.On("site.released", evict)
 		s.Proj.On("site.draft", evict)
 		s.semHooks()
+		s.sandboxHooks()
+		if s.Payments != nil && s.Payments.IsSandbox == nil {
+			s.Payments.IsSandbox = s.isSandbox
+		}
 		s.knowHooks()
 		s.graphHooks()
 		s.Proj.SetLiveRates(s.LiveRate)
@@ -256,6 +262,7 @@ func (s *Server) Routes() http.Handler {
 	s.routesAutomations(handle)
 	s.routesCheckoutRules(handle)
 	s.routesTags(handle)
+	s.routesSandbox(handle)
 	s.routesBulk(handle)
 	handle("POST /s/{tenant}/api/graphql", s.shopGraphQL)
 	s.routesSSO(handle)
@@ -289,7 +296,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		apierr.NotFound(w, "No existe la ruta "+r.Method+" "+r.URL.Path)
 	})
-	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(s.siteRouting(s.localized(mux)))))
+	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(s.siteRouting(s.sandboxGate(s.localized(mux))))))
 }
 
 // metricsGuard exposes /metrics only to the monitoring agent: a bearer token
@@ -369,6 +376,13 @@ func (s *Server) authed(module, level string, h http.HandlerFunc) http.HandlerFu
 		if module != "" && !p.Permissions.Allows(module, level) {
 			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden",
 				Detail: forbiddenDetail(module, level)})
+			return
+		}
+		// The sandbox's team is production's, synced on entering: people and
+		// permissions are changed in production (its own API keys are fine).
+		if module == "team" && r.Method != http.MethodGet && !strings.Contains(r.URL.Path, "/api-keys") && s.isSandbox(p.Tenant) {
+			apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "team_in_production",
+				Detail: "El equipo se administra en tu tienda de producción; el sandbox lo copia al entrar."})
 			return
 		}
 		release, ok := s.Bulkhead.Acquire(p.Tenant)
@@ -562,10 +576,14 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	p := principal(r)
+	e := s.envOf(p.Tenant)
 	out := struct {
 		auth.Principal
-		TwoStep bool `json:"twoStep"` // two-step verification is on for this member
-	}{Principal: p}
+		TwoStep bool   `json:"twoStep"` // two-step verification is on for this member
+		Env     string `json:"env"`     // production or sandbox
+		Parent  string `json:"parent,omitempty"`
+		Sandbox string `json:"sandbox,omitempty"` // production: its sandbox, if any
+	}{Principal: p, Env: e.kind, Parent: e.parent, Sandbox: e.sandbox}
 	if p.Kind == "member" {
 		_ = s.DB.System.QueryRow(r.Context(), `SELECT totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 AND id=$2`, p.Tenant, p.ID).Scan(&out.TwoStep)
 	}

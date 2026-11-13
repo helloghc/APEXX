@@ -1,5 +1,5 @@
 import { Suspense, useEffect } from "react";
-import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus, Award, Gift, Newspaper, ShoppingCart, LayoutGrid, CalendarClock, MailPlus, Target } from "lucide-react";
+import { ArrowLeftRight, Building2, CornerUpRight, FileText, Globe, ListTree, MapPin, Megaphone, Percent, ShoppingBag, Store, Truck, type LucideIcon, Receipt, Undo2, Languages as LanguagesIcon, Copy, ListPlus, Blocks, Workflow, Filter, Cookie, Layers, KeyRound, SquarePlus, Award, Gift, Newspaper, ShoppingCart, LayoutGrid, CalendarClock, MailPlus, Target, FlaskConical } from "lucide-react";
 import type { Me } from "@/api";
 import { cn } from "@/lib/utils";
 import { href } from "@/router";
@@ -37,9 +37,11 @@ const CheckoutRules = lazyPage(() => import("./CheckoutRules").then((m) => m.Che
 const Automations = lazyPage(() => import("./Automations").then((m) => m.Automations));
 const Apps = lazyPage(() => import("./Apps").then((m) => m.Apps));
 const Checkout = lazyPage(() => import("./Checkout").then((m) => m.Checkout));
+const Sandbox = lazyPage(() => import("./Sandbox").then((m) => m.Sandbox));
 
 const PAGES: Record<string, { preload: () => Promise<void> }> = {
   tienda: StorePage,
+  "sandbox": Sandbox,
   "ubicaciones": Locations,
   "envios": Shipping,
   "impuestos": Taxes,
@@ -85,6 +87,7 @@ export function preloadAllSettings(): Promise<void> {
 export const SETTINGS_NAV: { id: string; label: string; icon: LucideIcon; group: string }[] = [
   { id: "tienda", label: "Tienda", icon: Store, group: "General" },
   { id: "checkout", label: "Checkout", icon: ShoppingBag, group: "General" },
+  { id: "sandbox", label: "Sandbox", icon: FlaskConical, group: "General" },
   { id: "reglas-pago", label: "Reglas de pago y envío", icon: Filter, group: "General" },
   { id: "bloques-pago", label: "Bloques del pago", icon: SquarePlus, group: "General" },
   { id: "canales", label: "Canales", icon: ArrowLeftRight, group: "General" },
@@ -214,6 +217,9 @@ export function Settings({ me, sub, rest }: { me: Me; sub?: string; rest: string
       break;
     case "checkout":
       body = <Checkout me={me} />;
+      break;
+    case "sandbox":
+      body = <Sandbox me={me} />;
       break;
     default:
       body = <StorePage me={me} />;

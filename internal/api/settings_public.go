@@ -222,6 +222,9 @@ func (s *Server) decorate(r *http.Request, t *projection.Tenant, pd pageData) pa
 	}
 	pd.Chrome.Header, pd.Chrome.Footer = chrome(pd.Chrome.Header), chrome(pd.Chrome.Footer)
 	pd.Verify, pd.Tags = s.tagsHead(t.ID)
+	if s.isSandbox(t.ID) {
+		pd.Env = "sandbox"
+	}
 	return pd
 }
 

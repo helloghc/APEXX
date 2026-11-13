@@ -182,6 +182,22 @@ Sin configurar nada, la IA funciona en modo determinista: vectores locales para 
 
 Cada tienda tiene un presupuesto mensual (10 USD por omisión) en *Búsqueda y opiniones › Recomendaciones e IA*. Al llegar al tope, la IA de pago se pausa y todo sigue funcionando en modo determinista.
 
+## 7.3 Sandbox de las tiendas y dominios propios
+
+Cada tienda puede tener su sandbox: una copia completa y privada (ver `docs/sandbox.md`). No hace falta ningún servicio adicional; es una tienda más dentro de la misma base.
+
+**Direcciones**
+- Sin configurar nada, cada sandbox vive en `https://APEXX_DOMAIN/s/{id}/main/`.
+- Con direcciones temporales propias:
+  1. Define `APEXX_SANDBOX_HOST` (por ejemplo `sandbox.midominio.mx`).
+  2. Crea un registro DNS comodín `*.sandbox.midominio.mx` que apunte al servidor.
+
+  Cada sandbox queda en `https://{id}.sandbox.midominio.mx/`.
+
+**Certificados bajo demanda.** `deploy/caddy/Caddyfile` emite el certificado de cada host la primera vez que se visita. Antes de emitirlo, Caddy pregunta a `/internal/tls/ask`, que solo aprueba dominios verificados de alguna tienda: sus dominios propios y los de sus sandboxes. Así nadie puede hacer que la plataforma pida certificados para nombres ajenos. `/internal/*` y `/metrics` no responden desde fuera.
+
+**Subdominio propio del cliente.** El cliente lo agrega dentro del sandbox, en *Configuración › Dominios*, con el mismo registro TXT que los dominios de producción. Ese dominio pertenece al sandbox y nunca puede apuntar a la tienda real.
+
 ## 8. Runbook de incidentes
 
 | Síntoma | Qué pasa | Qué hacer |

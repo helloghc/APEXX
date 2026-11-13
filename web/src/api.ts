@@ -111,6 +111,9 @@ export interface Me {
   permissions: Permissions;
   twoStep?: boolean;
   sellerId?: string;
+  env?: "production" | "sandbox"; // where this session works
+  parent?: string; // sandbox: its production store
+  sandbox?: string; // production: its sandbox, if any
 }
 
 export interface Money {

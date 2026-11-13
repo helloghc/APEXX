@@ -110,6 +110,72 @@ async function storeTotal(q = '') {
     save();
   }
 
+  // 2d. Optional (APEXX_QA_SANDBOX=1): the store's sandbox at full size. Copy
+  // the whole catalog, change every price inside it, publish the prices to
+  // production while measuring production, revert exactly and delete the
+  // sandbox leaving nothing behind.
+  if (process.env.APEXX_QA_SANDBOX) {
+    const prodPrices = () => L.psql(`SELECT sku||'|'||channel||'|'||amount||'|'||coalesce(compare_at::text,'')||'|'||min_qty FROM prices WHERE tenant_id='${L.T}' ORDER BY 1`);
+    const R2 = {};
+    const tc = performance.now();
+    await L.api('POST', '/v1/sandbox', { dataMode: 'none' });
+    let v;
+    for (;;) { v = await L.api('GET', '/v1/sandbox'); if (v.sandbox.status !== 'copying') break; await L.sleep(200); }
+    const sbx = v.sandbox.id;
+    R2.copy = { status: v.sandbox.status, copyMs: v.sandbox.copyMs, untilReadyMs: Math.round(performance.now() - tc),
+      products: Number(L.psql(`SELECT count(*) FROM products WHERE tenant_id='${sbx}'`)), prices: Number(L.psql(`SELECT count(*) FROM prices WHERE tenant_id='${sbx}'`)),
+      orders: Number(L.psql(`SELECT count(*) FROM orders WHERE tenant_id='${sbx}'`)), customers: Number(L.psql(`SELECT count(*) FROM customers WHERE tenant_id='${sbx}'`)) };
+    log('sandbox copiado:', JSON.stringify(R2.copy));
+    L.setToken((await L.api('POST', '/v1/sandbox/enter')).token);
+    // Every price +10 % inside the sandbox, through the bulk price job.
+    const items = L.psql(`SELECT sku||'|'||amount FROM prices WHERE tenant_id='${sbx}' AND channel='mx' AND min_qty=1 ORDER BY 1`).split('\n').map((l) => { const [sku, a] = l.split('|'); return { sku, amount: Math.round(Number(a) * 1.1) }; });
+    const tchg = performance.now(); const jobs = [];
+    for (let a = 0; a < items.length; a += 20000) jobs.push((await L.api('POST', '/v1/bulk-operations', { kind: 'prices', channel: 'mx', items: items.slice(a, a + 20000) })).id);
+    for (const id of jobs) for (;;) { const j = await L.api('GET', `/v1/bulk-operations/${id}`); if (j.status === 'done' || j.status === 'failed') break; await L.sleep(250); }
+    R2.changeMs = Math.round(performance.now() - tchg);
+    const td = performance.now();
+    const d = await L.api('GET', '/v1/sandbox/diff?areas=prices');
+    R2.diff = { ms: Math.round(performance.now() - td), updates: d.areas[0].updates, conflicts: d.areas[0].conflicts };
+    log('cambio de', items.length, 'precios en el sandbox:', R2.changeMs, 'ms · diferencia calculada en', R2.diff.ms, 'ms:', JSON.stringify(R2.diff));
+    // Publish, while production is measured (16 shoppers on the catalog).
+    const before = prodPrices();
+    let publishing = true; const lat = [];
+    const shoppers = Array.from({ length: 16 }, async () => {
+      while (publishing) { const t = performance.now(); await fetch(`${L.B}/s/${L.T}/main/c`, { headers: { 'X-Forwarded-For': L.shopperIP() } }).then((r) => r.text()); lat.push(performance.now() - t); }
+    });
+    const tp = performance.now();
+    const pub = await L.api('POST', '/v1/sandbox/publish', { areas: ['prices'] });
+    R2.publish = { ms: Math.round(performance.now() - tp), applied: pub.publish.applied };
+    // Visible in production: the storefront shows a new price.
+    const sample = items[Math.floor(items.length / 2)];
+    const handle = L.psql(`SELECT p.handle FROM products p JOIN variants v ON v.tenant_id=p.tenant_id AND v.product_id=p.id WHERE p.tenant_id='${L.T}' AND v.sku='${sample.sku}'`);
+    const want = (sample.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 });
+    const tv = performance.now();
+    for (let i = 0; i < 400; i++) { const h = await (await fetch(`${L.B}/s/${L.T}/main/p/${handle}`, { headers: { 'X-Forwarded-For': L.shopperIP() } })).text(); if (h.includes(want)) break; await L.sleep(25); }
+    R2.publish.visibleMs = Math.round(performance.now() - tv);
+    publishing = false; await Promise.all(shoppers);
+    R2.publish.productionDuring = L.stats(lat);
+    const published = prodPrices();
+    R2.publish.productionChanged = published !== before;
+    log('publicado a producción:', JSON.stringify(R2.publish));
+    // Revert: production exactly as before.
+    // Back to production (entering ended the production session).
+    L.setToken((await L.api('POST', '/v1/sandbox/exit')).token);
+    const tr = performance.now();
+    const rv = await L.api('POST', `/v1/sandbox/publishes/${pub.publish.id}/revert`, {});
+    const after = prodPrices();
+    R2.revert = { ms: Math.round(performance.now() - tr), rows: rv.rows, exact: after === before };
+    log('revertido:', JSON.stringify(R2.revert));
+    // Delete: nothing of the sandbox remains.
+    const tdel = performance.now();
+    await L.api('DELETE', '/v1/sandbox');
+    const left = L.psql(`SELECT string_agg(table_name || '=' || n, ',') FROM (SELECT c.table_name, (xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM %I WHERE tenant_id=%L', c.table_name, '${sbx}'), false, true, '')))[1]::text::int AS n FROM information_schema.columns c WHERE c.column_name='tenant_id' AND c.table_schema='public' AND c.table_name NOT IN ('outbox','audit_log')) x WHERE n > 0`);
+    R2.delete = { ms: Math.round(performance.now() - tdel), rowsLeft: left || 'ninguna', tenantRow: L.psql(`SELECT count(*) FROM tenants WHERE id='${sbx}'`) };
+    log('sandbox borrado:', JSON.stringify(R2.delete));
+    R.phases.sandbox = R2;
+    save();
+  }
+
   // 3. Latencies, one client and 16 at once.
   const mid = Math.ceil(N / 2);
   const pdpId = (await L.api('GET', `/v1/products?q=esc-${mid}&limit=1`)).items?.[0]?.id;

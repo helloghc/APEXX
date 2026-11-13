@@ -107,6 +107,7 @@ services:
       APEXX_SECURE_COOKIES: "true"
       APEXX_TRUST_PROXY: "true"
       APEXX_DRAIN: ${APEXX_DRAIN:-6s}
+      APEXX_SANDBOX_HOST: ${APEXX_SANDBOX_HOST:-}
       # Optional AI providers. Without them every AI feature runs in its
       # deterministic mode (local vectors, quoted answers).
       APEXX_ANTHROPIC_API_KEY: ${APEXX_ANTHROPIC_API_KEY:-}

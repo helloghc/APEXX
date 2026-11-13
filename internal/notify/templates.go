@@ -22,6 +22,7 @@ const (
 	TplPurchaseApproval    = "purchase_approval"
 	TplQuoteOffered        = "quote_offered"
 	TplCompanyDue          = "company_due"
+	TplSandboxExpiring     = "sandbox_expiring"
 	TplCompanyAutopayFail  = "company_autopay_failed"
 	TplTeamInvite          = "team_invite"
 	TplSubscriptionCreated = "subscription_created"
@@ -210,6 +211,12 @@ var Definitions = []Definition{
 			CTA:  "Ver mi empresa", Footer: "Recibes este correo porque administras la cuenta de tu empresa en esta tienda."},
 		Variables: append(append([]Variable{}, common...), Variable{"empresa.nombre", "Empresa", "ACME Industrial"}, Variable{"saldo.monto", "Monto", "$8,200.00 MXN"}, Variable{"saldo.vence", "Vence", "20 de noviembre"},
 			Variable{"saldo.cobro", "Cómo se paga", "Lo cobraremos automáticamente a la tarjeta guardada de tu empresa."})},
+	{Key: TplSandboxExpiring, Name: "Sandbox por vencer", Description: "Se envía a los dueños de la tienda cuando su sandbox lleva tiempo sin usarse y se borrará pronto.",
+		Subject: "Tu sandbox de {{tienda.nombre}} se borra el {{sandbox.vence}}",
+		Blocks: Blocks{Heading: "Tu sandbox lleva tiempo sin usarse",
+			Body: "Nadie ha entrado al sandbox de {{tienda.nombre}} en {{sandbox.dias}} días. Se borrará el {{sandbox.vence}}.\n\nSi lo sigues usando, entra una vez desde el panel y se mantiene. Lo que ya publicaste a producción no se pierde.",
+			CTA:  "Abrir el sandbox", Footer: "Recibes este correo porque eres dueño de la tienda en Apexx."},
+		Variables: append(append([]Variable{}, common...), Variable{"sandbox.dias", "Días sin uso", "25"}, Variable{"sandbox.vence", "Fecha de borrado", "14 de diciembre de 2026"})},
 	{Key: TplCompanyAutopayFail, Name: "Cobro automático rechazado", Description: "Se envía a quien administra una empresa cuando no se pudo cobrar su saldo vencido a la tarjeta guardada.",
 		Subject: "No pudimos cobrar el saldo de {{empresa.nombre}}",
 		Blocks: Blocks{Heading: "Tu tarjeta no pasó",

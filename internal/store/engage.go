@@ -422,3 +422,10 @@ const KeyGiftOptions = "gift_options"
 // node rebuilds its copy when it changes, so a published tag shows on the
 // next page view without a deploy.
 const KeyTags = "tags"
+
+// TopicTenantReload makes every node load a store again and swap it in whole
+// (many rows changed at once: a publish from the sandbox, or its revert).
+const TopicTenantReload = "tenant.reload"
+
+// TopicTenantRemoved makes every node forget a store (a deleted sandbox).
+const TopicTenantRemoved = "tenant.removed"

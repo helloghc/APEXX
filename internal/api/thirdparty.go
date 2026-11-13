@@ -97,6 +97,9 @@ func (s *Server) RunWarehouseRequests(ctx context.Context) (int, error) {
 }
 
 func (s *Server) deliverWarehouse(ctx context.Context, tenant, orderID, location, kind string) (status, ref, msg string) {
+	if s.isSandbox(tenant) {
+		return "rejected", "", sandboxCaptured + " al almacén externo"
+	}
 	cfg, err := s.DB.LoadLogistics(ctx, tenant)
 	if err != nil {
 		return "pending", "", err.Error()

@@ -99,4 +99,4 @@ function serverRSS() {
   try { const pid = execFileSync('pgrep', ['-x', 'apexx']).toString().trim().split('\n')[0]; return Math.round(Number(fs.readFileSync(`/proc/${pid}/status`, 'utf8').match(/VmRSS:\s+(\d+)/)[1]) / 1024); } catch { return -1; }
 }
 
-module.exports = { shopperIP, S, B, T, psql, login, api, snapshot, diff, product, HEADER, stats, timeIt, sleep, serverRSS, token: () => token };
+module.exports = { shopperIP, S, B, T, psql, login, api, snapshot, diff, product, HEADER, stats, timeIt, sleep, serverRSS, token: () => token, setToken: (t) => { token = t; } };

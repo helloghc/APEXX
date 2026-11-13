@@ -4,19 +4,15 @@
 	servers {
 		protocols h1 h2 h3
 	}
+	# Certificates on demand for the stores' own domains and the sandboxes'
+	# temporary addresses: Caddy asks Apexx first, and Apexx only says yes to
+	# a verified domain of some store (internal/api/settings_public.go).
+	on_demand_tls {
+		ask http://apexx:8080/internal/tls/ask
+	}
 }
 
-(tls_acme) {
-	tls {$ACME_EMAIL}
-}
-
-(tls_internal) {
-	tls internal
-}
-
-{$APEXX_DOMAIN} {
-	import tls_{$CADDY_TLS_MODE}
-
+(apexx_upstream) {
 	encode zstd gzip
 
 	header {
@@ -27,8 +23,8 @@
 		-Server
 	}
 
-	# Health endpoints stay internal.
-	@internal path /metrics
+	# Health and internal endpoints never answer from outside.
+	@internal path /metrics /internal/*
 	respond @internal 404
 
 	# Two nodes. A node leaving (deploy, restart) answers /readyz with 503
@@ -52,4 +48,27 @@
 		output stdout
 		format json
 	}
+}
+
+(tls_acme) {
+	tls {$ACME_EMAIL}
+}
+
+(tls_internal) {
+	tls internal
+}
+
+{$APEXX_DOMAIN} {
+	import tls_{$CADDY_TLS_MODE}
+	import apexx_upstream
+}
+
+# Every other host: a store's own domain (tienda.com, pruebas.tienda.com) or a
+# sandbox's temporary address ({id}.<APEXX_SANDBOX_HOST>). The certificate is
+# issued the first time the host is visited, only if Apexx knows it.
+https:// {
+	tls {
+		on_demand
+	}
+	import apexx_upstream
 }

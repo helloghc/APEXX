@@ -131,6 +131,9 @@ func (s *Server) connectSalesChannel(w http.ResponseWriter, r *http.Request) {
 	if !knownProvider(w, p) {
 		return
 	}
+	if s.refuseInSandbox(w, principal(r).Tenant, "un canal de venta") {
+		return
+	}
 	var in struct {
 		ClientID     string          `json:"clientId"`
 		ClientSecret string          `json:"clientSecret"`
@@ -504,6 +507,9 @@ func (s *Server) RunSalesChannels(ctx context.Context) (int, error) {
 	rows.Close()
 	total := 0
 	for _, a := range list {
+		if s.isSandbox(a.tenant) {
+			continue
+		}
 		n, err := s.syncAccount(ctx, a.tenant, a.provider, false)
 		total += n.listings + n.orders
 		if err != nil && s.Log != nil && !saleschannels.IsRejected(err) {

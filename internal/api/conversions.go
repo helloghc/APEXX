@@ -100,6 +100,9 @@ func (s *Server) getAdConversions(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) putAdConversions(w http.ResponseWriter, r *http.Request) {
 	pr := principal(r)
+	if s.refuseInSandbox(w, pr.Tenant, "la conversión del servidor") {
+		return
+	}
 	var in adConfig
 	if !decode(w, r, &in) {
 		return
@@ -187,6 +190,13 @@ func (s *Server) RunConversions(ctx context.Context) (int, error) {
 	}
 	rows.Close()
 	for _, j := range list {
+		if s.isSandbox(j.tenant) {
+			_ = s.DB.Tx(ctx, j.tenant, func(tx pgx.Tx) error {
+				_, e := tx.Exec(ctx, `UPDATE conversion_jobs SET status='failed', attempts=attempts+1, last_error=$3 WHERE tenant_id=$1 AND id=$2`, j.tenant, j.id, sandboxCaptured)
+				return e
+			})
+			continue
+		}
 		err := s.sendConversion(ctx, j.tenant, j.order, j.platform)
 		_ = s.DB.Tx(ctx, j.tenant, func(tx pgx.Tx) error {
 			if err == nil {

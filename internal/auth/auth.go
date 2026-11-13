@@ -349,6 +349,17 @@ func (s *Service) Login(ctx context.Context, tenant, email, password, code, ip, 
 // ErrSSORequired means this store's team signs in with single sign-on.
 var ErrSSORequired = errors.New("auth: single sign-on required")
 
+// StartSessionFor starts a session in a store for a person who is already
+// signed in to its pair (production and its sandbox): the person must be an
+// active member there.
+func (s *Service) StartSessionFor(ctx context.Context, tenant, memberID, ip, ua string) (string, error) {
+	var status string
+	if err := s.DB.System.QueryRow(ctx, `SELECT status FROM members WHERE tenant_id=$1 AND id=$2`, tenant, memberID).Scan(&status); err != nil || status != "active" {
+		return "", ErrBadCredentials
+	}
+	return s.startSession(ctx, tenant, memberID, ip, ua)
+}
+
 func (s *Service) startSession(ctx context.Context, tenant, memberID, ip, ua string) (string, error) {
 	token := "aps_" + newID("", 32)
 	sum := sha256.Sum256([]byte(token))

@@ -484,9 +484,16 @@ func (s *Service) backoff(attempt int) time.Duration {
 // Send delivers due messages. Several nodes can run it: rows are leased with
 // SKIP LOCKED, and the message id travels to the provider as a dedupe hint.
 func (s *Service) Send(ctx context.Context) (int, error) {
+	// A sandbox never writes to customers: its emails are kept, not sent,
+	// and the panel lists them (Configuración › Sandbox).
+	if _, err := s.DB.System.Exec(ctx, `UPDATE notification_messages m SET status = 'skipped', last_error = 'Capturado en el sandbox: no se envía'
+		FROM tenants t WHERE t.id = m.tenant_id AND t.kind = 'sandbox' AND m.status IN ('queued', 'failed')`); err != nil {
+		return 0, err
+	}
 	rows, err := s.DB.System.Query(ctx, `WITH due AS (
-			SELECT tenant_id, id FROM notification_messages WHERE status IN ('queued','failed') AND next_attempt <= now()
-			ORDER BY next_attempt LIMIT 25 FOR UPDATE SKIP LOCKED)
+			SELECT m.tenant_id, m.id FROM notification_messages m JOIN tenants t ON t.id = m.tenant_id AND t.kind = 'production'
+			WHERE m.status IN ('queued','failed') AND m.next_attempt <= now()
+			ORDER BY m.next_attempt LIMIT 25 FOR UPDATE OF m SKIP LOCKED)
 		UPDATE notification_messages m SET next_attempt = now() + interval '2 minutes'
 		FROM due WHERE m.tenant_id=due.tenant_id AND m.id=due.id RETURNING m.tenant_id, m.id`)
 	if err != nil {

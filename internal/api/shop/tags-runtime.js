@@ -12,6 +12,17 @@ var debug = /[?&]apexx_tags=prueba\b/.test(loc.search);
 try { if (debug) sessionStorage.setItem("apexx_tags_debug", "1"); else debug = sessionStorage.getItem("apexx_tags_debug") === "1"; } catch (e) {}
 var tags = C.tags || [];
 w.dataLayer = w.dataLayer || [];
+// In the store's sandbox every page and event is marked, so analytics can
+// leave the traffic out: ?apexx_env=sandbox in the address, apexx_env in the
+// dataLayer and traffic_type "internal" for Google Analytics.
+var SBX = C.env === "sandbox";
+if (SBX) {
+  try {
+    var su = new URL(loc.href);
+    if (su.searchParams.get("apexx_env") !== "sandbox") { su.searchParams.set("apexx_env", "sandbox"); history.replaceState(history.state, "", su.toString()); }
+  } catch (e) {}
+  w.dataLayer.push({ apexx_env: "sandbox" });
+}
 var queue = w.apexxEvents = w.apexxEvents || [];
 
 // ---------- test mode: what fired and why ----------
@@ -84,8 +95,8 @@ var P = {
     send: function () { /* the container reads the dataLayer itself */ }
   },
   ga4: {
-    start: function (t) { gtagReady(); load("https://www.googletagmanager.com/gtag/js?id=" + enc(t.account)); w.gtag("config", t.account); },
-    send: function (t, ev, ec) { if (ev !== "page_view") w.gtag("event", ev, Object.assign({ send_to: t.account }, ec || {})); }
+    start: function (t) { gtagReady(); load("https://www.googletagmanager.com/gtag/js?id=" + enc(t.account)); w.gtag("config", t.account, SBX ? { traffic_type: "internal", apexx_env: "sandbox" } : {}); },
+    send: function (t, ev, ec) { if (ev !== "page_view") w.gtag("event", ev, Object.assign({ send_to: t.account }, SBX ? { traffic_type: "internal", apexx_env: "sandbox" } : {}, ec || {})); }
   },
   gads: {
     start: function (t) { gtagReady(); load("https://www.googletagmanager.com/gtag/js?id=" + enc(t.account)); w.gtag("config", t.account); },
@@ -460,5 +471,5 @@ if (optional) {
   var a = d.createElement("button"); a.type = "button"; a.className = "linkbtn consent-open"; a.textContent = "Preferencias de cookies"; a.addEventListener("click", show);
   foot.appendChild(a);
 }
-w.apexxTags = { version: C.v, mode: MODE, log: log, consent: function () { return consent; } };
+w.apexxTags = { version: C.v, mode: MODE, env: SBX ? "sandbox" : "production", log: log, consent: function () { return consent; } };
 flush();

@@ -130,3 +130,9 @@ En Operación, Actividad, ves quién hizo qué y cuándo. El registro está enca
 ruta: configuracion/scripts
 permiso: builder admin
 En Configuración, Etiquetas y píxeles, elige el proveedor (Google Tag Manager, Google Analytics 4, Adobe Analytics, Google Ads, Meta, TikTok, Pinterest, Snapchat, X, LinkedIn, Microsoft Advertising, Reddit, Hotjar, Clarity, Crazy Egg, chats como Crisp, Tawk.to, Tidio, Intercom, Zendesk, Trengo, JivoChat o HubSpot, el botón de WhatsApp, un script por URL o código propio) y llena sus datos. Las etiquetas de verificación de Search Console, Bing, Meta o Pinterest van en «Verificación de dominio». Pulsa «Publicar»: la tienda usa la versión nueva desde la siguiente página que se abra, sin despliegues. Los eventos de comercio (ficha, agregar al carrito, carrito, inicio del pago y pedido confirmado) llegan solos con monto, moneda y número de pedido. Verifica con «Probar en la tienda». En «Versiones» ves quién publicó, cuándo y qué cambió, y puedes regresar a cualquier versión anterior.
+
+## Probar cambios en el sandbox antes de publicarlos
+ruta: configuracion/sandbox
+permiso: settings admin
+En Configuración, Sandbox, pulsa «Crear sandbox»: en segundos tienes una copia completa de tu tienda (productos, precios, promociones, diseño, configuración y etiquetas), sin los datos personales de tus clientes ni tus credenciales. «Entrar al sandbox» te lleva a esa copia; una franja naranja te recuerda dónde estás. Cambia lo que quieras y, cuando esté listo, en «Publicar a producción» elige qué áreas pasan a tu tienda real. Cada publicación se puede revertir. Para ver la tienda del sandbox usa «Ver la tienda del sandbox» o comparte un enlace de vista previa; también puedes usar tu propio subdominio desde Configuración, Dominios, estando dentro del sandbox. En el sandbox nada sale a servicios reales: los pagos son de prueba, los correos se capturan y no se pueden conectar webhooks, canales de venta ni conversiones del servidor.
+

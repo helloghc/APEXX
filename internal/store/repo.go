@@ -41,6 +41,9 @@ var (
 
 // CreateTenant creates a tenant and its wrapped data key.
 func (d *DB) CreateTenant(ctx context.Context, id, name string, wrappedKey []byte) error {
+	if strings.HasPrefix(id, SandboxPrefix) {
+		return errors.New("store: ids that start with " + SandboxPrefix + " are reserved for sandboxes")
+	}
 	return pgx.BeginFunc(ctx, d.System, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `INSERT INTO tenants (id, name) VALUES ($1,$2)`, id, name); err != nil {
 			return err
@@ -48,6 +51,13 @@ func (d *DB) CreateTenant(ctx context.Context, id, name string, wrappedKey []byt
 		_, err := tx.Exec(ctx, `INSERT INTO tenant_keys (tenant_id, wrapped_key) VALUES ($1,$2)`, id, wrappedKey)
 		return err
 	})
+}
+
+// TenantExists says whether a store exists.
+func (d *DB) TenantExists(ctx context.Context, id string) (bool, error) {
+	var ok bool
+	err := d.System.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM tenants WHERE id=$1)`, id).Scan(&ok)
+	return ok, err
 }
 
 // Tenants lists tenant ids.

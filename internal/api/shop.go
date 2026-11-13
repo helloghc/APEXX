@@ -65,6 +65,7 @@ type pageData struct {
 	Chrome                                                  builder.Chrome
 	Tags                                                    template.HTML // the store's tags.js, on pages that may load it
 	Verify                                                  template.HTML // the store's verification tags (Search Console, Bing…)
+	Env                                                     string        // "sandbox" in a sandbox: the page says so
 	Registries                                              bool          // the store offers gift registries
 }
 

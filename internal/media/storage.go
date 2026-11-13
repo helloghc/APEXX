@@ -135,3 +135,88 @@ func (l *Local) DeletePrefix(_ context.Context, tenant, prefix string) error {
 	}
 	return os.RemoveAll(p)
 }
+
+// Copier copies the files of one media item between stores (a publish from
+// a sandbox to its production store). A missing source folder is not an
+// error: the item's files may live in production already.
+type Copier interface {
+	CopyPrefix(ctx context.Context, from, to, prefix string) error
+}
+
+// TenantRemover deletes every file of a store (a deleted sandbox).
+type TenantRemover interface {
+	RemoveTenant(ctx context.Context, tenant string) error
+}
+
+// CopyPrefix copies <from>/<prefix>/ to <to>/<prefix>/, file by file.
+func (l *Local) CopyPrefix(_ context.Context, from, to, prefix string) error {
+	src, err := l.path(from, prefix)
+	if err != nil {
+		return err
+	}
+	dst, err := l.path(to, prefix)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(src); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return filepath.WalkDir(src, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, p)
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o750)
+		}
+		data, err := os.ReadFile(p) // #nosec G304 -- p is inside the store's folder, built from validated keys
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o640)
+	})
+}
+
+// RemoveTenant deletes the store's folder.
+func (l *Local) RemoveTenant(_ context.Context, tenant string) error {
+	if !tenantRe.MatchString(tenant) {
+		return ErrBadKey
+	}
+	return os.RemoveAll(filepath.Join(l.Root, tenant))
+}
+
+// Inherit serves a sandbox's files from its own folder and, for the files it
+// did not change, from its production store's, without copying them. Writes
+// and deletes only ever touch the sandbox's own folder.
+type Inherit struct {
+	Storage
+	Parent func(tenant string) string // "" for a production store
+}
+
+// Open looks in the store's folder, then in its production store's.
+func (i Inherit) Open(ctx context.Context, tenant, key string) (*Object, error) {
+	o, err := i.Storage.Open(ctx, tenant, key)
+	if errors.Is(err, ErrNotFound) && i.Parent != nil {
+		if p := i.Parent(tenant); p != "" {
+			return i.Storage.Open(ctx, p, key)
+		}
+	}
+	return o, err
+}
+
+// CopyPrefix passes through to the underlying storage when it can copy.
+func (i Inherit) CopyPrefix(ctx context.Context, from, to, prefix string) error {
+	if c, ok := i.Storage.(Copier); ok {
+		return c.CopyPrefix(ctx, from, to, prefix)
+	}
+	return ErrNotConfigured
+}
+
+// RemoveTenant passes through to the underlying storage when it can.
+func (i Inherit) RemoveTenant(ctx context.Context, tenant string) error {
+	if c, ok := i.Storage.(TenantRemover); ok {
+		return c.RemoveTenant(ctx, tenant)
+	}
+	return nil
+}

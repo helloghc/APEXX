@@ -277,6 +277,10 @@ func ensureRoles(ctx context.Context, conn *pgx.Conn, appPassword, systemPasswor
 		"REVOKE ALL ON job_leases FROM apexx_app",
 		"REVOKE ALL ON login_failures FROM apexx_app",
 		"REVOKE ALL ON activity_marks FROM apexx_app",
+		"REVOKE ALL ON sandboxes FROM apexx_app",
+		"REVOKE ALL ON sandbox_base FROM apexx_app",
+		"REVOKE ALL ON sandbox_publishes FROM apexx_app",
+		"REVOKE ALL ON sandbox_publish_rows FROM apexx_app",
 		"REVOKE INSERT, UPDATE, DELETE ON tenants FROM apexx_app",
 	} {
 		if _, err := conn.Exec(ctx, q); err != nil {

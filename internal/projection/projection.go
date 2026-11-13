@@ -289,9 +289,21 @@ func (p *Projector) loadTenant(ctx context.Context, id string) error {
 		return err
 	}
 	p.mu.Lock()
+	// A reloaded store keeps counting versions upward, so a result cached
+	// at an older version is never mistaken for the new one.
+	if old, ok := p.tenants[id]; ok {
+		t.version.Store(old.version.Load() + 1)
+	}
 	p.tenants[id] = t
 	p.mu.Unlock()
 	return nil
+}
+
+// dropTenant forgets a store that no longer exists (a deleted sandbox).
+func (p *Projector) dropTenant(id string) {
+	p.mu.Lock()
+	delete(p.tenants, id)
+	p.mu.Unlock()
 }
 
 // prefetchProducts loads, with one query per store, every product the
@@ -746,8 +758,27 @@ func (p *Projector) drain(ctx context.Context) error {
 }
 
 func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
+	switch e.Topic {
+	case store.TopicTenantRemoved:
+		p.dropTenant(e.Tenant)
+		p.runHooks(e)
+		return nil
+	case store.TopicTenantReload:
+		// Many rows changed at once (a publish from the sandbox): the store
+		// is loaded again and swapped in whole.
+		if err := p.loadTenant(ctx, e.Tenant); err != nil {
+			return err
+		}
+		p.runHooks(e)
+		return nil
+	}
 	t, ok := p.Tenant(e.Tenant)
 	if !ok {
+		// A store this node has not loaded yet; a store that no longer
+		// exists (an event older than a sandbox's deletion) is not revived.
+		if exists, err := p.db.TenantExists(ctx, e.Tenant); err != nil || !exists {
+			return err
+		}
 		return p.loadTenant(ctx, e.Tenant)
 	}
 	defer t.version.Add(1)
@@ -756,13 +787,17 @@ func (p *Projector) apply(ctx context.Context, e store.OutboxEvent) error {
 	}
 	// Hooks run after the event is applied, for every topic, so a hook
 	// sees the read models already up to date.
+	p.runHooks(e)
+	return nil
+}
+
+func (p *Projector) runHooks(e store.OutboxEvent) {
 	p.hooksMu.RLock()
 	hs := p.hooks[e.Topic]
 	p.hooksMu.RUnlock()
 	for _, h := range hs {
 		h(e.Tenant, e.Key)
 	}
-	return nil
 }
 
 func (p *Projector) applyTopic(ctx context.Context, t *Tenant, e store.OutboxEvent) error {

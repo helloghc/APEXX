@@ -23,6 +23,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Notice, Page } from "@/pages/common";
+import { SandboxBar } from "@/components/SandboxBar";
 import { Home } from "@/pages/Home";
 
 // Each section loads on demand so the login screen and home stay light.
@@ -541,7 +542,7 @@ function Shell({ me }: { me: Me }) {
       <Sidebar label="Menú principal">
         <SidebarHeader>
           <Logo size={26} />
-          <span className="text-xs text-muted-foreground">Tienda {me.tenant}</span>
+          <span className="text-xs text-muted-foreground">{me.env === "sandbox" ? `Sandbox de ${me.parent}` : `Tienda ${me.tenant}`}</span>
         </SidebarHeader>
         <SidebarContent>
           <nav aria-label="Secciones">
@@ -573,7 +574,7 @@ function Shell({ me }: { me: Me }) {
           </div>
           <ThemePicker />
           <LanguagePicker />
-          {me.kind === "member" && <SwitchStore email={me.email ?? ""} current={me.tenant} />}
+          {me.kind === "member" && me.env !== "sandbox" && <SwitchStore email={me.email ?? ""} current={me.tenant} />}
           {me.kind === "member" && (
             <a href={href("cuenta")} className="text-sm text-primary hover:underline">
               Mi cuenta y seguridad
@@ -588,8 +589,9 @@ function Shell({ me }: { me: Me }) {
         <header className="flex items-center gap-2 border-b bg-card px-2 py-1 md:hidden">
           <SidebarTrigger />
           <Logo size={22} />
-          <span className="truncate text-xs text-muted-foreground">{me.tenant}</span>
+          <span className="truncate text-xs text-muted-foreground">{me.env === "sandbox" ? `Sandbox de ${me.parent}` : me.tenant}</span>
         </header>
+        {me.env === "sandbox" && <SandboxBar />}
         <div className={full ? "min-h-0 flex-1 overflow-hidden" : "min-h-0 flex-1 overflow-auto"}>
           <ErrorBoundary resetKey={route.join("/")}>
             <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Cargando…</p>}>{body}</Suspense>

@@ -49,7 +49,7 @@ Cada documento dice qué se construyó, cómo se probó y qué quedó pendiente,
 | Documento | Contenido |
 |---|---|
 | [../etiquetas.md](../etiquetas.md) | Etiquetas y píxeles: catálogo de proveedores, verificación de dominio, WhatsApp, historial y publicación al instante |
-| [plan-sandbox.md](plan-sandbox.md) | **Siguiente fase:** plan del sandbox por tienda (copia idéntica, URL propia, credenciales aisladas, pasar a producción y revertir) |
+| [plan-sandbox.md](plan-sandbox.md) | Sandbox por tienda: plan y resultado (copia idéntica, URL propia, nada sale, publicar a producción y revertir). Referencia: [`../sandbox.md`](../sandbox.md) |
 
 ## Pruebas
 

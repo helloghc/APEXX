@@ -443,6 +443,9 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		srv.LLMFast = ai.NewClaude(key, base, env("APEXX_AI_MODEL_FAST", "claude-haiku-5-5"))
 		log.Info("language model", "answers", srv.LLM.Model(), "bulk", srv.LLMFast.Model())
 	}
+	// Sandboxes: interrupted copies, the expiry notice and deletion after 30
+	// days without use (internal/api/sandbox.go).
+	every("sandbox-lifecycle", 15*time.Minute, srv.RunSandboxLifecycle)
 	every("ai-graph", time.Minute, func(ctx context.Context) error {
 		_, err := srv.RunGraph(ctx)
 		return err

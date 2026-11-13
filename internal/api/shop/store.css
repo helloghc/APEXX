@@ -480,3 +480,7 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .wa-float span{font-size:.95rem;white-space:nowrap}
 @media (max-width:520px){.wa-float span{display:none}}
 @media print{.wa-float{display:none}}
+
+/* The store's sandbox: always visible, never mistaken for the real store */
+.sbx-bar{position:sticky;top:0;z-index:60;padding:6px 16px;background:#c2410c;color:#fff;font:600 13px/1.4 system-ui,sans-serif;text-align:center;letter-spacing:.02em}
+@media print{.sbx-bar{display:none}}

@@ -244,3 +244,28 @@ Pantalla: *Configuración › Etiquetas y píxeles*. Detalle técnico: `docs/eti
 | E14 | WhatsApp | Agrega el botón con tu número y un mensaje | En el teléfono abre la app, en la computadora WhatsApp Web; en una ficha, el mensaje lleva el nombre del producto |
 | E15 | Verificación de dominio | Pega la etiqueta completa de Search Console | Search Console verifica el dominio; la etiqueta está en el código de la portada |
 | E16 | Quién cambió qué | Que dos personas publiquen cambios | En «Versiones» se ve quién, cuándo y qué cambió; en Operación › Actividad, la configuración completa |
+
+## 10. Sandbox por tienda
+
+Pantalla: *Configuración › Sandbox*. Detalle técnico: `docs/sandbox.md`.
+
+| # | Qué probar | Pasos | Qué debe pasar |
+| --- | --- | --- | --- |
+| S1 | Crear | «Crear sandbox», sin clientes ni pedidos | Barra de avance y «Tu sandbox está listo» en segundos |
+| S2 | Lo que se copia | Entra al sandbox y revisa catálogo, precios, promociones, diseño, envíos y etiquetas | Todo igual a producción |
+| S3 | Lo que no se copia | Revisa Pedidos, Clientes, Pagos y Equipo › API keys dentro del sandbox | Sin pedidos ni clientes reales, sin cuenta de pago conectada, sin llaves de producción |
+| S4 | Franja | Navega dentro del sandbox | La franja naranja siempre visible; «Volver a producción» regresa a tu tienda real |
+| S5 | Tienda privada | Abre la dirección del sandbox en una ventana privada | «Este sandbox es privado» |
+| S6 | Vista previa | «Crear enlace» por 1 hora y ábrelo en otro navegador | La tienda del sandbox con su franja; después de la hora, privada otra vez |
+| S7 | Nada sale | Compra en la tienda del sandbox con la tarjeta de prueba 4242… | El pedido existe solo en el sandbox; ningún cobro real; el correo aparece en «Correos capturados» y no llega |
+| S8 | Llaves vivas | En el sandbox, conecta Stripe con una llave sk_live_ | Mensaje: en el sandbox solo se usan llaves de prueba |
+| S9 | Publicar | Cambia un título y un precio en el sandbox; en «Publicar a producción» elige Catálogo y Precios | La tienda real muestra el cambio al instante |
+| S10 | Conflicto | Cambia el mismo producto en el sandbox y en producción; publica | Aparece «Conflicto» y producción no se toca, salvo que marques publicarlo también |
+| S11 | Revertir | En «Publicaciones», «Revertir» | La tienda real vuelve exactamente a como estaba |
+| S12 | Revertir después de cambios | Publica, cambia ese producto en producción y luego revierte | Aviso de que cambió después; «Revertir de todos modos» lo regresa |
+| S13 | Subdominio propio | Dentro del sandbox, Configuración › Dominios: agrega pruebas.tutienda.com y su registro TXT | Verificado, con HTTPS, mostrando el sandbox (privado), nunca la tienda real |
+| S14 | Refrescar | «Refrescar desde producción» | Lo no publicado se pierde; tu dirección y tu sesión se mantienen |
+| S15 | Borrar | «Borrar sandbox» | Tu tienda real no cambia; lo publicado se queda |
+| S16 | Equipo | Dentro del sandbox, intenta agregar a alguien al equipo | Mensaje: el equipo se administra en producción |
+| S17 | Conexiones externas | Dentro del sandbox, intenta crear un webhook, conectar Mercado Libre o configurar conversiones del servidor | Mensaje: en el sandbox no se conecta, nada sale a servicios reales. Una automatización con webhook copiada de producción registra «Capturado en el sandbox» |
+

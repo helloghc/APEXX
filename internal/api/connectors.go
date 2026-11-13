@@ -52,6 +52,9 @@ func (s *Server) createWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := principal(r)
+	if s.refuseInSandbox(w, p.Tenant, "un webhook") {
+		return
+	}
 	sub, secret, err := s.Webhooks.Subscribe(r.Context(), p.Tenant, p.Actor(), body.URL, body.Types)
 	if errors.Is(err, webhooks.ErrUnsafeURL) {
 		apierr.BadRequest(w, "", apierr.FieldError{Field: "url", Code: "unsafe_url", Message: "La URL debe ser https y pública"})

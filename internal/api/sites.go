@@ -403,6 +403,15 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 	}
 	// The store's tags are placed at serve time too: publishing a pixel shows
 	// on every page at once, without publishing the site again.
+	if s.isSandbox(tenant) {
+		if i := bytes.Index(html, []byte("<body")); i >= 0 {
+			if j := bytes.IndexByte(html[i:], '>'); j > 0 {
+				at := i + j
+				html = append(html[:at:at], append([]byte(` data-env="sandbox"><div class="sbx-bar" role="note">Sandbox · no es tu tienda real</div`), html[at:]...)...)
+			}
+		}
+		cache, etag = "no-store", `"sbx-`+rev+`"`
+	}
 	if meta, tags := s.tagsHead(tenant); meta != "" || tags != "" {
 		html = bytes.Replace(html, []byte("</head>"), []byte(string(meta)+string(tags)+"</head>"), 1)
 		etag = strings.TrimSuffix(etag, `"`) + "-t" + strconv.FormatInt(s.tagsOf(tenant).cfg.Version, 10) + `"`
@@ -474,6 +483,10 @@ func (s *Server) putPaymentAccount(w http.ResponseWriter, r *http.Request) {
 		}
 		if !strings.HasPrefix(body.SecretKey, "sk_") && !strings.HasPrefix(body.SecretKey, "rk_") {
 			apierr.BadRequest(w, "", apierr.FieldError{Field: "secretKey", Code: "invalid", Message: "Usa una llave secreta sk_… o restringida rk_… de tu cuenta Stripe"})
+			return
+		}
+		if s.isSandbox(p.Tenant) && !strings.HasPrefix(body.SecretKey, "sk_test_") && !strings.HasPrefix(body.SecretKey, "rk_test_") {
+			apierr.BadRequest(w, "", apierr.FieldError{Field: "secretKey", Code: "live_in_sandbox", Message: "En el sandbox solo se usan llaves de prueba de Stripe (sk_test_… o rk_test_…): aquí nunca se cobra de verdad"})
 			return
 		}
 		enc, err := s.Keys.Encrypt(p.Tenant, []byte(body.SecretKey), "stripe-secret")
