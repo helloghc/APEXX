@@ -305,10 +305,20 @@ type Link struct {
 
 // Resolve turns the items into links under base ("/s/tienda/main" or "" on a
 // custom domain).
-func Resolve(items []MenuItem, base string) []Link {
+func Resolve(items []MenuItem, base string) []Link { return ResolveWith(items, base, nil) }
+
+// ResolveWith is Resolve that leaves out links to a category or product the
+// store no longer has (exists says; nil: all exist), so a shopper never lands
+// on a missing page from the menu. Their sub-links take their place.
+func ResolveWith(items []MenuItem, base string, exists func(kind, ref string) bool) []Link {
 	out := make([]Link, 0, len(items))
 	for _, it := range items {
-		l := Link{Label: it.Label, NewTab: it.NewTab, Children: Resolve(it.Children, base)}
+		children := ResolveWith(it.Children, base, exists)
+		if exists != nil && (it.Type == "category" && ValidSlug(it.Ref) || it.Type == "product") && !exists(it.Type, it.Ref) {
+			out = append(out, children...)
+			continue
+		}
+		l := Link{Label: it.Label, NewTab: it.NewTab, Children: children}
 		switch it.Type {
 		case "home":
 			l.URL = base + "/index"

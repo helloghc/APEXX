@@ -79,6 +79,11 @@ function MenuEditor({ menu, targets, maxDepth, canEdit }: { menu: Menu; targets:
             <Button type="button" size="icon" variant="ghost" aria-label={`Quitar ${it.label || "enlace"}`} onClick={() => setItems(removeItem(items, path))}><Trash2 aria-hidden="true" /></Button>
           </span>
         </div>
+        {needsRef && it.ref && !opts.some((o) => o.ref === it.ref) && (
+          <p className="text-sm text-warn" style={{ marginLeft: (path.length - 1) * 28 }} role="status">
+            «{it.ref}» ya no existe en tu tienda: este enlace no se muestra. Elige otro destino o quítalo.
+          </p>
+        )}
         {(it.children ?? []).length > 0 && <ul className="grid gap-2">{it.children.map((c, j) => row(c, [...path, j], it.children.length))}</ul>}
       </li>
     );

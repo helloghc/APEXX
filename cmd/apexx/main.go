@@ -77,6 +77,14 @@ func main() {
 		applied, err := store.Migrate(ctx, os.Getenv("ADMIN_DATABASE_URL"), os.Getenv("APP_DB_PASSWORD"), os.Getenv("SYSTEM_DB_PASSWORD"))
 		must(log, err, "migrate")
 		log.Info("migrated", "applied", applied)
+		// Data repairs that are idempotent and run with every deploy.
+		db, _ := open(ctx, log)
+		n, err := db.RepairCategoryRefs(ctx)
+		db.Close()
+		must(log, err, "repair category references")
+		if n > 0 {
+			log.Info("repaired products pointing to missing categories", "products", n)
+		}
 	case "tenant":
 		cmdTenant(ctx, log, os.Args[2:])
 	case "operator":

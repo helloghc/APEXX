@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"hash/crc32"
 	"io"
 	"net/http"
 	"strconv"
@@ -396,8 +397,10 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 	if t, ok := s.Proj.Tenant(tenant); ok && bytes.Contains(html, []byte(`data-menu="`)) {
 		site := t.Site()
 		if len(site.Menus) > 0 {
-			html = applyMenus(html, site, siteBase(r))
-			etag = `"` + rev + "-" + site.Version + `"`
+			html = applyMenus(html, t, siteBase(r))
+			// The menu also follows the catalog (a deleted category leaves
+			// it): the page's tag changes with what it shows.
+			etag = `"` + rev + "-" + site.Version + "-" + strconv.FormatUint(uint64(crc32.ChecksumIEEE(html)), 36) + `"`
 			cache = "public, max-age=0, s-maxage=60, stale-while-revalidate=60"
 		}
 	}

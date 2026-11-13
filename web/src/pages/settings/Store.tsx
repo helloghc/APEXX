@@ -165,7 +165,8 @@ export function StorePage({ me }: { me: Me }) {
               type="file"
               accept="image/png,image/jpeg,image/webp,image/gif"
               className="sr-only"
-              aria-label="Archivo del logo"
+              tabIndex={-1}
+              aria-hidden="true"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 e.target.value = "";

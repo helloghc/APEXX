@@ -442,7 +442,8 @@ export function Uploader({ onUploaded, compact }: { onUploaded: (m: MediaItem[])
           accept={ACCEPT}
           multiple
           className="sr-only"
-          aria-label="Elegir imágenes"
+          tabIndex={-1}
+          aria-hidden="true"
           onChange={(e) => {
             if (e.target.files) addFiles(e.target.files);
             e.target.value = "";

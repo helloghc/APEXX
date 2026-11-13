@@ -150,6 +150,9 @@ func saveProductTx(ctx context.Context, tx pgx.Tx, tenant, actor string, w Produ
 	if p.Status == "" {
 		p.Status = "active"
 	}
+	if err := checkCategoriesTx(ctx, tx, tenant, p.Categories); err != nil {
+		return 0, err
+	}
 	if p.BrandID != "" {
 		err := tx.QueryRow(ctx, `SELECT name FROM brands WHERE tenant_id=$1 AND id=$2`, tenant, p.BrandID).Scan(&p.Brand)
 		if errors.Is(err, pgx.ErrNoRows) {

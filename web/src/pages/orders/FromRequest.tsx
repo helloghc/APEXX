@@ -55,7 +55,7 @@ export function FromRequest() {
         <Textarea id="rfq-text" rows={5} value={text} onChange={(e) => setText(e.target.value)} placeholder={"20 pzas Taladro percutor 650W\nBROCA-10 x 50\nCasco de seguridad 100 piezas"} />
         <div className="flex flex-wrap gap-2">
           <Button type="button" disabled={read.isPending || text.trim().length < 3} onClick={() => read.mutate({ text })}>{read.isPending ? "Leyendo…" : "Emparejar con mi catálogo"}</Button>
-          <input ref={file} type="file" accept="application/pdf" className="sr-only" id="rfq-file" onChange={(e) => { const f = e.target.files?.[0]; if (f) read.mutate({ file: f }); e.target.value = ""; }} />
+          <input ref={file} type="file" accept="application/pdf" className="sr-only" id="rfq-file" tabIndex={-1} aria-hidden="true" onChange={(e) => { const f = e.target.files?.[0]; if (f) read.mutate({ file: f }); e.target.value = ""; }} />
           <Button type="button" variant="outline" disabled={read.isPending} onClick={() => file.current?.click()}>Subir PDF</Button>
         </div>
         {res && <div className="grid gap-2" role="status" aria-live="polite">

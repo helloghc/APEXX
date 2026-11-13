@@ -134,7 +134,9 @@ function downloadsBox(ds) {
         (o.kind === "pickup" && o.pickupAddress ? " · " + esc(o.pickupAddress) : "") + (o.freeMissing ? " · Te faltan " + money({ amount: o.freeMissing, currency: r.totals.grand.currency }) + " para envío gratis" : "") + "</span></span></label>"
       : "<p class='muted'>" + esc(o.name) + ": " + esc(o.reason) + "</p>";
     const on = all.filter((o) => o.available), off = all.filter((o) => !o.available);
-    return "<fieldset class='shipopts' data-shipopts><legend>Entrega</legend>" + on.map(row).join("") +
+    // Without a postal code the prices are the store's reference rates: say so.
+    const ref = !r.shipping && (r.messages || []).some((m) => m.code === "postal_code_required") && on.some((o) => o.kind !== "pickup");
+    return "<fieldset class='shipopts' data-shipopts><legend>Entrega" + (ref ? " <span class='muted'>· precios de referencia, se confirman con tu código postal</span>" : "") + "</legend>" + on.map(row).join("") +
       (off.length ? "<details><summary class='muted'>Opciones no disponibles (" + off.length + ")</summary>" + off.map(row).join("") + "</details>" : "") + "</fieldset>";
   }
   const onShipChange = (root, again) => root.addEventListener("change", (e) => { if (e.target.name === "shipopt") { store.set(SHIP, e.target.value); again(); } });
@@ -184,7 +186,7 @@ function downloadsBox(ds) {
   if (buy) {
     const status = $("[data-buy-status]", buy), out = $("[data-price-out]", buy);
     const sel = () => $("input[name=sku]:checked", buy);
-    const show = () => { const s = sel(); if (s) out.innerHTML = s.dataset.compare ? "<span class='sale'>" + esc(s.dataset.price) + "</span> <s>" + esc(s.dataset.compare) + "</s>" : esc(s.dataset.price); };
+    const show = () => { const s = sel(); if (s) out.innerHTML = s.dataset.compareAt ? "<span class='sale'>" + esc(s.dataset.price) + "</span> <s>" + esc(s.dataset.compareAt) + "</s>" : esc(s.dataset.price); };
     // A variant with its own image shows it in the gallery when chosen.
     const pic = $("[data-pdp-img]");
     const showImg = () => { const s = sel(); if (!pic || !s || !s.dataset.img) return; pic.closest("picture")?.querySelectorAll("source").forEach((x) => x.remove()); pic.srcset = s.dataset.imgset; pic.src = s.dataset.img; };
@@ -218,11 +220,13 @@ function downloadsBox(ds) {
     const taxLines = r.tax && r.tax.lines && r.tax.lines.length ? r.tax.lines : [{ label: "IVA", tax: t.taxIncluded.amount }];
     const promos = (r.promotions || []).filter((p) => p.applied || !p.coupon).map((p) => "<p class='promo" + (p.applied ? " on" : "") + "'>" + (p.applied ? "✓ " : "") + esc(p.name) + ": " + esc(p.reason) +
       (p.coupon ? " <button type='button' class='linkbtn' data-coupon-del='" + esc(p.coupon) + "'>Quitar cupón " + esc(p.coupon) + "</button>" : "") + (p.hint ? " <span class='muted'>" + esc(p.hint) + "</span>" : "") + "</p>").join("");
-    const msgs = (r.messages || []).map((m) => "<li>" + esc(m.text) + "</li>").join("");
+    // Asking for the postal code is a next step, not an error: it is not shown in red.
+    const ask = (r.messages || []).filter((m) => m.code === "postal_code_required").map((m) => "<p class='note'>" + esc(m.text) + "</p>").join("");
+    const msgs = (r.messages || []).filter((m) => m.code !== "postal_code_required").map((m) => "<li>" + esc(m.text) + "</li>").join("");
     // A preorder ships on its own date, not on the carrier's estimate.
     const pre = (r.lines || []).filter((l) => l.preorder).map((l) => l.preorder.shipsOn).sort().pop();
     const est = (sh) => pre ? "se envía a partir del " + esc(new Date(pre + "T12:00:00").toLocaleDateString(document.documentElement.lang || "es-MX", { dateStyle: "long" })) : sh.estimate ? esc(sh.estimate.text) : sh.estimateDays + " días";
-    return (msgs ? "<ul class='msgs'>" + msgs + "</ul>" : "") + promos +
+    return (msgs ? "<ul class='msgs'>" + msgs + "</ul>" : "") + ask + promos +
       "<table class='totals'><tr><td>Productos</td><td class='num'>" + money(t.items) + "</td></tr>" +
       (t.discounts.amount ? "<tr><td>Descuentos</td><td class='num'>−" + money(t.discounts) + "</td></tr>" : "") +
       "<tr><td>" + (r.shipping && r.shipping.kind === "pickup" ? "Recolección" : "Envío") + (r.shipping ? " (" + esc(r.shipping.name) + ". " + est(r.shipping) + ")" : "") + "</td><td class='num'>" + (r.shipping ? (r.shipping.original ? "<s class='muted'>" + money(r.shipping.original) + "</s> " : "") + (r.shipping.price.amount ? money(r.shipping.price) : "Gratis") : (r.noShipping ? "Entrega digital" : (r.messages || []).some((m) => m.code === "no_shipping_option") ? "Sin entrega disponible" : "Ingresa tu código postal")) + "</td></tr>" +
@@ -303,13 +307,13 @@ function downloadsBox(ds) {
     const summary = $("[data-summary]"), errBox = $("[data-error]"), payBox = $("[data-payment]"), payBtn = $("[data-pay]"), shipBox = $("[data-ship-options]"), extras = $("[data-checkout-extras]");
     const pickup = () => !!(last && last.shipping && last.shipping.kind === "pickup");
     $("#postal").value = store.get(ZIP, "");
-    let cfg = { mode: "sandbox" }, stripe = null, elements = null, last = null;
+    let cfg = { mode: "sandbox" }, stripe = null, elements = null, last = null, lastZip = null, zipTimer = 0;
     async function refresh() {
       if (!cart().length) { location.href = withLang(base + "/cart"); return; }
-      const r = await simulate($("#postal").value.trim(), { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
+      const zip = $("#postal").value.trim(); const r = await simulate(zip, { email: $("#email").value.trim() || undefined, paymentMethod: "card" });
       if (r.status === 200 && shipBox) shipBox.innerHTML = r.body.noShipping ? "<p class='note'>Entrega digital: no hay nada que enviar. Recibirás tus archivos en cuanto se confirme el pago.</p>" : renderOptions(r.body);
-      if (r.status === 200) { const a = $("#address"), f = a && a.closest(".field"); if (a) { a.required = !r.body.noShipping; if (f) f.style.display = r.body.noShipping ? "none" : ""; } }
-      if (r.status === 200) { last = r.body; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + customNote(l) + planNote(keyOf(l)) + preNote(l) + "</p>").join("") + renderTotals(r.body); const now = { amount: r.body.totals.grand.amount - ((r.body.totals.dueLater && r.body.totals.dueLater.amount) || 0), currency: r.body.totals.grand.currency }; payBtn.textContent = "Pagar " + money(now); paintWallet(); if (elements) elements.update({ amount: now.amount }); }
+      if (r.status === 200) for (const a of [$("#address"), $("#postal")]) { const f = a && a.closest(".field"); if (a) { a.required = !r.body.noShipping; if (f) f.style.display = r.body.noShipping ? "none" : ""; } }
+      if (r.status === 200) { last = r.body; lastZip = zip; const lost = syncCoupons(r.body); if (lost.length) errBox.textContent = lost.join(" "); summary.innerHTML = r.body.lines.map((l) => "<p>" + l.qty + " × " + esc(l.title) + customNote(l) + planNote(keyOf(l)) + preNote(l) + "</p>").join("") + renderTotals(r.body); const now = { amount: r.body.totals.grand.amount - ((r.body.totals.dueLater && r.body.totals.dueLater.amount) || 0), currency: r.body.totals.grand.currency }; payBtn.textContent = "Pagar " + money(now); paintWallet(); if (elements) elements.update({ amount: now.amount }); }
     }
     // Gift cards and store credit pay first; the card only pays what is left.
     let cards = [];
@@ -401,7 +405,10 @@ function downloadsBox(ds) {
       $("#gc").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); gcApply.click(); } });
       gcList.addEventListener("click", (e) => { const b = e.target.closest("[data-gc-del]"); if (b) { cards.splice(Number(b.dataset.gcDel), 1); gcStatus.textContent = "Tarjeta quitada."; paintWallet(); } });
     }
-    $("#postal").addEventListener("change", () => { store.set(ZIP, $("#postal").value.trim()); refresh(); });
+    $("#postal").addEventListener("change", () => { const z = $("#postal").value.trim(); store.set(ZIP, z); if (z !== lastZip) refresh(); });
+    // Shipping is priced as soon as the postal code is complete, not when the
+    // shopper leaves the field: the total they see is the total they pay.
+    $("#postal").addEventListener("input", () => { clearTimeout(zipTimer); const z = $("#postal").value.trim(); if (z !== lastZip && (MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{2,9}$/ : /^[0-9]{5}$/).test(z)) zipTimer = setTimeout(() => { store.set(ZIP, z); refresh(); }, 250); });
     $("#email").addEventListener("change", refresh); // promotions limited per customer are confirmed with the email
     // Remember the cart of a shopper who typed an email (abandoned cart recovery).
     const track = () => { const em = $("#email").value.trim(); if (/^\S+@\S+\.\S+$/.test(em) && cart().length) post("/cart/track", { email: em, name: $("#name").value.trim(), channel, site: base.split("/").pop(), items: cart().map((l) => ({ sku: l.sku, qty: l.qty, plan: l.plan || undefined })) }).catch(() => {}); };
@@ -482,7 +489,12 @@ function downloadsBox(ds) {
         if (v) blocks[el.name.slice(4)] = v;
         else if (el.hasAttribute("data-required")) { errBox.textContent = (el.type === "checkbox" ? "Falta aceptar: " : "Falta: ") + (el.closest("[data-block]").querySelector("span, label").textContent.trim()); el.focus(); return; }
       }
-      if (!regShip && !(pickup() && !String(f.get("postal"))) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
+      if (!regShip && !((pickup() || (last && last.noShipping)) && !String(f.get("postal")).trim()) && !(MK ? /^[A-Za-z0-9][A-Za-z0-9 -]{1,9}$/ : /^[0-9]{5}$/).test(String(f.get("postal")).trim())) { errBox.textContent = MK ? "Revisa tu código postal." : "El código postal debe tener 5 dígitos."; $("#postal").focus(); return; }
+      const zipNow = String(f.get("postal") || "").trim();
+      if (zipNow !== (lastZip || "")) { // priced for another postal code: price it again and show it before charging
+        clearTimeout(zipTimer); const before = last ? last.totals.grand.amount : null; store.set(ZIP, zipNow); await refresh();
+        if (last && last.totals.grand.amount !== before) { errBox.textContent = "Calculamos la entrega a tu código postal: el total es " + money(last.totals.grand) + ". Revísalo y pulsa Pagar."; payBtn.focus(); return; }
+      }
       payBtn.disabled = true; payBtn.textContent = "Procesando…";
       const covered = onCredit() || (!!last && walletOf() >= last.totals.grand.amount - (voucherKind() ? 0 : (last.totals.dueLater && last.totals.dueLater.amount) || 0)); // credit or gift cards pay it all: no card needed
       const kept = !onCredit() && !covered && !voucherKind() ? savedCard() : "";
@@ -588,7 +600,7 @@ function downloadsBox(ds) {
       : "<h1>¡Gracias por tu compra!</h1><p>Tu pedido <strong>#" + esc(o.displayNumber || o.number) + "</strong> está confirmado y pagado.</p>") +
       (o.shippingMethod ? "<p>" + esc(o.shippingMethod.name) + (o.shippingMethod.estimate ? ": " + esc(o.shippingMethod.estimate.text.toLowerCase()) : "") + (o.shippingMethod.pickupAddress ? " · " + esc(o.shippingMethod.pickupAddress) : "") + ".</p>" : "") +
       "<table><tbody>" + o.lines.map((l) => "<tr><td>" + l.qty + " × " + esc(l.title) + "</td><td class='num'>" + m(l.total) + "</td></tr>").join("") +
-      "<tr><td>Envío</td><td class='num'>" + m(o.shipping) + "</td></tr>" + (o.discounts ? "<tr><td>Descuentos</td><td class='num'>−" + m(o.discounts) + "</td></tr>" : "") +
+      (() => { const k = o.shippingMethod && o.shippingMethod.kind; return "<tr><td>" + (k === "pickup" ? "Recolección" : "Envío") + "</td><td class='num'>" + (k === "digital" ? "Entrega digital" : o.shipping ? m(o.shipping) : "Gratis") + "</td></tr>"; })() + (o.discounts ? "<tr><td>Descuentos</td><td class='num'>−" + m(o.discounts) + "</td></tr>" : "") +
       (o.feeLines || []).map((f) => "<tr><td>" + esc(f.name) + "</td><td class='num'>" + m(f.amount) + "</td></tr>").join("") +
       "<tr class='grand'><td><strong>" + (v ? "Total a pagar" : credit ? "Total a crédito" : o.deferred ? "Total" : "Total pagado") + "</strong></td><td class='num'><strong>" + m(o.grandTotal) + "</strong></td></tr></tbody></table>" +
       (o.deferred ? "<div class='acct-box' data-deferred><h2>Preventa apartada</h2><p>Pagaste el anticipo. Quedan <strong>" + m(o.deferred) + "</strong> por pagar: te enviaremos un enlace por correo cuando tu pedido esté listo para enviarse.</p></div>" : "") +
@@ -1023,7 +1035,7 @@ function downloadsBox(ds) {
       if (!j) return;
       cards.forEach((c) => { const v = j.handles[hOf(c)], el = c.querySelector(".pcard-price"); if (v && el) paint(el, v); });
       const radios = document.querySelectorAll("form[data-buy] input[name=sku]"), out = document.querySelector("[data-price-out]");
-      radios.forEach((r) => { const v = j.skus[r.value]; if (v) { r.dataset.price = v.price; r.dataset.compare = v.compareAt || ""; } });
+      radios.forEach((r) => { const v = j.skus[r.value]; if (v) { r.dataset.price = v.price; r.dataset.compareAt = v.compareAt || ""; } });
       const chosen = document.querySelector("form[data-buy] input[name=sku]:checked") || radios[0];
       const v = chosen ? j.skus[chosen.value] : here && j.handles[decodeURIComponent(here)];
       if (v && out) paint(out, v);
@@ -1171,7 +1183,7 @@ function downloadsBox(ds) {
   let bar = null;
   function paint() {
     const l = get();
-    d.querySelectorAll("[data-compare]").forEach((b) => { const on = l.includes(b.dataset.compare); b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "✓ Comparando" : "Comparar"; });
+    d.querySelectorAll("button[data-compare]").forEach((b) => { const on = l.includes(b.dataset.compare); b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "✓ Comparando" : "Comparar"; });
     if (d.querySelector("[data-compare-page]")) return;
     if (!l.length) { if (bar) bar.hidden = true; return; }
     if (!bar) { bar = d.createElement("div"); bar.className = "cmpbar"; bar.setAttribute("role", "region"); bar.setAttribute("aria-label", "Comparar"); body.appendChild(bar); }
@@ -1179,7 +1191,7 @@ function downloadsBox(ds) {
     bar.innerHTML = (l.length < 2 ? "<span>Elige otro producto para comparar</span>" : "<a href='" + url(l) + "'>Comparar (" + l.length + ")</a>") + " <button type='button' data-compare-clear>Limpiar</button>";
   }
   d.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-compare],[data-compare-clear],[data-compare-del]"); if (!b) return;
+    const b = e.target.closest("button[data-compare],[data-compare-clear],[data-compare-del]"); if (!b) return;
     e.preventDefault();
     if (b.hasAttribute("data-compare-clear")) { set([]); return; }
     if (b.dataset.compareDel) { const l = get().filter((h) => h !== b.dataset.compareDel); set(l); location.href = url(l); return; }

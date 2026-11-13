@@ -191,7 +191,17 @@ function SellerPage({ id, isAdmin, canEdit }: { id: string; isAdmin: boolean; ca
           {products.length === 0 ? <p className="text-sm text-muted-foreground">Sin productos asignados.</p> : (
             <ul className="grid divide-y rounded-md border">{products.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-2 text-sm"><a className="text-primary hover:underline" href={href("catalogo", "productos", p.id)}>{p.title}</a>
-                {canEdit && <Button size="sm" variant="ghost" disabled={setProducts.isPending} onClick={() => setProducts.mutate(products.filter((x) => x.id !== p.id).map((x) => x.id))}>Quitar</Button>}</li>
+                {canEdit && <Button size="sm" variant="ghost" aria-label={`Quitar ${p.title} del vendedor`} disabled={setProducts.isPending} onClick={() => {
+                  const before = products.map((x) => x.id);
+                  // Takes effect at once in the store: offered back with one click.
+                  api.products(id, before.filter((x) => x !== p.id)).then(
+                    () => {
+                      refresh();
+                      toast.success(`«${p.title}» ya no es de ${s.name}.`, { action: { label: "Deshacer", onClick: () => setProducts.mutate(before) } });
+                    },
+                    (e) => toast.error(errorMessage(e)),
+                  );
+                }}>Quitar</Button>}</li>
             ))}</ul>
           )}
         </CardContent>

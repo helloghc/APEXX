@@ -249,7 +249,17 @@ func (s *Service) RevokeSession(ctx context.Context, tenant, memberID, id, keepI
 	if err != nil {
 		return 0, err
 	}
-	return ct.RowsAffected(), nil
+	n := ct.RowsAffected()
+	if n > 0 { // signing devices out is a security action: it stays on the record
+		target, action := id, "session.revoke"
+		if id == "" {
+			target, action = memberID, "session.revoke_others"
+		}
+		err = s.DB.Tx(ctx, tenant, func(tx pgx.Tx) error {
+			return store.Audit(ctx, tx, tenant, "member:"+memberID, action, target, map[string]any{"sessions": n})
+		})
+	}
+	return n, err
 }
 
 // ---------- invitations ----------

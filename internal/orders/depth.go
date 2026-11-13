@@ -767,7 +767,9 @@ func (s *Service) Query(ctx context.Context, tenant string, f ListFilter, withPI
 			dir, cmp = "ASC", ">"
 		}
 		q := `SELECT o.id, o.number, o.channel, o.status, o.currency, o.grand_total, o.created_at, COALESCE(o.customer_id,''), o.payment_status, o.fulfillment_status,
-			o.refunded_total, o.source, o.customer, (SELECT COALESCE(sum(qty - cancelled_qty),0) FROM order_lines l WHERE l.tenant_id=o.tenant_id AND l.order_id=o.id), o.po_number
+			o.refunded_total, o.source, o.customer, (SELECT COALESCE(sum(qty - cancelled_qty),0) FROM order_lines l WHERE l.tenant_id=o.tenant_id AND l.order_id=o.id), o.po_number,
+			o.items_total, o.discounts, o.shipping, o.tax_included, o.fees,
+			(SELECT COALESCE(sum(amount - refunded),0) FROM payments pm WHERE pm.tenant_id=o.tenant_id AND pm.order_id=o.id AND pm.status IN ('captured','refunded'))
 			FROM orders o` + w
 		if f.Cursor != "" {
 			a, b, _ := strings.Cut(f.Cursor, "|")
@@ -800,8 +802,13 @@ func (s *Service) Query(ctx context.Context, tenant string, f ListFilter, withPI
 			var o Order
 			var enc []byte
 			if err := rows.Scan(&o.ID, &o.Number, &o.Channel, &o.Status, &o.Currency, &o.GrandTotal, &o.CreatedAt, &o.CustomerID, &o.PaymentStatus, &o.FulfillmentStatus,
-				&o.RefundedTotal, &o.Source, &enc, &o.ItemsCount, &o.PONumber); err != nil {
+				&o.RefundedTotal, &o.Source, &enc, &o.ItemsCount, &o.PONumber,
+				&o.ItemsTotal, &o.Discounts, &o.Shipping, &o.TaxIncluded, &o.Fees, &o.PaidTotal); err != nil {
 				return err
+			}
+			// The same amounts the order's own page shows, so a list never reads 0 for a paid order.
+			if o.Status == StatusPaid || o.Status == StatusFulfilled {
+				o.Balance = o.GrandTotal - o.RefundedTotal - o.PaidTotal
 			}
 			if withPII {
 				if plain, err := s.Keys.Decrypt(tenant, enc, o.ID); err == nil {

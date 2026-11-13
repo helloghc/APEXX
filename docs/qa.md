@@ -150,7 +150,7 @@ Evidencia: captura o video, hora exacta (para buscar en los logs)
 | Vendedor (marketplace) | vendedor@ | su portal: pedidos por enviar, estado de cuenta, sus productos | cualquier otra sección (Sin acceso) |
 | Comprador B2B | compras@ (entra con código) | comprar a crédito, ver Mi empresa, facturas y aprobaciones | ver otras empresas |
 
-Contraseña de todas las cuentas del panel: la que pusiste en `qa-setup`. El recorrido automático de todas las pantallas por rol está en `docs/audit/auditoria-exhaustiva-panel.md`.
+Contraseña de todas las cuentas del panel: la que pusiste en `qa-setup`. El recorrido automático de todas las pantallas por rol está en `docs/audit/auditoria-exhaustiva-panel.md`. La segunda auditoría integral (tienda, panel, sandbox y superadmin, con la compra de punta a punta y la consistencia de cifras) está en `docs/audit/auditoria-integral-2.md`. Para recorrer el panel dentro de un sandbox, entra con `POST /v1/sandboxes/{id}/enter` y pasa el token en `APEXX_QA_SESSION`.
 
 ## 7. Casos de las sub-fases A a L
 

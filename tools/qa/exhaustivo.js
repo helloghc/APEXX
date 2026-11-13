@@ -30,9 +30,16 @@ const BAD = {
   p.on('response', (r) => { if (r.status() >= 500) note('5xx', r.status() + ' ' + r.request().method() + ' ' + r.url().replace(B, '')); });
   p.on('dialog', async (d) => { note('dialogo-nativo', d.type() + ': ' + d.message()); await d.dismiss().catch(() => {}); });
 
-  await p.goto(B + '/admin/');
-  await p.getByLabel(/tienda/i).fill(T); await p.getByLabel(/correo/i).fill(EMAIL); await p.getByLabel(/contraseña/i).fill(PASS);
-  await p.getByRole('button', { name: /^entrar$/i }).click();
+  if (process.env.APEXX_QA_SESSION) {
+    // An open session (for example, inside a sandbox, where people enter
+    // from production and never sign in directly).
+    await ctx.addCookies([{ name: 'apexx_session', value: process.env.APEXX_QA_SESSION, url: B }]);
+    await p.goto(B + '/admin/');
+  } else {
+    await p.goto(B + '/admin/');
+    await p.getByLabel(/tienda/i).fill(T); await p.getByLabel(/correo/i).fill(EMAIL); await p.getByLabel(/contraseña/i).fill(PASS);
+    await p.getByRole('button', { name: /^entrar$/i }).click();
+  }
   await p.waitForSelector('[data-testid=who]', { timeout: 15000, state: 'attached' });
   await p.waitForTimeout(800);
 

@@ -1002,7 +1002,7 @@ function DigitalFiles({ skus, canEdit }: { skus: string[]; canEdit: boolean }) {
         <div className="grid gap-2 rounded-md border border-dashed p-3 sm:grid-cols-[7rem_7rem_1fr] sm:items-end">
           <Field label="Descargas" htmlFor="dg-new-m" hint="Por compra"><Input id="dg-new-m" inputMode="numeric" value={maxD} onChange={(e) => setMaxD(e.target.value.replace(/\D/g, ""))} /></Field>
           <Field label="Días del enlace" htmlFor="dg-new-d"><Input id="dg-new-d" inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value.replace(/\D/g, ""))} /></Field>
-          <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-accent">
+          <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-accent focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
             <Plus aria-hidden="true" className="size-4" /> {busy ? "Subiendo…" : "Subir archivo (hasta 100 MB)"}
             <input type="file" className="sr-only" disabled={busy} data-digital-upload onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = ""; }} />
           </label>

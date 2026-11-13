@@ -169,4 +169,14 @@ func TestGiftCardsInstallmentsAndRisk(t *testing.T) {
 	if st, _ := e.do("POST", "/v1/orders/"+o5["id"].(string)+"/risk/clear", e.adminA, nil); st == 204 {
 		t.Fatal("clearing twice must not succeed")
 	}
+	// The list shows the same amounts as each order's own page (it once read 0).
+	for _, it := range e.must(200, "GET", "/v1/orders?limit=50", e.adminA, nil)["items"].([]any) {
+		row := it.(map[string]any)
+		full := e.must(200, "GET", "/v1/orders/"+row["id"].(string), e.adminA, nil)
+		for _, k := range []string{"itemsTotal", "discounts", "shipping", "taxIncluded", "fees", "grandTotal", "refundedTotal", "paidTotal", "balance"} {
+			if row[k] != full[k] {
+				t.Errorf("order %v: list %s = %v, order page %v", row["number"], k, row[k], full[k])
+			}
+		}
+	}
 }

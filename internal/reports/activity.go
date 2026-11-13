@@ -140,4 +140,3 @@ func (s *Service) activityMarks(ctx context.Context, tenant string) (outbox, aud
 	}
 	return outbox, audit
 }
-

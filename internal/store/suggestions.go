@@ -114,6 +114,11 @@ func (d *DB) ApplyProductSuggestion(ctx context.Context, tenant, actor, id strin
 			}
 			return err
 		}
+		if set.Categories != nil {
+			if err := checkCategoriesTx(ctx, tx, tenant, set.Categories); err != nil {
+				return err
+			}
+		}
 		attrs, _ := json.Marshal(set.Attributes)
 		err := tx.QueryRow(ctx, `UPDATE products SET
 				attributes = CASE WHEN $4::jsonb IS NULL OR $4::jsonb = 'null'::jsonb THEN attributes ELSE $4::jsonb END,

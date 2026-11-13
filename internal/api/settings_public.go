@@ -170,10 +170,11 @@ func renderLinks(b *strings.Builder, links []sitecfg.Link, sub string) {
 // Navegación) into theme HTML. Themes mark where the header menu goes with
 // <ul data-menu="header"> and the footer columns with <template
 // data-menu="footer">. Without a menu the text typed in the section stays.
-func applyMenus(doc []byte, site *projection.SiteView, base string) []byte {
+func applyMenus(doc []byte, t *projection.Tenant, base string) []byte {
+	site := t.Site()
 	if m, ok := site.Menus["header"]; ok && len(m.Items) > 0 && bytes.Contains(doc, []byte(`data-menu="header"`)) {
 		var b strings.Builder
-		renderLinks(&b, sitecfg.Resolve(m.Items, base), "hdr-sub")
+		renderLinks(&b, sitecfg.ResolveWith(m.Items, base, linkExists(t)), "hdr-sub")
 		inner := b.String()
 		doc = headerMenuRe.ReplaceAllFunc(doc, func(match []byte) []byte {
 			return []byte(`<ul data-menu="header">` + inner + `</ul>`)
@@ -183,7 +184,7 @@ func applyMenus(doc []byte, site *projection.SiteView, base string) []byte {
 		// Top-level links with children become columns; loose links share one.
 		var b strings.Builder
 		var loose []sitecfg.Link
-		for _, l := range sitecfg.Resolve(m.Items, base) {
+		for _, l := range sitecfg.ResolveWith(m.Items, base, linkExists(t)) {
 			if len(l.Children) == 0 {
 				loose = append(loose, l)
 				continue
@@ -218,7 +219,7 @@ func (s *Server) decorate(r *http.Request, t *projection.Tenant, pd pageData) pa
 	}
 	pd.Base = siteBase(r)
 	chrome := func(h template.HTML) template.HTML {
-		return template.HTML(absolutize(applyMenus([]byte(h), site, pd.Base), pd.Base))
+		return template.HTML(absolutize(applyMenus([]byte(h), t, pd.Base), pd.Base))
 	}
 	pd.Chrome.Header, pd.Chrome.Footer = chrome(pd.Chrome.Header), chrome(pd.Chrome.Footer)
 	pd.Verify, pd.Tags = s.tagsHead(t.ID)
@@ -394,6 +395,22 @@ func (s *Server) logo(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(a.Body)
 }
 
+// linkExists says whether a menu link's category or product is in the store
+// (from memory): a deleted or hidden one is left out of the menu.
+func linkExists(t *projection.Tenant) func(kind, ref string) bool {
+	return func(kind, ref string) bool {
+		switch kind {
+		case "category":
+			c, ok := t.Taxo.CategoryByHandle(ref)
+			return ok && c.Active
+		case "product":
+			_, ok := t.Catalog.ByHandle(ref)
+			return ok
+		}
+		return true
+	}
+}
+
 // publicMenus exposes the menus, resolved to URLs, for themes and headless
 // storefronts. ?base= overrides the link prefix (default /s/{tenant}/main).
 func (s *Server) publicMenus(w http.ResponseWriter, r *http.Request) {
@@ -409,7 +426,7 @@ func (s *Server) publicMenus(w http.ResponseWriter, r *http.Request) {
 	}
 	out := map[string]any{}
 	for id, m := range t.Site().Menus {
-		out[id] = map[string]any{"name": m.Name, "items": sitecfg.Resolve(m.Items, base)}
+		out[id] = map[string]any{"name": m.Name, "items": sitecfg.ResolveWith(m.Items, base, linkExists(t))}
 	}
 	w.Header().Set("Cache-Control", "public, max-age=0, s-maxage=30")
 	writeJSON(w, http.StatusOK, map[string]any{"menus": out})

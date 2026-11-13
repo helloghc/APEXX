@@ -32,7 +32,7 @@ export function Datasheet({ productId, canEdit }: { productId: string; canEdit: 
         : <p className="text-muted-foreground">Sin ficha técnica. Sube el PDF del fabricante: leemos su texto, lo mostramos en la ficha y responde las preguntas de tus clientes. Solo se guarda el texto.</p>}
       {s && <details><summary className="cursor-pointer text-primary">Ver el texto leído</summary><pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-2 text-xs">{s.text}</pre></details>}
       {canEdit && <div className="flex flex-wrap gap-2">
-        <input ref={input} type="file" accept="application/pdf" className="sr-only" id="datasheet-file" onChange={(e) => { const f = e.target.files?.[0]; if (f) up.mutate(f); e.target.value = ""; }} />
+        <input ref={input} type="file" accept="application/pdf" className="sr-only" id="datasheet-file" tabIndex={-1} aria-hidden="true" onChange={(e) => { const f = e.target.files?.[0]; if (f) up.mutate(f); e.target.value = ""; }} />
         <Button type="button" variant="outline" size="sm" disabled={up.isPending} onClick={() => input.current?.click()}>{up.isPending ? "Leyendo el PDF…" : s ? "Reemplazar PDF" : "Subir PDF"}</Button>
         {s && <Button type="button" variant="outline" size="sm" disabled={del.isPending} onClick={() => del.mutate()}>Quitar</Button>}
       </div>}

@@ -331,6 +331,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		// Powerful browser features nobody here uses stay off (payments and
+		// the clipboard are used: Stripe, «copiar enlace»).
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), usb=(), serial=(), hid=(), bluetooth=()")
+		// Another site opened from here cannot reach back into this window.
+		h.Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
 		if !strings.HasPrefix(r.URL.Path, "/admin") {
 			h.Set("X-Frame-Options", "SAMEORIGIN")
 		}
@@ -399,6 +404,10 @@ func (s *Server) authed(module, level string, h http.HandlerFunc) http.HandlerFu
 		defer release()
 		ctx, cancel := context.WithTimeout(auth.With(r.Context(), p), 15*time.Second)
 		defer cancel()
+		// Answers of a store's API carry its data (customers, orders): never
+		// kept by a shared cache, and checked again before reuse (the ETag
+		// keeps the panel fast). A handler can still set its own.
+		w.Header().Set("Cache-Control", "private, no-cache")
 		s.countSandbox(p.Tenant, w, func(w http.ResponseWriter) { h(w, r.WithContext(ctx)) })
 	}
 }

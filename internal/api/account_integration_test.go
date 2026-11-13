@@ -146,6 +146,10 @@ func TestInvitationsTwoStepAndSessions(t *testing.T) {
 	if st, _ := e.do("GET", "/v1/me", tok, nil); st != 200 {
 		t.Fatal("revoking the others signed out the current session")
 	}
+	// Signing devices out is a security action: it is on the record.
+	if items := e.must(200, "GET", "/v1/ops/audit?action=session.revoke_others", e.adminA, nil)["items"].([]any); len(items) != 1 {
+		t.Fatalf("signing out the other sessions left %d audit entries", len(items))
+	}
 	// Turning it off needs the password; an admin can reset someone locked out.
 	if st, _ := e.do("POST", "/v1/me/2fa/disable", tok, m{"password": "equivocada"}); st != 403 {
 		t.Fatalf("disable with a wrong password = %d", st)

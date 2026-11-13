@@ -464,7 +464,7 @@ export function Documents({ id, canEdit }: { id: string; canEdit: boolean }) {
   return (
     <Card data-company-files>
       <CardHeader className="flex-row flex-wrap items-start justify-between gap-3"><div className="grid gap-1.5"><CardTitle className="text-base">Documentos</CardTitle><CardDescription>Constancia fiscal, contrato, solicitud de crédito. Se guardan cifrados; la empresa también los ve y sube desde «Mi empresa».</CardDescription></div>
-        {canEdit && <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm"><Plus className="size-4" />{busy ? "Subiendo…" : "Subir documento"}<input type="file" className="sr-only" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} /></label>}</CardHeader>
+        {canEdit && <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"><Plus className="size-4" />{busy ? "Subiendo…" : "Subir documento"}<input type="file" className="sr-only" accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} /></label>}</CardHeader>
       <CardContent>
         {(q.data?.length ?? 0) === 0 ? <p className="text-sm text-muted-foreground">Sin documentos.</p> : (
           <ul className="grid gap-1 text-sm">{q.data!.map((f) => <li key={f.id} className="flex flex-wrap items-center gap-2"><button type="button" className="text-primary underline" onClick={() => void get(f)}>{f.name}</button>
@@ -498,7 +498,7 @@ export function ImportCompanies({ onClose, onDone }: { onClose: () => void; onDo
       <DialogContent className="max-w-3xl">
         <DialogHeader><DialogTitle>Importar empresas</DialogTitle><DialogDescription>Columnas: nombre, rfc, plazo (contado, 15, 30, 60), limite, descuento, grupo, compradores (separados por ;), matriz, medios (tarjeta; oxxo; spei; crédito). Una empresa se reconoce por RFC o por su nombre.</DialogDescription></DialogHeader>
         <div className="grid gap-3">
-          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm">Elegir CSV<input type="file" accept=".csv,text/csv" className="sr-only" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setCsv(await f.text()); setRes(null); } }} /></label>
+          <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">Elegir CSV<input type="file" accept=".csv,text/csv" className="sr-only" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { setCsv(await f.text()); setRes(null); } }} /></label>
           {csv && <p className="text-sm text-muted-foreground">{csv.split(/\r?\n/).filter(Boolean).length - 1} filas cargadas.</p>}
           {res && <div className="max-h-72 overflow-auto rounded-md border"><Table><TableHeader><TableRow><TableHead>Línea</TableHead><TableHead>Empresa</TableHead><TableHead>Resultado</TableHead></TableRow></TableHeader>
             <TableBody>{res.rows.map((r) => <TableRow key={r.line}><TableCell>{r.line}</TableCell><TableCell>{r.name}</TableCell><TableCell className={r.action === "error" ? "text-bad" : ""}>{ACTION[r.action]}{r.message ? `: ${r.message}` : ""}</TableCell></TableRow>)}</TableBody></Table></div>}

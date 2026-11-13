@@ -152,7 +152,12 @@ func (d *DB) UpsertProduct(ctx context.Context, tenant, actor string, p catalog.
 		if p.Categories == nil {
 			p.Categories = []string{}
 		}
-		err := tx.QueryRow(ctx, `
+		// Importers carry category names: they become the store's categories.
+		var err error
+		if p.Categories, err = resolveCategoriesTx(ctx, tx, tenant, actor, p.Categories); err != nil {
+			return err
+		}
+		err = tx.QueryRow(ctx, `
 			INSERT INTO products (tenant_id, id, handle, title, description, brand, categories, attributes, status)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 			ON CONFLICT (tenant_id, id) DO UPDATE SET

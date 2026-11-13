@@ -9,6 +9,7 @@ indexación lenta, stock desalineado, APIs inconsistentes, checkout antiguo y m�
 - IA (búsqueda por significado, «Pregúntale a la tienda», asistentes, grafo, copilotos): [`docs/fases/resumen-ia.md`](docs/fases/resumen-ia.md)
 - Escala con 50 000 productos y reversión total: [`docs/audit/escala-50k.md`](docs/audit/escala-50k.md)
 - Carga de cada vista del panel, en local y con red real: [`docs/audit/carga-paneles.md`](docs/audit/carga-paneles.md)
+- Auditoría integral 2 (tienda, panel, sandbox, superadmin): [`docs/audit/auditoria-integral-2.md`](docs/audit/auditoria-integral-2.md)
 - Etiquetas y píxeles (Analytics, Tag Manager, Meta, TikTok, Pinterest, Google Ads, scripts y código propio) publicados al instante: [`docs/etiquetas.md`](docs/etiquetas.md)
 - Sandbox por tienda: copia completa y privada, nada sale a servicios reales, publicar a producción por área y revertir exacto: [`docs/sandbox.md`](docs/sandbox.md)
 - Despliegue en Google Cloud y despliegue sin corte: [`docs/deploy.md`](docs/deploy.md) (§7.1)

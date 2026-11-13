@@ -74,7 +74,9 @@ export async function request<T>(
     } catch {
       /* non-JSON error body */
     }
-    if (res.status === 401 && !path.startsWith("/v1/auth/login") && !path.startsWith("/v1/auth/stores")) {
+    // "/v1/me" is how the app learns there is no session: its own 401 must not
+    // announce it again, or the listener asks /v1/me again, in a loop.
+    if (res.status === 401 && path !== "/v1/me" && !path.startsWith("/v1/auth/login") && !path.startsWith("/v1/auth/stores")) {
       window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     }
     throw new ApiError(parsed);
@@ -89,7 +91,9 @@ function startRead(path: string): Promise<Response> {
   if (credentials.key) headers.Authorization = `Bearer ${credentials.key}`;
   return fetch(path, { method: "GET", headers, credentials: "same-origin" });
 }
-if (typeof window !== "undefined") {
+// The stores' panel warms the reads of the screen being opened. The
+// operators' console (#superadmin) is not a store: nothing to warm there.
+if (typeof window !== "undefined" && !window.location.hash.startsWith("#superadmin")) {
   navigated(window.location.hash, startRead);
   window.addEventListener("hashchange", () => navigated(window.location.hash, startRead));
 }

@@ -558,11 +558,25 @@ func (c *Config) TaxFor(country, cp, channelRegion string, fallbackBps int64, pa
 			res.Total += tax
 			continue
 		}
-		tax := g * rate / (10000 + rate)
+		tax := IncludedTax(g, rate)
 		res.Lines = append(res.Lines, TaxLine{Class: cl, Label: label, RateBps: rate, Gross: g, Net: g - tax, Tax: tax})
 		res.Total += tax
 	}
 	return res
+}
+
+// IncludedTax is the tax inside a tax-inclusive amount, rounded to the nearest
+// cent (half up), the same rounding the tax-exclusive branch uses: 209.00 at
+// 16 % holds 28.83, not the truncated 28.82.
+func IncludedTax(gross, rateBps int64) int64 {
+	if rateBps <= 0 || gross == 0 {
+		return 0
+	}
+	if gross < 0 { // a credit holds the same tax, negated
+		return -IncludedTax(-gross, rateBps)
+	}
+	d := 10000 + rateBps
+	return (gross*rateBps + d/2) / d
 }
 
 // FormatBps writes basis points as a percent: 250 -> "2.5".

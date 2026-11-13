@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/helloghc/apexx/internal/customers"
+	"github.com/helloghc/apexx/internal/logistics"
 	"github.com/helloghc/apexx/internal/notify"
 	"github.com/helloghc/apexx/internal/payments"
 	"github.com/helloghc/apexx/internal/store"
@@ -371,7 +372,7 @@ func (s *Service) completeDraft(ctx context.Context, tenant, actor, id, paymentM
 		}
 		var tax int64
 		if ch, ok := t.Channel(d.Channel); ok && ch.TaxBps > 0 {
-			tax = d.GrandTotal * ch.TaxBps / (10000 + ch.TaxBps)
+			tax = logistics.IncludedTax(d.GrandTotal, ch.TaxBps)
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO orders (tenant_id, id, number, channel, status, currency, items_total, discounts, shipping, tax_included, grand_total, customer, postal_code, source)
 			VALUES ($1,$2,nextval('order_numbers'),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'draft')`,
