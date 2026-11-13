@@ -218,6 +218,20 @@ func TestStoreTags(t *testing.T) {
 	if !strings.Contains(js, `"ev_purchase":"tw-o1a2b-o1a2c"`) || !strings.Contains(js, "525512345678") {
 		t.Fatalf("tags.js v4: %.400s", js)
 	}
+	// Consent mode: notice by default; an unknown mode is rejected; a change is in words.
+	if !strings.Contains(js, `"mode":"notice"`) {
+		t.Fatalf("tags.js without the default consent mode")
+	}
+	if st, _ := e.do("PUT", "/v1/settings/tags", e.adminA, m{"consentMode": "nunca"}); st != 400 {
+		t.Fatalf("unknown consent mode accepted: %d", st)
+	}
+	pub = e.must(200, "PUT", "/v1/settings/tags", e.adminA, m{"consentMode": "opt_in", "tags": []m{{"kind": "ga4", "account": "G-ABC123DEF4", "active": true}}})
+	if ch := strings.Join(toStrings(pub["config"].(map[string]any)["changes"]), " | "); !strings.Contains(ch, "Cambió el permiso de cookies: «solo aviso» → «todo con permiso»") {
+		t.Fatalf("consent change: %s", ch)
+	}
+	if js, _ := get(srv1, "/s/store-a/api/tags.js?v=5"); !strings.Contains(js, `"mode":"opt_in"`) {
+		t.Fatal("tags.js without opt_in")
+	}
 	// The audit log keeps who published and the whole configuration.
 	audit := e.must(200, "GET", "/v1/ops/audit?action=store_tags", e.adminA, nil)
 	if n := len(audit["items"].([]any)); n < 4 {

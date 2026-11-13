@@ -3805,5 +3805,13 @@
 "Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.": "誰が、いつ公開し、何が変わったか。バージョンを復元すると、最新として再公開されます。監査ログには各バージョンの設定全体も保存されます。",
 "Servicio": "サービス",
 "Verificación de dominio": "ドメイン検証",
-"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "Google Search Console、Bing、Meta、Pinterestなどがドメインの所有確認のために求めるmetaタグです。すべてのページのheadに入ります。タグ全体でもコードだけでも貼り付けられます。"
+"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "Google Search Console、Bing、Meta、Pinterestなどがドメインの所有確認のために求めるmetaタグです。すべてのページのheadに入ります。タグ全体でもコードだけでも貼り付けられます。",
+"Analítica sin permiso, publicidad con permiso": "アナリティクスは許可不要、広告は許可が必要",
+"Analytics y los mapas de calor cargan desde la primera página; los píxeles de publicidad esperan a que el visitante acepte.": "アナリティクスとヒートマップは最初のページから読み込まれ、広告ピクセルは訪問者の同意を待ちます。",
+"Nada opcional carga hasta que el visitante acepta, como pide el GDPR. Google recibe las señales del modo de consentimiento v2.": "GDPRの要件どおり、訪問者が同意するまで任意のものは読み込まれません。Googleは同意モードv2のシグナルを受け取ります。",
+"Permiso de cookies": "Cookieの許可",
+"Se muestra una vez a cada visitante cuando hay etiquetas de analítica o publicidad. Déjalo vacío para usar el texto de Apexx.": "アナリティクスまたは広告のタグがあるとき、各訪問者に一度表示されます。空欄にするとApexxの文章を使います。",
+"Solo aviso (recomendado en México y Latinoamérica)": "通知のみ（メキシコと中南米で推奨）",
+"Todas las etiquetas cargan desde la primera página y un aviso informa al visitante, que puede apagarlas en «Preferencias de cookies». Con Global Privacy Control, la publicidad queda apagada (lo exigen leyes de Estados Unidos).": "すべてのタグは最初のページから読み込まれ、通知が訪問者に知らせます。訪問者は「Cookieの設定」でオフにできます。Global Privacy Controlが有効な場合、広告はオフのままです（米国の法律で必要）。",
+"Todo con permiso (obligatorio si vendes en Europa o Reino Unido)": "すべて許可制（ヨーロッパまたは英国で販売する場合は必須）"
 }

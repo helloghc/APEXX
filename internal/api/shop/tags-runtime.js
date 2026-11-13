@@ -36,10 +36,22 @@ var note = function (tag, what) {
 // ---------- consent ----------
 var readConsent = function () { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } };
 var writeConsent = function (c) { try { localStorage.setItem(KEY, JSON.stringify({ analytics: !!c.analytics, marketing: !!c.marketing, at: Date.now() })); } catch (e) {} };
-var consent = readConsent();
-// Global Privacy Control: nothing optional unless the shopper turns it on.
-if (!consent && navigator.globalPrivacyControl) { consent = { analytics: false, marketing: false }; writeConsent(consent); }
-var allowed = function (t) { return t.cat === "necessary" || !!(consent && consent[t.cat]); };
+// The store's consent mode:
+//   notice     tells the visitor and measures from the first page; the visitor can turn things off.
+//   analytics  analytics without asking; advertising waits for permission.
+//   opt_in     everything optional waits for permission (the EU and the UK ask for this).
+// With Global Privacy Control, advertising stays off until the visitor turns it on (US state laws require it).
+var MODE = C.mode || "notice";
+var gpc = !!navigator.globalPrivacyControl;
+var stored = readConsent();
+var defaults = MODE === "opt_in" ? { analytics: false, marketing: false } : MODE === "analytics" ? { analytics: true, marketing: false } : { analytics: true, marketing: !gpc };
+var consent = stored || defaults;
+var allowed = function (t) { return t.cat === "necessary" || !!consent[t.cat]; };
+// Google consent mode v2: Google tags know what the visitor allows, before and after a change.
+var gconsent = function () {
+  var a = consent.analytics ? "granted" : "denied", m = consent.marketing ? "granted" : "denied";
+  return { analytics_storage: a, ad_storage: m, ad_user_data: m, ad_personalization: m };
+};
 
 // ---------- helpers ----------
 var loaded = {};
@@ -52,7 +64,7 @@ var enc = encodeURIComponent;
 var urlOk = function (t) { return !t.url || (loc.pathname + loc.search).indexOf(t.url) >= 0; };
 var fires = function (t, ev) { return (t.fire || []).indexOf(ev) >= 0; };
 var gtagReady = function () {
-  if (!w.gtag) { w.gtag = function () { w.dataLayer.push(arguments); }; w.gtag("js", new Date()); }
+  if (!w.gtag) { w.gtag = function () { w.dataLayer.push(arguments); }; w.gtag("consent", "default", gconsent()); w.gtag("js", new Date()); }
 };
 var param = function (t, k) { return (t.params && t.params[k]) || ""; };
 var total = function (ec) { return ec && ec.value != null ? ec.value : undefined; };
@@ -65,6 +77,7 @@ var money = function (ec) { var o = {}; if (ec && ec.value != null) o.value = ec
 var P = {
   gtm: {
     start: function (t) {
+      if (!w.gtag) { w.gtag = function () { w.dataLayer.push(arguments); }; w.gtag("consent", "default", gconsent()); }
       w.dataLayer.push({ "gtm.start": Date.now(), event: "gtm.js" });
       load("https://www.googletagmanager.com/gtm.js?id=" + enc(t.account));
     },
@@ -398,10 +411,10 @@ w.addEventListener("apexx:track", flush);
 var banner = null;
 var show = function () {
   if (banner) banner.remove();
-  var c = consent || { analytics: false, marketing: false };
+  var c = consent;
   var has = function (k) { return tags.some(function (t) { return t.cat === k; }); };
   banner = d.createElement("div"); banner.className = "consent"; banner.setAttribute("role", "dialog"); banner.setAttribute("aria-label", "Cookies y privacidad"); banner.dataset.consent = "";
-  var p = d.createElement("p"); p.textContent = C.banner || "Usamos cookies y herramientas de terceros para medir visitas y mostrarte anuncios. Tú decides."; banner.appendChild(p);
+  var p = d.createElement("p"); p.textContent = C.banner || (MODE === "notice" ? "Usamos cookies y herramientas de terceros para medir visitas y mostrarte anuncios. Puedes cambiarlo cuando quieras en «Preferencias de cookies»." : "Usamos cookies y herramientas de terceros para medir visitas y mostrarte anuncios. Tú decides."); banner.appendChild(p);
   var det = d.createElement("details"), sum = d.createElement("summary"); sum.textContent = "Configurar"; det.appendChild(sum);
   [["analytics", "Analítica"], ["marketing", "Publicidad"]].forEach(function (k) {
     if (!has(k[0])) return;
@@ -411,30 +424,41 @@ var show = function () {
   var save = d.createElement("button"); save.type = "button"; save.className = "btn btn-ghost"; save.dataset.consentSave = ""; save.textContent = "Guardar"; det.appendChild(save);
   banner.appendChild(det);
   var acts = d.createElement("div"); acts.className = "consent-actions";
-  var none = d.createElement("button"); none.type = "button"; none.className = "btn btn-ghost"; none.dataset.consentNone = ""; none.textContent = "Solo necesarias";
-  var all = d.createElement("button"); all.type = "button"; all.className = "btn"; all.dataset.consentAll = ""; all.textContent = "Aceptar todo";
-  acts.appendChild(none); acts.appendChild(all); banner.appendChild(acts);
+  if (MODE === "notice" && !stored) {
+    // An informative notice: what is on stays on; "Configurar" turns things off.
+    var ok = d.createElement("button"); ok.type = "button"; ok.className = "btn"; ok.dataset.consentOk = ""; ok.textContent = "Entendido";
+    acts.appendChild(ok);
+  } else {
+    var none = d.createElement("button"); none.type = "button"; none.className = "btn btn-ghost"; none.dataset.consentNone = ""; none.textContent = "Solo necesarias";
+    var all = d.createElement("button"); all.type = "button"; all.className = "btn"; all.dataset.consentAll = ""; all.textContent = "Aceptar todo";
+    acts.appendChild(none); acts.appendChild(all);
+  }
+  banner.appendChild(acts);
   b.appendChild(banner);
   banner.addEventListener("click", function (e) {
     var x = e.target.closest("button"); if (!x) return;
     var n;
-    if (x.hasAttribute("data-consent-all")) n = { analytics: true, marketing: true };
+    if (x.hasAttribute("data-consent-ok")) n = { analytics: consent.analytics, marketing: consent.marketing };
+    else if (x.hasAttribute("data-consent-all")) n = { analytics: true, marketing: true };
     else if (x.hasAttribute("data-consent-none")) n = { analytics: false, marketing: false };
     else if (x.hasAttribute("data-consent-save")) n = { analytics: !!banner.querySelector("[data-c=analytics]:checked"), marketing: !!banner.querySelector("[data-c=marketing]:checked") };
     if (!n) return;
     var before = consent;
-    consent = n; writeConsent(n); banner.remove(); banner = null;
+    consent = n; stored = n; writeConsent(n); banner.remove(); banner = null;
+    if (w.gtag) w.gtag("consent", "update", gconsent());
     // Taking consent back only takes effect on a fresh page.
-    if (before && ((before.analytics && !n.analytics) || (before.marketing && !n.marketing))) { loc.reload(); return; }
+    if ((before.analytics && !n.analytics) || (before.marketing && !n.marketing)) { loc.reload(); return; }
     flush(); // what the shopper just allowed starts now, with the events of this page
   });
 };
 var optional = tags.some(function (t) { return t.cat !== "necessary"; });
-if (optional && !consent) show();
+var hasMarketing = tags.some(function (t) { return t.cat === "marketing"; });
+// The banner: once per visitor, and only when there is something to tell or ask.
+if (optional && !stored && (MODE !== "analytics" || hasMarketing)) show();
 if (optional) {
   var foot = d.querySelector("footer") || b;
   var a = d.createElement("button"); a.type = "button"; a.className = "linkbtn consent-open"; a.textContent = "Preferencias de cookies"; a.addEventListener("click", show);
   foot.appendChild(a);
 }
-w.apexxTags = { version: C.v, log: log, consent: function () { return consent; } };
+w.apexxTags = { version: C.v, mode: MODE, log: log, consent: function () { return consent; } };
 flush();

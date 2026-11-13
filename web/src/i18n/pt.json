@@ -3805,5 +3805,13 @@
 "Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.": "Quem publicou, quando e o que mudou. Restaurar uma versão a publica de novo como a mais recente. A auditoria também guarda a configuração completa de cada versão.",
 "Servicio": "Serviço",
 "Verificación de dominio": "Verificação de domínio",
-"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "As tags meta que o Google Search Console, o Bing, a Meta, o Pinterest ou outros serviços pedem para comprovar que o domínio é seu. Vão no cabeçalho de todas as páginas; cole a tag completa ou só o código."
+"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "As tags meta que o Google Search Console, o Bing, a Meta, o Pinterest ou outros serviços pedem para comprovar que o domínio é seu. Vão no cabeçalho de todas as páginas; cole a tag completa ou só o código.",
+"Analítica sin permiso, publicidad con permiso": "Análise sem permissão, publicidade com permissão",
+"Analytics y los mapas de calor cargan desde la primera página; los píxeles de publicidad esperan a que el visitante acepte.": "O Analytics e os mapas de calor carregam desde a primeira página; os pixels de publicidade esperam o visitante aceitar.",
+"Nada opcional carga hasta que el visitante acepta, como pide el GDPR. Google recibe las señales del modo de consentimiento v2.": "Nada opcional carrega até o visitante aceitar, como exige o GDPR. O Google recebe os sinais do modo de consentimento v2.",
+"Permiso de cookies": "Permissão de cookies",
+"Se muestra una vez a cada visitante cuando hay etiquetas de analítica o publicidad. Déjalo vacío para usar el texto de Apexx.": "Aparece uma vez para cada visitante quando há tags de análise ou publicidade. Deixe vazio para usar o texto da Apexx.",
+"Solo aviso (recomendado en México y Latinoamérica)": "Só aviso (recomendado no México e na América Latina)",
+"Todas las etiquetas cargan desde la primera página y un aviso informa al visitante, que puede apagarlas en «Preferencias de cookies». Con Global Privacy Control, la publicidad queda apagada (lo exigen leyes de Estados Unidos).": "Todas as tags carregam desde a primeira página e um aviso informa o visitante, que pode desligá-las em “Preferências de cookies”. Com o Global Privacy Control, a publicidade fica desligada (exigido por leis dos Estados Unidos).",
+"Todo con permiso (obligatorio si vendes en Europa o Reino Unido)": "Tudo com permissão (obrigatório se você vende na Europa ou no Reino Unido)"
 }

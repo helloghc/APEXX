@@ -233,7 +233,8 @@ Pantalla: *Configuración › Etiquetas y píxeles*. Detalle técnico: `docs/eti
 | E4 | Conversión en una página | Agrega «Script por URL» marcado solo en «Pedido confirmado» | Solo se carga en la página de gracias, una vez por pedido |
 | E5 | Código propio | Agrega «Código propio» con un error a propósito (`x.y.z`) junto a otra etiqueta | La otra etiqueta sigue funcionando; el modo prueba dice que el código falló |
 | E6 | Modo prueba | «Probar en la tienda» | Un recuadro lista cada etiqueta cargada y cada evento con su monto |
-| E7 | Permiso del visitante | Elige «Solo necesarias» en el aviso | Ninguna etiqueta de analítica o publicidad carga; al aceptar después, reciben los eventos de esa página |
+| E7 | Permiso del visitante | Con «Todo con permiso», elige «Solo necesarias» en el aviso | Ninguna etiqueta de analítica o publicidad carga; al aceptar después, reciben los eventos de esa página |
+| E7b | Solo aviso | Con «Solo aviso» (por omisión), abre la tienda en una ventana privada | Analytics registra la visita sin ningún clic; el aviso dice «Entendido»; en «Preferencias de cookies» se puede apagar y la página siguiente ya no mide |
 | E8 | Nunca en el pago | Ve al pago y a Mi cuenta | No carga ninguna etiqueta |
 | E9 | Versiones | Publica dos veces y restaura la primera | La tienda vuelve a la primera configuración al instante |
 | E10 | Formato del ID | Pega `UA-123` en Analytics o letras en Meta | Mensaje claro con un ejemplo del formato correcto |

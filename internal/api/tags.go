@@ -330,9 +330,13 @@ var metaKinds = []struct{ ID, Label, Name string }{
 // TagsConfig is the store's tags, verification tags and consent banner, at
 // a version. Changes says, in words, what this version changed.
 type TagsConfig struct {
-	Tags          []Tag     `json:"tags"`
-	Meta          []MetaTag `json:"meta"`
-	BannerText    string    `json:"bannerText"`
+	Tags       []Tag     `json:"tags"`
+	Meta       []MetaTag `json:"meta"`
+	BannerText string    `json:"bannerText"`
+	// ConsentMode: notice (default: tell the visitor and measure from the
+	// first page), analytics (analytics without asking, advertising with
+	// permission) or opt_in (everything optional waits for permission).
+	ConsentMode   string    `json:"consentMode"`
 	Version       int64     `json:"version"`
 	PublishedAt   time.Time `json:"publishedAt,omitzero"`
 	PublishedBy   string    `json:"publishedBy,omitempty"`
@@ -340,6 +344,15 @@ type TagsConfig struct {
 	RestoredFrom  int64     `json:"restoredFrom,omitempty"`
 	Changes       []string  `json:"changes,omitempty"`
 }
+
+// Consent modes.
+const (
+	consentNotice    = "notice"
+	consentAnalytics = "analytics"
+	consentOptIn     = "opt_in"
+)
+
+var consentModes = []string{consentNotice, consentAnalytics, consentOptIn}
 
 // Script categories.
 var scriptCategories = []string{"necessary", "analytics", "marketing"}
@@ -535,7 +548,11 @@ func buildTags(tenant string, c TagsConfig) *tagsEntry {
 		meta.WriteString(`<meta name="` + template.HTMLEscapeString(m.Name) + `" content="` + template.HTMLEscapeString(m.Content) + `">`)
 	}
 	e.meta = template.HTML(meta.String()) // #nosec G203 -- both attributes are escaped (and validated on publish)
-	cfg, _ := json.Marshal(map[string]any{"v": c.Version, "banner": c.BannerText, "tags": out})
+	mode := c.ConsentMode
+	if mode == "" {
+		mode = consentNotice
+	}
+	cfg, _ := json.Marshal(map[string]any{"v": c.Version, "mode": mode, "banner": c.BannerText, "tags": out})
 	e.js = []byte("(function(C){\n" + tagsRuntime + "\n})(" + string(cfg) + ");\n")
 	if e.active == 0 {
 		e.js = []byte("/* sin etiquetas activas */\n")
@@ -610,6 +627,12 @@ func (s *Server) validateTags(c *TagsConfig) []apierr.FieldError {
 		errs = append(errs, apierr.FieldError{Field: "tags", Code: "too_many", Message: "Hasta " + strconv.Itoa(maxTags) + " etiquetas"})
 	}
 	c.BannerText = strings.TrimSpace(c.BannerText)
+	if c.ConsentMode == "" {
+		c.ConsentMode = consentNotice
+	}
+	if !slices.Contains(consentModes, c.ConsentMode) {
+		errs = append(errs, apierr.FieldError{Field: "consentMode", Code: "invalid", Message: "Elige cómo se pide el permiso: solo aviso, analítica sin permiso o todo con permiso"})
+	}
 	if len([]rune(c.BannerText)) > 300 {
 		errs = append(errs, apierr.FieldError{Field: "bannerText", Code: "too_long", Message: "Texto de hasta 300 caracteres"})
 	}
@@ -897,6 +920,10 @@ func tagsChanges(prev, next TagsConfig) []string {
 		if !nm[key(m)] {
 			out = append(out, "Quitó la verificación "+m.Name)
 		}
+	}
+	if pm, nm := firstNonEmpty(prev.ConsentMode, consentNotice), firstNonEmpty(next.ConsentMode, consentNotice); pm != nm {
+		names := map[string]string{consentNotice: "solo aviso", consentAnalytics: "analítica sin permiso, publicidad con permiso", consentOptIn: "todo con permiso"}
+		out = append(out, "Cambió el permiso de cookies: «"+names[pm]+"» → «"+names[nm]+"»")
 	}
 	if prev.BannerText != next.BannerText {
 		out = append(out, "Cambió el texto del aviso de cookies")

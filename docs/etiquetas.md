@@ -84,7 +84,17 @@ En otras plataformas esto suele requerir un desarrollo por cliente, código pega
 
 ## Seguridad y privacidad
 
-- **Consentimiento.** Las etiquetas de analítica y publicidad cargan solo con el permiso del visitante. Al aceptar, reciben los eventos de esa misma página. Con Global Privacy Control quedan apagadas hasta que el visitante las encienda.
+- **Permiso de cookies, configurable por tienda** (`consentMode`):
+
+  | Modo | Qué hace | Para quién |
+  |---|---|---|
+  | Solo aviso (por omisión) | Todo carga desde la primera página. Un aviso con «Entendido» informa, y el visitante puede apagar la analítica o la publicidad en «Preferencias de cookies» | México y casi toda Latinoamérica, donde basta con avisar de forma transparente |
+  | Analítica sin permiso, publicidad con permiso | Analytics y mapas de calor desde la primera página; los píxeles de publicidad esperan a que el visitante acepte | Un punto medio |
+  | Todo con permiso | Nada opcional carga hasta aceptar | Obligatorio para tiendas que venden en Europa o Reino Unido (GDPR) |
+
+  - **En los tres modos**, Google recibe las señales del modo de consentimiento v2 (`analytics_storage`, `ad_storage`, `ad_user_data`, `ad_personalization`): primero el valor por omisión y luego cada cambio.
+  - **Con Global Privacy Control** la publicidad queda apagada salvo que el visitante la encienda, porque leyes de Estados Unidos (como la de California) exigen respetarlo. La analítica sigue midiendo en «Solo aviso».
+  - **Quién decide:** el modo lo elige cada tienda según dónde vende. El panel explica cuándo usar cada uno.
 - **Páginas excluidas.** Nunca hay etiquetas en el pago, la aprobación de compras, las cotizaciones ni la cuenta del cliente: la página no incluye `tags.js` y su política lo prohíbe. La página de gracias sí las tiene, porque ahí van las conversiones.
 - **Política de seguridad (CSP).** En las demás páginas la política permite exactamente los dominios de las etiquetas activas, nada más. Se calcula al servir la página, así que un cambio rige desde la siguiente.
   - Con Google Tag Manager, la política permite scripts https y en línea, porque las etiquetas de GTM se deciden en su propia consola. El panel lo explica; el pago y la cuenta siguen cerrados.
@@ -124,7 +134,8 @@ Antes de anunciarlo, la sección 9 de `docs/qa.md` pide verificar con una cuenta
   - WhatsApp, Crisp, Hotjar y X con sus eventos;
   - las metas de verificación en el `<head>`, el builder y el pago;
   - la política de estilos y fuentes de los chats;
-  - las entradas de auditoría.
+  - las entradas de auditoría;
+  - el modo de permiso por omisión, el rechazo de un modo desconocido y su cambio en palabras.
 - Recorrido en navegador real (Chromium):
   - el aviso aparece y antes del permiso no se pide ningún proveedor;
   - al aceptar llegan `page_view` y `view_item` con su monto;
@@ -134,5 +145,6 @@ Antes de anunciarlo, la sección 9 de `docs/qa.md` pide verificar con una cuenta
   - el modo prueba lista cada etiqueta y evento;
   - con nueve proveedores, cada uno arrancó y recibió la compra en su formato. Los servidores de los proveedores fueron simulados, porque la red del entorno no llega a ellos;
   - el botón de WhatsApp mide 52 px en teléfono y no tapa la página;
+  - los tres modos de permiso. «Solo aviso» carga Analytics y Meta sin clic y muestra «Entendido»; con GPC, Meta no carga y Google recibe `ad_storage: denied`. «Analítica sin permiso» carga solo Analytics. «Todo con permiso» no carga nada antes del clic;
   - 0 errores de política de seguridad.
 - Casos para personas: `docs/qa.md` §9.

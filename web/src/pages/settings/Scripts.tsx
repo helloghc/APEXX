@@ -27,7 +27,8 @@ interface Tag {
   active: boolean;
 }
 interface MetaTag { kind: string; name?: string; content: string }
-interface TagsConfig { tags: Tag[]; meta: MetaTag[]; bannerText: string; version: number; publishedAt?: string; publisherName?: string }
+type ConsentMode = "notice" | "analytics" | "opt_in";
+interface TagsConfig { tags: Tag[]; meta: MetaTag[]; bannerText: string; consentMode?: ConsentMode; version: number; publishedAt?: string; publisherName?: string }
 interface Field { key: string; label: string; example?: string; required: boolean; options?: string[] }
 interface Kind { id: string; label: string; group: string; category: Category; fields: Field[]; fire: boolean; receives: string; docs?: string }
 interface MetaKind { id: string; label: string; name: string }
@@ -42,6 +43,20 @@ const EVENTS: Record<string, string> = {
   begin_checkout: "Inicio del pago",
   purchase: "Pedido confirmado",
 };
+const MODES: Record<ConsentMode, { label: string; help: string }> = {
+  notice: {
+    label: "Solo aviso (recomendado en México y Latinoamérica)",
+    help: "Todas las etiquetas cargan desde la primera página y un aviso informa al visitante, que puede apagarlas en «Preferencias de cookies». Con Global Privacy Control, la publicidad queda apagada (lo exigen leyes de Estados Unidos).",
+  },
+  analytics: {
+    label: "Analítica sin permiso, publicidad con permiso",
+    help: "Analytics y los mapas de calor cargan desde la primera página; los píxeles de publicidad esperan a que el visitante acepte.",
+  },
+  opt_in: {
+    label: "Todo con permiso (obligatorio si vendes en Europa o Reino Unido)",
+    help: "Nada opcional carga hasta que el visitante acepta, como pide el GDPR. Google recibe las señales del modo de consentimiento v2.",
+  },
+};
 const POSITION: Record<string, string> = { right: "Abajo a la derecha", left: "Abajo a la izquierda" };
 
 /** Tags, pixels, chats and verification tags of the storefront: published as a new version, live on the next page view. */
@@ -53,6 +68,7 @@ export function Scripts({ me }: { me: Me }) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [metas, setMetas] = useState<MetaTag[]>([]);
   const [banner, setBanner] = useState("");
+  const [mode, setMode] = useState<ConsentMode>("notice");
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [newKind, setNewKind] = useState("ga4");
@@ -61,11 +77,12 @@ export function Scripts({ me }: { me: Me }) {
       setTags(q.data.config.tags);
       setMetas(q.data.config.meta ?? []);
       setBanner(q.data.config.bannerText);
+      setMode(q.data.config.consentMode ?? "notice");
     }
   }, [q.data]);
   const dirty = useMemo(
-    () => !!q.data && (JSON.stringify(tags) !== JSON.stringify(q.data.config.tags) || JSON.stringify(metas) !== JSON.stringify(q.data.config.meta ?? []) || banner !== q.data.config.bannerText),
-    [q.data, tags, metas, banner],
+    () => !!q.data && (JSON.stringify(tags) !== JSON.stringify(q.data.config.tags) || JSON.stringify(metas) !== JSON.stringify(q.data.config.meta ?? []) || banner !== q.data.config.bannerText || mode !== (q.data.config.consentMode ?? "notice")),
+    [q.data, tags, metas, banner, mode],
   );
   if (q.isPending) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} />;
@@ -89,6 +106,7 @@ export function Scripts({ me }: { me: Me }) {
     setTags(c.tags);
     setMetas(c.meta ?? []);
     setBanner(c.bannerText);
+    setMode(c.consentMode ?? "notice");
     void qc.invalidateQueries({ queryKey: ["store-tags", "history"] });
     toast.success(msg);
   };
@@ -96,7 +114,7 @@ export function Scripts({ me }: { me: Me }) {
     setBusy(true);
     setErrs({});
     try {
-      const r = await request<{ config: TagsConfig }>("PUT", "/v1/settings/tags", { tags, meta: metas, bannerText: banner });
+      const r = await request<{ config: TagsConfig }>("PUT", "/v1/settings/tags", { tags, meta: metas, bannerText: banner, consentMode: mode });
       done(r.config, `Versión ${r.config.version} publicada. La tienda la usa desde la siguiente página que se abra.`);
     } catch (e) {
       setErrs(fieldErrors(e));
@@ -138,9 +156,18 @@ export function Scripts({ me }: { me: Me }) {
         }
       >
         <div className="grid gap-1.5">
+          <Label htmlFor="tg-mode">Permiso de cookies</Label>
+          <select id="tg-mode" className="h-9 rounded-md border bg-background px-2 text-sm" value={mode} disabled={!canEdit} onChange={(e) => setMode(e.target.value as ConsentMode)}>
+            {Object.entries(MODES).map(([v, m]) => (
+              <option key={v} value={v}>{m.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">{MODES[mode].help}</p>
+        </div>
+        <div className="grid gap-1.5">
           <Label htmlFor="tg-banner">Aviso de cookies</Label>
           <Textarea id="tg-banner" rows={2} value={banner} disabled={!canEdit} onChange={(e) => setBanner(e.target.value)} placeholder="Usamos cookies y herramientas de terceros para medir visitas y mostrarte anuncios. Tú decides." />
-          <p className="text-xs text-muted-foreground">Se muestra cuando hay etiquetas de analítica o publicidad. Con Global Privacy Control, la analítica y la publicidad quedan apagadas hasta que el visitante las encienda.</p>
+          <p className="text-xs text-muted-foreground">Se muestra una vez a cada visitante cuando hay etiquetas de analítica o publicidad. Déjalo vacío para usar el texto de Apexx.</p>
         </div>
       </Section>
 

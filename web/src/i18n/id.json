@@ -3805,5 +3805,13 @@
 "Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.": "Siapa yang menerbitkan, kapan, dan apa yang berubah. Memulihkan versi akan menerbitkannya lagi sebagai yang terbaru. Audit juga menyimpan konfigurasi lengkap setiap versi.",
 "Servicio": "Layanan",
 "Verificación de dominio": "Verifikasi domain",
-"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "Tag meta yang diminta Google Search Console, Bing, Meta, Pinterest, atau layanan lain untuk memastikan domain milik Anda. Dipasang di head setiap halaman; tempel tag lengkap atau kodenya saja."
+"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "Tag meta yang diminta Google Search Console, Bing, Meta, Pinterest, atau layanan lain untuk memastikan domain milik Anda. Dipasang di head setiap halaman; tempel tag lengkap atau kodenya saja.",
+"Analítica sin permiso, publicidad con permiso": "Analitik tanpa izin, iklan dengan izin",
+"Analytics y los mapas de calor cargan desde la primera página; los píxeles de publicidad esperan a que el visitante acepte.": "Analytics dan peta panas dimuat sejak halaman pertama; piksel iklan menunggu pengunjung menyetujui.",
+"Nada opcional carga hasta que el visitante acepta, como pide el GDPR. Google recibe las señales del modo de consentimiento v2.": "Tidak ada yang opsional dimuat sampai pengunjung menyetujui, sesuai GDPR. Google menerima sinyal consent mode v2.",
+"Permiso de cookies": "Izin cookie",
+"Se muestra una vez a cada visitante cuando hay etiquetas de analítica o publicidad. Déjalo vacío para usar el texto de Apexx.": "Ditampilkan sekali kepada setiap pengunjung jika ada tag analitik atau iklan. Biarkan kosong untuk memakai teks Apexx.",
+"Solo aviso (recomendado en México y Latinoamérica)": "Hanya pemberitahuan (disarankan di Meksiko dan Amerika Latin)",
+"Todas las etiquetas cargan desde la primera página y un aviso informa al visitante, que puede apagarlas en «Preferencias de cookies». Con Global Privacy Control, la publicidad queda apagada (lo exigen leyes de Estados Unidos).": "Semua tag dimuat sejak halaman pertama dan pemberitahuan memberi tahu pengunjung, yang dapat mematikannya di “Preferensi cookie”. Dengan Global Privacy Control, iklan tetap mati (diwajibkan hukum AS).",
+"Todo con permiso (obligatorio si vendes en Europa o Reino Unido)": "Semua dengan izin (wajib jika berjualan di Eropa atau Inggris)"
 }
