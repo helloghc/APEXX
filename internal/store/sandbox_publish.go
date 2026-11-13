@@ -219,6 +219,38 @@ func (d *DB) diffTx(ctx context.Context, tx pgx.Tx, sb Sandbox, areas []string, 
 
 // rowLabel names a row for people: its title or name when it has one.
 func (d *DB) rowLabel(ctx context.Context, tx pgx.Tx, t tableInfo, sb Sandbox, c RowChange) string {
+	tenant := sb.ID
+	if c.Action == ActDelete {
+		tenant = sb.ParentID
+	}
+	parts := strings.Split(c.PK, "|")
+	product := func(id string) string {
+		var title string
+		if tx.QueryRow(ctx, `SELECT title FROM products WHERE tenant_id = $1 AND id = $2`, tenant, id).Scan(&title) != nil || title == "" {
+			_ = tx.QueryRow(ctx, `SELECT title FROM products WHERE tenant_id = $1 AND id = $2`, sb.ParentID, id).Scan(&title)
+		}
+		if title == "" {
+			return id
+		}
+		return title
+	}
+	// Rows keyed by codes: said in words.
+	switch {
+	case t.name == "prices" && len(parts) == 3: // channel|sku|min_qty
+		if parts[2] != "1" && parts[2] != "0" {
+			return parts[1] + " · canal " + parts[0] + " · desde " + parts[2] + " piezas"
+		}
+		return parts[1] + " · canal " + parts[0]
+	case t.name == "stock_levels" && len(parts) == 2: // sku|location
+		return parts[0] + " · en " + parts[1]
+	case t.name == "ai_chunks" && len(parts) >= 2 && parts[0] == "product":
+		return "Búsqueda con IA de «" + product(parts[1]) + "»"
+	case t.name == "kg_edges":
+		var src, dst, rel string
+		if tx.QueryRow(ctx, `SELECT src_id, dst_id, rel FROM kg_edges WHERE tenant_id = $1 AND id = $2`, tenant, c.PK).Scan(&src, &dst, &rel) == nil {
+			return "Relación «" + product(src) + "» → «" + product(dst) + "» (" + rel + ")"
+		}
+	}
 	col := ""
 	for _, cand := range []string{"title", "name", "handle", "sku", "code", "slug"} {
 		if slices.Contains(t.cols, cand) {
@@ -228,10 +260,6 @@ func (d *DB) rowLabel(ctx context.Context, tx pgx.Tx, t tableInfo, sb Sandbox, c
 	}
 	if col == "" {
 		return c.PK
-	}
-	tenant := sb.ID
-	if c.Action == ActDelete {
-		tenant = sb.ParentID
 	}
 	var v *string
 	_ = tx.QueryRow(ctx, `SELECT x.`+quoteIdent(col)+`::text FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1 AND `+keyEq("x", t, "$2::text", typedKey(t, c.PK)), tenant, c.PK).Scan(&v)

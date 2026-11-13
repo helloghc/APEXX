@@ -38,6 +38,7 @@ type envInfo struct {
 	kind    string // production, sandbox
 	parent  string // sandbox: its production store
 	sandbox string // production: its sandbox, if any
+	name    string // sandbox: its name
 	until   time.Time
 }
 
@@ -65,6 +66,8 @@ func (s *Server) envOf(tenant string) envInfo {
 			if sb, err := s.DB.SandboxOf(ctx, tenant); err == nil {
 				e.sandbox = sb.ID
 			}
+		} else if sb, err := s.DB.SandboxByID(ctx, tenant); err == nil {
+			e.name = sb.Name
 		}
 	}
 	s.env.mu.Lock()
@@ -331,6 +334,7 @@ func (s *Server) renameSandbox(w http.ResponseWriter, r *http.Request) {
 		return store.Audit(r.Context(), tx, parent, pr.Actor(), "sandbox.rename", sb.ID, map[string]any{"from": sb.Name, "to": name})
 	})
 	sb.Name = name
+	s.forgetEnv(sb.ID)
 	httpx.JSON(w, r, http.StatusOK, map[string]any{"sandbox": sb})
 }
 

@@ -3936,5 +3936,8 @@
 "usas #.": "#つ使用中。",
 "Cada uno admite hasta # productos.": "それぞれ最大#商品まで。",
 "Publicación programada para el {}. Se publicará lo que tenga «{}» a esa hora.": "{}に公開を予約しました。その時刻の「{}」の内容が公開されます。",
-"Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {}.": "各サンドボックスのサイズ、コピー、公開、利用状況。リクエスト数は{}以降のこのサーバーの分です。"
+"Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {}": "各サンドボックスのサイズ、コピー、公開、利用状況。リクエスト数は{}以降のこのサーバーの分です",
+"«{}» · sandbox de {}": "「{}」・{}のサンドボックス",
+"el sandbox «{}»": "サンドボックス「{}」",
+"Sandbox «{}»": "サンドボックス「{}」"
 }

@@ -458,6 +458,12 @@ func unavailable(err error) bool {
 }
 
 func internalError(w http.ResponseWriter, log *slog.Logger, err error) {
+	// The client went away (closed the page, moved on): nobody reads the
+	// answer and nothing failed on our side. 499 is the usual code for it.
+	if errors.Is(err, context.Canceled) {
+		w.WriteHeader(499)
+		return
+	}
 	// What the store's plan does not include is an answer, not a failure.
 	var quota *store.ErrSandboxQuota
 	if errors.As(err, &quota) {
@@ -592,8 +598,9 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 		TwoStep bool   `json:"twoStep"` // two-step verification is on for this member
 		Env     string `json:"env"`     // production or sandbox
 		Parent  string `json:"parent,omitempty"`
-		Sandbox string `json:"sandbox,omitempty"` // production: its sandbox, if any
-	}{Principal: p, Env: e.kind, Parent: e.parent, Sandbox: e.sandbox}
+		Sandbox string `json:"sandbox,omitempty"`     // production: its sandbox, if any
+		Name    string `json:"sandboxName,omitempty"` // sandbox: its name
+	}{Principal: p, Env: e.kind, Parent: e.parent, Sandbox: e.sandbox, Name: e.name}
 	if p.Kind == "member" {
 		_ = s.DB.System.QueryRow(r.Context(), `SELECT totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 AND id=$2`, p.Tenant, p.ID).Scan(&out.TwoStep)
 	}

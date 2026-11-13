@@ -3936,5 +3936,8 @@
 "usas #.": "you use #.",
 "Cada uno admite hasta # productos.": "Each one holds up to # products.",
 "Publicación programada para el {}. Se publicará lo que tenga «{}» a esa hora.": "Publish scheduled for {}. Whatever «{}» has at that time will be published.",
-"Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {}.": "Size, copies, publishes and use of each sandbox. Requests count those of this server since {}."
+"Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {}": "Size, copies, publishes and use of each sandbox. Requests count those of this server since {}",
+"«{}» · sandbox de {}": "«{}» · sandbox of {}",
+"el sandbox «{}»": "the sandbox «{}»",
+"Sandbox «{}»": "Sandbox «{}»"
 }

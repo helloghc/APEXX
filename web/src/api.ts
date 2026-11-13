@@ -114,6 +114,7 @@ export interface Me {
   env?: "production" | "sandbox"; // where this session works
   parent?: string; // sandbox: its production store
   sandbox?: string; // production: its sandbox, if any
+  sandboxName?: string; // sandbox: its name
 }
 
 export interface Money {

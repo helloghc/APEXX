@@ -542,7 +542,7 @@ function Shell({ me }: { me: Me }) {
       <Sidebar label="Menú principal">
         <SidebarHeader>
           <Logo size={26} />
-          <span className="text-xs text-muted-foreground">{me.env === "sandbox" ? `Sandbox de ${me.parent}` : `Tienda ${me.tenant}`}</span>
+          <span className="text-xs text-muted-foreground">{me.env === "sandbox" ? `«${me.sandboxName ?? "Sandbox"}» · sandbox de ${me.parent}` : `Tienda ${me.tenant}`}</span>
         </SidebarHeader>
         <SidebarContent>
           <nav aria-label="Secciones">
@@ -589,7 +589,7 @@ function Shell({ me }: { me: Me }) {
         <header className="flex items-center gap-2 border-b bg-card px-2 py-1 md:hidden">
           <SidebarTrigger />
           <Logo size={22} />
-          <span className="truncate text-xs text-muted-foreground">{me.env === "sandbox" ? `Sandbox de ${me.parent}` : me.tenant}</span>
+          <span className="truncate text-xs text-muted-foreground">{me.env === "sandbox" ? `«${me.sandboxName ?? "Sandbox"}» · sandbox de ${me.parent}` : me.tenant}</span>
         </header>
         {me.env === "sandbox" && <SandboxBar />}
         <div className={full ? "min-h-0 flex-1 overflow-hidden" : "min-h-0 flex-1 overflow-auto"}>

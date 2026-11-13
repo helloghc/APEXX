@@ -3936,5 +3936,8 @@
 "usas #.": "você usa #.",
 "Cada uno admite hasta # productos.": "Cada um aceita até # produtos.",
 "Publicación programada para el {}. Se publicará lo que tenga «{}» a esa hora.": "Publicação agendada para {}. Será publicado o que «{}» tiver nesse horário.",
-"Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {}.": "Tamanho, cópias, publicações e uso de cada sandbox. As solicitações contam as deste servidor desde {}."
+"Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {}": "Tamanho, cópias, publicações e uso de cada sandbox. As solicitações contam as deste servidor desde {}",
+"«{}» · sandbox de {}": "«{}» · sandbox de {}",
+"el sandbox «{}»": "o sandbox «{}»",
+"Sandbox «{}»": "Sandbox «{}»"
 }

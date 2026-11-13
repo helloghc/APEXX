@@ -452,15 +452,15 @@ export function Inicio({ me }: { me: Me }) {
       sub={
         allowed && q.data ? (
           <>
-            Así va <strong className="font-semibold text-foreground">{me.tenant}</strong> · datos actualizados {ago(q.data.syncedAt, now)}
+            Así va <strong className="font-semibold text-foreground">{me.env === "sandbox" ? `el sandbox «${me.sandboxName ?? me.tenant}»` : me.tenant}</strong> · datos actualizados {ago(q.data.syncedAt, now)}
           </>
         ) : (
-          `Tienda ${me.tenant}`
+          me.env === "sandbox" ? `Sandbox «${me.sandboxName ?? me.tenant}»` : `Tienda ${me.tenant}`
         )
       }
       actions={allowed ? <Filters params={params} onChange={setParams} channels={q.data?.channels} /> : undefined}
     >
-      {allowed && <SetupGuide me={me} />}
+      {allowed && me.env !== "sandbox" && <SetupGuide me={me} />}
       <Copilot />
       {allowed ? (
         <>

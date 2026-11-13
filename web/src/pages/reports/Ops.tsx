@@ -731,7 +731,7 @@ function SandboxMetrics() {
     <Card>
       <CardHeader>
         <CardTitle>Sandboxes</CardTitle>
-        <CardDescription>Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {dateTime(d.since)}.</CardDescription>
+        <CardDescription>Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {dateTime(d.since)}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto rounded-lg border">
