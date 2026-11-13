@@ -268,4 +268,10 @@ Pantalla: *Configuración › Sandbox*. Detalle técnico: `docs/sandbox.md`.
 | S15 | Borrar | «Borrar sandbox» | Tu tienda real no cambia; lo publicado se queda |
 | S16 | Equipo | Dentro del sandbox, intenta agregar a alguien al equipo | Mensaje: el equipo se administra en producción |
 | S17 | Conexiones externas | Dentro del sandbox, intenta crear un webhook, conectar Mercado Libre o configurar conversiones del servidor | Mensaje: en el sandbox no se conecta, nada sale a servicios reales. Una automatización con webhook copiada de producción registra «Capturado en el sandbox» |
-
+| S18 | Plan | Con el plan de un sandbox (el de omisión), intenta crear un segundo | Mensaje: tu plan incluye 1 sandbox y ya lo tienes |
+| S19 | Varios sandboxes | El operador corre `apexx tenant plan --id <tienda> --sandboxes 2`; crea «Black Friday» y «Navidad» | Los dos aparecen con su nombre; «Pasar a Navidad» desde dentro de «Black Friday» cambia de sandbox sin volver a producción |
+| S20 | Tamaño | Con `--sandbox-products` menor que tu catálogo, crea o refresca un sandbox | Mensaje con el límite del plan y cuántos productos serían; nada se copia |
+| S21 | Contraseña | En el sandbox, «Contraseña de la tienda del sandbox»: guarda una. Abre la tienda en una ventana privada | Formulario de contraseña; una equivocada dice «La contraseña no es correcta»; la correcta abre la tienda con su franja. Al cambiarla, la ventana tiene que escribirla de nuevo |
+| S22 | Programar | Cambia un producto en el sandbox; en «Publicar a producción», «En una fecha y hora», dentro de 2 minutos | Aparece en «Publicaciones programadas»; a la hora, «Publicada» y la tienda real muestra el cambio; se puede revertir |
+| S23 | Cancelar | Programa otra y pulsa «Cancelar» | Queda «Cancelada» y no se publica |
+| S24 | Métricas | Abre *Operación › Estado* | La tabla «Sandboxes» con productos, última copia, solicitudes, errores, publicaciones, correos capturados e IA |

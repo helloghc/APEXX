@@ -121,27 +121,31 @@ func (d *DB) diffTx(ctx context.Context, tx pgx.Tx, sb Sandbox, areas []string, 
 			if !ok {
 				continue
 			}
-			filter := "true"
+			// visible: rows that may travel (publishFilter). A row hidden in
+			// the sandbox never travels; production is compared whole, so a
+			// row it has hidden is updated, not inserted again; a delete
+			// only reaches rows production shows.
+			visible := "true"
 			if f := publishFilter[tn]; f != "" {
-				filter = f
+				visible = f
 			}
-			scope := ""
+			scope := "true"
 			if (a.ID == "catalog" || a.ID == "prices" || a.ID == "stock") && len(products) > 0 {
-				scope = productScope(tn, products)
-			}
-			if scope != "" {
-				filter += " AND " + scope
+				if sc := productScope(tn, products); sc != "" {
+					scope = sc
+				}
 			}
 			args := []any{sb.ID, sb.ParentID, tn}
-			if strings.Contains(filter, "$4") {
+			if strings.Contains(scope, "$4") {
 				args = append(args, products)
 			}
-			q := `WITH s AS (SELECT ` + pkExpr("x", t) + ` AS pk, ` + rowHash("x") + ` AS h FROM ` + quoteIdent(tn) + ` x WHERE x.tenant_id = $1 AND (` + filter + `)),
-				p AS (SELECT ` + pkExpr("x", t) + ` AS pk, ` + rowHash("x") + ` AS h FROM ` + quoteIdent(tn) + ` x WHERE x.tenant_id = $2 AND (` + filter + `)),
+			q := `WITH s AS (SELECT ` + pkExpr("x", t) + ` AS pk, ` + rowHash("x") + ` AS h, (` + visible + `) AS vis FROM ` + quoteIdent(tn) + ` x WHERE x.tenant_id = $1 AND (` + scope + `)),
+				p AS (SELECT ` + pkExpr("x", t) + ` AS pk, ` + rowHash("x") + ` AS h, (` + visible + `) AS vis FROM ` + quoteIdent(tn) + ` x WHERE x.tenant_id = $2 AND (` + scope + `)),
 				b AS (SELECT pk, hash AS h FROM sandbox_base WHERE sandbox_id = $1 AND tbl = $3)
 				SELECT COALESCE(s.pk, p.pk, b.pk), COALESCE(s.h, ''), COALESCE(p.h, ''), COALESCE(b.h, '')
 				FROM s FULL JOIN p ON p.pk = s.pk FULL JOIN b ON b.pk = COALESCE(s.pk, p.pk)
-				WHERE s.h IS DISTINCT FROM b.h AND s.h IS DISTINCT FROM p.h`
+				WHERE COALESCE(s.vis, true) AND (s.pk IS NOT NULL OR COALESCE(p.vis, true))
+				AND s.h IS DISTINCT FROM b.h AND s.h IS DISTINCT FROM p.h`
 			rows, err := tx.Query(ctx, q, args...)
 			if err != nil {
 				return nil, fmt.Errorf("diff %s: %w", tn, err)
@@ -230,7 +234,7 @@ func (d *DB) rowLabel(ctx context.Context, tx pgx.Tx, t tableInfo, sb Sandbox, c
 		tenant = sb.ParentID
 	}
 	var v *string
-	_ = tx.QueryRow(ctx, `SELECT x.`+quoteIdent(col)+`::text FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1 AND `+pkExpr("x", t)+` = $2`, tenant, c.PK).Scan(&v)
+	_ = tx.QueryRow(ctx, `SELECT x.`+quoteIdent(col)+`::text FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1 AND `+keyEq("x", t, "$2::text", typedKey(t, c.PK)), tenant, c.PK).Scan(&v)
 	if v == nil || *v == "" {
 		return c.PK
 	}
@@ -322,6 +326,13 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 			tnames = append(tnames, tn)
 		}
 		slices.SortFunc(tnames, func(a, b string) int { return order[a] - order[b] })
+		// Keys are matched by their columns (index) unless one holds the
+		// separator; the statements below then compare the text exactly.
+		typed := map[string]bool{}
+		for _, tn := range tnames {
+			typed[tn] = typedKeys(ctx, tx, byName[tn], `SELECT pk FROM _pub WHERE tbl = $1`, tn)
+		}
+		pubKeys := func(action string) string { return `SELECT pk FROM _pub WHERE tbl = $3 AND action = '` + action + `'` }
 		seq := 0
 		save := func(t tableInfo, where string, args ...any) error {
 			// Production as it is now, before this publish touches it.
@@ -337,20 +348,20 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 		// saved first, so the revert brings them back too.
 		for i := len(tnames) - 1; i >= 0; i-- {
 			t := byName[tnames[i]]
-			if err := d.saveCascade(ctx, tx, t, sb.ParentID, &seq, res.ID); err != nil {
+			if err := d.saveCascade(ctx, tx, t, sb.ParentID, &seq, res.ID, typed[t.name]); err != nil {
 				return err
 			}
-			if err := save(t, `x.tenant_id = $4 AND `+pkExpr("x", t)+` IN (SELECT pk FROM _pub WHERE tbl = $3 AND action = 'delete')`, sb.ParentID); err != nil {
+			if err := save(t, `x.tenant_id = $4 AND `+keyIn("x", t, pubKeys("delete"), typed[t.name]), sb.ParentID); err != nil {
 				return err
 			}
-			if _, err := tx.Exec(ctx, `DELETE FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1 AND `+pkExpr("x", t)+` IN (SELECT pk FROM _pub WHERE tbl = $2 AND action = 'delete')`, sb.ParentID, t.name); err != nil {
+			if _, err := tx.Exec(ctx, `DELETE FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1 AND `+keyIn("x", t, `SELECT pk FROM _pub WHERE tbl = $2 AND action = 'delete'`, typed[t.name]), sb.ParentID, t.name); err != nil {
 				return fmt.Errorf("publish delete %s: %w", t.name, err)
 			}
 		}
 		// Updates and inserts, parents first.
 		for _, tn := range tnames {
 			t := byName[tn]
-			if err := save(t, `x.tenant_id = $4 AND `+pkExpr("x", t)+` IN (SELECT pk FROM _pub WHERE tbl = $3 AND action = 'update')`, sb.ParentID); err != nil {
+			if err := save(t, `x.tenant_id = $4 AND `+keyIn("x", t, pubKeys("update"), typed[tn]), sb.ParentID); err != nil {
 				return err
 			}
 			var set []string
@@ -362,9 +373,30 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 			}
 			if len(set) > 0 {
 				if _, err := tx.Exec(ctx, `UPDATE `+quoteIdent(tn)+` p SET `+strings.Join(set, ", ")+` FROM `+quoteIdent(tn)+` s
-					WHERE p.tenant_id = $1 AND s.tenant_id = $2 AND `+pkExpr("s", t)+` = `+pkExpr("p", t)+`
-					AND `+pkExpr("p", t)+` IN (SELECT pk FROM _pub WHERE tbl = $3 AND action = 'update')`, sb.ParentID, sb.ID, tn); err != nil {
+					WHERE p.tenant_id = $1 AND s.tenant_id = $2 AND `+sameKey("s", "p", t)+`
+					AND `+keyIn("p", t, pubKeys("update"), typed[tn]), sb.ParentID, sb.ID, tn); err != nil {
 					return fmt.Errorf("publish update %s: %w", tn, err)
+				}
+			}
+			// Derived rows identified by what they say, not by their id (an
+			// edge of the knowledge graph): production may have built the
+			// same one with another id since the copy. The sandbox's replaces
+			// it; the replaced row is saved, so a revert brings it back.
+			if natural, ok := naturalKey[tn]; ok {
+				cols := make([]string, len(natural))
+				for i, c := range natural {
+					cols[i] = quoteIdent(c)
+				}
+				// $3 is the table; sbx is the sandbox's placeholder.
+				match := func(sbx string) string {
+					return `(x.` + strings.Join(cols, ", x.") + `) IN (SELECT s.` + strings.Join(cols, ", s.") + ` FROM ` + quoteIdent(tn) + ` s
+					WHERE s.tenant_id = ` + sbx + ` AND ` + keyIn("s", t, pubKeys("insert"), typed[tn]) + `)`
+				}
+				if err := save(t, `x.tenant_id = $4 AND `+match("$5"), sb.ParentID, sb.ID); err != nil {
+					return err
+				}
+				if _, err := tx.Exec(ctx, `DELETE FROM `+quoteIdent(tn)+` x WHERE x.tenant_id = $1 AND `+match("$2"), sb.ParentID, sb.ID, tn); err != nil {
+					return fmt.Errorf("publish replace %s: %w", tn, err)
 				}
 			}
 			// An inserted row did not exist: it is saved with before = null.
@@ -385,7 +417,7 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 				}
 			}
 			if _, err := tx.Exec(ctx, `INSERT INTO `+quoteIdent(tn)+` (`+strings.Join(cols, ", ")+`) SELECT `+strings.Join(sel, ", ")+` FROM `+quoteIdent(tn)+` s
-				WHERE s.tenant_id = $2 AND `+pkExpr("s", t)+` IN (SELECT pk FROM _pub WHERE tbl = $3 AND action = 'insert')`, sb.ParentID, sb.ID, tn); err != nil {
+				WHERE s.tenant_id = $2 AND `+keyIn("s", t, pubKeys("insert"), typed[tn]), sb.ParentID, sb.ID, tn); err != nil {
 				return fmt.Errorf("publish insert %s: %w", tn, err)
 			}
 		}
@@ -394,7 +426,7 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 		for _, tn := range tnames {
 			t := byName[tn]
 			if _, err := tx.Exec(ctx, `UPDATE sandbox_publish_rows r SET after_hash = `+rowHash("x")+` FROM `+quoteIdent(tn)+` x
-				WHERE r.publish_id = $1 AND r.tbl = $2 AND x.tenant_id = $3 AND `+pkExpr("x", t)+` = r.pk`, res.ID, tn, sb.ParentID); err != nil {
+				WHERE r.publish_id = $1 AND r.tbl = $2 AND x.tenant_id = $3 AND `+keyEq("x", t, "r.pk", typed[tn]), res.ID, tn, sb.ParentID); err != nil {
 				return err
 			}
 		}
@@ -442,12 +474,30 @@ func (d *DB) PublishSandbox(ctx context.Context, sandboxID, actor string, areas,
 		}
 		return Emit(ctx, tx, sb.ParentID, TopicTenantReload, "", nil)
 	})
+	if err == nil && res.Applied >= analyzeAfter {
+		d.analyzeSandboxTables(ctx)
+	}
 	return res, err
 }
 
+// analyzeAfter: a publish or revert of this many rows refreshes statistics.
+const analyzeAfter = 1000
+
 // saveCascade saves the production rows that deleting t's chosen rows would
 // remove through ON DELETE CASCADE, when they are not deleted on their own.
-func (d *DB) saveCascade(ctx context.Context, tx pgx.Tx, parent tableInfo, tenant string, seq *int, pubID string) error {
+// sameKey is "rows a and b have the same key", by columns.
+func sameKey(a, b string, t tableInfo) string {
+	if len(t.pk) == 0 {
+		return pkExpr(a, t) + " = " + pkExpr(b, t)
+	}
+	conds := make([]string, len(t.pk))
+	for i, c := range t.pk {
+		conds[i] = a + "." + quoteIdent(c) + " = " + b + "." + quoteIdent(c)
+	}
+	return strings.Join(conds, " AND ")
+}
+
+func (d *DB) saveCascade(ctx context.Context, tx pgx.Tx, parent tableInfo, tenant string, seq *int, pubID string, typed bool) error {
 	rows, err := tx.Query(ctx, `SELECT conrelid::regclass::text,
 			(SELECT array_agg(a.attname ORDER BY k.n) FROM unnest(conkey) WITH ORDINALITY k(attnum, n) JOIN pg_attribute a ON a.attrelid = conrelid AND a.attnum = k.attnum),
 			(SELECT array_agg(a.attname ORDER BY k.n) FROM unnest(confkey) WITH ORDINALITY k(attnum, n) JOIN pg_attribute a ON a.attrelid = confrelid AND a.attnum = k.attnum)
@@ -489,7 +539,7 @@ func (d *DB) saveCascade(ctx context.Context, tx pgx.Tx, parent tableInfo, tenan
 		}
 		tag, err := tx.Exec(ctx, `INSERT INTO sandbox_publish_rows (publish_id, seq, tbl, pk, before, after_hash)
 			SELECT $1, $2 + row_number() OVER (), $3, `+pkExpr("c", ct)+`, to_jsonb(c.*), '' FROM `+quoteIdent(ct.name)+` c JOIN `+quoteIdent(parent.name)+` p ON `+strings.Join(on, " AND ")+`
-			WHERE p.tenant_id = $4 AND `+pkExpr("p", parent)+` IN (SELECT pk FROM _pub WHERE tbl = $5 AND action = 'delete')
+			WHERE p.tenant_id = $4 AND `+keyIn("p", parent, `SELECT pk FROM _pub WHERE tbl = $5 AND action = 'delete'`, typed)+`
 			AND NOT EXISTS (SELECT 1 FROM sandbox_publish_rows r WHERE r.publish_id = $1 AND r.tbl = $3 AND r.pk = `+pkExpr("c", ct)+`)`,
 			pubID, *seq, ct.name, tenant, parent.name)
 		if err != nil {
@@ -602,7 +652,8 @@ func (d *DB) RevertPublish(ctx context.Context, parent, publishID, actor string,
 		var changed []string
 		for tn := range groupTables(all, func(r row) string { return r.tbl }) {
 			t := byName[tn]
-			crow, err := tx.Query(ctx, `SELECT r.pk FROM sandbox_publish_rows r LEFT JOIN `+quoteIdent(tn)+` x ON x.tenant_id = $3 AND `+pkExpr("x", t)+` = r.pk
+			typed := typedKeys(ctx, tx, t, `SELECT pk FROM sandbox_publish_rows WHERE publish_id = $1 AND tbl = $2`, publishID, tn)
+			crow, err := tx.Query(ctx, `SELECT r.pk FROM sandbox_publish_rows r LEFT JOIN `+quoteIdent(tn)+` x ON x.tenant_id = $3 AND `+keyEq("x", t, "r.pk", typed)+`
 				WHERE r.publish_id = $1 AND r.tbl = $2 AND COALESCE(`+rowHash("x")+`, '') <> r.after_hash AND NOT (x.tenant_id IS NULL AND r.after_hash = '')`, publishID, tn, parent)
 			if err != nil {
 				return err
@@ -642,7 +693,8 @@ func (d *DB) RevertPublish(ctx context.Context, parent, publishID, actor string,
 			if run[0].before == nil {
 				// Rows the publish added: removed (their own children were
 				// added by the same publish and go with them).
-				if _, err := tx.Exec(ctx, `DELETE FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1 AND `+pkExpr("x", t)+` = ANY($2)`, parent, pks); err != nil {
+				typed := typedKeys(ctx, tx, t, `SELECT unnest($1::text[])`, pks)
+				if _, err := tx.Exec(ctx, `DELETE FROM `+quoteIdent(t.name)+` x WHERE x.tenant_id = $1 AND `+keyIn("x", t, `SELECT unnest($2::text[])`, typed), parent, pks); err != nil {
 					return fmt.Errorf("revert %s: %w", t.name, err)
 				}
 			} else {
@@ -707,8 +759,16 @@ func (d *DB) RevertPublish(ctx context.Context, parent, publishID, actor string,
 	if errors.As(err, &conflict) {
 		return 0, conflict.Rows, err
 	}
+	if err == nil && n >= analyzeAfter {
+		d.analyzeSandboxTables(ctx)
+	}
 	return n, nil, err
 }
+
+// naturalKey: derived tables whose rows are identified by their content
+// (a unique key besides the id), so the same row can exist on both sides
+// with different ids.
+var naturalKey = map[string][]string{"kg_edges": {"src_kind", "src_id", "rel", "dst_kind", "dst_id"}}
 
 // appendOnly tables never lose a row in production.
 var appendOnly = map[string]bool{"site_revisions": true, "audit_log": true, "order_events": true, "ledger_entries": true, "price_history": true}

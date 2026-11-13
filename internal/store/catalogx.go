@@ -137,7 +137,10 @@ func (d *DB) SaveProduct(ctx context.Context, tenant, actor string, w ProductWri
 	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
 		var err error
 		version, err = saveProductTx(ctx, tx, tenant, actor, w, expectedVersion)
-		return err
+		if err != nil {
+			return err
+		}
+		return d.sandboxRoom(ctx, tx, tenant)
 	})
 	return version, err
 }
@@ -1416,7 +1419,7 @@ func (d *DB) ApplyImportBatch(ctx context.Context, tenant, actor string, ips []c
 			}
 			out[i] = ImportOutcome{Created: created}
 		}
-		return nil
+		return d.sandboxRoom(ctx, tx, tenant)
 	})
 	if err != nil {
 		for i := range out {

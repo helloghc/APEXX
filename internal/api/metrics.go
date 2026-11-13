@@ -104,6 +104,7 @@ func (s *Server) serveMetrics(w http.ResponseWriter, _ *http.Request) {
 	fmt.Fprintf(&b, "apexx_panics_total %d\napexx_bulkhead_rejects_total %d\napexx_worker_restarts_total %d\napexx_breaker_open_total %d\n",
 		resilience.Panics.Load(), resilience.BulkheadRejects.Load(), resilience.WorkerRestarts.Load(), resilience.BreakerOpenTotal.Load())
 	workerMetrics(&b)
+	s.writeSandboxMetrics(&b)
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 	_, _ = w.Write([]byte(b.String()))
 }

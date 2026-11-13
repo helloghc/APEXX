@@ -81,6 +81,9 @@ type Server struct {
 	rules         rulesCache     // checkout rules app: settings and answers
 	tags          tagsCache      // tags and pixels of each store, built per version
 	env           envCache       // production or sandbox, per store
+	sbxStats      sbxMetrics     // requests and errors per sandbox, this node
+	sbxWork       sandboxWork    // copies and scheduled publishes running here
+	started       time.Time      // when this node started (per-node counters)
 	sandboxCopies sync.WaitGroup // copies running in the background (tests wait on it)
 	summaryMu     sync.Mutex
 	summaries     map[string]summaryAt // catalog summary per store, at a projection version
@@ -101,6 +104,7 @@ func (s *Server) Routes() http.Handler {
 	s.sites = map[string]*builder.Site{}
 	s.loginHits = map[string][]time.Time{}
 	s.metrics = newMetrics()
+	s.started = time.Now()
 	if s.Bulkhead == nil {
 		s.Bulkhead = resilience.NewBulkhead(256)
 	}
@@ -394,7 +398,7 @@ func (s *Server) authed(module, level string, h http.HandlerFunc) http.HandlerFu
 		defer release()
 		ctx, cancel := context.WithTimeout(auth.With(r.Context(), p), 15*time.Second)
 		defer cancel()
-		h(w, r.WithContext(ctx))
+		s.countSandbox(p.Tenant, w, func(w http.ResponseWriter) { h(w, r.WithContext(ctx)) })
 	}
 }
 
@@ -454,6 +458,12 @@ func unavailable(err error) bool {
 }
 
 func internalError(w http.ResponseWriter, log *slog.Logger, err error) {
+	// What the store's plan does not include is an answer, not a failure.
+	var quota *store.ErrSandboxQuota
+	if errors.As(err, &quota) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "plan_limit", Detail: quota.Error()})
+		return
+	}
 	if unavailable(err) {
 		// Nothing was written: every change is one transaction. Tell the person so.
 		if log != nil {

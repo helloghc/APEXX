@@ -19,6 +19,16 @@ const C = Number(process.env.APEXX_QA_CONCURRENCY || 16);
     'panel-inicio': ad('/v1/setup'),
     'simular-carrito': () => fetch(L.B + '/v1/carts/simulate', { method: 'POST', headers: { Authorization: 'Bearer ' + L.token(), 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: 'mx', items: [] }) }),
   };
+  // With a sandbox (run.sh with APEXX_QA_SANDBOX=1): its private storefront
+  // through a preview link, and its panel from a session inside it.
+  const SBX = process.env.APEXX_QA_SBX_ID;
+  if (SBX) {
+    const ck = { Cookie: 'apexx_sbx=' + process.env.APEXX_QA_SBX_COOKIE };
+    cases['sandbox-tienda'] = () => fetch(L.B + `/s/${SBX}/main/c`, { headers: { ...ck, 'X-Forwarded-For': L.shopperIP() } });
+    cases['sandbox-busqueda'] = () => fetch(L.B + `/s/${SBX}/api/suggest?q=cha`, { headers: { ...ck, 'X-Forwarded-For': L.shopperIP() } });
+    cases['sandbox-panel'] = () => fetch(L.B + '/v1/products?limit=50', { headers: { Authorization: 'Bearer ' + process.env.APEXX_QA_SBX_INSIDE } });
+    cases['sandbox-privado'] = () => fetch(L.B + `/s/${SBX}/main/c`, { headers: { 'X-Forwarded-For': L.shopperIP() } }); // 403 every time
+  }
   const names = Object.keys(cases);
   const expect = {};
   for (const n of names) {
@@ -62,5 +72,6 @@ const C = Number(process.env.APEXX_QA_CONCURRENCY || 16);
   res.perSecond.push(bucket);
   res.expect = expect;
   res.maxMs = Math.round(res.maxMs);
+  await fetch(L.B + '/v1/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + L.token() } });
   console.log(JSON.stringify(res));
 })();

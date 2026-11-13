@@ -52,11 +52,20 @@ CPID=$!
 trap 'kill $CPID 2>/dev/null; for p in $P1 $P2; do kill $(cat "$WORK/node-$p.pid") 2>/dev/null || true; done' EXIT
 sleep 3
 
+if [ "${APEXX_QA_SANDBOX:-}" = 1 ]; then
+	# Sandboxes under the relay: traffic to a sandbox, a publish scheduled
+	# for the middle of it, and a copy running on a node when it is replaced.
+	eval "$(APEXX_QA_WORK=$WORK APEXX_QA_BASE=http://127.0.0.1:$LB node "$here/sandbox.js" setup)"
+	export APEXX_QA_SBX_ID APEXX_QA_SBX_COOKIE APEXX_QA_SBX_INSIDE
+fi
 APEXX_QA_BASE=http://127.0.0.1:$LB node "$here/load.js" "$SECS" > "$WORK/load.json" &
 LPID=$!
 sleep 8
 for round in 1 2; do
 	for p in $P1 $P2; do
+		if [ "${APEXX_QA_SANDBOX:-}" = 1 ] && [ $round = 1 ] && [ $p = $P1 ]; then
+			APEXX_QA_WORK=$WORK APEXX_QA_BASE=http://127.0.0.1:$LB node "$here/sandbox.js" copy "http://127.0.0.1:$p"
+		fi
 		t0=$(date +%s.%N)
 		stop $p
 		t1=$(date +%s.%N)
@@ -68,6 +77,9 @@ for round in 1 2; do
 done
 wait $LPID
 cat "$WORK/load.json"
+if [ "${APEXX_QA_SANDBOX:-}" = 1 ]; then
+	APEXX_QA_WORK=$WORK APEXX_QA_BASE=http://127.0.0.1:$LB node "$here/sandbox.js" check | tee "$WORK/sandbox.json"
+fi
 python3 - "$WORK/load.json" <<'PY'
 import json, sys
 r = json.load(open(sys.argv[1]))

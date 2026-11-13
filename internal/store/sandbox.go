@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -71,7 +73,7 @@ var sandboxTables = map[string]tableRule{
 	"members": {mode: ruleMembers},
 	// Never copied: credentials and sessions.
 	"api_keys": {mode: ruleSkip}, "apps": {mode: ruleSkip}, "sessions": {mode: ruleSkip}, "payment_accounts": {mode: ruleSkip},
-	"channel_accounts": {mode: ruleSkip}, "channel_listings": {mode: ruleSkip}, "channel_orders": {mode: ruleSkip}, "tenant_keys": {mode: ruleSkip},
+	"channel_accounts": {mode: ruleSkip}, "channel_listings": {mode: ruleSkip}, "channel_orders": {mode: ruleSkip}, "tenant_keys": {mode: ruleSkip}, "tenant_plans": {mode: ruleSkip},
 	"webhook_subscriptions": {mode: ruleSkip}, "webhook_deliveries": {mode: ruleSkip}, "notification_settings": {mode: ruleSkip},
 	"domains": {mode: ruleSkip}, "invitations": {mode: ruleSkip}, "rep_handoffs": {mode: ruleSkip},
 	// Never copied: history (the sandbox starts its own).
@@ -126,30 +128,35 @@ var SandboxAreas = []SandboxArea{
 var publishFilter = map[string]string{
 	"tenant_docs": "kind NOT IN ('sso','ads_conversions','catalog_source','store_tags','store_tags_history','payments')",
 	"ai_chunks":   "source_kind = 'product'",
+	// Edges the graph only proposed are rebuilt by production itself; what
+	// a person decided (approved, rejected) travels.
+	"kg_edges": "status <> 'proposed'",
 }
 
 // Sandbox is the state of a store's sandbox.
 type Sandbox struct {
-	ID         string         `json:"id"`
-	ParentID   string         `json:"parentId"`
-	Status     string         `json:"status"`
-	DataMode   string         `json:"dataMode"`
-	Progress   map[string]any `json:"progress"`
-	Error      string         `json:"error,omitempty"`
-	CreatedBy  string         `json:"createdBy"`
-	CreatedAt  time.Time      `json:"createdAt"`
-	CopiedAt   *time.Time     `json:"copiedAt,omitempty"`
-	CopyMs     int            `json:"copyMs"`
-	LastUsedAt time.Time      `json:"lastUsedAt"`
-	WarnedAt   *time.Time     `json:"warnedAt,omitempty"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	HasPassword bool           `json:"hasPassword"`
+	ParentID    string         `json:"parentId"`
+	Status      string         `json:"status"`
+	DataMode    string         `json:"dataMode"`
+	Progress    map[string]any `json:"progress"`
+	Error       string         `json:"error,omitempty"`
+	CreatedBy   string         `json:"createdBy"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	CopiedAt    *time.Time     `json:"copiedAt,omitempty"`
+	CopyMs      int            `json:"copyMs"`
+	LastUsedAt  time.Time      `json:"lastUsedAt"`
+	WarnedAt    *time.Time     `json:"warnedAt,omitempty"`
 }
 
-const sandboxCols = `id, parent_id, status, data_mode, progress, error, created_by, created_at, copied_at, copy_ms, last_used_at, warned_at`
+const sandboxCols = `id, name, password_hash <> '', parent_id, status, data_mode, progress, error, created_by, created_at, copied_at, copy_ms, last_used_at, warned_at`
 
 func scanSandbox(row pgx.Row) (Sandbox, error) {
 	var s Sandbox
 	var prog []byte
-	err := row.Scan(&s.ID, &s.ParentID, &s.Status, &s.DataMode, &prog, &s.Error, &s.CreatedBy, &s.CreatedAt, &s.CopiedAt, &s.CopyMs, &s.LastUsedAt, &s.WarnedAt)
+	err := row.Scan(&s.ID, &s.Name, &s.HasPassword, &s.ParentID, &s.Status, &s.DataMode, &prog, &s.Error, &s.CreatedBy, &s.CreatedAt, &s.CopiedAt, &s.CopyMs, &s.LastUsedAt, &s.WarnedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return s, ErrNotFound
 	}
@@ -157,9 +164,31 @@ func scanSandbox(row pgx.Row) (Sandbox, error) {
 	return s, err
 }
 
-// SandboxOf returns the sandbox of a production store.
+// SandboxOf returns the first sandbox of a production store (the oldest).
 func (d *DB) SandboxOf(ctx context.Context, parent string) (Sandbox, error) {
-	return scanSandbox(d.System.QueryRow(ctx, `SELECT `+sandboxCols+` FROM sandboxes WHERE parent_id=$1`, parent))
+	return scanSandbox(d.System.QueryRow(ctx, `SELECT `+sandboxCols+` FROM sandboxes WHERE parent_id=$1 ORDER BY created_at, id LIMIT 1`, parent))
+}
+
+// SandboxesOf lists the sandboxes of a production store, oldest first.
+func (d *DB) SandboxesOf(ctx context.Context, parent string) ([]Sandbox, error) {
+	return d.listSandboxes(ctx, `SELECT `+sandboxCols+` FROM sandboxes WHERE parent_id=$1 ORDER BY created_at, id`, parent)
+}
+
+func (d *DB) listSandboxes(ctx context.Context, q string, args ...any) ([]Sandbox, error) {
+	rows, err := d.System.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Sandbox{}
+	for rows.Next() {
+		s, err := scanSandbox(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
 }
 
 // SandboxByID returns a sandbox by its own id.
@@ -169,20 +198,7 @@ func (d *DB) SandboxByID(ctx context.Context, id string) (Sandbox, error) {
 
 // Sandboxes lists every sandbox (lifecycle jobs).
 func (d *DB) Sandboxes(ctx context.Context) ([]Sandbox, error) {
-	rows, err := d.System.Query(ctx, `SELECT `+sandboxCols+` FROM sandboxes ORDER BY id`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Sandbox
-	for rows.Next() {
-		s, err := scanSandbox(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, s)
-	}
-	return out, rows.Err()
+	return d.listSandboxes(ctx, `SELECT `+sandboxCols+` FROM sandboxes ORDER BY id`)
 }
 
 // TenantKind says whether a store is production or a sandbox, and its parent.
@@ -198,34 +214,61 @@ func (d *DB) TenantKind(ctx context.Context, id string) (kind, parent string, er
 	return kind, parent, err
 }
 
-// ErrSandboxExists means the store already has its sandbox.
-var ErrSandboxExists = errors.New("store: the store already has a sandbox")
+// ErrSandboxExists means the store already has a sandbox with that name.
+var ErrSandboxExists = errors.New("store: the store already has a sandbox with that name")
 
 // StartSandbox creates the sandbox tenant (with its own data key) and marks
 // it as copying.
-func (d *DB) StartSandbox(ctx context.Context, parent, id, actor, dataMode string, wrappedKey []byte) error {
+func (d *DB) StartSandbox(ctx context.Context, parent, id, name, actor, dataMode string, wrappedKey []byte) error {
+	if name == "" {
+		name = "Sandbox"
+	}
+	plan, err := d.TenantPlan(ctx, parent)
+	if err != nil {
+		return err
+	}
+	if dataMode == "demo" && !plan.SandboxDemoData {
+		return &ErrSandboxQuota{What: "demo", Plan: plan}
+	}
 	return pgx.BeginFunc(ctx, d.System, func(tx pgx.Tx) error {
-		var kind, name string
-		if err := tx.QueryRow(ctx, `SELECT kind, name FROM tenants WHERE id=$1 FOR UPDATE`, parent).Scan(&kind, &name); err != nil {
+		var kind, storeName string
+		if err := tx.QueryRow(ctx, `SELECT kind, name FROM tenants WHERE id=$1 FOR UPDATE`, parent).Scan(&kind, &storeName); err != nil {
 			return err
 		}
 		if kind != "production" {
 			return errors.New("store: a sandbox cannot have its own sandbox")
 		}
-		var exists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM sandboxes WHERE parent_id=$1)`, parent).Scan(&exists); err != nil || exists {
-			if exists {
-				return ErrSandboxExists
-			}
+		// The parent row is locked: two creations at once count right.
+		var n int
+		var taken bool
+		if err := tx.QueryRow(ctx, `SELECT count(*), bool_or(lower(name) = lower($2)) IS TRUE FROM sandboxes WHERE parent_id=$1`, parent, name).Scan(&n, &taken); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO tenants (id, name, kind, parent_id) VALUES ($1, $2, 'sandbox', $3)`, id, name+" (sandbox)", parent); err != nil {
+		if taken {
+			return ErrSandboxExists
+		}
+		if n >= plan.Sandboxes {
+			return &ErrSandboxQuota{What: "sandboxes", Plan: plan}
+		}
+		if plan.SandboxMaxProducts > 0 {
+			var products int
+			if err := tx.QueryRow(ctx, `SELECT count(*) FROM products WHERE tenant_id=$1`, parent).Scan(&products); err != nil {
+				return err
+			}
+			if products > plan.SandboxMaxProducts {
+				return &ErrSandboxQuota{What: "products", Plan: plan, Count: products}
+			}
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO tenants (id, name, kind, parent_id) VALUES ($1, $2, 'sandbox', $3)`, id, name+" ("+storeName+")", parent); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO tenant_keys (tenant_id, wrapped_key) VALUES ($1,$2)`, id, wrappedKey); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO sandboxes (id, parent_id, status, data_mode, created_by) VALUES ($1,$2,'copying',$3,$4)`, id, parent, dataMode, actor)
+		_, err := tx.Exec(ctx, `INSERT INTO sandboxes (id, name, parent_id, status, data_mode, created_by) VALUES ($1,$2,$3,'copying',$4,$5)`, id, name, parent, dataMode, actor)
+		if isUnique(err) {
+			return ErrSandboxExists
+		}
 		return err
 	})
 }
@@ -268,9 +311,10 @@ func (d *DB) setSandboxProgress(ctx context.Context, id string, p map[string]any
 // ---------- tables ----------
 
 type tableInfo struct {
-	name string
-	cols []string // every column, in order
-	pk   []string // primary key columns without tenant_id
+	name    string
+	cols    []string // every column, in order
+	pk      []string // primary key columns without tenant_id
+	pkTypes []string // their SQL types, to read a key back into columns
 }
 
 var (
@@ -290,6 +334,8 @@ func (d *DB) storeTables(ctx context.Context) ([]tableInfo, error) {
 		SELECT c.relname,
 			(SELECT array_agg(a.attname ORDER BY a.attnum) FROM pg_attribute a WHERE a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped AND a.attgenerated=''),
 			COALESCE((SELECT array_agg(a.attname ORDER BY array_position(i.indkey, a.attnum)) FROM pg_index i JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum = ANY(i.indkey)
+				WHERE i.indrelid=c.oid AND i.indisprimary AND a.attname <> 'tenant_id'), '{}'),
+			COALESCE((SELECT array_agg(format_type(a.atttypid, a.atttypmod) ORDER BY array_position(i.indkey, a.attnum)) FROM pg_index i JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum = ANY(i.indkey)
 				WHERE i.indrelid=c.oid AND i.indisprimary AND a.attname <> 'tenant_id'), '{}')
 		FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
 		WHERE n.nspname='public' AND c.relkind='r' AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid=c.oid AND a.attname='tenant_id')`)
@@ -299,7 +345,7 @@ func (d *DB) storeTables(ctx context.Context) ([]tableInfo, error) {
 	byName := map[string]tableInfo{}
 	for rows.Next() {
 		var t tableInfo
-		if err := rows.Scan(&t.name, &t.cols, &t.pk); err != nil {
+		if err := rows.Scan(&t.name, &t.cols, &t.pk, &t.pkTypes); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -394,6 +440,59 @@ func pkExpr(alias string, t tableInfo) string {
 	return "concat_ws('|', " + strings.Join(parts, ", ") + ")"
 }
 
+// keyCols reads a key written by pkExpr (in SQL expression src) back into
+// the key's columns, so a lookup uses the (tenant_id, key) index instead of
+// computing pkExpr for every row of the table. Only valid when no key value
+// holds the separator (typedKeys checks it).
+func keyCols(t tableInfo, src string) []string {
+	out := make([]string, len(t.pk))
+	for i := range t.pk {
+		out[i] = "split_part(" + src + ", '|', " + strconv.Itoa(i+1) + ")::" + t.pkTypes[i]
+	}
+	return out
+}
+
+// keyIn is "row alias has one of the keys" (keys: SQL returning one text
+// column). typed: by columns, using the index; otherwise the exact text.
+func keyIn(alias string, t tableInfo, keys string, typed bool) string {
+	if !typed || len(t.pk) == 0 {
+		return pkExpr(alias, t) + " IN (" + keys + ")"
+	}
+	cols := make([]string, len(t.pk))
+	for i, c := range t.pk {
+		cols[i] = alias + "." + quoteIdent(c)
+	}
+	return "(" + strings.Join(cols, ", ") + ") IN (SELECT " + strings.Join(keyCols(t, "k.pk"), ", ") + " FROM (" + keys + ") k(pk))"
+}
+
+// keyEq is "row alias has the key in expression src".
+func keyEq(alias string, t tableInfo, src string, typed bool) string {
+	if !typed || len(t.pk) == 0 {
+		return pkExpr(alias, t) + " = " + src
+	}
+	conds := make([]string, len(t.pk))
+	for i, v := range keyCols(t, src) {
+		conds[i] = alias + "." + quoteIdent(t.pk[i]) + " = " + v
+	}
+	return strings.Join(conds, " AND ")
+}
+
+// typedKeys says whether every key in keys (SQL returning text) splits
+// into exactly the key's columns: then keyIn and keyEq may use the columns.
+func typedKeys(ctx context.Context, tx pgx.Tx, t tableInfo, keys string, args ...any) bool {
+	if len(t.pk) == 0 || len(t.pkTypes) != len(t.pk) {
+		return false
+	}
+	var bad bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM (`+keys+`) k(pk) WHERE array_length(string_to_array(k.pk, '|'), 1) IS DISTINCT FROM `+strconv.Itoa(len(t.pk))+`)`, args...).Scan(&bad)
+	return err == nil && !bad
+}
+
+// typedKey is typedKeys for one key known in Go.
+func typedKey(t tableInfo, pk string) bool {
+	return len(t.pk) > 0 && len(t.pkTypes) == len(t.pk) && strings.Count(pk, "|")+1 == len(t.pk)
+}
+
 // rowHash is the fingerprint of a row's content (without tenant_id).
 func rowHash(alias string) string {
 	return "md5((to_jsonb(" + alias + ".*) - 'tenant_id')::text)"
@@ -481,7 +580,18 @@ func (d *DB) CopySandbox(ctx context.Context, id string) (map[string]int64, erro
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
+	d.analyzeSandboxTables(ctx)
 	return counts, nil
+}
+
+// analyzeSandboxTables refreshes the planner's statistics after a bulk
+// change of the sandbox's own tables (a copy writes hundreds of thousands
+// of base rows at once). With stale numbers Postgres can pick a plan that
+// takes minutes for a revert that takes seconds.
+func (d *DB) analyzeSandboxTables(ctx context.Context) {
+	if _, err := d.System.Exec(ctx, `SELECT apexx_analyze_sandbox()`); err != nil {
+		slog.Warn("analyze sandbox tables", "err", err) // statistics only: nothing to undo
+	}
 }
 
 // SyncSandboxMembers makes the sandbox's team the production team: same

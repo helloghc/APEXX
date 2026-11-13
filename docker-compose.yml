@@ -135,8 +135,9 @@ services:
       - "127.0.0.1:9100:8080"
     # On SIGTERM a node answers /readyz with 503 for APEXX_DRAIN (Caddy stops
     # sending it traffic), finishes what is in flight and hands its job
-    # leases over; the grace period covers drain + shutdown.
-    stop_grace_period: 40s
+    # leases over; the grace period covers drain + shutdown, and up to 2
+    # minutes for a sandbox copy or scheduled publish running on the node.
+    stop_grace_period: 150s
     logging: *logging
     networks: [backend, frontend]
     deploy:

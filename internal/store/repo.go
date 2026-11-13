@@ -168,6 +168,9 @@ func (d *DB) UpsertProduct(ctx context.Context, tenant, actor string, p catalog.
 		if err != nil {
 			return err
 		}
+		if err := d.sandboxRoom(ctx, tx, tenant); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM variants WHERE tenant_id=$1 AND product_id=$2`, tenant, p.ID); err != nil {
 			return err
 		}

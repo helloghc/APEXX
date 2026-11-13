@@ -184,7 +184,18 @@ Cada tienda tiene un presupuesto mensual (10 USD por omisión) en *Búsqueda y o
 
 ## 7.3 Sandbox de las tiendas y dominios propios
 
-Cada tienda puede tener su sandbox: una copia completa y privada (ver `docs/sandbox.md`). No hace falta ningún servicio adicional; es una tienda más dentro de la misma base.
+Cada tienda puede tener sandboxes: copias completas y privadas (ver `docs/sandbox.md`). No hace falta ningún servicio adicional; cada uno es una tienda más dentro de la misma base.
+
+**Plan de cada tienda.** Por omisión, una tienda tiene 1 sandbox, sin límite de productos, con datos de prueba y publicaciones programadas. El operador lo cambia por tienda:
+
+```
+docker compose exec apexx apexx tenant plan --id mitienda --plan pro --sandboxes 3 --sandbox-products 100000
+docker compose exec apexx apexx tenant plan --id mitienda --show
+```
+
+`--sandboxes 0` quita el sandbox del plan; `--sandbox-demo-data=false` y `--sandbox-schedule=false` quitan los datos de prueba y la programación.
+
+**Reemplazar nodos.** Un nodo que se apaga espera hasta 2 minutos a que terminen las copias de sandbox y las publicaciones programadas que lleva. Dale al contenedor al menos ese tiempo antes de forzarlo (`stop_grace_period: 150s` en compose, o el equivalente del orquestador).
 
 **Direcciones**
 - Sin configurar nada, cada sandbox vive en `https://APEXX_DOMAIN/s/{id}/main/`.

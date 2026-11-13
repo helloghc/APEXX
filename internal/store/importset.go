@@ -213,6 +213,9 @@ func (d *DB) ApplyNewProducts(ctx context.Context, tenant, actor string, ips []c
 		if err := vrows.Err(); err != nil {
 			return err
 		}
+		if err := d.sandboxRoom(ctx, tx, tenant); err != nil {
+			return err
+		}
 
 		var vSKU, vPID, vTitle, vOpts, vBar []string
 		var vW, vPos []int64

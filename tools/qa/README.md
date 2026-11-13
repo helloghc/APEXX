@@ -71,3 +71,20 @@ APEXX_BIN=./apexx CADDY_BIN=/ruta/a/caddy tools/qa/relevo/run.sh
 Levanta dos nodos y Caddy con las mismas reglas de `deploy/caddy/Caddyfile` y manda tráfico constante con `relevo/load.js` (16 clientes: tienda, API, panel y un POST). Mientras tanto reemplaza cada nodo dos veces. Pasa si ninguna petición falla.
 
 Para el control, repítelo con `APEXX_DRAIN=0s`: deben aparecer fallos o esperas largas, lo que prueba que el drenado es lo que los evita.
+
+**Con sandboxes** (`APEXX_QA_SANDBOX=1`), además:
+1. Crea un sandbox con todo el catálogo y le manda tráfico durante el relevo: su tienda con un enlace de vista previa, su búsqueda, su panel desde una sesión dentro y una visita sin acceso, que debe dar 403 siempre.
+2. Cambia un producto en el sandbox y programa su publicación para la mitad del relevo.
+3. Justo antes de reemplazar el primer nodo, le pide ahí la copia de un segundo sandbox: el nodo debe esperar a que termine antes de apagarse.
+
+Al final `relevo/sandbox.js check` exige:
+- la segunda copia lista y completa;
+- la publicación programada hecha una sola vez y visible en producción;
+- la reversión exacta;
+- los dos sandboxes borrados sin dejar tiendas.
+
+Para medirlo con 50 000 productos, córrelo dentro de la prueba de escala:
+
+```
+APEXX_QA_SANDBOX=1 APEXX_QA_WITH_LOAD="SECS=100 APEXX_BIN=./apexx CADDY_BIN=/ruta/a/caddy bash ../relevo/run.sh" node run.js 50000
+```

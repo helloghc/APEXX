@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, CheckCircle2, CircleAlert, Database, FileSearch, Gauge, RefreshCw, ScrollText, ShieldCheck, TriangleAlert, Wrench, X } from "lucide-react";
 import { useState, type FormEvent, type ReactNode } from "react";
-import { api, errorMessage, type Me } from "@/api";
+import { api, errorMessage, request, type Me } from "@/api";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -647,6 +647,7 @@ function Estado({ me }: { me: Me }) {
   return (
     <>
       <ErrorBox error={q.error} onRetry={() => void q.refetch()} />
+      {q.data && <SandboxMetrics />}
       {q.data ? (
         <StatusBoard s={q.data} now={now} />
       ) : (
@@ -691,6 +692,106 @@ function Estado({ me }: { me: Me }) {
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+interface SandboxOps {
+  id: string;
+  name: string;
+  status: string;
+  hasPassword: boolean;
+  products: number;
+  prices: number;
+  orders: number;
+  copiedAt?: string;
+  copyMs: number;
+  lastUsedAt: string;
+  expiresAt?: string;
+  publishes: number;
+  lastPublishAt?: string;
+  scheduled: number;
+  mailCaptured: number;
+  aiRequests: number;
+  aiCostUsd: number;
+  node: { requests: number; errors: number; denied: number; lastAt?: string };
+}
+
+const SBX_STATUS: Record<string, string> = { ready: "Listo", copying: "Copiando", failed: "Copia fallida", deleting: "Borrando" };
+
+/** Each sandbox of the store: size, copies, publishes, traffic and AI use. */
+function SandboxMetrics() {
+  const q = useQuery({
+    queryKey: ["ops", "sandboxes"],
+    queryFn: () => request<{ items: SandboxOps[]; since: string }>("GET", "/v1/ops/sandboxes"),
+    refetchInterval: 30_000,
+  });
+  if (!q.data?.items.length) return null;
+  const d = q.data;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sandboxes</CardTitle>
+        <CardDescription>Tamaño, copias, publicaciones y uso de cada sandbox. Las solicitudes cuentan las de este servidor desde {dateTime(d.since)}.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <caption className="sr-only">Métricas de cada sandbox</caption>
+            <thead className="bg-muted text-xs text-muted-foreground">
+              <tr>
+                <th scope="col" className="h-9 px-3 text-left font-semibold">Sandbox</th>
+                <th scope="col" className="px-3 text-right font-semibold">Productos</th>
+                <th scope="col" className="hidden px-3 text-right font-semibold md:table-cell">Última copia</th>
+                <th scope="col" className="px-3 text-right font-semibold">Solicitudes</th>
+                <th scope="col" className="px-3 text-right font-semibold">Errores</th>
+                <th scope="col" className="hidden px-3 text-right font-semibold md:table-cell">Publicaciones</th>
+                <th scope="col" className="hidden px-3 text-right font-semibold lg:table-cell">Correos capturados</th>
+                <th scope="col" className="hidden px-3 text-right font-semibold lg:table-cell">IA (30 días)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.items.map((x) => (
+                <tr key={x.id} className="border-t align-top">
+                  <td className="px-3 py-2">
+                    <span className="font-medium">{x.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {SBX_STATUS[x.status] ?? x.status}
+                      {x.hasPassword ? " · con contraseña" : ""}
+                      {x.expiresAt ? ` · vence ${dateTime(x.expiresAt)}` : " · no vence"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {num(x.products)}
+                    <span className="block text-xs text-muted-foreground">{num(x.prices)} precios</span>
+                  </td>
+                  <td className="hidden px-3 py-2 text-right md:table-cell">
+                    {x.copiedAt ? dateTime(x.copiedAt) : "—"}
+                    <span className="block text-xs text-muted-foreground">{x.copyMs ? `${(x.copyMs / 1000).toFixed(1)} s` : ""}</span>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {num(x.node.requests)}
+                    {x.node.denied > 0 && <span className="block text-xs text-muted-foreground">{num(x.node.denied)} sin acceso</span>}
+                  </td>
+                  <td className={cn("px-3 py-2 text-right tabular-nums", x.node.errors > 0 && "text-bad")}>{num(x.node.errors)}</td>
+                  <td className="hidden px-3 py-2 text-right md:table-cell">
+                    {num(x.publishes)}
+                    <span className="block text-xs text-muted-foreground">
+                      {x.lastPublishAt ? `última ${dateTime(x.lastPublishAt)}` : "ninguna"}
+                      {x.scheduled > 0 ? ` · ${x.scheduled} programadas` : ""}
+                    </span>
+                  </td>
+                  <td className="hidden px-3 py-2 text-right tabular-nums lg:table-cell">{num(x.mailCaptured)}</td>
+                  <td className="hidden px-3 py-2 text-right tabular-nums lg:table-cell">
+                    {num(x.aiRequests)}
+                    <span className="block text-xs text-muted-foreground">US$ {x.aiCostUsd.toFixed(2)}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

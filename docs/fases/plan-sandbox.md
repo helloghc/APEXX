@@ -1,6 +1,6 @@
 # Plan: sandbox por tienda
 
-Fecha: 13 de noviembre de 2026. Estado: **construido y validado** (SBX-0 a SBX-3 completos; SBX-4 y SBX-5 sin cupos por plan, métricas por sandbox ni prueba de relevo de nodos). Referencia técnica y mediciones: [`docs/sandbox.md`](../sandbox.md).
+Fecha: 13 de noviembre de 2026. Estado: **construido y validado completo** (SBX-0 a SBX-5, más cupos por plan, varios sandboxes, publicación programada, contraseña, métricas y relevo de nodos). Referencia técnica y mediciones: [`docs/sandbox.md`](../sandbox.md).
 
 ## Qué es
 
@@ -156,6 +156,7 @@ Al crear el sandbox se copian las etiquetas, y el cliente elige un modo por cada
 
 Lo construido, con sus pruebas y mediciones, está en [`docs/sandbox.md`](../sandbox.md). Diferencias con este plan:
 - **Clientes y pedidos:** no se copian anonimizados. Los datos personales están cifrados con la tienda y el registro como datos asociados, así que el sandbox nace sin ellos o con datos de prueba generados.
-- **Cupos por plan, publicación programada, contraseña opcional y métricas por sandbox:** quedan pendientes. Hoy hay un sandbox por tienda.
+- **Cupos por plan:** Apexx no tenía planes comerciales. Se agregó `tenant_plans`, que fija el operador con `apexx tenant plan`: cuántos sandboxes, cuántos productos caben en cada uno, y si incluye datos de prueba y publicaciones programadas.
+- **Publicación programada, contraseña opcional, métricas por sandbox y relevo de nodos:** construidos y probados. Ver `docs/sandbox.md`.
 - **Webhooks, canales y conversiones del servidor:** no se copian y conectarlos dentro del sandbox se rechaza. Las automatizaciones y los almacenes externos copiados registran «Capturado en el sandbox» en vez de llamar afuera.
 

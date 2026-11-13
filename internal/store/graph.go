@@ -37,6 +37,42 @@ func (d *DB) ProposeEdges(ctx context.Context, tenant string, es []Edge) (int, e
 	}
 	var n int
 	err := d.Tx(ctx, tenant, func(tx pgx.Tx) error {
+		// The products at both ends are locked (key share) before the
+		// insert: a deletion running now finishes first and its products
+		// are then left out, so no edge outlives its product.
+		var pids []string
+		for _, e := range es {
+			if e.SrcKind == "product" {
+				pids = append(pids, e.SrcID)
+			}
+			if e.DstKind == "product" {
+				pids = append(pids, e.DstID)
+			}
+		}
+		if len(pids) > 0 {
+			rows, err := tx.Query(ctx, `SELECT id FROM products WHERE tenant_id=$1 AND id = ANY($2) ORDER BY id FOR KEY SHARE`, tenant, pids)
+			if err != nil {
+				return err
+			}
+			alive, err := pgx.CollectRows(rows, pgx.RowTo[string])
+			if err != nil {
+				return err
+			}
+			live := make(map[string]bool, len(alive))
+			for _, id := range alive {
+				live[id] = true
+			}
+			kept := es[:0:0]
+			for _, e := range es {
+				if (e.SrcKind != "product" || live[e.SrcID]) && (e.DstKind != "product" || live[e.DstID]) {
+					kept = append(kept, e)
+				}
+			}
+			es = kept
+			if len(es) == 0 {
+				return nil
+			}
+		}
 		k := len(es)
 		ids, sk, si, rel, dk, di, src := make([]string, k), make([]string, k), make([]string, k), make([]string, k), make([]string, k), make([]string, k), make([]string, k)
 		conf := make([]float64, k)

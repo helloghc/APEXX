@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -123,6 +124,24 @@ func (s *Server) routesSandbox(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/sandbox/publishes", s.authed("settings", auth.Read, s.listPublishes))
 	handle("POST /v1/sandbox/publishes/{id}/revert", s.authed("settings", auth.Admin, s.revertPublish))
 	handle("GET /v1/sandbox/mail", s.authed("settings", auth.Read, s.sandboxMail))
+	handle("GET /v1/sandbox/schedules", s.authed("settings", auth.Read, s.listSchedules))
+	handle("PUT /v1/sandbox/password", s.authed("settings", auth.Admin, s.setSandboxPassword))
+	handle("PUT /v1/sandboxes/{id}/password", s.authed("settings", auth.Admin, s.setSandboxPassword))
+	handle("DELETE /v1/sandbox/schedules/{id}", s.authed("settings", auth.Admin, s.cancelSchedule))
+
+	// Several sandboxes per store (as many as the plan includes): the same
+	// actions for one sandbox by its id.
+	handle("GET /v1/sandboxes", s.authed("settings", auth.Read, s.listSandboxes))
+	handle("POST /v1/sandboxes", s.authed("settings", auth.Admin, s.createSandbox))
+	handle("GET /v1/sandboxes/{id}", s.authed("settings", auth.Read, s.getSandbox))
+	handle("PATCH /v1/sandboxes/{id}", s.authed("settings", auth.Admin, s.renameSandbox))
+	handle("DELETE /v1/sandboxes/{id}", s.authed("settings", auth.Admin, s.deleteSandbox))
+	handle("POST /v1/sandboxes/{id}/refresh", s.authed("settings", auth.Admin, s.refreshSandbox))
+	handle("POST /v1/sandboxes/{id}/enter", s.authed("", "", s.enterSandbox))
+	handle("POST /v1/sandboxes/{id}/preview", s.authed("settings", auth.Read, s.previewSandbox))
+	handle("GET /v1/sandboxes/{id}/diff", s.authed("settings", auth.Read, s.sandboxDiff))
+	handle("POST /v1/sandboxes/{id}/publish", s.authed("settings", auth.Admin, s.publishSandbox))
+	handle("GET /v1/sandboxes/{id}/mail", s.authed("settings", auth.Read, s.sandboxMail))
 }
 
 // sandboxHooks keep every node's copies right when a store is reloaded
@@ -181,42 +200,148 @@ type sandboxView struct {
 	ExpiresAt *time.Time       `json:"expiresAt,omitempty"`
 }
 
-// pairOf returns the production store and its sandbox for any of the two.
-func (s *Server) pairOf(ctx context.Context, tenant string) (parent string, sb store.Sandbox, err error) {
+// targetSandbox resolves the production store and the sandbox a request is
+// about: the {id} in the path (a sandbox of the same store), or else the
+// sandbox the person is in, or else the store's first sandbox.
+func (s *Server) targetSandbox(r *http.Request) (parent string, sb store.Sandbox, err error) {
+	tenant := principal(r).Tenant
 	parent = tenant
-	if e := s.envOf(tenant); e.kind == "sandbox" {
+	e := s.envOf(tenant)
+	if e.kind == "sandbox" {
 		parent = e.parent
 	}
-	sb, err = s.DB.SandboxOf(ctx, parent)
+	switch id := r.PathValue("id"); {
+	case id != "":
+		sb, err = s.DB.SandboxByID(r.Context(), id)
+		if err == nil && sb.ParentID != parent {
+			return parent, store.Sandbox{}, store.ErrNotFound // another store's sandbox does not exist here
+		}
+	case e.kind == "sandbox":
+		sb, err = s.DB.SandboxByID(r.Context(), tenant)
+	default:
+		sb, err = s.DB.SandboxOf(r.Context(), parent)
+	}
 	return parent, sb, err
+}
+
+// parentOf is the production store of a request (itself, or the sandbox's).
+func (s *Server) parentOf(tenant string) string {
+	if e := s.envOf(tenant); e.kind == "sandbox" {
+		return e.parent
+	}
+	return tenant
 }
 
 const sandboxIdleDays = 30
 
+func sandboxAreas() []map[string]any {
+	var out []map[string]any
+	for _, a := range store.SandboxAreas {
+		out = append(out, map[string]any{"id": a.ID, "label": a.Label})
+	}
+	return append(out, map[string]any{"id": "tags", "label": "Etiquetas y píxeles"})
+}
+
+// fill completes a view with a sandbox's address, domains and expiry.
+func (s *Server) fill(r *http.Request, v *sandboxView, sb store.Sandbox) {
+	v.Sandbox = &sb
+	v.URL = s.sandboxURL(r, sb.ID)
+	hosts, _ := s.sandboxDomains(r.Context(), sb.ID)
+	v.Domains = hosts
+	if !s.hasOwnDomain(hosts) {
+		exp := sb.LastUsedAt.Add(sandboxIdleDays * 24 * time.Hour)
+		v.ExpiresAt = &exp
+	}
+}
+
 func (s *Server) getSandbox(w http.ResponseWriter, r *http.Request) {
 	pr := principal(r)
 	e := s.envOf(pr.Tenant)
-	v := sandboxView{Env: e.kind, Parent: e.parent, Domains: []string{}}
-	for _, a := range store.SandboxAreas {
-		v.Areas = append(v.Areas, map[string]any{"id": a.ID, "label": a.Label})
+	v := sandboxView{Env: e.kind, Parent: e.parent, Domains: []string{}, Areas: sandboxAreas()}
+	_, sb, err := s.targetSandbox(r)
+	if errors.Is(err, store.ErrNotFound) && r.PathValue("id") != "" {
+		apierr.NotFound(w, "Sandbox no encontrado")
+		return
 	}
-	v.Areas = append(v.Areas, map[string]any{"id": "tags", "label": "Etiquetas y píxeles"})
-	_, sb, err := s.pairOf(r.Context(), pr.Tenant)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		internalError(w, s.Log, err)
 		return
 	}
 	if err == nil {
-		v.Sandbox = &sb
-		v.URL = s.sandboxURL(r, sb.ID)
-		hosts, _ := s.sandboxDomains(r.Context(), sb.ID)
-		v.Domains = hosts
-		if !s.hasOwnDomain(hosts) {
-			exp := sb.LastUsedAt.Add(sandboxIdleDays * 24 * time.Hour)
-			v.ExpiresAt = &exp
-		}
+		s.fill(r, &v, sb)
 	}
 	httpx.JSON(w, r, http.StatusOK, v)
+}
+
+// listSandboxes lists the store's sandboxes with what its plan includes.
+func (s *Server) listSandboxes(w http.ResponseWriter, r *http.Request) {
+	pr := principal(r)
+	e := s.envOf(pr.Tenant)
+	parent := s.parentOf(pr.Tenant)
+	list, err := s.DB.SandboxesOf(r.Context(), parent)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	plan, err := s.DB.TenantPlan(r.Context(), parent)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	items := make([]sandboxView, 0, len(list))
+	for _, sb := range list {
+		v := sandboxView{Env: e.kind, Parent: e.parent, Domains: []string{}}
+		s.fill(r, &v, sb)
+		items = append(items, v)
+	}
+	current := ""
+	if e.kind == "sandbox" {
+		current = pr.Tenant
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"env": e.kind, "parent": e.parent, "current": current, "items": items,
+		"plan": plan, "used": len(list), "areas": sandboxAreas()})
+}
+
+// renameSandbox changes a sandbox's name.
+func (s *Server) renameSandbox(w http.ResponseWriter, r *http.Request) {
+	pr := principal(r)
+	var body struct {
+		Name string `json:"name"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	name, ok := sandboxName(w, body.Name)
+	if !ok {
+		return
+	}
+	parent, sb, err := s.targetSandbox(r)
+	if s.storeError(w, err, "Sandbox no encontrado") {
+		return
+	}
+	if err := s.DB.RenameSandbox(r.Context(), sb.ID, name); err != nil {
+		if errors.Is(err, store.ErrSandboxExists) {
+			apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "sandbox_exists", Detail: "Ya tienes un sandbox con ese nombre"})
+			return
+		}
+		internalError(w, s.Log, err)
+		return
+	}
+	_ = s.DB.Tx(r.Context(), parent, func(tx pgx.Tx) error {
+		return store.Audit(r.Context(), tx, parent, pr.Actor(), "sandbox.rename", sb.ID, map[string]any{"from": sb.Name, "to": name})
+	})
+	sb.Name = name
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"sandbox": sb})
+}
+
+// sandboxName checks a sandbox's name (1 to 60 characters).
+func sandboxName(w http.ResponseWriter, raw string) (string, bool) {
+	name := strings.Join(strings.Fields(raw), " ")
+	if name == "" || len([]rune(name)) > 60 {
+		apierr.BadRequest(w, "Revisa el nombre", apierr.FieldError{Field: "name", Code: "invalid", Message: "Escribe un nombre de hasta 60 caracteres"})
+		return "", false
+	}
+	return name, true
 }
 
 // sandboxDomains lists the verified addresses of a sandbox.
@@ -243,12 +368,36 @@ func (s *Server) hasOwnDomain(hosts []string) bool {
 	return false
 }
 
+// planRoom checks that a copy of production fits the plan's product limit.
+func (s *Server) planRoom(ctx context.Context, parent string) error {
+	plan, err := s.DB.TenantPlan(ctx, parent)
+	if err != nil || plan.SandboxMaxProducts == 0 {
+		return err
+	}
+	var n int
+	if err := s.DB.System.QueryRow(ctx, `SELECT count(*) FROM products WHERE tenant_id=$1`, parent).Scan(&n); err != nil {
+		return err
+	}
+	if n > plan.SandboxMaxProducts {
+		return &store.ErrSandboxQuota{What: "products", Plan: plan, Count: n}
+	}
+	return nil
+}
+
 func (s *Server) createSandbox(w http.ResponseWriter, r *http.Request) {
 	pr := principal(r)
 	var body struct {
+		Name     string `json:"name"`
 		DataMode string `json:"dataMode"`
 	}
 	if r.ContentLength != 0 && !decode(w, r, &body) {
+		return
+	}
+	if body.Name == "" {
+		body.Name = "Sandbox"
+	}
+	name, ok := sandboxName(w, body.Name)
+	if !ok {
 		return
 	}
 	if body.DataMode == "" {
@@ -268,9 +417,9 @@ func (s *Server) createSandbox(w http.ResponseWriter, r *http.Request) {
 		internalError(w, s.Log, err)
 		return
 	}
-	if err := s.DB.StartSandbox(r.Context(), pr.Tenant, id, pr.Actor(), body.DataMode, wrapped); err != nil {
+	if err := s.DB.StartSandbox(r.Context(), pr.Tenant, id, name, pr.Actor(), body.DataMode, wrapped); err != nil {
 		if errors.Is(err, store.ErrSandboxExists) {
-			apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "sandbox_exists", Detail: "Tu tienda ya tiene su sandbox. Puedes refrescarlo o borrarlo."})
+			apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "sandbox_exists", Detail: "Ya tienes un sandbox llamado «" + name + "». Usa otro nombre, o refréscalo o bórralo."})
 			return
 		}
 		internalError(w, s.Log, err)
@@ -281,7 +430,7 @@ func (s *Server) createSandbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = s.DB.Tx(r.Context(), pr.Tenant, func(tx pgx.Tx) error {
-		return store.Audit(r.Context(), tx, pr.Tenant, pr.Actor(), "sandbox.create", id, map[string]any{"dataMode": body.DataMode})
+		return store.Audit(r.Context(), tx, pr.Tenant, pr.Actor(), "sandbox.create", id, map[string]any{"dataMode": body.DataMode, "name": name})
 	})
 	s.forgetEnv(pr.Tenant)
 	s.runSandboxCopy(id, pr.Tenant, body.DataMode, false)
@@ -292,9 +441,14 @@ func (s *Server) createSandbox(w http.ResponseWriter, r *http.Request) {
 // runSandboxCopy copies production into the sandbox in the background (a
 // 50 000-product store takes seconds); the panel shows the progress.
 func (s *Server) runSandboxCopy(id, parent, dataMode string, refresh bool) {
+	if !s.sbxWork.start(id, "copy") {
+		_ = s.DB.SetSandboxStatus(context.Background(), id, "failed", "El servidor se estaba reiniciando. Refresca el sandbox para copiarlo.", 0)
+		return
+	}
 	s.sandboxCopies.Add(1)
 	go func() {
 		defer s.sandboxCopies.Done()
+		defer s.sbxWork.done(id)
 		ctx := context.Background()
 		start := time.Now()
 		fail := func(err error) {
@@ -435,8 +589,12 @@ func (s *Server) seedSandboxDemo(ctx context.Context, id string) error {
 
 func (s *Server) refreshSandbox(w http.ResponseWriter, r *http.Request) {
 	pr := principal(r)
-	parent, sb, err := s.pairOf(r.Context(), pr.Tenant)
+	parent, sb, err := s.targetSandbox(r)
 	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
+		return
+	}
+	if err := s.planRoom(r.Context(), parent); err != nil {
+		internalError(w, s.Log, err)
 		return
 	}
 	if sb.Status == "copying" {
@@ -461,7 +619,7 @@ func (s *Server) deleteSandbox(w http.ResponseWriter, r *http.Request) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "in_sandbox", Detail: "El sandbox se borra desde producción."})
 		return
 	}
-	sb, err := s.DB.SandboxOf(r.Context(), pr.Tenant)
+	_, sb, err := s.targetSandbox(r)
 	if s.storeError(w, err, "Tu tienda no tiene sandbox") {
 		return
 	}
@@ -484,6 +642,7 @@ func (s *Server) removeSandbox(ctx context.Context, sb store.Sandbox, actor stri
 	if err := s.DB.DeleteSandbox(ctx, sb.ID); err != nil {
 		return err
 	}
+	s.sbxStats.forget(sb.ID)
 	if rm, ok := s.Media.(media.TenantRemover); ok {
 		_ = rm.RemoveTenant(ctx, sb.ID)
 	}
@@ -511,19 +670,25 @@ func (s *Server) enterSandbox(w http.ResponseWriter, r *http.Request) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "members_only", Detail: "Solo las personas del equipo entran al sandbox"})
 		return
 	}
-	if s.isSandbox(pr.Tenant) {
-		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "in_sandbox", Detail: "Ya estás en el sandbox"})
+	parent, sb, err := s.targetSandbox(r)
+	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
 		return
 	}
-	sb, err := s.DB.SandboxOf(r.Context(), pr.Tenant)
-	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
+	if sb.ID == pr.Tenant {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "in_sandbox", Detail: "Ya estás en este sandbox"})
+		return
+	}
+	// From a sandbox to another one of the same store: the person must
+	// still be in production's team.
+	if _, ok := s.memberIn(r.Context(), parent, pr); !ok {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "not_member", Detail: "No formas parte del equipo de esa tienda"})
 		return
 	}
 	if sb.Status != "ready" {
 		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "not_ready", Detail: "El sandbox aún no está listo"})
 		return
 	}
-	if err := s.DB.SyncSandboxMembers(r.Context(), pr.Tenant, sb.ID); err != nil {
+	if err := s.DB.SyncSandboxMembers(r.Context(), parent, sb.ID); err != nil {
 		internalError(w, s.Log, err)
 		return
 	}
@@ -593,7 +758,7 @@ func (s *Server) previewSandbox(w http.ResponseWriter, r *http.Request) {
 		apierr.BadRequest(w, "Revisa el vencimiento", apierr.FieldError{Field: "hours", Code: "too_long", Message: "Un enlace dura hasta 14 días"})
 		return
 	}
-	_, sb, err := s.pairOf(r.Context(), pr.Tenant)
+	_, sb, err := s.targetSandbox(r)
 	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
 		return
 	}
@@ -614,10 +779,19 @@ func (s *Server) previewSandbox(w http.ResponseWriter, r *http.Request) {
 // sandboxToken signs "sandbox|expiry" with the sandbox's own key: a link
 // opens only that sandbox, until it expires; deleting the sandbox voids it.
 func (s *Server) sandboxToken(ctx context.Context, id string, exp time.Time) (string, error) {
+	return s.signSandbox(ctx, id, exp, "")
+}
+
+// signSandbox signs a token; pw (the password's fingerprint) ties a token
+// given for the password to that password: changing it closes the door.
+func (s *Server) signSandbox(ctx context.Context, id string, exp time.Time, pw string) (string, error) {
 	if err := s.ensureKey(ctx, id); err != nil {
 		return "", err
 	}
 	payload := id + "|" + strconv.FormatInt(exp.Unix(), 10)
+	if pw != "" {
+		payload += "|" + pw
+	}
 	mac, err := s.Keys.Blind(id, "sandbox-preview", payload)
 	if err != nil {
 		return "", err
@@ -638,6 +812,13 @@ func (s *Server) validPreview(ctx context.Context, id, tok string) (time.Time, b
 	sid, ts, ok := strings.Cut(string(raw), "|")
 	if !ok || sid != id {
 		return time.Time{}, false
+	}
+	ts, pw, withPassword := strings.Cut(ts, "|")
+	if withPassword {
+		h, err := s.DB.SandboxPasswordHash(ctx, id)
+		if err != nil || h == "" || passwordPrint(h) != pw {
+			return time.Time{}, false
+		}
 	}
 	sec, err := strconv.ParseInt(ts, 10, 64)
 	if err != nil || time.Now().Unix() > sec {
@@ -674,6 +855,15 @@ func (s *Server) sandboxGate(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		sw := &statusWriter{ResponseWriter: w}
+		defer func() {
+			code := sw.code
+			if code == 0 {
+				code = http.StatusOK
+			}
+			s.sbxStats.add(tenant, code)
+		}()
+		w = sw
 		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 		if tok := r.URL.Query().Get("sbx"); tok != "" {
 			if exp, ok := s.validPreview(r.Context(), tenant, tok); ok {
@@ -707,16 +897,106 @@ func (s *Server) sandboxGate(next http.Handler) http.Handler {
 			apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "sandbox_private", Detail: "Este sandbox es privado"})
 			return
 		}
+		page := privatePage{}
+		if hash, err := s.DB.SandboxPasswordHash(r.Context(), tenant); err == nil && hash != "" {
+			page.Password = true
+			if r.Method == http.MethodPost {
+				if s.sandboxPasswordLogin(w, r, tenant, hash) {
+					return
+				}
+				page.Wrong = true
+			}
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusForbidden)
-		_ = sandboxPrivatePage.Execute(w, nil)
+		_ = sandboxPrivatePage.Execute(w, page)
 	})
 }
 
+type privatePage struct{ Password, Wrong bool }
+
+var (
+	passwordIPLimiter  = &shopLimiter{n: 10} // attempts per IP and sandbox per minute
+	passwordAllLimiter = &shopLimiter{n: 60} // attempts per sandbox per minute, from anywhere
+)
+
+// passwordPrint is a short fingerprint of the password's hash (never the
+// hash itself) that a token carries.
+func passwordPrint(hash string) string {
+	sum := sha256.Sum256([]byte(hash))
+	return hex.EncodeToString(sum[:6])
+}
+
+// sandboxPasswordLogin checks the storefront password; right, it leaves a
+// cookie for 12 hours and sends the person on to the page they asked for.
+func (s *Server) sandboxPasswordLogin(w http.ResponseWriter, r *http.Request, tenant, hash string) bool {
+	if !passwordIPLimiter.allow(tenant+"|"+s.clientIP(r)) || !passwordAllLimiter.allow(tenant) {
+		w.Header().Set("Retry-After", "60")
+		http.Error(w, "Demasiados intentos. Espera un minuto.", http.StatusTooManyRequests)
+		return true
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	if !auth.CheckPassword(hash, r.PostFormValue("sbx_password")) {
+		return false
+	}
+	exp := time.Now().Add(12 * time.Hour)
+	tok, err := s.signSandbox(r.Context(), tenant, exp, passwordPrint(hash))
+	if err != nil {
+		internalError(w, s.Log, err)
+		return true
+	}
+	http.SetCookie(w, &http.Cookie{Name: previewCookie, Value: tok, Path: "/", HttpOnly: true, Secure: s.SecureCookies, SameSite: http.SameSiteLaxMode, Expires: exp})
+	u := *r.URL
+	if customHost(r) {
+		u.Path = strings.TrimPrefix(u.Path, "/s/"+tenant+"/main")
+	}
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
+	return true
+}
+
+// setSandboxPassword sets or removes the storefront password.
+func (s *Server) setSandboxPassword(w http.ResponseWriter, r *http.Request) {
+	pr := principal(r)
+	var body struct {
+		Password string `json:"password"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if body.Password != "" && (len([]rune(body.Password)) < 8 || len(body.Password) > 128) {
+		apierr.BadRequest(w, "Revisa la contraseña", apierr.FieldError{Field: "password", Code: "invalid", Message: "Usa de 8 a 128 caracteres, o déjala vacía para quitarla"})
+		return
+	}
+	parent, sb, err := s.targetSandbox(r)
+	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
+		return
+	}
+	hash := ""
+	if body.Password != "" {
+		if hash, err = auth.HashPassword(body.Password); err != nil {
+			internalError(w, s.Log, err)
+			return
+		}
+	}
+	if err := s.DB.SetSandboxPassword(r.Context(), sb.ID, hash); err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	_ = s.DB.Tx(r.Context(), parent, func(tx pgx.Tx) error {
+		return store.Audit(r.Context(), tx, parent, pr.Actor(), "sandbox.password", sb.ID, map[string]any{"set": hash != ""})
+	})
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"hasPassword": hash != ""})
+}
+
 var sandboxPrivatePage = template.Must(template.New("p").Parse(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Sandbox privado</title>
-<style>body{font:16px/1.5 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f6f6f2;color:#1d2026}main{max-width:32rem;padding:24px}h1{font-size:1.5rem;margin:0 0 8px}</style></head>
-<body><main><h1>Este sandbox es privado</h1><p>Ábrelo desde el panel de tu tienda, en Configuración › Sandbox, o con un enlace de vista previa que te haya compartido el equipo de la tienda.</p></main></body></html>`))
+<style>body{font:16px/1.5 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f6f6f2;color:#1d2026}main{max-width:32rem;padding:24px;box-sizing:border-box;width:100%}h1{font-size:1.5rem;margin:0 0 8px}
+form{display:grid;gap:8px;margin-top:16px}label{font-weight:600}input{font:inherit;padding:10px 12px;border:1px solid #8a8f98;border-radius:8px}input:focus-visible,button:focus-visible{outline:3px solid #1d4ed8;outline-offset:2px}
+button{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:8px;background:#1d2026;color:#fff;cursor:pointer}.err{color:#b42318;margin:0}</style></head>
+<body><main><h1>Este sandbox es privado</h1>{{if .Password}}<p>Escribe la contraseña que te dio el equipo de la tienda.</p>
+<form method="post"><label for="sbx_password">Contraseña</label><input id="sbx_password" name="sbx_password" type="password" autocomplete="current-password" required autofocus{{if .Wrong}} aria-invalid="true" aria-describedby="sbx_err"{{end}}>
+{{if .Wrong}}<p class="err" id="sbx_err" role="alert">La contraseña no es correcta.</p>{{end}}<button type="submit">Entrar</button></form>
+{{else}}<p>Ábrelo desde el panel de tu tienda, en Configuración › Sandbox, o con un enlace de vista previa que te haya compartido el equipo de la tienda.</p>{{end}}</main></body></html>`))
 
 // ---------- publish ----------
 
@@ -751,8 +1031,7 @@ func validAreas(areas []string) ([]string, bool, bool) {
 }
 
 func (s *Server) sandboxDiff(w http.ResponseWriter, r *http.Request) {
-	pr := principal(r)
-	parent, sb, err := s.pairOf(r.Context(), pr.Tenant)
+	parent, sb, err := s.targetSandbox(r)
 	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
 		return
 	}
@@ -768,7 +1047,9 @@ func (s *Server) sandboxDiff(w http.ResponseWriter, r *http.Request) {
 		apierr.BadRequest(w, "Área desconocida", apierr.FieldError{Field: "areas", Code: "invalid", Message: "Áreas: catalog, prices, stock, promotions, design, settings, tags"})
 		return
 	}
-	diffs, err := s.DB.SandboxDiff(r.Context(), sb.ID, tableAreas, splitList(r.URL.Query().Get("products")))
+	ctx, cancel := longSandboxCtx(r)
+	defer cancel()
+	diffs, err := s.DB.SandboxDiff(ctx, sb.ID, tableAreas, splitList(r.URL.Query().Get("products")))
 	if err != nil {
 		internalError(w, s.Log, err)
 		return
@@ -805,9 +1086,10 @@ func (s *Server) tagsDiff(ctx context.Context, parent, sandbox string) ([]string
 func (s *Server) publishSandbox(w http.ResponseWriter, r *http.Request) {
 	pr := principal(r)
 	var body struct {
-		Areas    []string `json:"areas"`
-		Products []string `json:"products"`
-		Force    bool     `json:"force"`
+		Areas    []string   `json:"areas"`
+		Products []string   `json:"products"`
+		Force    bool       `json:"force"`
+		RunAt    *time.Time `json:"runAt"` // set: publish then, not now
 	}
 	if !decode(w, r, &body) {
 		return
@@ -817,7 +1099,7 @@ func (s *Server) publishSandbox(w http.ResponseWriter, r *http.Request) {
 		apierr.BadRequest(w, "Elige qué publicar", apierr.FieldError{Field: "areas", Code: "invalid", Message: "Elige al menos un área: catalog, prices, stock, promotions, design, settings o tags"})
 		return
 	}
-	parent, sb, err := s.pairOf(r.Context(), pr.Tenant)
+	parent, sb, err := s.targetSandbox(r)
 	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
 		return
 	}
@@ -830,54 +1112,210 @@ func (s *Server) publishSandbox(w http.ResponseWriter, r *http.Request) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Publicar a producción requiere permiso de administrador en la tienda de producción"})
 		return
 	}
+	if body.RunAt != nil {
+		s.schedulePublish(w, r, parent, sb, body.Areas, body.Products, body.Force, *body.RunAt)
+		return
+	}
+	ctx, cancel := longSandboxCtx(r)
+	defer cancel()
+	out, applied, err := s.doPublish(ctx, sb, parent, pr, tableAreas, tags, body.Products, body.Force)
+	switch {
+	case errors.Is(err, errUniqueConflict):
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "unique_conflict", Detail: uniqueConflictText})
+		return
+	case err != nil:
+		internalError(w, s.Log, err)
+		return
+	case applied == 0:
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "nothing_to_publish", Detail: "No hay cambios del sandbox para publicar en lo que elegiste"})
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, out)
+}
+
+// longSandboxCtx is the context of a publish, revert or diff: one
+// transaction over a whole catalog (seconds at 50 000 products), so it has
+// minutes instead of a request's 15 s, and ends whole even if the browser
+// closes (the transaction commits or rolls back, never half).
+func longSandboxCtx(r *http.Request) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Minute)
+}
+
+var errUniqueConflict = errors.New("api: production has an item with the same identifier")
+
+const uniqueConflictText = "Producción ya tiene un elemento con el mismo identificador o dirección (por ejemplo, el mismo handle). Cámbialo en el sandbox y publica de nuevo. Nada se publicó."
+
+// doPublish publishes what the sandbox changed in the chosen areas; pr is
+// the person in production. applied counts what changed (0: nothing).
+func (s *Server) doPublish(ctx context.Context, sb store.Sandbox, parent string, pr auth.Principal, tableAreas []string, tags bool, products []string, force bool) (map[string]any, int, error) {
 	out := map[string]any{}
 	applied := 0
 	if len(tableAreas) > 0 {
-		res, err := s.DB.PublishSandbox(r.Context(), sb.ID, pr.Actor(), tableAreas, body.Products, body.Force, func(res store.PublishResult) error {
-			return s.copyPublishedFiles(r.Context(), sb.ID, parent, res)
+		res, err := s.DB.PublishSandbox(ctx, sb.ID, pr.Actor(), tableAreas, products, force, func(res store.PublishResult) error {
+			return s.copyPublishedFiles(ctx, sb.ID, parent, res)
 		})
 		switch {
 		case errors.Is(err, store.ErrNothingToPublish):
 			out["publish"] = nil
 		case err != nil:
 			if strings.Contains(err.Error(), "duplicate key") {
-				apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "unique_conflict",
-					Detail: "Producción ya tiene un elemento con el mismo identificador o dirección (por ejemplo, el mismo handle). Cámbialo en el sandbox y publica de nuevo. Nada se publicó."})
-				return
+				if s.Log != nil {
+					s.Log.Warn("sandbox publish: unique conflict", "sandbox", sb.ID, "err", err)
+				}
+				return nil, 0, errUniqueConflict
 			}
-			internalError(w, s.Log, err)
-			return
+			return nil, 0, err
 		default:
 			out["publish"] = res
 			applied += res.Applied
 		}
 	}
 	if tags {
-		ch, err := s.tagsDiff(r.Context(), parent, sb.ID)
+		ch, err := s.tagsDiff(ctx, parent, sb.ID)
 		if err != nil {
-			internalError(w, s.Log, err)
-			return
+			return nil, 0, err
 		}
 		if len(ch) > 0 {
-			cfg, err := s.loadTags(r.Context(), sb.ID)
+			cfg, err := s.loadTags(ctx, sb.ID)
 			if err != nil {
-				internalError(w, s.Log, err)
-				return
+				return nil, 0, err
 			}
-			c, err := s.saveTagsVersion(r.Context(), parent, pr, cfg, 0, "Publicado desde el sandbox")
+			c, err := s.saveTagsVersion(ctx, parent, pr, cfg, 0, "Publicado desde el sandbox")
 			if err != nil {
-				internalError(w, s.Log, err)
-				return
+				return nil, 0, err
 			}
 			out["tags"] = map[string]any{"version": c.Version, "changes": c.Changes}
 			applied++
 		}
 	}
-	if applied == 0 {
-		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "nothing_to_publish", Detail: "No hay cambios del sandbox para publicar en lo que elegiste"})
+	return out, applied, nil
+}
+
+// ---------- scheduled publishes ----------
+
+// schedulePublish sets a publish for later. What travels is the sandbox as
+// it is then; permissions are checked now and again when it runs.
+func (s *Server) schedulePublish(w http.ResponseWriter, r *http.Request, parent string, sb store.Sandbox, areas, products []string, force bool, at time.Time) {
+	pr := principal(r)
+	if pr.Kind != "member" {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "members_only", Detail: "Solo las personas del equipo programan publicaciones"})
 		return
 	}
-	httpx.JSON(w, r, http.StatusOK, out)
+	if at.Before(time.Now().Add(time.Minute)) || at.After(time.Now().Add(90*24*time.Hour)) {
+		apierr.BadRequest(w, "Revisa la fecha", apierr.FieldError{Field: "runAt", Code: "invalid", Message: "Elige una fecha entre un minuto y 90 días a partir de ahora"})
+		return
+	}
+	x, err := s.DB.CreateSchedule(r.Context(), store.Schedule{ParentID: parent, SandboxID: sb.ID, Areas: areas, Products: products, Force: force, RunAt: at.UTC(), CreatedBy: pr.Actor()})
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	_ = s.DB.Tx(r.Context(), parent, func(tx pgx.Tx) error {
+		return store.Audit(r.Context(), tx, parent, pr.Actor(), "sandbox.schedule", x.ID, map[string]any{"sandbox": sb.ID, "areas": areas, "runAt": x.RunAt})
+	})
+	httpx.JSON(w, r, http.StatusAccepted, map[string]any{"schedule": x})
+}
+
+func (s *Server) listSchedules(w http.ResponseWriter, r *http.Request) {
+	list, err := s.DB.Schedules(r.Context(), s.parentOf(principal(r).Tenant), 50)
+	if err != nil {
+		internalError(w, s.Log, err)
+		return
+	}
+	httpx.JSON(w, r, http.StatusOK, map[string]any{"items": list})
+}
+
+func (s *Server) cancelSchedule(w http.ResponseWriter, r *http.Request) {
+	pr := principal(r)
+	parent := s.parentOf(pr.Tenant)
+	if pp, ok := s.memberIn(r.Context(), parent, pr); !ok || !pp.Permissions.Allows("settings", auth.Admin) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Cancelar requiere permiso de administrador en la tienda de producción"})
+		return
+	}
+	err := s.DB.CancelSchedule(r.Context(), parent, r.PathValue("id"))
+	if errors.Is(err, store.ErrScheduleDone) {
+		apierr.Write(w, apierr.Problem{Status: http.StatusConflict, Code: "already_ran", Detail: "Esa publicación ya se ejecutó o se canceló"})
+		return
+	}
+	if s.storeError(w, err, "Publicación programada no encontrada") {
+		return
+	}
+	_ = s.DB.Tx(r.Context(), parent, func(tx pgx.Tx) error {
+		return store.Audit(r.Context(), tx, parent, pr.Actor(), "sandbox.schedule_cancel", r.PathValue("id"), map[string]any{})
+	})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RunSandboxSchedules publishes what is due (every minute; each publish is
+// claimed by one node). The person who scheduled it must still be an
+// administrator of production; the sandbox must be ready.
+func (s *Server) RunSandboxSchedules(ctx context.Context) error {
+	if err := s.DB.FailStuckSchedules(ctx); err != nil {
+		return err
+	}
+	s.sbxWork.mu.Lock()
+	closed := s.sbxWork.closed
+	s.sbxWork.mu.Unlock()
+	if closed {
+		return nil // shutting down: another node takes them
+	}
+	due, err := s.DB.ClaimDueSchedules(ctx, 20)
+	if err != nil {
+		return err
+	}
+	// Claimed: finish even if the node starts shutting down meanwhile (the
+	// node waits for it before exiting).
+	ctx = context.WithoutCancel(ctx)
+	for _, x := range due {
+		if !s.sbxWork.start(x.ID, "schedule") {
+			_ = s.DB.FinishSchedule(ctx, x.ID, "pending", "", "")
+			continue
+		}
+		status, publishID, result := s.runSchedule(ctx, x)
+		err := s.DB.FinishSchedule(ctx, x.ID, status, publishID, result)
+		s.sbxWork.done(x.ID)
+		if err != nil {
+			return err
+		}
+		_ = s.DB.Tx(ctx, x.ParentID, func(tx pgx.Tx) error {
+			return store.Audit(ctx, tx, x.ParentID, x.CreatedBy, "sandbox.schedule_run", x.ID, map[string]any{"status": status, "publish": publishID, "result": result})
+		})
+	}
+	return nil
+}
+
+func (s *Server) runSchedule(ctx context.Context, x store.Schedule) (status, publishID, result string) {
+	sb, err := s.DB.SandboxByID(ctx, x.SandboxID)
+	if err != nil {
+		return "failed", "", "El sandbox ya no existe"
+	}
+	if sb.Status != "ready" {
+		return "failed", "", "El sandbox no estaba listo a la hora programada (se estaba copiando o falló)"
+	}
+	kind, id, _ := strings.Cut(x.CreatedBy, ":")
+	pp, ok := s.memberIn(ctx, x.ParentID, auth.Principal{Tenant: sb.ID, Kind: kind, ID: id})
+	if !ok || !pp.Permissions.Allows("settings", auth.Admin) {
+		return "failed", "", "Quien la programó ya no es administrador de la tienda de producción"
+	}
+	tableAreas, tags, ok := validAreas(x.Areas)
+	if !ok {
+		return "failed", "", "Área desconocida"
+	}
+	out, applied, err := s.doPublish(ctx, sb, x.ParentID, pp, tableAreas, tags, x.Products, x.Force)
+	switch {
+	case errors.Is(err, errUniqueConflict):
+		return "failed", "", uniqueConflictText
+	case err != nil:
+		s.Log.Error("scheduled publish", "schedule", x.ID, "err", err)
+		return "failed", "", "La publicación no terminó; nada se publicó. Inténtalo de nuevo."
+	case applied == 0:
+		return "done", "", "No había cambios que publicar"
+	}
+	if res, ok := out["publish"].(store.PublishResult); ok {
+		publishID = res.ID
+		return "done", publishID, strconv.Itoa(res.Applied) + " cambios publicados"
+	}
+	return "done", "", "Etiquetas publicadas"
 }
 
 // memberIn returns the person's principal in another store of the pair.
@@ -930,11 +1368,7 @@ func (s *Server) copyPublishedFiles(ctx context.Context, sandbox, parent string,
 }
 
 func (s *Server) listPublishes(w http.ResponseWriter, r *http.Request) {
-	parent, _, err := s.pairOf(r.Context(), principal(r).Tenant)
-	if err != nil && !errors.Is(err, store.ErrNotFound) {
-		internalError(w, s.Log, err)
-		return
-	}
+	parent := s.parentOf(principal(r).Tenant)
 	ps, err := s.DB.Publishes(r.Context(), parent, 50)
 	if err != nil {
 		internalError(w, s.Log, err)
@@ -954,15 +1388,14 @@ func (s *Server) revertPublish(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength != 0 && !decode(w, r, &body) {
 		return
 	}
-	parent := pr.Tenant
-	if e := s.envOf(pr.Tenant); e.kind == "sandbox" {
-		parent = e.parent
-	}
+	parent := s.parentOf(pr.Tenant)
 	if pp, ok := s.memberIn(r.Context(), parent, pr); !ok || !pp.Permissions.Allows("settings", auth.Admin) {
 		apierr.Write(w, apierr.Problem{Status: http.StatusForbidden, Code: "forbidden", Detail: "Revertir requiere permiso de administrador en la tienda de producción"})
 		return
 	}
-	n, changed, err := s.DB.RevertPublish(r.Context(), parent, r.PathValue("id"), pr.Actor(), body.Force)
+	ctx, cancel := longSandboxCtx(r)
+	defer cancel()
+	n, changed, err := s.DB.RevertPublish(ctx, parent, r.PathValue("id"), pr.Actor(), body.Force)
 	var conflict *store.ErrRevertConflict
 	switch {
 	case errors.As(err, &conflict):
@@ -987,8 +1420,7 @@ func firstN(v []string, n int) []string {
 
 // sandboxMail lists the emails the sandbox captured instead of sending.
 func (s *Server) sandboxMail(w http.ResponseWriter, r *http.Request) {
-	pr := principal(r)
-	_, sb, err := s.pairOf(r.Context(), pr.Tenant)
+	_, sb, err := s.targetSandbox(r)
 	if s.storeError(w, err, "Tu tienda aún no tiene sandbox") {
 		return
 	}

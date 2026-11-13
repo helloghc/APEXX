@@ -116,6 +116,10 @@ func loadKeys(ctx context.Context, db *store.DB, keys *crypto.Keyring, tenant st
 }
 
 func cmdTenant(ctx context.Context, log *slog.Logger, args []string) {
+	if len(args) > 0 && args[0] == "plan" {
+		cmdTenantPlan(ctx, log, args[1:])
+		return
+	}
 	fs := flag.NewFlagSet("tenant", flag.ExitOnError)
 	id := fs.String("id", "", "store id (a-z, 0-9, -)")
 	name := fs.String("name", "", "store name")
@@ -446,6 +450,8 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	// Sandboxes: interrupted copies, the expiry notice and deletion after 30
 	// days without use (internal/api/sandbox.go).
 	every("sandbox-lifecycle", 15*time.Minute, srv.RunSandboxLifecycle)
+	// Publishes from a sandbox scheduled for later (claimed once each).
+	every("sandbox-schedules", time.Minute, srv.RunSandboxSchedules)
 	every("ai-graph", time.Minute, func(ctx context.Context) error {
 		_, err := srv.RunGraph(ctx)
 		return err
@@ -482,7 +488,12 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 	sctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	_ = hs.Shutdown(sctx)
-	if err := db.ReleaseLeases(sctx, node); err != nil {
+	// Sandbox copies and scheduled publishes running here end before the
+	// node does (a copy of 50 000 products takes about 15 s).
+	srv.FinishSandboxWork(2 * time.Minute)
+	lctx, lcancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer lcancel()
+	if err := db.ReleaseLeases(lctx, node); err != nil {
 		log.Warn("leases not released", "err", err)
 	}
 }
@@ -527,4 +538,42 @@ func embedderFromEnv(log *slog.Logger) ai.Embedder {
 	default:
 		return ai.NewLocal(384)
 	}
+}
+
+// cmdTenantPlan sets what a store's plan includes for sandboxes. Only the
+// platform operator runs it; a store reads its plan in the panel.
+//
+//	apexx tenant plan --id mitienda --plan pro --sandboxes 3 --sandbox-products 100000
+func cmdTenantPlan(ctx context.Context, log *slog.Logger, args []string) {
+	fs := flag.NewFlagSet("tenant plan", flag.ExitOnError)
+	id := fs.String("id", "", "store id")
+	name := fs.String("plan", "", "plan name shown to the store (e.g. básico, pro)")
+	sandboxes := fs.Int("sandboxes", store.DefaultPlan.Sandboxes, "how many sandboxes the store can have (0: none)")
+	maxProducts := fs.Int("sandbox-products", 0, "most products a sandbox can hold (0: no limit)")
+	demo := fs.Bool("sandbox-demo-data", true, "sandboxes can be filled with test customers and orders")
+	schedule := fs.Bool("sandbox-schedule", true, "publishes from a sandbox can be scheduled")
+	show := fs.Bool("show", false, "print the current plan and change nothing")
+	_ = fs.Parse(args)
+	if *id == "" {
+		fmt.Fprintln(os.Stderr, "falta --id")
+		os.Exit(2)
+	}
+	db, _ := open(ctx, log)
+	defer db.Close()
+	if !*show {
+		if *sandboxes < 0 || *sandboxes > 50 || *maxProducts < 0 {
+			fmt.Fprintln(os.Stderr, "--sandboxes va de 0 a 50 y --sandbox-products no puede ser negativo")
+			os.Exit(2)
+		}
+		must(log, db.SetTenantPlan(ctx, *id, "system:cli", store.Plan{Plan: *name, Sandboxes: *sandboxes, SandboxMaxProducts: *maxProducts,
+			SandboxDemoData: *demo, SandboxSchedule: *schedule}), "plan")
+	}
+	p, err := db.TenantPlan(ctx, *id)
+	must(log, err, "plan")
+	limit := "sin límite"
+	if p.SandboxMaxProducts > 0 {
+		limit = strconv.Itoa(p.SandboxMaxProducts)
+	}
+	fmt.Printf("Tienda %q · plan %q\nSandboxes: %d\nProductos por sandbox: %s\nDatos de prueba: %v\nPublicaciones programadas: %v\n",
+		*id, p.Plan, p.Sandboxes, limit, p.SandboxDemoData, p.SandboxSchedule)
 }

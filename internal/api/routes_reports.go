@@ -107,4 +107,5 @@ func (s *Server) routesReports(handle func(string, http.HandlerFunc)) {
 	handle("GET /v1/ops/audit", s.authed("settings", auth.Admin, s.opsAudit))
 	handle("GET /v1/ops/audit/facets", s.authed("settings", auth.Admin, s.opsAuditFacets))
 	handle("GET /v1/ops/status", s.authed("settings", auth.Admin, s.opsStatus))
+	handle("GET /v1/ops/sandboxes", s.authed("settings", auth.Admin, s.opsSandboxes))
 }

@@ -1,15 +1,39 @@
 # Sandbox por tienda
 
-Cada tienda de producción puede tener un sandbox: otra tienda completa, ligada a ella, donde el equipo prueba todo sin tocar a sus clientes. Lo que está listo se publica a producción por área, viendo antes qué cambia, y cada publicación se revierte en un clic.
+Cada tienda de producción puede tener uno o varios sandboxes, según su plan: otras tiendas completas, ligadas a ella, donde el equipo prueba todo sin tocar a sus clientes. Lo que está listo se publica a producción por área, viendo antes qué cambia, y cada publicación se revierte en un clic.
 
 Este documento es la referencia técnica. La guía de QA para personas está en `docs/qa.md` §10 y la ayuda del panel en `internal/help/ayuda.md`.
 
 ## Modelo
 
 - **Un sandbox es un tenant** con `kind='sandbox'`, su `parent_id` apuntando a producción y un id `sbx-` seguido de 10 caracteres al azar. El prefijo `sbx-` está reservado: `CreateTenant` lo rechaza.
-- **Uno por tienda**, garantizado por `UNIQUE (parent_id)` en `sandboxes`.
+- **Cuántos por tienda:** los que incluya su plan (uno por omisión), cada uno con su nombre, único por tienda sin importar mayúsculas.
 - **Estados:** `copying`, `ready`, `failed` y `deleting`. El avance vive en `sandboxes.progress` (tabla actual, filas copiadas y una marca de tiempo).
-- **Migraciones:** `160_sandbox.sql` (modelo, base de comparación, publicaciones y sus filas, RLS forzada) y `161_sandbox_wipe.sql` (permite borrar historial de solo-anexar únicamente dentro de un sandbox y con `apexx.sandbox_wipe = 'on'`).
+- **Migraciones:**
+  - `160_sandbox.sql`: modelo, base de comparación, publicaciones y sus filas, con RLS forzada.
+  - `161_sandbox_wipe.sql`: permite borrar historial de solo-anexar únicamente dentro de un sandbox y con `apexx.sandbox_wipe = 'on'`.
+  - `162_sandbox_plans.sql`: varios sandboxes con nombre, contraseña opcional, planes (`tenant_plans`) y publicaciones programadas (`sandbox_schedules`).
+
+## Plan de la tienda
+
+Lo que incluye el plan de cada tienda lo fija el operador de la plataforma, nunca la tienda:
+
+```
+apexx tenant plan --id mitienda --plan pro --sandboxes 3 --sandbox-products 100000
+apexx tenant plan --id mitienda --show
+```
+
+| Opción | Qué limita | Por omisión |
+| --- | --- | --- |
+| `--sandboxes` | Cuántos sandboxes puede tener la tienda (0: ninguno) | 1 |
+| `--sandbox-products` | Cuántos productos caben en cada sandbox (0: sin límite) | 0 |
+| `--sandbox-demo-data` | Si puede llenarlos con clientes y pedidos de prueba | sí |
+| `--sandbox-schedule` | Si puede programar publicaciones | sí |
+
+- **Número de sandboxes:** se revisa al crear, dentro de la misma transacción que bloquea la fila de la tienda, así que dos clics a la vez no pasan el límite.
+- **Tamaño:** se revisa al copiar y al refrescar (contra los productos de producción). Dentro del sandbox se revisa en cada producto que se guarda o importa, en la misma transacción, que se deshace si se pasa. Producción nunca paga esta revisión: solo corre para ids `sbx-`.
+- **Respuesta:** lo que el plan no incluye responde 409 `plan_limit` con el motivo en palabras.
+- **En el panel:** se muestra arriba del sandbox («Plan pro: incluye 3 sandboxes, usas 1»).
 
 ## Copia
 
@@ -46,7 +70,11 @@ No se copian clientes reales anonimizados. Los datos personales están cifrados 
 
   A los demás les responde 403: una página privada en HTML, o JSON para el API y los archivos. Siempre manda `X-Robots-Tag: noindex`.
 - **Enlaces de vista previa:** `base64(id|vence).hmac`. La firma usa una llave derivada por tienda (`Keys.Blind(id, "sandbox-preview")`), y un enlace vencido no abre.
-- **Entrar y salir:** `POST /v1/sandbox/enter` y `/exit` cambian la sesión de tienda. La sesión anterior (cookie o `Bearer aps_`) se cierra y el cambio queda auditado como `session.switch`.
+- **Contraseña opcional:** se guarda como hash argon2id.
+  - Quien abre la tienda sin sesión ni enlace ve un formulario accesible. La contraseña correcta deja una cookie firmada por 12 horas que lleva una huella del hash: cambiar la contraseña invalida las cookies anteriores.
+  - Los intentos se limitan a 10 por minuto por dirección y 60 por minuto por sandbox (429 después).
+- **Entrar y salir:** `POST /v1/sandboxes/{id}/enter` y `/v1/sandbox/exit` cambian la sesión de tienda. Se puede pasar de un sandbox a otro de la misma tienda sin volver a producción, si la persona sigue en el equipo de producción. La sesión anterior (cookie o `Bearer aps_`) se cierra y el cambio queda auditado como `session.switch`.
+- **Rutas:** `/v1/sandboxes` y `/v1/sandboxes/{id}/…` actúan sobre un sandbox por su id. Las rutas `/v1/sandbox/…` siguen funcionando: dentro de un sandbox actúan sobre ese sandbox, y desde producción sobre el más antiguo. El id de un sandbox de otra tienda responde 404.
 - **Franja:** una barra naranja siempre visible en la tienda, el builder y el panel. Las páginas del builder en un sandbox se sirven `no-store`.
 - **Equipo:** se administra solo en producción. Dentro del sandbox, cambiar el equipo responde 409, salvo las llaves de API.
 
@@ -78,6 +106,14 @@ Reglas de checkout externas y cálculo de impuestos sí se consultan: son lectur
   3. Se borra de hijos a padres y se actualiza e inserta de padres a hijos.
   4. Queda la huella posterior de cada fila y la base avanza.
   5. Se emiten `tenant.reload` y la reindexación de vectores, y se copian los archivos nuevos al almacenamiento de producción.
+- **Programar:** con `runAt` (de 1 minuto a 90 días) la publicación queda en `sandbox_schedules` y se publica lo que tenga el sandbox a esa hora.
+  - **Quién ejecuta:** el trabajo `sandbox-schedules`, cada minuto. Cada publicación la toma un solo nodo (`FOR UPDATE SKIP LOCKED`).
+  - **Permisos:** al ejecutarse se revisa de nuevo que quien la programó siga siendo administrador de producción.
+  - **Cancelar y resultado:** se puede cancelar mientras esté pendiente. Su resultado (publicada, sin cambios o el motivo del fallo) queda en la lista y en Actividad.
+  - **Al borrar el sandbox:** sus publicaciones programadas se borran con él.
+- **Datos derivados:** el grafo de conocimiento (`kg_edges`) se construye en los dos lados con ids propios. Una relación del sandbox reemplaza a la misma relación de producción (misma llave natural) en vez de chocar, y la reversión regresa la de producción.
+- **Velocidad:** las filas se buscan por las columnas de su llave, con índice, y no por un texto calculado. Publicar o revertir unas pocas filas en una tienda de 50 000 productos toma milisegundos. Si una llave contiene el separador, se usa la comparación exacta, que es más lenta.
+- **Tiempo:** publicar, revertir y comparar tienen hasta 5 minutos (no los 15 s de una petición normal) y terminan completos aunque se cierre el navegador.
 - **Revertir:**
   1. Se comprueba fila por fila que producción no cambió después de publicar. Si cambió, responde `ErrRevertConflict` y solo sigue con `force`.
   2. Se restaura con upsert: las filas borradas o cambiadas vuelven y las insertadas por la publicación se borran.
@@ -87,34 +123,63 @@ Reglas de checkout externas y cálculo de impuestos sí se consultan: son lectur
 
 - **Refrescar** vuelve a copiar producción. Conserva la llave, los dominios, el equipo, las sesiones y la auditoría, así que la dirección y la sesión siguen sirviendo.
 - **Borrar** quita todo y verifica que no quede ninguna fila. La auditoría, el historial de precios y la analítica del sandbox se borran gracias a la migración 161. Lo ya publicado se queda en producción.
+- **Reemplazo de un nodo:** un nodo que se apaga deja de tomar trabajo nuevo y espera hasta 2 minutos a que terminen las copias y publicaciones programadas que lleva (`FinishSandboxWork`). Lo que no alcance queda marcado como fallido con su motivo, nunca «copiando» para siempre. Una copia de 50 000 productos tarda unos 15 s.
 - **`RunSandboxLifecycle`**, cada 15 minutos con lease:
   - una copia atorada más de 30 minutos queda `failed`;
   - a los 25 días sin uso se avisa a los dueños por correo (`TplSandboxExpiring`, en 6 idiomas);
   - a los 30 días se borra.
 
+## Métricas
+
+*Operación › Estado* muestra cada sandbox de la tienda (`GET /v1/ops/sandboxes`). Las mismas cifras de peticiones salen en `/metrics` como `apexx_sandbox_requests_total`, `apexx_sandbox_errors_total` y `apexx_sandbox_denied_total`, con la etiqueta `sandbox`.
+
+- **Estado y vencimiento:** listo, copiando, fallido o borrando; si tiene contraseña; cuándo vence.
+- **Tamaño:** productos, precios y pedidos.
+- **Copias:** cuándo fue la última y cuánto tardó.
+- **Peticiones:** de este nodo desde que arrancó, contando errores (5xx) y rechazos (403, visitantes sin acceso).
+- **Publicaciones:** cuántas, la última y las programadas pendientes.
+- **Correos capturados.**
+- **IA de los últimos 30 días:** peticiones y costo.
+
 ## Medición a 50 000 productos
 
-Medido con `tools/qa/escala/run.js 50000` y `APEXX_QA_SANDBOX=1`, en el entorno de desarrollo, con un servidor y Postgres en la misma máquina.
+Medido con `tools/qa/escala/run.js 50000` y `APEXX_QA_SANDBOX=1`, en el entorno de desarrollo, con los servidores y Postgres en la misma máquina. Es la última corrida completa, con todo lo de este documento.
 
 | Paso | Resultado |
 | --- | --- |
-| Copiar 50 000 productos y 100 000 precios | 14.4 s hasta usable |
-| Subir 10% los 100 000 precios dentro del sandbox | 16.0 s |
-| Calcular la diferencia | 3.0 s: 100 000 cambios, 0 conflictos |
-| Publicar los precios a producción | 12.4 s; visibles en la tienda 4.4 s después |
-| Producción **durante** la publicación (16 compradores a la vez, 16 943 peticiones) | p50 14.3 ms · p95 33.1 ms · p99 54.1 ms |
-| Revertir la publicación | 7.1 s, 100 000 filas, idéntico a la foto |
-| Borrar el sandbox | 5.9 s, ninguna fila restante |
+| Copiar 50 000 productos y 100 000 precios | 13.5 s hasta usable |
+| Subir 10% los 100 000 precios dentro del sandbox | 14.3 s |
+| Calcular la diferencia | 1.0 s: 100 000 cambios, 0 conflictos |
+| Publicar los precios a producción | 11.6 s; visibles en la tienda 3.8 s después |
+| Producción **durante** la publicación (16 compradores a la vez, 16 295 peticiones) | p50 13.4 ms · p95 31.8 ms · p99 58.3 ms |
+| Revertir la publicación | 8.8 s, 100 000 filas, idéntico a la foto |
+| Borrar el sandbox | 5.8 s, ninguna fila restante |
 | Base de datos al final de toda la corrida | Ninguna tabla distinta a la foto inicial |
+
+## Relevo de nodos con sandboxes activos
+
+`tools/qa/relevo/run.sh` con `APEXX_QA_SANDBOX=1`, dentro de la misma corrida de 50 000 productos.
+
+**Montaje**
+- Dos nodos detrás de Caddy, con 16 clientes durante 100 s. Cada nodo se reemplaza dos veces.
+- El tráfico incluye la tienda del sandbox (con enlace), su búsqueda, su panel y visitas sin acceso (403 siempre), además de la tienda y el panel de producción.
+- Una publicación programada vence a mitad del relevo.
+- Justo antes de reemplazar el primer nodo, se le pide la copia de un segundo sandbox de 50 000 productos.
+
+| Qué | Resultado |
+| --- | --- |
+| Peticiones | 129 889, **0 fallos**, la más lenta 1.4 s |
+| Copia en el nodo reemplazado | Terminó lista (16.7 s, 50 000 productos). El nodo tardó 17 s en apagarse en lugar de 6 porque esperó la copia |
+| Publicación programada | Publicada una sola vez durante el relevo (4 cambios), visible en producción y revertida exacta |
+| Al final | Los dos sandboxes borrados, ninguna tienda restante |
+
+**Lo que la prueba encontró y se corrigió**
+- **Publicar en una tienda grande agotaba el tiempo.** Publicar un solo producto en una tienda de 50 000 tardaba más de 15 s: las filas se buscaban por un texto calculado, sin índice. Ahora se buscan por las columnas de la llave y tardan milisegundos.
+- **Choques en el grafo de conocimiento.** El grafo, construido en paralelo en los dos lados, chocaba al publicar y además inflaba el conteo («4661 cambios» por un título). Ahora solo viajan las relaciones que decidió una persona, y la misma relación con otro id reemplaza a la de producción.
+- **Reversión de 5 minutos.** Revertir llegó a tardar 5 minutos porque Postgres planeaba con estadísticas viejas tras la copia masiva. Ahora la copia y las publicaciones grandes actualizan las estadísticas (`apexx_analyze_sandbox()`, que corre como dueño de las tablas y solo las analiza).
+- **Relaciones huérfanas del grafo.** El trabajo del grafo podía insertar relaciones de productos que se estaban borrando al mismo tiempo. Ahora bloquea esos productos en modo compartido antes de insertar.
+- **Nodos que se apagaban a media copia.** Un nodo podía apagarse con una copia en curso y dejarla «copiando». Ahora la espera o la marca como fallida.
 
 ## Lo que falta
 
-Estas partes del plan no están construidas:
-- cupos por plan (más de un sandbox, tamaño máximo);
-- programar una publicación a futuro;
-- contraseña opcional para la tienda del sandbox;
-- métricas por sandbox en *Operación › Estado*.
-
-La prueba de relevo de nodos con sandboxes activos no se ha corrido.
-
-Los fragmentos de cada proveedor de píxeles siguen sin probarse con cuentas reales.
+Los fragmentos de cada proveedor de píxeles (Meta, TikTok, Google Ads, Pinterest, Analytics, Tag Manager) siguen sin probarse con cuentas reales: hace falta una cuenta de cada uno para confirmar que el evento llega a su panel.
