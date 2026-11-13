@@ -3793,5 +3793,17 @@
 "Solo en direcciones que contienen (opcional)": "Hanya di alamat yang berisi (opsional)",
 "Todas las páginas": "Semua halaman",
 "Todavía no hay versiones.": "Belum ada versi.",
-"Versiones": "Versi"
+"Versiones": "Versi",
+"Abajo a la derecha": "Kanan bawah",
+"Abajo a la izquierda": "Kiri bawah",
+"Agregar al carrito": "Tambahkan ke keranjang",
+"Agregar verificación": "Tambahkan verifikasi",
+"Analítica, píxeles de anuncios, mapas de calor, chats y verificación de dominio. Al publicar, cada página de la tienda usa la versión nueva desde la siguiente visita: sin despliegues ni cambios de código. Las de analítica y publicidad cargan solo con el permiso del visitante, y ninguna carga en el pago ni en la cuenta del cliente.": "Analitik, piksel iklan, peta panas, chat, dan verifikasi domain. Saat diterbitkan, setiap halaman toko memakai versi baru sejak kunjungan berikutnya: tanpa deploy atau perubahan kode. Tag analitik dan iklan hanya dimuat dengan izin pengunjung, dan tidak ada yang dimuat di pembayaran atau akun pelanggan.",
+"Guía del proveedor": "Panduan penyedia",
+"Nombre de la etiqueta": "Nama tag",
+"Quitar verificación": "Hapus verifikasi",
+"Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.": "Siapa yang menerbitkan, kapan, dan apa yang berubah. Memulihkan versi akan menerbitkannya lagi sebagai yang terbaru. Audit juga menyimpan konfigurasi lengkap setiap versi.",
+"Servicio": "Layanan",
+"Verificación de dominio": "Verifikasi domain",
+"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "Tag meta yang diminta Google Search Console, Bing, Meta, Pinterest, atau layanan lain untuk memastikan domain milik Anda. Dipasang di head setiap halaman; tempel tag lengkap atau kodenya saja."
 }

@@ -237,3 +237,9 @@ Pantalla: *Configuración › Etiquetas y píxeles*. Detalle técnico: `docs/eti
 | E8 | Nunca en el pago | Ve al pago y a Mi cuenta | No carga ninguna etiqueta |
 | E9 | Versiones | Publica dos veces y restaura la primera | La tienda vuelve a la primera configuración al instante |
 | E10 | Formato del ID | Pega `UA-123` en Analytics o letras en Meta | Mensaje claro con un ejemplo del formato correcto |
+| E11 | Cada proveedor con su cuenta real | Para Snapchat, X, LinkedIn, Microsoft, Reddit, TikTok, Pinterest y Adobe: agrega su ID, compra algo y revisa la herramienta de eventos de cada uno | Llegan la visita y la compra con monto, moneda y número de pedido. Reporta cualquier evento con otro nombre o sin monto |
+| E12 | Mapas de calor | Agrega Hotjar o Clarity y navega | Aparece la grabación; se puede filtrar por el evento `purchase` |
+| E13 | Chat | Agrega Crisp, Tawk.to, Tidio, Intercom, Zendesk, Trengo o JivoChat | El chat aparece en la tienda y en gracias, nunca en el pago ni en Mi cuenta |
+| E14 | WhatsApp | Agrega el botón con tu número y un mensaje | En el teléfono abre la app, en la computadora WhatsApp Web; en una ficha, el mensaje lleva el nombre del producto |
+| E15 | Verificación de dominio | Pega la etiqueta completa de Search Console | Search Console verifica el dominio; la etiqueta está en el código de la portada |
+| E16 | Quién cambió qué | Que dos personas publiquen cambios | En «Versiones» se ve quién, cuándo y qué cambió; en Operación › Actividad, la configuración completa |

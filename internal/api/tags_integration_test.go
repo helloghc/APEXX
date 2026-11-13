@@ -146,10 +146,14 @@ func TestStoreTags(t *testing.T) {
 		t.Fatal("checkout relaxed by Tag Manager")
 	}
 
-	// History and restore: version 1 comes back as version 3.
+	// History: who published, when and what changed, in words.
 	hist := e.must(200, "GET", "/v1/settings/tags/history", e.adminA, nil)
-	if items := hist["items"].([]any); len(items) != 2 || items[0].(map[string]any)["version"].(float64) != 2 {
+	items := hist["items"].([]any)
+	if len(items) != 2 || items[0].(map[string]any)["version"].(float64) != 2 || items[0].(map[string]any)["publisherName"] == "" {
 		t.Fatalf("history = %v", hist)
+	}
+	if ch := strings.Join(toStrings(items[0].(map[string]any)["changes"]), " | "); !strings.Contains(ch, "Agregó Google Tag Manager GTM-ABC1234") || !strings.Contains(ch, "Quitó Google Analytics 4 G-ABC123DEF4") {
+		t.Fatalf("changes of version 2: %s", ch)
 	}
 	r := e.must(200, "POST", "/v1/settings/tags/restore", e.adminA, m{"version": 1})
 	if c := r["config"].(map[string]any); c["version"].(float64) != 3 || len(c["tags"].([]any)) != 6 {
@@ -161,4 +165,70 @@ func TestStoreTags(t *testing.T) {
 	if html, _ := get(srv1, "/s/store-a/main/p/p1"); !strings.Contains(html, "tags.js?v=3") {
 		t.Fatal("restored version not served")
 	}
+	if ch := toStrings(r["config"].(map[string]any)["changes"]); len(ch) == 0 || ch[0] != "Restauró la versión 1" {
+		t.Fatalf("restore changes: %v", ch)
+	}
+
+	// Chats, heat maps, the WhatsApp button, X with its event IDs and
+	// verification tags.
+	if st, b := e.do("PUT", "/v1/settings/tags", e.adminA, m{"tags": []m{{"kind": "x", "account": "o1a2b", "params": m{"ev_purchase": "compra"}, "active": true}}}); st != 400 {
+		t.Fatalf("bad X event id accepted: %d %v", st, b)
+	}
+	if st, _ := e.do("PUT", "/v1/settings/tags", e.adminA, m{"meta": []m{{"kind": "other", "name": "robots", "content": "noindex"}}}); st != 400 {
+		t.Fatalf("a robots meta accepted as verification: %d", st)
+	}
+	pub = e.must(200, "PUT", "/v1/settings/tags", e.adminA, m{
+		"tags": []m{
+			{"kind": "whatsapp", "account": "+52 55 1234 5678", "params": m{"message": "Hola", "position": "left"}, "active": true},
+			{"kind": "crisp", "account": "A1B2C3D4-E5F6-7890-ABCD-EF1234567890", "active": true},
+			{"kind": "hotjar", "account": "1234567", "active": true},
+			{"kind": "x", "account": "o1a2b", "params": m{"ev_purchase": "tw-o1a2b-o1a2c"}, "active": true},
+		},
+		"meta": []m{
+			{"kind": "google", "content": `<meta name="google-site-verification" content="AbC_123-xyz" />`},
+			{"kind": "other", "name": "godaddy-verification", "content": "gd123456"},
+		},
+	})
+	c4 := pub["config"].(map[string]any)
+	t0 := c4["tags"].([]any)[0].(map[string]any)
+	if t0["account"] != "525512345678" || t0["category"] != "necessary" || t0["params"].(map[string]any)["position"] != "left" {
+		t.Fatalf("whatsapp normalized = %v", t0)
+	}
+	if c4["meta"].([]any)[0].(map[string]any)["content"] != "AbC_123-xyz" {
+		t.Fatalf("pasted meta not read: %v", c4["meta"])
+	}
+	html, h = get(srv1, "/s/store-a/main/p/p1")
+	if !strings.Contains(html, `<meta name="google-site-verification" content="AbC_123-xyz">`) || !strings.Contains(html, `<meta name="godaddy-verification" content="gd123456">`) {
+		t.Fatal("verification tags missing in the head")
+	}
+	csp = h.Get("Content-Security-Policy")
+	for _, want := range []string{"https://client.crisp.chat", "wss://client.relay.crisp.chat", "https://static.hotjar.com", "https://static.ads-twitter.com", "style-src 'self' 'unsafe-inline' https://client.crisp.chat", "font-src 'self' https://client.crisp.chat https://script.hotjar.com"} {
+		if !strings.Contains(csp, want) {
+			t.Fatalf("policy lacks %s: %s", want, csp)
+		}
+	}
+	// Verification tags also on the builder home and on checkout (they are not scripts).
+	if home, _ := get(srv1, "/s/store-a/main/index"); !strings.Contains(home, "google-site-verification") {
+		t.Fatal("builder home without verification")
+	}
+	if co, _ := get(srv1, "/s/store-a/main/checkout"); !strings.Contains(co, "google-site-verification") || strings.Contains(co, "tags.js") {
+		t.Fatal("checkout: verification missing or tags present")
+	}
+	js, _ = get(srv1, "/s/store-a/api/tags.js?v=4")
+	if !strings.Contains(js, `"ev_purchase":"tw-o1a2b-o1a2c"`) || !strings.Contains(js, "525512345678") {
+		t.Fatalf("tags.js v4: %.400s", js)
+	}
+	// The audit log keeps who published and the whole configuration.
+	audit := e.must(200, "GET", "/v1/ops/audit?action=store_tags", e.adminA, nil)
+	if n := len(audit["items"].([]any)); n < 4 {
+		t.Fatalf("audit entries of tags: %d", n)
+	}
+}
+
+func toStrings(v any) []string {
+	var out []string
+	for _, x := range v.([]any) {
+		out = append(out, x.(string))
+	}
+	return out
 }

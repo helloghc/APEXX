@@ -11,14 +11,13 @@ import { can } from "@/perms";
 import { ErrorBox } from "../common";
 import { Loading, Section, SubPage } from "./kit";
 
-type Kind = "gtm" | "ga4" | "gads" | "meta" | "tiktok" | "pinterest" | "script" | "code";
 type Category = "necessary" | "analytics" | "marketing";
 interface Tag {
   id?: string;
   name: string;
-  kind: Kind;
+  kind: string;
   account?: string;
-  label?: string;
+  params?: Record<string, string>;
   src?: string;
   code?: string;
   domains?: string[];
@@ -27,9 +26,12 @@ interface Tag {
   url?: string;
   active: boolean;
 }
-interface TagsConfig { tags: Tag[]; bannerText: string; version: number; publishedAt?: string; publishedBy?: string }
-interface KindInfo { id: Kind; label: string; example: string }
-interface Version { version: number; publishedAt: string; publishedBy: string; tags: number; active: number }
+interface MetaTag { kind: string; name?: string; content: string }
+interface TagsConfig { tags: Tag[]; meta: MetaTag[]; bannerText: string; version: number; publishedAt?: string; publisherName?: string }
+interface Field { key: string; label: string; example?: string; required: boolean; options?: string[] }
+interface Kind { id: string; label: string; group: string; category: Category; fields: Field[]; fire: boolean; receives: string; docs?: string }
+interface MetaKind { id: string; label: string; name: string }
+interface Version { version: number; publishedAt: string; publisherName?: string; restoredFrom?: number; changes?: string[]; tags: number; active: number }
 
 const CAT: Record<Category, string> = { necessary: "Necesaria (siempre)", analytics: "Analítica (con permiso)", marketing: "Publicidad (con permiso)" };
 const EVENTS: Record<string, string> = {
@@ -40,58 +42,52 @@ const EVENTS: Record<string, string> = {
   begin_checkout: "Inicio del pago",
   purchase: "Pedido confirmado",
 };
-const ACCOUNT_LABEL: Partial<Record<Kind, string>> = {
-  gtm: "ID del contenedor",
-  ga4: "ID de medición",
-  gads: "ID de conversión",
-  meta: "ID del píxel",
-  tiktok: "ID del píxel",
-  pinterest: "ID de la etiqueta",
-};
-// What each provider receives on its own, without configuring anything.
-const AUTO: Partial<Record<Kind, string>> = {
-  gtm: "El contenedor recibe en el dataLayer las vistas y los eventos de comercio (view_item, add_to_cart, view_cart, begin_checkout, purchase). Las etiquetas se administran en Google Tag Manager.",
-  ga4: "Recibe las vistas de página y los eventos de comercio con producto, monto y moneda. La compra lleva el número de pedido.",
-  meta: "Recibe PageView, ViewContent, AddToCart, InitiateCheckout y Purchase. La compra usa el número de pedido como identificador, así Meta descarta el duplicado de las conversiones desde el servidor.",
-  tiktok: "Recibe la vista de página, ViewContent, AddToCart, InitiateCheckout y CompletePayment con monto y productos.",
-  pinterest: "Recibe la vista de página, pagevisit, addtocart y checkout (la compra) con monto y productos.",
-};
-const blank = (kind: Kind): Tag => ({
-  name: "",
-  kind,
-  category: kind === "ga4" ? "analytics" : "marketing",
-  fire: kind === "gads" ? ["purchase"] : kind === "script" || kind === "code" ? ["page_view"] : undefined,
-  active: true,
-});
+const POSITION: Record<string, string> = { right: "Abajo a la derecha", left: "Abajo a la izquierda" };
 
-/** Tags and pixels of the storefront: published as a new version, live on the next page view. */
+/** Tags, pixels, chats and verification tags of the storefront: published as a new version, live on the next page view. */
 export function Scripts({ me }: { me: Me }) {
   const qc = useQueryClient();
   const canEdit = can(me, "builder", "admin");
-  const q = useQuery({ queryKey: ["store-tags"], queryFn: () => request<{ config: TagsConfig; kinds: KindInfo[]; events: string[] }>("GET", "/v1/settings/tags") });
+  const q = useQuery({ queryKey: ["store-tags"], queryFn: () => request<{ config: TagsConfig; kinds: Kind[]; metaKinds: MetaKind[] }>("GET", "/v1/settings/tags") });
   const hist = useQuery({ queryKey: ["store-tags", "history"], queryFn: () => request<{ items: Version[] }>("GET", "/v1/settings/tags/history").then((r) => r.items) });
   const [tags, setTags] = useState<Tag[]>([]);
+  const [metas, setMetas] = useState<MetaTag[]>([]);
   const [banner, setBanner] = useState("");
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [newKind, setNewKind] = useState<Kind>("ga4");
+  const [newKind, setNewKind] = useState("ga4");
   useEffect(() => {
     if (q.data) {
       setTags(q.data.config.tags);
+      setMetas(q.data.config.meta ?? []);
       setBanner(q.data.config.bannerText);
     }
   }, [q.data]);
-  const dirty = useMemo(() => !!q.data && (JSON.stringify(tags) !== JSON.stringify(q.data.config.tags) || banner !== q.data.config.bannerText), [q.data, tags, banner]);
+  const dirty = useMemo(
+    () => !!q.data && (JSON.stringify(tags) !== JSON.stringify(q.data.config.tags) || JSON.stringify(metas) !== JSON.stringify(q.data.config.meta ?? []) || banner !== q.data.config.bannerText),
+    [q.data, tags, metas, banner],
+  );
   if (q.isPending) return <Loading />;
   if (q.error) return <ErrorBox error={q.error} />;
   const cfg = q.data.config;
-  const kindOf = (k: Kind) => q.data.kinds.find((x) => x.id === k);
+  const kinds = q.data.kinds;
+  const kindOf = (k: string) => kinds.find((x) => x.id === k);
+  const groups = [...new Set(kinds.map((k) => k.group))];
   const set = (i: number, p: Partial<Tag>) => setTags((x) => x.map((t, j) => (j === i ? { ...t, ...p } : t)));
+  const setParam = (i: number, key: string, v: string) =>
+    setTags((x) => x.map((t, j) => (j !== i ? t : key === "account" ? { ...t, account: v } : { ...t, params: { ...(t.params ?? {}), [key]: v } })));
+  const setMeta = (i: number, p: Partial<MetaTag>) => setMetas((x) => x.map((m, j) => (j === i ? { ...m, ...p } : m)));
   const testURL = `/s/${encodeURIComponent(me.tenant)}/main/index?apexx_tags=prueba`;
+  const add = () => {
+    const k = kindOf(newKind);
+    if (!k) return;
+    setTags((x) => [...x, { name: "", kind: k.id, category: k.category, fire: k.fire ? (k.id === "gads" ? ["purchase"] : ["page_view"]) : undefined, params: k.id === "whatsapp" ? { position: "right" } : undefined, active: true }]);
+  };
 
   const done = (c: TagsConfig, msg: string) => {
     qc.setQueryData(["store-tags"], (old: typeof q.data) => (old ? { ...old, config: c } : old));
     setTags(c.tags);
+    setMetas(c.meta ?? []);
     setBanner(c.bannerText);
     void qc.invalidateQueries({ queryKey: ["store-tags", "history"] });
     toast.success(msg);
@@ -100,7 +96,7 @@ export function Scripts({ me }: { me: Me }) {
     setBusy(true);
     setErrs({});
     try {
-      const r = await request<{ config: TagsConfig }>("PUT", "/v1/settings/tags", { tags, bannerText: banner });
+      const r = await request<{ config: TagsConfig }>("PUT", "/v1/settings/tags", { tags, meta: metas, bannerText: banner });
       done(r.config, `Versión ${r.config.version} publicada. La tienda la usa desde la siguiente página que se abra.`);
     } catch (e) {
       setErrs(fieldErrors(e));
@@ -121,11 +117,12 @@ export function Scripts({ me }: { me: Me }) {
     }
   }
   const err = (i: number, f: string) => errs[`tags[${i}].${f}`] && <p className="text-xs text-bad">{errs[`tags[${i}].${f}`]}</p>;
+  const when = (iso?: string) => (iso ? new Date(iso).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "");
 
   return (
     <SubPage
       title="Etiquetas y píxeles"
-      sub="Analítica, píxeles de anuncios y conversiones. Al publicar, cada página de la tienda usa la versión nueva desde la siguiente visita: sin despliegues ni cambios de código. Las de analítica y publicidad cargan solo con el permiso del visitante, y ninguna carga en el pago ni en la cuenta del cliente."
+      sub="Analítica, píxeles de anuncios, mapas de calor, chats y verificación de dominio. Al publicar, cada página de la tienda usa la versión nueva desde la siguiente visita: sin despliegues ni cambios de código. Las de analítica y publicidad cargan solo con el permiso del visitante, y ninguna carga en el pago ni en la cuenta del cliente."
       actions={
         <a className="inline-flex items-center gap-1.5 text-sm underline" href={testURL} target="_blank" rel="noreferrer">
           Probar en la tienda <ExternalLink className="size-3.5" aria-hidden="true" />
@@ -135,13 +132,9 @@ export function Scripts({ me }: { me: Me }) {
       <Section
         title={cfg.version ? `Versión publicada: ${cfg.version}` : "Aún no hay etiquetas publicadas"}
         description={
-          cfg.publishedAt ? (
-            <>
-              Publicada el {new Date(cfg.publishedAt).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}. Para verificar, abre la tienda con «Probar en la tienda»: un recuadro muestra cada etiqueta que cargó y cada evento que recibió.
-            </>
-          ) : (
-            "Agrega una etiqueta, publica y verifica con «Probar en la tienda»."
-          )
+          cfg.publishedAt
+            ? `Publicada el ${when(cfg.publishedAt)}${cfg.publisherName ? ` por ${cfg.publisherName}` : ""}. Para verificar, abre la tienda con «Probar en la tienda»: un recuadro muestra cada etiqueta que cargó y cada evento que recibió.`
+            : "Agrega una etiqueta, publica y verifica con «Probar en la tienda»."
         }
       >
         <div className="grid gap-1.5">
@@ -153,12 +146,23 @@ export function Scripts({ me }: { me: Me }) {
 
       {tags.map((t, i) => {
         const k = kindOf(t.kind);
-        const fireable = t.kind === "gads" || t.kind === "script" || t.kind === "code";
         return (
           <Section
             key={t.id ?? `new-${i}`}
             title={t.name || k?.label || "Etiqueta"}
-            description={k?.label}
+            description={
+              <>
+                {k?.group} · {k?.label}
+                {k?.docs && (
+                  <>
+                    {" · "}
+                    <a className="underline" href={k.docs} target="_blank" rel="noreferrer">
+                      Guía del proveedor
+                    </a>
+                  </>
+                )}
+              </>
+            }
             actions={
               canEdit && (
                 <Button variant="ghost" size="icon" aria-label={`Quitar ${t.name || k?.label}`} onClick={() => setTags((x) => x.filter((_, j) => j !== i))}>
@@ -182,20 +186,25 @@ export function Scripts({ me }: { me: Me }) {
                 </select>
                 {err(i, "category")}
               </div>
-              {ACCOUNT_LABEL[t.kind] && (
-                <div className="grid gap-1.5">
-                  <Label htmlFor={`tg-a-${i}`}>{ACCOUNT_LABEL[t.kind]}</Label>
-                  <Input id={`tg-a-${i}`} className="font-mono" value={t.account ?? ""} onChange={(e) => set(i, { account: e.target.value })} placeholder={k?.example} />
-                  {err(i, "account")}
-                </div>
-              )}
-              {t.kind === "gads" && (
-                <div className="grid gap-1.5">
-                  <Label htmlFor={`tg-l-${i}`}>Etiqueta de conversión</Label>
-                  <Input id={`tg-l-${i}`} className="font-mono" value={t.label ?? ""} onChange={(e) => set(i, { label: e.target.value })} placeholder="AbC-D_efG-h12_34-567" />
-                  {err(i, "label")}
-                </div>
-              )}
+              {k?.fields.map((f) => {
+                const v = f.key === "account" ? (t.account ?? "") : (t.params?.[f.key] ?? "");
+                const id = `tg-${f.key}-${i}`;
+                return (
+                  <div key={f.key} className="grid gap-1.5">
+                    <Label htmlFor={id}>{f.label}{f.required ? "" : " (opcional)"}</Label>
+                    {f.options ? (
+                      <select id={id} className="h-9 rounded-md border bg-background px-2 text-sm" value={v || f.options[0]} onChange={(e) => setParam(i, f.key, e.target.value)}>
+                        {f.options.map((o) => (
+                          <option key={o} value={o}>{POSITION[o] ?? o}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input id={id} className={f.key === "message" || f.key === "text" ? "" : "font-mono"} value={v} onChange={(e) => setParam(i, f.key, e.target.value)} placeholder={f.example} />
+                    )}
+                    {err(i, f.key)}
+                  </div>
+                );
+              })}
               {t.kind === "script" && (
                 <div className="grid gap-1.5 sm:col-span-2">
                   <Label htmlFor={`tg-s-${i}`}>Dirección del script</Label>
@@ -219,26 +228,21 @@ export function Scripts({ me }: { me: Me }) {
                   {err(i, "domains")}
                 </div>
               )}
-              {fireable ? (
+              {k?.fire && (
                 <fieldset className="grid gap-1.5 sm:col-span-2">
                   <legend className="text-sm font-medium">Se dispara en</legend>
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                     {Object.entries(EVENTS).map(([ev, l]) => (
                       <label key={ev} className="flex items-center gap-1.5 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={(t.fire ?? []).includes(ev)}
-                          onChange={(e) => set(i, { fire: e.target.checked ? [...(t.fire ?? []), ev] : (t.fire ?? []).filter((x) => x !== ev) })}
-                        />
+                        <input type="checkbox" checked={(t.fire ?? []).includes(ev)} onChange={(e) => set(i, { fire: e.target.checked ? [...(t.fire ?? []), ev] : (t.fire ?? []).filter((x) => x !== ev) })} />
                         {l}
                       </label>
                     ))}
                   </div>
                   {err(i, "fire")}
                 </fieldset>
-              ) : (
-                <p className="text-xs text-muted-foreground sm:col-span-2">{AUTO[t.kind]}</p>
               )}
+              <p className="text-xs text-muted-foreground sm:col-span-2">{k?.receives}</p>
               <div className="grid gap-1.5">
                 <Label htmlFor={`tg-u-${i}`}>Solo en direcciones que contienen (opcional)</Label>
                 <Input id={`tg-u-${i}`} className="font-mono text-xs" value={t.url ?? ""} onChange={(e) => set(i, { url: e.target.value })} placeholder="/p/ o /gracias" />
@@ -256,22 +260,74 @@ export function Scripts({ me }: { me: Me }) {
         <div className="flex flex-wrap items-end gap-2">
           <div className="grid gap-1.5">
             <Label htmlFor="tg-new">Agregar</Label>
-            <select id="tg-new" className="h-9 rounded-md border bg-background px-2 text-sm" value={newKind} onChange={(e) => setNewKind(e.target.value as Kind)}>
-              {q.data.kinds.map((k) => (
-                <option key={k.id} value={k.id}>{k.label}</option>
+            <select id="tg-new" className="h-9 max-w-full rounded-md border bg-background px-2 text-sm" value={newKind} onChange={(e) => setNewKind(e.target.value)}>
+              {groups.map((g) => (
+                <optgroup key={g} label={g}>
+                  {kinds.filter((k) => k.group === g).map((k) => (
+                    <option key={k.id} value={k.id}>{k.label}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
-          <Button variant="outline" onClick={() => setTags((x) => [...x, blank(newKind)])}>
+          <Button variant="outline" onClick={add}>
             <Plus className="size-4" /> Agregar etiqueta
           </Button>
+        </div>
+      )}
+
+      <Section
+        title="Verificación de dominio"
+        description="Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código."
+      >
+        {metas.map((m, i) => (
+          <fieldset key={i} disabled={!canEdit} className="grid gap-3 sm:grid-cols-[14rem_1fr_auto] sm:items-end" data-meta>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`mt-k-${i}`}>Servicio</Label>
+              <select id={`mt-k-${i}`} className="h-9 rounded-md border bg-background px-2 text-sm" value={m.kind} onChange={(e) => setMeta(i, { kind: e.target.value })}>
+                {q.data.metaKinds.map((k) => (
+                  <option key={k.id} value={k.id}>{k.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-1.5">
+              {m.kind === "other" && (
+                <>
+                  <Label htmlFor={`mt-n-${i}`}>Nombre de la etiqueta</Label>
+                  <Input id={`mt-n-${i}`} className="font-mono text-xs" value={m.name ?? ""} onChange={(e) => setMeta(i, { name: e.target.value })} placeholder="nombre-de-verificacion" />
+                  {errs[`meta[${i}].name`] && <p className="text-xs text-bad">{errs[`meta[${i}].name`]}</p>}
+                </>
+              )}
+              <Label htmlFor={`mt-c-${i}`}>Código de verificación</Label>
+              <Input id={`mt-c-${i}`} className="font-mono text-xs" value={m.content} onChange={(e) => setMeta(i, { content: e.target.value })} placeholder='abc123… o <meta name="…" content="…">' />
+              {errs[`meta[${i}].content`] && <p className="text-xs text-bad">{errs[`meta[${i}].content`]}</p>}
+              {errs[`meta[${i}].kind`] && <p className="text-xs text-bad">{errs[`meta[${i}].kind`]}</p>}
+            </div>
+            {canEdit && (
+              <Button variant="ghost" size="icon" aria-label="Quitar verificación" onClick={() => setMetas((x) => x.filter((_, j) => j !== i))}>
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </fieldset>
+        ))}
+        {canEdit && (
+          <div>
+            <Button variant="outline" size="sm" onClick={() => setMetas((x) => [...x, { kind: "google", content: "" }])}>
+              <Plus className="size-4" /> Agregar verificación
+            </Button>
+          </div>
+        )}
+      </Section>
+
+      {canEdit && (
+        <div className="flex flex-wrap gap-2">
           <Button disabled={busy || !dirty} onClick={() => void publish()}>
             {busy ? "Publicando…" : `Publicar versión ${cfg.version + 1}`}
           </Button>
         </div>
       )}
 
-      <Section title="Versiones" description="Cada publicación queda guardada. Restaurar una versión la publica de nuevo como la más reciente.">
+      <Section title="Versiones" description="Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.">
         {hist.isPending ? (
           <Loading rows={2} />
         ) : !hist.data?.length ? (
@@ -279,16 +335,26 @@ export function Scripts({ me }: { me: Me }) {
         ) : (
           <ul className="grid gap-2">
             {hist.data.map((v) => (
-              <li key={v.version} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-                <span className="flex items-center gap-2">
-                  <History className="size-4 text-muted-foreground" aria-hidden="true" />
-                  Versión {v.version} · {new Date(v.publishedAt).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })} · {v.active} de {v.tags} activas
-                  {v.version === cfg.version && <strong className="text-xs">(publicada)</strong>}
-                </span>
-                {canEdit && v.version !== cfg.version && (
-                  <Button variant="outline" size="sm" disabled={busy} onClick={() => void restore(v.version)}>
-                    Restaurar
-                  </Button>
+              <li key={v.version} className="grid gap-1 rounded-md border px-3 py-2 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <History className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <strong>Versión {v.version}</strong> · {when(v.publishedAt)}
+                    {v.publisherName ? ` · ${v.publisherName}` : ""} · {v.active} de {v.tags} activas
+                    {v.version === cfg.version && <span className="text-xs font-medium">(publicada)</span>}
+                  </span>
+                  {canEdit && v.version !== cfg.version && (
+                    <Button variant="outline" size="sm" disabled={busy} onClick={() => void restore(v.version)}>
+                      Restaurar
+                    </Button>
+                  )}
+                </div>
+                {!!v.changes?.length && (
+                  <ul className="ml-6 list-disc text-muted-foreground">
+                    {v.changes.map((c, j) => (
+                      <li key={j}>{c}</li>
+                    ))}
+                  </ul>
                 )}
               </li>
             ))}

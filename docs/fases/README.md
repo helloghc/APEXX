@@ -44,6 +44,13 @@ Cada documento dice qué se construyó, cómo se probó y qué quedó pendiente,
 | [ia-5-resultados.md](ia-5-resultados.md) | Copilotos por panel con sugerencias aplicables y reversibles |
 | [ia-6-decision.md](ia-6-decision.md) | Decisión de fine-tuning y medición por tienda |
 
+## Etiquetas y siguiente fase
+
+| Documento | Contenido |
+|---|---|
+| [../etiquetas.md](../etiquetas.md) | Etiquetas y píxeles: catálogo de proveedores, verificación de dominio, WhatsApp, historial y publicación al instante |
+| [plan-sandbox.md](plan-sandbox.md) | **Siguiente fase:** plan del sandbox por tienda (copia idéntica, URL propia, credenciales aisladas, pasar a producción y revertir) |
+
 ## Pruebas
 
 - Guía de QA para personas: [../qa.md](../qa.md). La sección 8 cubre la IA.

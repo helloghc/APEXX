@@ -403,8 +403,8 @@ func (s *Server) storefront(w http.ResponseWriter, r *http.Request) {
 	}
 	// The store's tags are placed at serve time too: publishing a pixel shows
 	// on every page at once, without publishing the site again.
-	if tags := s.tagsHead(tenant); tags != "" {
-		html = bytes.Replace(html, []byte("</head>"), []byte(string(tags)+"</head>"), 1)
+	if meta, tags := s.tagsHead(tenant); meta != "" || tags != "" {
+		html = bytes.Replace(html, []byte("</head>"), []byte(string(meta)+string(tags)+"</head>"), 1)
 		etag = strings.TrimSuffix(etag, `"`) + "-t" + strconv.FormatInt(s.tagsOf(tenant).cfg.Version, 10) + `"`
 		if !preview {
 			cache = "public, max-age=0, s-maxage=60, stale-while-revalidate=60"

@@ -126,7 +126,7 @@ ruta: operacion/actividad
 permiso: settings admin
 En Operación, Actividad, ves quién hizo qué y cuándo. El registro está encadenado: nadie lo puede alterar sin que se note.
 
-## Instalar Google Analytics, Tag Manager o un píxel de anuncios
+## Instalar Analytics, un píxel, un mapa de calor, un chat o WhatsApp
 ruta: configuracion/scripts
 permiso: builder admin
-En Configuración, Etiquetas y píxeles, elige el tipo (Google Tag Manager, Google Analytics 4, Google Ads, Meta, TikTok, Pinterest, un script por URL o código propio) y pega su ID. Pulsa «Publicar»: la tienda usa la versión nueva desde la siguiente página que se abra, sin despliegues. Los eventos de comercio (ficha, agregar al carrito, carrito, inicio del pago y pedido confirmado) llegan solos con monto, moneda y número de pedido. Verifica con «Probar en la tienda» y regresa a una versión anterior desde «Versiones».
+En Configuración, Etiquetas y píxeles, elige el proveedor (Google Tag Manager, Google Analytics 4, Adobe Analytics, Google Ads, Meta, TikTok, Pinterest, Snapchat, X, LinkedIn, Microsoft Advertising, Reddit, Hotjar, Clarity, Crazy Egg, chats como Crisp, Tawk.to, Tidio, Intercom, Zendesk, Trengo, JivoChat o HubSpot, el botón de WhatsApp, un script por URL o código propio) y llena sus datos. Las etiquetas de verificación de Search Console, Bing, Meta o Pinterest van en «Verificación de dominio». Pulsa «Publicar»: la tienda usa la versión nueva desde la siguiente página que se abra, sin despliegues. Los eventos de comercio (ficha, agregar al carrito, carrito, inicio del pago y pedido confirmado) llegan solos con monto, moneda y número de pedido. Verifica con «Probar en la tienda». En «Versiones» ves quién publicó, cuándo y qué cambió, y puedes regresar a cualquier versión anterior.

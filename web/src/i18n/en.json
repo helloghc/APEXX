@@ -3793,5 +3793,17 @@
 "Solo en direcciones que contienen (opcional)": "Only on addresses containing (optional)",
 "Todas las páginas": "All pages",
 "Todavía no hay versiones.": "No versions yet.",
-"Versiones": "Versions"
+"Versiones": "Versions",
+"Abajo a la derecha": "Bottom right",
+"Abajo a la izquierda": "Bottom left",
+"Agregar al carrito": "Add to cart",
+"Agregar verificación": "Add verification",
+"Analítica, píxeles de anuncios, mapas de calor, chats y verificación de dominio. Al publicar, cada página de la tienda usa la versión nueva desde la siguiente visita: sin despliegues ni cambios de código. Las de analítica y publicidad cargan solo con el permiso del visitante, y ninguna carga en el pago ni en la cuenta del cliente.": "Analytics, ad pixels, heat maps, chats and domain verification. When you publish, every store page uses the new version from the next visit: no deploys or code changes. Analytics and advertising tags load only with the visitor's permission, and none load on payment or on the customer's account.",
+"Guía del proveedor": "Provider's guide",
+"Nombre de la etiqueta": "Tag name",
+"Quitar verificación": "Remove verification",
+"Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.": "Who published, when and what changed. Restoring a version publishes it again as the latest. The audit log also keeps the full configuration of each version.",
+"Servicio": "Service",
+"Verificación de dominio": "Domain verification",
+"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "The meta tags Google Search Console, Bing, Meta, Pinterest or other services ask for to check the domain is yours. They go in the head of every page; you can paste the whole tag or just the code."
 }

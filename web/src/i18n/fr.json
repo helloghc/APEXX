@@ -3793,5 +3793,17 @@
 "Solo en direcciones que contienen (opcional)": "Uniquement sur les adresses contenant (facultatif)",
 "Todas las páginas": "Toutes les pages",
 "Todavía no hay versiones.": "Pas encore de versions.",
-"Versiones": "Versions"
+"Versiones": "Versions",
+"Abajo a la derecha": "En bas à droite",
+"Abajo a la izquierda": "En bas à gauche",
+"Agregar al carrito": "Ajouter au panier",
+"Agregar verificación": "Ajouter une vérification",
+"Analítica, píxeles de anuncios, mapas de calor, chats y verificación de dominio. Al publicar, cada página de la tienda usa la versión nueva desde la siguiente visita: sin despliegues ni cambios de código. Las de analítica y publicidad cargan solo con el permiso del visitante, y ninguna carga en el pago ni en la cuenta del cliente.": "Analyse, pixels publicitaires, cartes de chaleur, chats et vérification du domaine. À la publication, chaque page de la boutique utilise la nouvelle version dès la visite suivante : sans déploiement ni modification de code. Les balises d'analyse et de publicité ne se chargent qu'avec l'accord du visiteur, et aucune ne se charge au paiement ni dans le compte client.",
+"Guía del proveedor": "Guide du fournisseur",
+"Nombre de la etiqueta": "Nom de la balise",
+"Quitar verificación": "Retirer la vérification",
+"Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.": "Qui a publié, quand et ce qui a changé. Restaurer une version la republie comme la plus récente. L'audit conserve aussi la configuration complète de chaque version.",
+"Servicio": "Service",
+"Verificación de dominio": "Vérification du domaine",
+"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "Les balises meta que demandent Google Search Console, Bing, Meta, Pinterest ou d'autres services pour vérifier que le domaine vous appartient. Elles vont dans l'en-tête de chaque page ; collez la balise entière ou seulement le code."
 }

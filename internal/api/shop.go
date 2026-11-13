@@ -64,6 +64,7 @@ type pageData struct {
 	Origin, OGImage                                         string // absolute origin and image for social previews
 	Chrome                                                  builder.Chrome
 	Tags                                                    template.HTML // the store's tags.js, on pages that may load it
+	Verify                                                  template.HTML // the store's verification tags (Search Console, Bing…)
 	Registries                                              bool          // the store offers gift registries
 }
 

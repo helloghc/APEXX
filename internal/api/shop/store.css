@@ -471,3 +471,12 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 .rv-summary .note{grid-column:1/-1;margin:0}
 .assistant-products{margin:.5rem 0;padding-left:1.1rem}
 .assistant-products li{margin:.25rem 0}
+
+/* WhatsApp button (Configuración › Etiquetas y píxeles) */
+.wa-float{position:fixed;right:16px;bottom:16px;z-index:40;display:inline-flex;align-items:center;gap:8px;min-height:52px;min-width:52px;padding:0 13px;border-radius:999px;background:#25d366;color:#fff;font-weight:600;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.wa-float:hover{background:#1ebe5b}
+.wa-float:focus-visible{outline:3px solid #111;outline-offset:3px}
+.wa-float.wa-left{right:auto;left:16px}
+.wa-float span{font-size:.95rem;white-space:nowrap}
+@media (max-width:520px){.wa-float span{display:none}}
+@media print{.wa-float{display:none}}

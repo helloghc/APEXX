@@ -3793,5 +3793,17 @@
 "Solo en direcciones que contienen (opcional)": "Só em endereços que contêm (opcional)",
 "Todas las páginas": "Todas as páginas",
 "Todavía no hay versiones.": "Ainda não há versões.",
-"Versiones": "Versões"
+"Versiones": "Versões",
+"Abajo a la derecha": "Embaixo à direita",
+"Abajo a la izquierda": "Embaixo à esquerda",
+"Agregar al carrito": "Adicionar ao carrinho",
+"Agregar verificación": "Adicionar verificação",
+"Analítica, píxeles de anuncios, mapas de calor, chats y verificación de dominio. Al publicar, cada página de la tienda usa la versión nueva desde la siguiente visita: sin despliegues ni cambios de código. Las de analítica y publicidad cargan solo con el permiso del visitante, y ninguna carga en el pago ni en la cuenta del cliente.": "Análise, pixels de anúncios, mapas de calor, chats e verificação de domínio. Ao publicar, cada página da loja usa a nova versão a partir da próxima visita: sem implantações nem mudanças de código. As de análise e publicidade carregam só com a permissão do visitante, e nenhuma carrega no pagamento nem na conta do cliente.",
+"Guía del proveedor": "Guia do provedor",
+"Nombre de la etiqueta": "Nome da tag",
+"Quitar verificación": "Remover verificação",
+"Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.": "Quem publicou, quando e o que mudou. Restaurar uma versão a publica de novo como a mais recente. A auditoria também guarda a configuração completa de cada versão.",
+"Servicio": "Serviço",
+"Verificación de dominio": "Verificação de domínio",
+"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "As tags meta que o Google Search Console, o Bing, a Meta, o Pinterest ou outros serviços pedem para comprovar que o domínio é seu. Vão no cabeçalho de todas as páginas; cole a tag completa ou só o código."
 }

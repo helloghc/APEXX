@@ -1416,7 +1416,7 @@
 "Código copiado.": "コードをコピーしました。",
 "Código de barras": "バーコード",
 "Código de prueba (opcional)": "テストコード（任意）",
-"Código de verificación": "確認コード",
+"Código de verificación": "検証コード",
 "Código o nombre": "コードまたは名前",
 "Código postal de entrega": "配送先の郵便番号",
 "Códigos copiados.": "コードをコピーしました。",
@@ -3793,5 +3793,17 @@
 "Solo en direcciones que contienen (opcional)": "次を含むアドレスのみ（任意）",
 "Todas las páginas": "すべてのページ",
 "Todavía no hay versiones.": "まだバージョンはありません。",
-"Versiones": "バージョン"
+"Versiones": "バージョン",
+"Abajo a la derecha": "右下",
+"Abajo a la izquierda": "左下",
+"Agregar al carrito": "カートに追加",
+"Agregar verificación": "検証を追加",
+"Analítica, píxeles de anuncios, mapas de calor, chats y verificación de dominio. Al publicar, cada página de la tienda usa la versión nueva desde la siguiente visita: sin despliegues ni cambios de código. Las de analítica y publicidad cargan solo con el permiso del visitante, y ninguna carga en el pago ni en la cuenta del cliente.": "アナリティクス、広告ピクセル、ヒートマップ、チャット、ドメイン検証。公開すると、ストアの各ページは次のアクセスから新しいバージョンを使います。デプロイもコード変更も不要です。アナリティクスと広告のタグは訪問者の許可がある場合のみ読み込まれ、支払いや顧客アカウントでは一切読み込まれません。",
+"Guía del proveedor": "プロバイダーのガイド",
+"Nombre de la etiqueta": "タグ名",
+"Quitar verificación": "検証を削除",
+"Quién publicó, cuándo y qué cambió. Restaurar una versión la publica de nuevo como la más reciente. La auditoría guarda además la configuración completa de cada versión.": "誰が、いつ公開し、何が変わったか。バージョンを復元すると、最新として再公開されます。監査ログには各バージョンの設定全体も保存されます。",
+"Servicio": "サービス",
+"Verificación de dominio": "ドメイン検証",
+"Las etiquetas meta que piden Google Search Console, Bing, Meta, Pinterest u otros servicios para comprobar que el dominio es tuyo. Van en el encabezado de todas las páginas; puedes pegar la etiqueta completa o solo el código.": "Google Search Console、Bing、Meta、Pinterestなどがドメインの所有確認のために求めるmetaタグです。すべてのページのheadに入ります。タグ全体でもコードだけでも貼り付けられます。"
 }
