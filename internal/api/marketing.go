@@ -13,11 +13,11 @@ import (
 // one layout (with the mega-menu) and one stylesheet, so every page inherits
 // the product's identity. Pages are static HTML built from templates.
 //
-//go:embed marketing/*.tmpl marketing/style.css
+//go:embed marketing/*.tmpl marketing/giro/*.tmpl marketing/resultado/*.tmpl marketing/tamano/*.tmpl marketing/style.css
 var marketingFS embed.FS
 
 // marketingV busts the stylesheet cache when the design changes.
-const marketingV = "4"
+const marketingV = "5"
 
 type mktPage struct {
 	file  string
@@ -70,6 +70,25 @@ var marketingSite = map[string]*mktPage{
 	"/empezar": {file: "marketing/empezar.tmpl",
 		Title: "Empezar · Shulada",
 		Desc:  "Cuéntanos de tu negocio y una persona de Shulada te contacta para abrir tu tienda, migrar tu catálogo y darte una cotización a tu medida. Sin compromiso."},
+
+	// Soluciones por giro (vertical).
+	"/giro/moda":        {file: "marketing/giro/moda.tmpl", Title: "Moda y accesorios · Shulada", Desc: "Una tienda de moda rápida y hermosa: variantes de talla y color, colecciones y lookbook, preventas, tabla de medidas, recomendaciones y devoluciones fáciles. Con el tema Lienzo."},
+	"/giro/tecnologia":  {file: "marketing/giro/tecnologia.tmpl", Title: "Tecnología y electrónica · Shulada", Desc: "Vende tecnología con fichas técnicas claras, comparador, variantes por capacidad y color, pregúntale a la tienda, meses sin intereses y garantías. Con el tema Voltio."},
+	"/giro/super":       {file: "marketing/giro/super.tmpl", Title: "Súper y abarrotes · Shulada", Desc: "El súper en línea: «Agregar» en cada producto, recompra en un toque, entrega el mismo día o recolección, precios por volumen y suscripciones. Con el tema Mercadito."},
+	"/giro/belleza":     {file: "marketing/giro/belleza.tmpl", Title: "Belleza y bienestar · Shulada", Desc: "Belleza con sets y kits, suscripciones, reseñas, muestras de regalo, rutinas con IA y programa de lealtad. Con el tema Bálsamo."},
+	"/giro/hogar":       {file: "marketing/giro/hogar.tmpl", Title: "Hogar y muebles · Shulada", Desc: "Vende muebles y hogar: productos configurables, galerías grandes, envío de voluminosos por zona, pago a meses y fichas con medidas."},
+	"/giro/mayoreo":     {file: "marketing/giro/mayoreo.tmpl", Title: "Mayoreo y distribución · Shulada", Desc: "Distribuye con precios por volumen, crédito a 30 días, pedidos recurrentes, punchout (cXML), catálogo por cliente y representantes de venta."},
+
+	// Soluciones por resultado (outcome).
+	"/resultado/vender-mas":      {file: "marketing/resultado/vender-mas.tmpl", Title: "Vender más · Shulada", Desc: "Más ventas sin más esfuerzo: búsqueda que entiende, recomendaciones, más canales y mercados, promociones que jalan, recuperación de carritos y suscripciones."},
+	"/resultado/mas-conversion":  {file: "marketing/resultado/mas-conversion.tmpl", Title: "Más conversión · Shulada", Desc: "Menos fricción, más compras: carga en menos de un segundo, pago en un minuto con OXXO y SPEI, pago como invitado, pregúntale a la tienda, reseñas y envío claro antes de pagar."},
+	"/resultado/mas-margen":      {file: "marketing/resultado/mas-margen.tmpl", Title: "Más margen · Shulada", Desc: "Vende más gastando menos en operar: equipos ilimitados, IA incluida, sin servidores, promociones exactas, comisión de marketplace y reportes claros."},
+	"/resultado/nuevos-canales":  {file: "marketing/resultado/nuevos-canales.tmpl", Title: "Nuevos canales · Shulada", Desc: "Abre canales sin montar otra plataforma: B2B, marketplace, internacional, punto de venta, canales y feeds — todos con un solo inventario."},
+
+	// Soluciones por tamaño (organización).
+	"/tamano/emprendes": {file: "marketing/tamano/emprendes.tmpl", Title: "Para quien empieza · Shulada", Desc: "Tu primera tienda viva en minutos: sin servidores ni desarrolladores, 4 temas listos, equipo sin costo, IA incluida y un sandbox para probar."},
+	"/tamano/pyme":      {file: "marketing/tamano/pyme.tmpl", Title: "Para la PyME que crece · Shulada", Desc: "La plataforma que crece contigo: B2B y mayoreo, más canales y países, equipo con permisos, lealtad y reportes. Sin migrar otra vez."},
+	"/tamano/empresa":   {file: "marketing/tamano/empresa.tmpl", Title: "Para empresas a escala · Shulada", Desc: "Escala sin cortes: 50 000 productos, publicaciones en milisegundos, despliegue sin corte, cada tienda aislada, superadmin y planes, API y auditoría."},
 }
 
 var (

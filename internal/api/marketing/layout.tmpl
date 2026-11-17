@@ -56,21 +56,38 @@
       <li>
         <button type="button" aria-expanded="false" aria-haspopup="true">Soluciones
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
-        <div class="mega" role="menu">
+        <div class="mega xwide" role="menu">
           <div class="mega-grid">
             <div>
-              <p class="mega-col-head">Por modelo</p>
-              {{template "mitem" dict "href" "/#comprador" "t" "Venta al consumidor" "d" "B2C con experiencia hermosa" "ic" "cart"}}
-              {{template "mitem" dict "href" "/b2b" "t" "Mayoreo y B2B" "d" "Crédito, aprobaciones, punchout" "ic" "building"}}
-              {{template "mitem" dict "href" "/marketplace" "t" "Marketplace" "d" "Vendedores con su portal y pagos" "ic" "users"}}
-              {{template "mitem" dict "href" "/internacional" "t" "Internacional" "d" "Mercados, monedas y 6 idiomas" "ic" "globe"}}
+              <p class="mega-col-head">Por giro</p>
+              {{template "mitem" dict "href" "/giro/moda" "t" "Moda y accesorios" "d" "Tema Lienzo" "ic" "store"}}
+              {{template "mitem" dict "href" "/giro/tecnologia" "t" "Tecnología" "d" "Tema Voltio" "ic" "bolt"}}
+              {{template "mitem" dict "href" "/giro/super" "t" "Súper y abarrotes" "d" "Tema Mercadito" "ic" "cart"}}
+              {{template "mitem" dict "href" "/giro/belleza" "t" "Belleza y bienestar" "d" "Tema Bálsamo" "ic" "spark"}}
+              {{template "mitem" dict "href" "/giro/hogar" "t" "Hogar y muebles" "d" "Configurables y voluminosos" "ic" "box"}}
+              {{template "mitem" dict "href" "/giro/mayoreo" "t" "Mayoreo y distribución" "d" "Crédito y precios por cliente" "ic" "building"}}
             </div>
             <div>
-              <p class="mega-col-head">Por giro</p>
-              {{template "mitem" dict "href" "/#giro" "t" "Moda y accesorios" "d" "Tema Lienzo" "ic" "store"}}
-              {{template "mitem" dict "href" "/#giro" "t" "Tecnología" "d" "Tema Voltio" "ic" "bolt"}}
-              {{template "mitem" dict "href" "/#giro" "t" "Súper y abarrotes" "d" "Tema Mercadito" "ic" "cart"}}
-              {{template "mitem" dict "href" "/#giro" "t" "Belleza y bienestar" "d" "Tema Bálsamo" "ic" "spark"}}
+              <p class="mega-col-head">Por necesidad</p>
+              {{template "mitem" dict "href" "/para-quien-compra" "t" "Venta al consumidor" "d" "B2C con experiencia hermosa" "ic" "cart"}}
+              {{template "mitem" dict "href" "/b2b" "t" "Mayoreo y B2B" "d" "Crédito, aprobaciones, punchout" "ic" "building"}}
+              {{template "mitem" dict "href" "/marketplace" "t" "Marketplace" "d" "Vendedores con su portal" "ic" "users"}}
+              {{template "mitem" dict "href" "/internacional" "t" "Internacional" "d" "Mercados, monedas, 6 idiomas" "ic" "globe"}}
+              {{template "mitem" dict "href" "/#modelos" "t" "Omnicanal" "d" "POS, canales y feeds" "ic" "truck"}}
+              {{template "mitem" dict "href" "/#modelos" "t" "Suscripciones" "d" "Cobros recurrentes" "ic" "flask"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Por resultado</p>
+              {{template "mitem" dict "href" "/resultado/vender-mas" "t" "Vender más" "d" "Más ventas, sin más esfuerzo" "ic" "chart"}}
+              {{template "mitem" dict "href" "/resultado/mas-conversion" "t" "Más conversión" "d" "Menos fricción al comprar" "ic" "bolt"}}
+              {{template "mitem" dict "href" "/resultado/mas-margen" "t" "Más margen" "d" "Vende más, gasta menos" "ic" "tag"}}
+              {{template "mitem" dict "href" "/resultado/nuevos-canales" "t" "Nuevos canales" "d" "Crece a lo ancho" "ic" "globe"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Por tamaño</p>
+              {{template "mitem" dict "href" "/tamano/emprendes" "t" "Empiezas" "d" "Tu primera tienda en minutos" "ic" "spark"}}
+              {{template "mitem" dict "href" "/tamano/pyme" "t" "PyME que crece" "d" "Sube de nivel sin migrar" "ic" "chart"}}
+              {{template "mitem" dict "href" "/tamano/empresa" "t" "Empresa a escala" "d" "Sin cortes, bajo control" "ic" "building"}}
             </div>
           </div>
         </div>
