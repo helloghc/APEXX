@@ -153,23 +153,41 @@
 
 <script>
 (function(){
-  // Mega-menu: hover on desktop, click/keyboard everywhere. aria-expanded tracked.
+  // Mega-menu. One source of truth in JS (the CSS only reveals .mega.open), so
+  // hover, click and keyboard can never leave two panels open at once.
   var nav = document.getElementById('nav');
-  var btns = nav.querySelectorAll('.mega-nav > li > button');
-  function closeAll(except){
-    btns.forEach(function(b){ if(b!==except){ b.setAttribute('aria-expanded','false'); var m=b.nextElementSibling; if(m) m.classList.remove('open'); } });
-  }
-  btns.forEach(function(b){
-    b.addEventListener('click', function(e){
-      e.stopPropagation();
-      var open = b.getAttribute('aria-expanded')==='true';
-      closeAll(b);
-      b.setAttribute('aria-expanded', open?'false':'true');
-      var m=b.nextElementSibling; if(m) m.classList.toggle('open', !open);
+  var lis = [].slice.call(nav.querySelectorAll('.mega-nav > li'));
+  var hoverable = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+  function panelOf(li){ return li.querySelector(':scope > .mega'); }
+  function btnOf(li){ return li.querySelector(':scope > button'); }
+  function closeAll(){
+    lis.forEach(function(li){
+      var b=btnOf(li), m=panelOf(li);
+      if(b) b.setAttribute('aria-expanded','false');
+      if(m) m.classList.remove('open');
     });
+  }
+  function open(li){
+    var m=panelOf(li); if(!m) return;
+    closeAll();
+    btnOf(li).setAttribute('aria-expanded','true');
+    m.classList.add('open');
+  }
+  lis.forEach(function(li){
+    var b=btnOf(li); if(!b) return; // plain links (no panel) need no wiring
+    b.addEventListener('click', function(e){
+      e.stopPropagation(); e.preventDefault();
+      if(btnOf(li).getAttribute('aria-expanded')==='true') closeAll(); else open(li);
+    });
+    if(hoverable){
+      li.addEventListener('mouseenter', function(){ open(li); });
+      li.addEventListener('mouseleave', function(){ closeAll(); });
+    }
   });
-  document.addEventListener('click', function(){ closeAll(null); });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeAll(null); });
+  // Close when focus leaves the whole nav (keyboard), on outside click, or Escape.
+  nav.addEventListener('focusout', function(e){ if(!nav.contains(e.relatedTarget)) closeAll(); });
+  document.addEventListener('click', function(e){ if(!nav.contains(e.target)) closeAll(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeAll(); });
   // Mobile hamburger
   var tg = document.getElementById('navtoggle');
   tg.addEventListener('click', function(){

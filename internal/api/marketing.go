@@ -17,7 +17,7 @@ import (
 var marketingFS embed.FS
 
 // marketingV busts the stylesheet cache when the design changes.
-const marketingV = "5"
+const marketingV = "6"
 
 type mktPage struct {
 	file  string

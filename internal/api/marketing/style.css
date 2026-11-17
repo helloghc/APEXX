@@ -65,7 +65,7 @@ nav{position:sticky;top:0;z-index:50;backdrop-filter:saturate(1.3) blur(10px);
 .mega.wide{min-width:720px}
 .mega.xwide{min-width:920px}
 .mega.xwide .mega-grid{grid-template-columns:repeat(4,1fr)}
-.mega-nav>li:hover>.mega,.mega-nav>li:focus-within>.mega,.mega.open{opacity:1;visibility:visible;transform:none}
+.mega.open{opacity:1;visibility:visible;transform:none}
 .mega-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .mega.wide .mega-grid{grid-template-columns:1fr 1fr 1fr}
 .mega-col-head{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);font-weight:800;padding:8px 10px 4px}
