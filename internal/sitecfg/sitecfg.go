@@ -44,6 +44,10 @@ type Settings struct {
 	Timezone          string            `json:"timezone"`
 	LowStockThreshold int64             `json:"lowStockThreshold"`
 	Robots            string            `json:"robots"` // extra robots.txt rules
+	// EntranceAnim gives every independent element a small bounce as it appears.
+	// It is on by default; the zero value (false) means on, so stores that never
+	// saved it still animate. The merchant turns it off in Configuración › Tienda.
+	EntranceAnimOff bool `json:"entranceAnimOff,omitempty"`
 }
 
 // Default returns the settings of a store that has not saved any.

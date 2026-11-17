@@ -1,0 +1,180 @@
+{{define "layout"}}<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="{{.Desc}}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/marketing.css?v={{.V}}">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4733E0"/><stop offset="1" stop-color="#7A3BFF"/></linearGradient>
+</defs></svg>
+
+<nav id="nav">
+  <div class="wrap nav-row">
+    <a class="brand" href="/" aria-label="Shulada, inicio">
+      <svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true">
+        <rect width="48" height="48" rx="12" fill="url(#sg)"/>
+        <path d="M14 37V24.5A10 10 0 0 1 34 24.5V37" fill="none" stroke="#fff" stroke-width="6.2" stroke-linecap="round"/>
+        <circle cx="24" cy="12.2" r="3.4" fill="#FF5B2E"/>
+      </svg>
+      <span class="wordmark">shulada</span>
+    </a>
+
+    <ul class="mega-nav">
+      <li>
+        <button type="button" aria-expanded="false" aria-haspopup="true">Plataforma
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="mega wide" role="menu">
+          <div class="mega-grid">
+            <div>
+              <p class="mega-col-head">Vender</p>
+              {{template "mitem" dict "href" "/#suite" "t" "Tienda y editor" "d" "Secciones, 4 temas y publicar al instante" "ic" "store"}}
+              {{template "mitem" dict "href" "/#incluye" "t" "Catálogo" "d" "Variantes, paquetes, digitales, preventas" "ic" "box"}}
+              {{template "mitem" dict "href" "/#incluye" "t" "Precios y promociones" "d" "Listas, volumen, cupones, lealtad" "ic" "tag"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Operar</p>
+              {{template "mitem" dict "href" "/pagos" "t" "Pedidos y pagos" "d" "Tarjeta, OXXO, SPEI; reversible" "ic" "card"}}
+              {{template "mitem" dict "href" "/#incluye" "t" "Envíos" "d" "Cotización en vivo, guías, recolección" "ic" "truck"}}
+              {{template "mitem" dict "href" "/#sandbox" "t" "Sandbox" "d" "Prueba, publica y revierte sin romper" "ic" "flask"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Crecer</p>
+              {{template "mitem" dict "href" "/ia" "t" "Inteligencia artificial" "d" "Búsqueda, respuestas, recomendaciones" "ic" "spark"}}
+              {{template "mitem" dict "href" "/#velocidad" "t" "Velocidad medida" "d" "Milisegundos, no promesas" "ic" "bolt"}}
+              {{template "mitem" dict "href" "/#incluye" "t" "Marketing y analítica" "d" "Píxeles, campañas, reportes" "ic" "chart"}}
+            </div>
+          </div>
+          <div class="mega-foot"><a href="/#incluye">Ver todo lo que incluye →</a><a href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+        </div>
+      </li>
+
+      <li>
+        <button type="button" aria-expanded="false" aria-haspopup="true">Soluciones
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="mega" role="menu">
+          <div class="mega-grid">
+            <div>
+              <p class="mega-col-head">Por modelo</p>
+              {{template "mitem" dict "href" "/#comprador" "t" "Venta al consumidor" "d" "B2C con experiencia hermosa" "ic" "cart"}}
+              {{template "mitem" dict "href" "/b2b" "t" "Mayoreo y B2B" "d" "Crédito, aprobaciones, punchout" "ic" "building"}}
+              {{template "mitem" dict "href" "/#modelos" "t" "Marketplace" "d" "Vendedores con su portal y pagos" "ic" "users"}}
+              {{template "mitem" dict "href" "/#modelos" "t" "Internacional" "d" "Mercados, monedas y 6 idiomas" "ic" "globe"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Por giro</p>
+              {{template "mitem" dict "href" "/#giro" "t" "Moda y accesorios" "d" "Tema Lienzo" "ic" "store"}}
+              {{template "mitem" dict "href" "/#giro" "t" "Tecnología" "d" "Tema Voltio" "ic" "bolt"}}
+              {{template "mitem" dict "href" "/#giro" "t" "Súper y abarrotes" "d" "Tema Mercadito" "ic" "cart"}}
+              {{template "mitem" dict "href" "/#giro" "t" "Belleza y bienestar" "d" "Tema Bálsamo" "ic" "spark"}}
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li><a href="/para-quien-compra">Para quien compra</a></li>
+
+      <li>
+        <button type="button" aria-expanded="false" aria-haspopup="true">Recursos
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="mega" role="menu" data-align="right">
+          <div class="mega-grid">
+            <div>
+              <p class="mega-col-head">Conoce</p>
+              {{template "mitem" dict "href" "/#incluye" "t" "Todo lo que incluye" "d" "Cientos de funciones" "ic" "box"}}
+              {{template "mitem" dict "href" "/#porque" "t" "Por qué Shulada" "d" "Lo que nos hace distintos" "ic" "spark"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Empieza</p>
+              {{template "mitem" dict "href" "/s/qa/main/index" "t" "Ver una tienda en vivo" "d" "Recórrela como comprador" "ic" "store"}}
+              {{template "mitem" dict "href" "/admin/" "t" "Entrar al panel" "d" "Administra tu tienda" "ic" "card"}}
+            </div>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="/admin/">Entrar</a>
+      <a class="btn btn-primary" href="/admin/">Crear mi tienda</a>
+    </div>
+    <button class="navtoggle" type="button" id="navtoggle" aria-label="Menú" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
+</nav>
+
+{{template "content" .}}
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="/" aria-label="Shulada" style="margin-bottom:12px">
+          <svg width="28" height="28" viewBox="0 0 48 48" aria-hidden="true">
+            <rect width="48" height="48" rx="12" fill="url(#sg)"/>
+            <path d="M14 37V24.5A10 10 0 0 1 34 24.5V37" fill="none" stroke="#fff" stroke-width="6.2" stroke-linecap="round"/>
+            <circle cx="24" cy="12.2" r="3.4" fill="#FF5B2E"/>
+          </svg><span class="wordmark" style="font-size:19px">shulada</span>
+        </a>
+        <p class="mute" style="font-size:14px;max-width:34ch;margin:4px 0 0">El sistema de comercio para marcas y mayoristas que quieren vender en serio.</p>
+      </div>
+      <div><h4>Plataforma</h4><a href="/#suite">Tienda</a><a href="/para-quien-compra">Para quien compra</a><a href="/ia">IA</a><a href="/#sandbox">Sandbox</a><a href="/pagos">Pagos</a></div>
+      <div><h4>Vende más</h4><a href="/b2b">B2B y mayoreo</a><a href="/#modelos">Internacional</a><a href="/#modelos">Marketplace</a><a href="/#incluye">Todo lo que incluye</a></div>
+      <div><h4>Empieza</h4><a href="/admin/">Entrar al panel</a><a href="/admin/">Crear mi tienda</a><a href="/s/qa/main/index">Ver una tienda en vivo</a></div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Shulada · Comercio sin fricción.</span>
+      <span>Pagos seguros con Stripe · Hecho en México</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // Mega-menu: hover on desktop, click/keyboard everywhere. aria-expanded tracked.
+  var nav = document.getElementById('nav');
+  var btns = nav.querySelectorAll('.mega-nav > li > button');
+  function closeAll(except){
+    btns.forEach(function(b){ if(b!==except){ b.setAttribute('aria-expanded','false'); var m=b.nextElementSibling; if(m) m.classList.remove('open'); } });
+  }
+  btns.forEach(function(b){
+    b.addEventListener('click', function(e){
+      e.stopPropagation();
+      var open = b.getAttribute('aria-expanded')==='true';
+      closeAll(b);
+      b.setAttribute('aria-expanded', open?'false':'true');
+      var m=b.nextElementSibling; if(m) m.classList.toggle('open', !open);
+    });
+  });
+  document.addEventListener('click', function(){ closeAll(null); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeAll(null); });
+  // Mobile hamburger
+  var tg = document.getElementById('navtoggle');
+  tg.addEventListener('click', function(){
+    var open = nav.classList.toggle('open');
+    tg.setAttribute('aria-expanded', open?'true':'false');
+  });
+  // Scroll reveal
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var els = document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in')});return;}
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target);} });
+  }, {rootMargin:'0px 0px -8% 0px', threshold:.08});
+  els.forEach(function(e){io.observe(e)});
+})();
+</script>
+</body>
+</html>
+{{end}}
+
+{{/* mitem: one mega-menu link with an icon. */}}
+{{define "mitem"}}<a class="item" href="{{.href}}" role="menuitem"><span class="i">{{template "ic" .ic}}</span><span><b>{{.t}}</b><span>{{.d}}</span></span></a>{{end}}
+
+{{/* ic: a named inline icon. */}}
+{{define "ic"}}{{if eq . "store"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5M4 9v11h16V9M4 9h16"/></svg>{{else if eq . "box"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7 12 3 4 7l8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg>{{else if eq . "tag"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13 11 4H4v7l9 9z"/><circle cx="7.5" cy="7.5" r="1"/></svg>{{else if eq . "card"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>{{else if eq . "truck"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7"/><circle cx="5.5" cy="18.5" r="1.5"/><circle cx="18.5" cy="18.5" r="1.5"/></svg>{{else if eq . "flask"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg>{{else if eq . "spark"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="3.5"/></svg>{{else if eq . "bolt"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>{{else if eq . "chart"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>{{else if eq . "cart"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>{{else if eq . "building"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21v-6h6v6"/></svg>{{else if eq . "users"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 21a7 7 0 0 1 14 0M15 21a6 6 0 0 1 7-4"/></svg>{{else if eq . "globe"}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>{{else}}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>{{end}}{{end}}

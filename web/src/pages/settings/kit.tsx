@@ -61,7 +61,7 @@ export function Section({
 
 export function EmptyState({ icon: Icon, title, text, action }: { icon: LucideIcon; title: string; text: ReactNode; action?: ReactNode }) {
   return (
-    <div className="grid justify-items-center gap-3 rounded-xl border border-dashed bg-card px-6 py-12 text-center">
+    <div data-animate className="grid justify-items-center gap-3 rounded-xl border border-dashed bg-card px-6 py-12 text-center">
       <span className="grid size-11 place-items-center rounded-full bg-accent text-accent-foreground">
         <Icon className="size-5" aria-hidden="true" />
       </span>

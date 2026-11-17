@@ -124,3 +124,23 @@
   outline-offset: 2px;
   border-radius: 0.375rem;
 }
+
+/* Entrance animation (bounce-in) for the panel. On by default via
+   <html data-enter-anim="on"> (set in main.tsx, kept in step by the shell from
+   the store's setting). Elements opt in with data-animate; shared building
+   blocks (Card, EmptyState) carry it, so the whole panel is covered from a few
+   places. Reduced-motion is already neutralised globally in tokens.css. */
+@keyframes sh-enter {
+  from { opacity: 0; transform: translateY(12px) scale(.99); }
+  to   { opacity: 1; transform: none; }
+}
+html[data-enter-anim="on"] [data-animate] {
+  animation: sh-enter .5s cubic-bezier(.22, 1, .36, 1) both;
+  will-change: opacity, transform;
+}
+/* A row of siblings cascades instead of popping together. */
+html[data-enter-anim="on"] [data-animate]:nth-child(2) { animation-delay: .05s; }
+html[data-enter-anim="on"] [data-animate]:nth-child(3) { animation-delay: .1s; }
+html[data-enter-anim="on"] [data-animate]:nth-child(4) { animation-delay: .15s; }
+html[data-enter-anim="on"] [data-animate]:nth-child(5) { animation-delay: .2s; }
+html[data-enter-anim="on"] [data-animate]:nth-child(n+6) { animation-delay: .24s; }

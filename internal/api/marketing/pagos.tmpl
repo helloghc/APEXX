@@ -1,0 +1,56 @@
+{{define "content"}}
+<header class="hero">
+  <div class="wrap hero-c">
+    <span class="tag-live rise d1"><span class="dot"></span>Pagos y checkout</span>
+    <h1 class="rise d2">Cobra como en México, sin <span class="mg">ver una tarjeta</span>.</h1>
+    <p class="sub rise d3">Cada tienda cobra con su propia cuenta de Stripe; Shulada nunca ve los datos de las tarjetas. Tarjeta, OXXO y SPEI, con meses sin intereses, IVA incluido y envío cotizado en vivo.</p>
+    <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/admin/">Entrar al panel</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+  </div>
+</header>
+
+<section style="padding-top:10px">
+  <div class="wrap">
+    <div class="split">
+      <div class="panel reveal">
+        <div class="panel-top"><span class="dotc"></span><span class="dotc"></span><span class="dotc"></span><span class="ttl">Pago · Resumen</span></div>
+        <div class="panel-body">
+          <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0;border-bottom:1px solid var(--line-2)"><span>2 × Sudadera Pacífico</span><span style="font-family:ui-monospace,Menlo,monospace">$438.00</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0;border-bottom:1px solid var(--line-2)"><span>Envío · Estándar (Estafeta)</span><span style="font-family:ui-monospace,Menlo,monospace">$99.00</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0;border-bottom:1px solid var(--line-2)"><span class="mute">IVA 16% incluido</span><span class="mute" style="font-family:ui-monospace,Menlo,monospace">$74.07</span></div>
+          <div style="display:flex;justify-content:space-between;font-weight:750;font-size:16px;padding-top:12px"><span>Total</span><span style="font-family:ui-monospace,Menlo,monospace">$537.00 MXN</span></div>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><span style="font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;background:var(--stage-2)">Tarjeta</span><span style="font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;background:var(--stage-2)">OXXO Pay</span><span style="font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;background:var(--stage-2)">SPEI</span><span style="font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;background:var(--stage-2)">Meses sin intereses</span></div>
+        </div>
+      </div>
+      <div class="copy reveal">
+        <p class="eyebrow">Hecho para México</p>
+        <h2>Los medios de pago que de verdad usan tus clientes.</h2>
+        <p>No pierdas ventas por un medio de pago que falta. Shulada incluye los que México usa, con el IVA mostrado incluido y el envío cotizado en vivo antes de pagar.</p>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Tarjeta, OXXO y SPEI</b><span>Con meses sin intereses y tarjetas guardadas.</span></div></div>
+          <div class="f"><span class="i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Impuestos y aduanas</b><span>Se calculan al comprar, no al recibir.</span></div></div>
+          <div class="f"><span class="i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Pago como invitado</b><span>Sin obligar a crear cuenta; o con un clic si ya la tiene.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">Seguro y a tu favor</p>
+      <h2>Tu dinero, con las reglas claras.</h2></div>
+    <div class="features">
+      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><h3>Shulada no ve tarjetas</h3><p>El cobro va directo a tu cuenta de Stripe. Los datos de la tarjeta nunca tocan Shulada.</p></div>
+      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/></svg></div><h3>Reversible e idempotente</h3><p>Un cobro se puede reembolsar y un doble clic nunca cobra dos veces.</p></div>
+      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg></div><h3>Cobros pendientes resueltos</h3><p>Un conciliador revisa cada minuto con Stripe y cierra los pagos que quedaron a medias.</p></div>
+      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div><h3>Riesgo y revisión</h3><p>Los pedidos de alto riesgo se marcan para que los revises antes de surtir.</p></div>
+      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z"/></svg></div><h3>Facturas y recibos</h3><p>Comprobantes de cada pedido, listos para tu contabilidad.</p></div>
+      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg></div><h3>Comisión de plataforma</h3><p>Si operas un marketplace, defines la comisión y la plataforma reparte sola.</p></div>
+    </div>
+    <div class="close reveal" style="margin-top:46px">
+      <h2>Cobra sin fricción y sin sorpresas.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/admin/">Crear mi tienda</a></div>
+    </div>
+  </div>
+</section>
+{{end}}

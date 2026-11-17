@@ -19,6 +19,9 @@ window.addEventListener("hashchange", () => {
 const client = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1 } } });
 
 applyTheme(currentTheme());
+// Entrance animation is on by default; the store can turn it off (then /v1/me
+// reports it and the shell flips this to "off"). Reduced-motion is handled in CSS.
+document.documentElement.dataset.enterAnim = "on";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

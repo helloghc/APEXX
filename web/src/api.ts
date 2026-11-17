@@ -119,6 +119,7 @@ export interface Me {
   parent?: string; // sandbox: its production store
   sandbox?: string; // production: its sandbox, if any
   sandboxName?: string; // sandbox: its name
+  entranceAnim?: boolean; // the panel animates elements as they appear (on by default)
 }
 
 export interface Money {

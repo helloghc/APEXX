@@ -26,13 +26,6 @@ import (
 	"github.com/helloghc/apexx/internal/store"
 )
 
-// landingHTML is the public home of the platform, served at "/" on the
-// platform host. It is a self-contained page (inlined CSS), so it ships as
-// bytes, not a template.
-//
-//go:embed landing.html
-var landingHTML []byte
-
 // shuladaMarkSVG is the Shulada brand mark (the "Arco" concept): a gradient
 // tile, a white storefront arch, and the orange live-signal dot. Served as the
 // favicon on the platform and the stores so the tab icon matches the brand.

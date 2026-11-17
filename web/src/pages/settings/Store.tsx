@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { can } from "@/perms";
 import { ErrorBox } from "../common";
 import { sapi, type StateInfo, type StoreSettings } from "./api";
-import { Confirm, Loading, ReadOnlyNote, SaveBar, Section, SubPage } from "./kit";
+import { Confirm, Loading, ReadOnlyNote, SaveBar, Section, SubPage, SwitchRow } from "./kit";
 import { validateRfc } from "./logic";
 
 const SOCIAL_LABEL: Record<string, { label: string; placeholder: string }> = {
@@ -63,6 +63,9 @@ export function StorePage({ me }: { me: Me }) {
     onSuccess: (r) => {
       apply(r.settings);
       setErrors({});
+      // The panel's entrance animation follows this setting right away.
+      document.documentElement.dataset.enterAnim = r.settings.entranceAnimOff ? "off" : "on";
+      void qc.invalidateQueries({ queryKey: ["me"] });
       toast.success("Datos de la tienda guardados");
     },
     onError: (e) => {
@@ -149,6 +152,15 @@ export function StorePage({ me }: { me: Me }) {
               <Input value={form.rfc} maxLength={13} className="font-mono uppercase" placeholder="XAXX010101000" onChange={(e) => set({ rfc: e.target.value.toUpperCase() })} />
             </FormField>
           </div>
+        </Section>
+
+        <Section title="Apariencia" description="Cómo se siente tu tienda y tu panel al cargar.">
+          <SwitchRow
+            title="Animación de entrada"
+            text="Cada elemento aparece con una pequeña animación en lugar de aparecer de golpe. Se aplica a tu tienda y al panel. Quien prefiera menos movimiento en su sistema no la verá."
+            checked={!form.entranceAnimOff}
+            onChange={(v) => set({ entranceAnimOff: !v })}
+          />
         </Section>
 
         <Section title="Logo" description="PNG, JPG, WebP o GIF de hasta 512 KB. Se guarda al subirlo.">

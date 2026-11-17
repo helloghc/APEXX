@@ -426,6 +426,10 @@ const ICONS: Record<string, typeof HomeIcon> = {
 
 function Shell({ me }: { me: Me }) {
   useEffect(() => preloadScreens(), []);
+  // Entrance animation follows the store's setting (on by default).
+  useEffect(() => {
+    document.documentElement.dataset.enterAnim = me.entranceAnim === false ? "off" : "on";
+  }, [me.entranceAnim]);
   const qc = useQueryClient();
   const route = useRoute();
   // A seller's person only has the seller portal (as "inicio") and their own account.

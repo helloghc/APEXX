@@ -259,6 +259,7 @@ export interface StoreSettings {
   timezone: string;
   lowStockThreshold: number;
   robots: string;
+  entranceAnimOff?: boolean; // true = turn off the entrance animation (on by default)
 }
 
 export interface Policy {

@@ -453,4 +453,6 @@ func (s *Server) extendShopConfig(tenant string, out map[string]any) {
 		out["gift"] = map[string]any{"enabled": g.Enabled, "wrapPrice": g.WrapPrice, "messageMax": max, "receipt": g.Receipt, "registries": g.Registries}
 	}
 	out["store"] = map[string]any{"name": st.Name, "logoUrl": st.LogoURL}
+	// Entrance animation is on by default; the storefront reads this to turn it off.
+	out["entranceAnim"] = !st.EntranceAnimOff
 }

@@ -1571,3 +1571,48 @@ function downloadsBox(ds) {
     }).catch(() => {});
   }
 })();
+
+// Entrance animation: every independent block gets a small bounce as it appears.
+// On by default; a store can turn it off from the panel. We never block paint:
+// if anything goes wrong, content is shown. Respects "reduce motion".
+(() => {
+  try {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const body = document.body, tenant = body.dataset.tenant || "";
+    const KEY = "sh-anim:" + tenant;
+    // Off is remembered per store so later pages never flash; refreshed below.
+    let off = false;
+    try { off = localStorage.getItem(KEY) === "off"; } catch {}
+    // Keep the stored preference current without blocking this page.
+    const base = body.dataset.base || ("/s/" + tenant + "/main");
+    fetch("/s/" + tenant + "/api/config").then((r) => r.json()).then((c) => {
+      if (c && c.entranceAnim === false) { try { localStorage.setItem(KEY, "off"); } catch {} }
+      else { try { localStorage.removeItem(KEY); } catch {} }
+    }).catch(() => {});
+    if (off) return;
+
+    const sel = "main > section, .pcard, .tiles > .tile, .cart-lines tbody tr, .acct-box";
+    const items = [].slice.call(document.querySelectorAll(sel)).filter((el) => !el.closest(".sx-header, .sbx-bar"));
+    if (!items.length) return;
+    if (!("IntersectionObserver" in window)) return; // no observer: leave content visible, don't hide it
+
+    // Group siblings so a row of cards cascades instead of popping together.
+    const order = new Map();
+    items.forEach((el) => {
+      el.classList.add("sh-anim");
+      const p = el.parentElement, n = order.get(p) || 0;
+      el.style.transitionDelay = Math.min(n, 8) * 55 + "ms";
+      order.set(p, n + 1);
+    });
+    const show = (el) => { el.classList.add("sh-in"); el.style.willChange = "auto"; };
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } });
+    }, { rootMargin: "0px 0px -6% 0px", threshold: 0.06 });
+    items.forEach((el) => io.observe(el));
+    // Safety net: never leave a block hidden if the observer never fires.
+    setTimeout(() => items.forEach(show), 1600);
+  } catch (e) {
+    // On any failure, reveal everything.
+    [].slice.call(document.querySelectorAll(".sh-anim")).forEach((el) => el.classList.add("sh-in"));
+  }
+})();

@@ -301,13 +301,9 @@ func (s *Server) Routes() http.Handler {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// The platform root is the public home. A custom store domain never
-		// reaches here: siteRouting resolves it to the store before this.
-		if r.URL.Path == "/" {
-			h := w.Header()
-			h.Set("Content-Type", "text/html; charset=utf-8")
-			h.Set("Cache-Control", "public, max-age=300")
-			_, _ = w.Write(landingHTML)
+		// The platform root and the public marketing landings. A custom store
+		// domain never reaches here: siteRouting resolves it to the store first.
+		if (r.Method == http.MethodGet || r.Method == http.MethodHead) && s.serveMarketing(w, r) {
 			return
 		}
 		apierr.NotFound(w, "No existe la ruta "+r.Method+" "+r.URL.Path)
@@ -616,12 +612,19 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	e := s.envOf(p.Tenant)
 	out := struct {
 		auth.Principal
-		TwoStep bool   `json:"twoStep"` // two-step verification is on for this member
-		Env     string `json:"env"`     // production or sandbox
-		Parent  string `json:"parent,omitempty"`
-		Sandbox string `json:"sandbox,omitempty"`     // production: its sandbox, if any
-		Name    string `json:"sandboxName,omitempty"` // sandbox: its name
-	}{Principal: p, Env: e.kind, Parent: e.parent, Sandbox: e.sandbox, Name: e.name}
+		TwoStep      bool   `json:"twoStep"` // two-step verification is on for this member
+		Env          string `json:"env"`     // production or sandbox
+		Parent       string `json:"parent,omitempty"`
+		Sandbox      string `json:"sandbox,omitempty"`     // production: its sandbox, if any
+		Name         string `json:"sandboxName,omitempty"` // sandbox: its name
+		EntranceAnim bool   `json:"entranceAnim"`          // the panel gives elements a small bounce as they appear
+	}{Principal: p, Env: e.kind, Parent: e.parent, Sandbox: e.sandbox, Name: e.name, EntranceAnim: true}
+	// Appearance flag, read from the in-memory projection (cheap). On by default.
+	if s.Proj != nil {
+		if t, ok := s.Proj.Tenant(p.Tenant); ok {
+			out.EntranceAnim = !t.Site().Settings.EntranceAnimOff
+		}
+	}
 	if p.Kind == "member" {
 		_ = s.DB.System.QueryRow(r.Context(), `SELECT totp_enabled_at IS NOT NULL FROM members WHERE tenant_id=$1 AND id=$2`, p.Tenant, p.ID).Scan(&out.TwoStep)
 	}

@@ -484,3 +484,11 @@ img.ph{width:100%;height:auto;object-fit:cover;display:block}
 /* The store's sandbox: always visible, never mistaken for the real store */
 .sbx-bar{position:sticky;top:0;z-index:60;padding:6px 16px;background:#c2410c;color:#fff;font:600 13px/1.4 system-ui,sans-serif;text-align:center;letter-spacing:.02em}
 @media print{.sbx-bar{display:none}}
+
+/* Entrance animation (bounce-in). On by default; the store can turn it off in
+   the panel. shop.js adds .sh-anim only when motion is allowed and the store
+   has not disabled it, so these rules never hide content on their own. The
+   reduced-motion guard above also neutralises them. */
+.sh-anim{opacity:0;transform:translateY(14px) scale(.985);will-change:opacity,transform}
+.sh-anim.sh-in{opacity:1;transform:none;transition:opacity .5s cubic-bezier(.22,1,.36,1),transform .55s cubic-bezier(.22,1,.36,1)}
+@media (prefers-reduced-motion:reduce){.sh-anim{opacity:1;transform:none}}
