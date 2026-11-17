@@ -1,6 +1,6 @@
 # Despliegue de Apexx en Google Cloud
 
-Dos formas de operar Apexx, con los mismos archivos:
+Dos formas de operar Apexx, con los mismos archivos. Si prefieres hacerlo todo con clics en la consola web, sin comandos, sigue `docs/deploy-navegador.md`.
 
 | | **VM única** | **Alta disponibilidad (HA)** |
 | --- | --- | --- |
