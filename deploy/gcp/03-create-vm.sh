@@ -17,7 +17,7 @@ gc compute firewall-rules describe "$NAME-iap-ssh" >/dev/null 2>&1 ||
   gc compute firewall-rules create "$NAME-iap-ssh" --network default --direction INGRESS \
     --allow tcp:22 --target-tags "$NAME-web" --source-ranges 35.235.240.0/20
 
-META="apexx-domain=$DOMAIN,apexx-acme-email=$ACME_EMAIL,apexx-image=$IMAGE,apexx-backup-bucket=$BACKUP_BUCKET,enable-oslogin=TRUE,apexx-payments=${APEXX_PAYMENTS:-stripe},apexx-fee-bps=${APEXX_PLATFORM_FEE_BPS:-0}"
+META="apexx-domain=$DOMAIN,apexx-acme-email=$ACME_EMAIL,apexx-image=$IMAGE,apexx-backup-bucket=$BACKUP_BUCKET,enable-oslogin=TRUE,apexx-payments=${APEXX_PAYMENTS:-stripe},apexx-fee-bps=${APEXX_PLATFORM_FEE_BPS:-0},apexx-sandbox-host=${APEXX_SANDBOX_HOST:-},apexx-embeddings=${APEXX_EMBEDDINGS:-}"
 FILES="startup-script=$ROOT/deploy/gcp/startup.sh,apexx-compose=$ROOT/docker-compose.yml,apexx-caddyfile=$ROOT/deploy/caddy/Caddyfile,apexx-fetch-secrets=$ROOT/deploy/gcp/fetch-secrets.sh,apexx-backup=$ROOT/deploy/backup/pg-backup.sh,apexx-restore=$ROOT/deploy/backup/pg-restore.sh,apexx-ops-agent=$ROOT/deploy/gcp/ops-agent.yaml"
 
 if gc compute instances describe "$NAME" --zone "$ZONE" >/dev/null 2>&1; then

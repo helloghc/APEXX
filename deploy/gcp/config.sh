@@ -18,4 +18,6 @@ SA_NAME="${SA_NAME:-${NAME}-vm}"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 # Secret Manager secret names (one secret per variable).
 SECRETS=(POSTGRES_PASSWORD APP_DB_PASSWORD SYSTEM_DB_PASSWORD APEXX_MASTER_KEY STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET)
+# Optional: created only when the variable is set while running 01-secrets.sh.
+OPTIONAL_SECRETS=(APEXX_ANTHROPIC_API_KEY VOYAGE_API_KEY)
 gc() { gcloud --project "$PROJECT_ID" --quiet "$@"; }

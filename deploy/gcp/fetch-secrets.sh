@@ -15,7 +15,10 @@ tmp="$(mktemp "$DIR/.env.XXXXXX")"
   p="$(md apexx-payments)"; echo "APEXX_PAYMENTS=${p:-stripe}"
   f="$(md apexx-fee-bps)"; echo "APEXX_PLATFORM_FEE_BPS=${f:-0}"
   echo "CLOUDSQL_HOST=$(md apexx-cloudsql-host)"   # only set in the HA setup
-  for s in POSTGRES_PASSWORD APP_DB_PASSWORD SYSTEM_DB_PASSWORD APEXX_MASTER_KEY STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+  echo "APEXX_SANDBOX_HOST=$(md apexx-sandbox-host)"   # optional: wildcard host for sandboxes
+  e="$(md apexx-embeddings)"; [ -n "$e" ] && echo "APEXX_EMBEDDINGS=$e"
+  # Optional secrets (AI) are simply empty when they do not exist.
+  for s in POSTGRES_PASSWORD APP_DB_PASSWORD SYSTEM_DB_PASSWORD APEXX_MASTER_KEY STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET APEXX_ANTHROPIC_API_KEY VOYAGE_API_KEY; do
     v="$(gcloud secrets versions access latest --secret "$s" 2>/dev/null || true)"
     [ "$v" = "unset" ] && v=""
     printf '%s=%s\n' "$s" "$v"

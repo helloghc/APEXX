@@ -173,7 +173,15 @@ Cada nodo tarda de 0,45 a 0,6 s en estar listo al arrancar.
 
 ## 7.2 IA (opcional)
 
-Sin configurar nada, la IA funciona en modo determinista: vectores locales para la búsqueda y respuestas citadas textualmente. Para sumar modelos, agrega a `.env` (los secretos van en Secret Manager como los demás):
+Sin configurar nada, la IA funciona en modo determinista: vectores locales para la búsqueda y respuestas citadas textualmente. Para sumar modelos, guarda la llave en Secret Manager desde Cloud Shell, sin que quede en el historial ni en pantalla, y vuelve a correr `01-secrets.sh`. La VM la lee en cada arranque (no edites `.env` a mano: se reescribe al encender):
+
+```bash
+read -rs APEXX_ANTHROPIC_API_KEY; export APEXX_ANTHROPIC_API_KEY   # pega la llave y Enter; no se ve
+deploy/gcp/01-secrets.sh
+gcloud compute ssh apexx --zone $ZONE --tunnel-through-iap --command 'sudo systemctl restart apexx'
+```
+
+Para Voyage, igual con `VOYAGE_API_KEY`, y `APEXX_EMBEDDINGS=voyage` al correr `03-create-vm.sh`.
 
 | Variable | Para qué |
 |---|---|
@@ -189,7 +197,7 @@ Cada tienda puede tener sandboxes: copias completas y privadas (ver `docs/sandbo
 **Superadmin.** Crea al menos un operador al instalar, y entra en `https://APEXX_DOMAIN/admin/#superadmin`:
 
 ```
-docker compose exec apexx apexx operator create --email tu@empresa.mx --name "Tu nombre" --password '…'
+sudo docker compose run --rm apexx operator create --email tu@empresa.mx --name "Tu nombre" --password '…'
 ```
 
 Guarda el secreto que imprime en tu app de autenticación: se muestra una sola vez.
@@ -197,8 +205,8 @@ Guarda el secreto que imprime en tu app de autenticación: se muestra una sola v
 **Plan de cada tienda.** Por omisión, una tienda tiene 1 sandbox, sin límite de productos, con datos de prueba y publicaciones programadas. El operador lo cambia por tienda en el superadmin, o con el comando:
 
 ```
-docker compose exec apexx apexx tenant plan --id mitienda --plan pro --sandboxes 3 --sandbox-products 100000
-docker compose exec apexx apexx tenant plan --id mitienda --show
+sudo docker compose run --rm apexx tenant plan --id mitienda --plan pro --sandboxes 3 --sandbox-products 100000
+sudo docker compose run --rm apexx tenant plan --id mitienda --show
 ```
 
 `--sandboxes 0` quita el sandbox del plan; `--sandbox-demo-data=false` y `--sandbox-schedule=false` quitan los datos de prueba y la programación.

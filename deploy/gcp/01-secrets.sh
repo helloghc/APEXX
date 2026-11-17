@@ -25,4 +25,15 @@ for s in "${SECRETS[@]}"; do
   gc secrets add-iam-policy-binding "$s" --member "serviceAccount:$SA_EMAIL" \
     --role roles/secretmanager.secretAccessor >/dev/null
 done
+# Optional keys (AI): set the variable in the shell before running this script,
+# e.g. read -rs APEXX_ANTHROPIC_API_KEY; export APEXX_ANTHROPIC_API_KEY
+for s in "${OPTIONAL_SECRETS[@]}"; do
+  v="${!s:-}"
+  [ -n "$v" ] || continue
+  gc secrets describe "$s" >/dev/null 2>&1 || gc secrets create "$s" --replication-policy automatic >/dev/null
+  printf '%s' "$v" | gc secrets versions add "$s" --data-file=- >/dev/null
+  gc secrets add-iam-policy-binding "$s" --member "serviceAccount:$SA_EMAIL" \
+    --role roles/secretmanager.secretAccessor >/dev/null
+  echo "guardado: $s"
+done
 echo "IMPORTANTE: respalda APEXX_MASTER_KEY fuera de línea. Sin ella los datos cifrados no se pueden leer."
