@@ -1,0 +1,46 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c">
+  <span class="tag-live rise d1"><span class="dot"></span>Planes</span>
+  <h1 class="rise d2">Un precio justo, <span class="mg">sin letras chiquitas</span>.</h1>
+  <p class="sub rise d3">Todo incluido en cada plan: equipos ilimitados, IA, sandbox y las cientos de funciones. Sin cobrar por asiento. El precio se ajusta a tu volumen; te damos una cotización a tu medida.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Pide tu cotización</a><a class="btn btn-ghost btn-lg" href="/#incluye">Todo lo que incluye →</a></div>
+</div></header>
+<section style="padding-top:18px"><div class="wrap"><div class="plans">
+  <div class="plan reveal">
+    <h3>Empiezas</h3><p class="who">Para tu primera tienda</p>
+    <div class="price">A tu medida<small>según tu volumen</small></div>
+    <ul>
+      <li>{{template "ic" "spark"}}Tienda con 4 temas y editor</li>
+      <li>{{template "ic" "spark"}}Equipo ilimitado</li>
+      <li>{{template "ic" "spark"}}Pagos: tarjeta, OXXO, SPEI</li>
+      <li>{{template "ic" "spark"}}IA y sandbox incluidos</li>
+    </ul>
+    <a class="btn btn-ghost btn-lg" href="/empezar">Pedir cotización</a>
+  </div>
+  <div class="plan feat reveal">
+    <span class="badge">El más elegido</span>
+    <h3>Creces</h3><p class="who">Para la PyME que vende en serio</p>
+    <div class="price">A tu medida<small>según tu volumen</small></div>
+    <ul>
+      <li>{{template "ic" "spark"}}Todo lo de «Empiezas»</li>
+      <li>{{template "ic" "spark"}}B2B y mayoreo</li>
+      <li>{{template "ic" "spark"}}Más canales y mercados</li>
+      <li>{{template "ic" "spark"}}Lealtad, reportes y roles</li>
+    </ul>
+    <a class="btn btn-primary btn-lg" href="/empezar">Pedir cotización</a>
+  </div>
+  <div class="plan reveal">
+    <h3>Empresa</h3><p class="who">Para operar a escala</p>
+    <div class="price">A tu medida<small>con acompañamiento</small></div>
+    <ul>
+      <li>{{template "ic" "spark"}}Todo lo de «Creces»</li>
+      <li>{{template "ic" "spark"}}Alta disponibilidad y sin cortes</li>
+      <li>{{template "ic" "spark"}}Varias tiendas y superadmin</li>
+      <li>{{template "ic" "spark"}}API, auditoría y soporte</li>
+    </ul>
+    <a class="btn btn-ghost btn-lg" href="/empezar">Hablar con ventas</a>
+  </div>
+</div>
+<p class="mute reveal" style="text-align:center;margin-top:28px;font-size:14px">Sin costo por asiento, en todos los planes. Cada tienda cobra con su propia cuenta de Stripe.</p>
+</div></section>
+{{end}}

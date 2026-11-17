@@ -17,7 +17,7 @@ import (
 var marketingFS embed.FS
 
 // marketingV busts the stylesheet cache when the design changes.
-const marketingV = "6"
+const marketingV = "7"
 
 type mktPage struct {
 	file  string
@@ -89,6 +89,12 @@ var marketingSite = map[string]*mktPage{
 	"/tamano/emprendes": {file: "marketing/tamano/emprendes.tmpl", Title: "Para quien empieza · Shulada", Desc: "Tu primera tienda viva en minutos: sin servidores ni desarrolladores, 4 temas listos, equipo sin costo, IA incluida y un sandbox para probar."},
 	"/tamano/pyme":      {file: "marketing/tamano/pyme.tmpl", Title: "Para la PyME que crece · Shulada", Desc: "La plataforma que crece contigo: B2B y mayoreo, más canales y países, equipo con permisos, lealtad y reportes. Sin migrar otra vez."},
 	"/tamano/empresa":   {file: "marketing/tamano/empresa.tmpl", Title: "Para empresas a escala · Shulada", Desc: "Escala sin cortes: 50 000 productos, publicaciones en milisegundos, despliegue sin corte, cada tienda aislada, superadmin y planes, API y auditoría."},
+
+	// Recursos y planes.
+	"/por-que":   {file: "marketing/por-que.tmpl", Title: "Por qué Shulada", Desc: "Lo que hace distinta a Shulada: todo es reversible, la velocidad se mide en milisegundos, equipos ilimitados, IA incluida, cada tienda aislada y sin cortes."},
+	"/planes":    {file: "marketing/planes.tmpl", Title: "Planes · Shulada", Desc: "Todo incluido en cada plan: equipos ilimitados, IA, sandbox y cientos de funciones, sin cobrar por asiento. El precio se ajusta a tu volumen; pide una cotización a tu medida."},
+	"/preguntas": {file: "marketing/preguntas.tmpl", Title: "Preguntas frecuentes · Shulada", Desc: "Respuestas claras: asientos ilimitados, migración desde VTEX, medios de pago OXXO y SPEI, dominio propio, IA incluida, reversible y sin administrar servidores."},
+	"/comparar":  {file: "marketing/comparar.tmpl", Title: "Comparar · Shulada", Desc: "Comparación honesta frente a la plataforma tradicional: lo que Shulada incluye y otros cobran aparte."},
 }
 
 var (

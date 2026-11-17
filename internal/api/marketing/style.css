@@ -295,3 +295,44 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--mute);fo
 form.sent .lead-fields{display:none}
 form.sent .lead-ok{display:block}
 @media (max-width:900px){.start-grid{grid-template-columns:1fr;gap:30px}.start-why{position:static}.form-grid{grid-template-columns:1fr}}
+
+/* ---------- FAQ (native details/summary) ---------- */
+.faq{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.faq details{border:1px solid var(--line);background:var(--surface);border-radius:14px;box-shadow:var(--shadow-soft);overflow:hidden}
+.faq summary{list-style:none;cursor:pointer;padding:17px 20px;font-weight:650;font-size:16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .plus{width:20px;height:20px;flex:none;position:relative;transition:transform .2s ease}
+.faq summary .plus::before,.faq summary .plus::after{content:"";position:absolute;background:var(--indigo);border-radius:2px}
+.faq summary .plus::before{left:9px;top:2px;width:2px;height:16px}
+.faq summary .plus::after{top:9px;left:2px;height:2px;width:16px}
+.faq details[open] summary .plus{transform:rotate(45deg)}
+.faq details[open] summary{color:var(--indigo)}
+.faq .a{padding:0 20px 18px;color:var(--mute);font-size:14.5px;line-height:1.6}
+
+/* ---------- comparison table ---------- */
+.cmp-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-soft);background:var(--surface)}
+table.cmp{width:100%;border-collapse:collapse;min-width:560px}
+table.cmp th,table.cmp td{text-align:left;padding:15px 20px;border-bottom:1px solid var(--line-2);font-size:14.5px;vertical-align:top}
+table.cmp thead th{font-size:13px;letter-spacing:.02em;color:var(--mute);font-weight:700;background:var(--stage-2)}
+table.cmp thead th.sh{color:var(--indigo)}
+table.cmp td:first-child{font-weight:600;color:var(--ink);width:40%}
+table.cmp tr:last-child td{border-bottom:none}
+table.cmp .yes{display:inline-flex;align-items:center;gap:7px;color:var(--ok);font-weight:600}
+table.cmp .yes svg{width:17px;height:17px}
+table.cmp .no{color:var(--mute)}
+table.cmp td.col-sh{background:color-mix(in oklab,var(--indigo) 6%,var(--surface))}
+
+/* ---------- plans ---------- */
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
+.plan{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:26px 24px;box-shadow:var(--shadow-soft);display:flex;flex-direction:column;gap:14px}
+.plan.feat{border-color:color-mix(in oklab,var(--indigo) 50%,var(--line));box-shadow:var(--shadow);position:relative}
+.plan .badge{position:absolute;top:-11px;left:24px;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--grad);border-radius:999px;padding:4px 11px}
+.plan h3{margin:0;font-size:20px}
+.plan .who{color:var(--mute);font-size:14px;margin:-6px 0 0}
+.plan .price{font-family:"Avenir Next","Helvetica Neue",system-ui,sans-serif;font-weight:700;letter-spacing:-.02em;font-size:30px;line-height:1}
+.plan .price small{display:block;font-size:13px;color:var(--mute);font-weight:500;margin-top:6px}
+.plan ul{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.plan li{display:flex;gap:9px;align-items:flex-start;font-size:14px;color:var(--mute);line-height:1.45}
+.plan li svg{width:16px;height:16px;color:var(--violet);flex:none;margin-top:2px}
+.plan .btn{margin-top:auto;justify-content:center}
+@media (max-width:860px){.plans{grid-template-columns:1fr}}
