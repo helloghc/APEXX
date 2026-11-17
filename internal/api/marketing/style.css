@@ -258,3 +258,38 @@ footer{border-top:1px solid var(--line);padding:46px 0 36px;color:var(--mute);fo
 .foot-grid a:hover{color:var(--ink)}
 .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-top:34px;padding-top:22px;border-top:1px solid var(--line)}
 @media (max-width:760px){.foot-grid{grid-template-columns:1fr 1fr}}
+
+/* ---------- lead form ("Empezar") ---------- */
+.start-grid{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:start}
+.start-why{position:sticky;top:90px}
+.start-why h1{font-size:clamp(32px,4.4vw,48px);margin:16px 0 0}
+.start-why .sub{margin-left:0}
+.start-steps{display:flex;flex-direction:column;gap:14px;margin-top:26px}
+.start-steps .s{display:flex;gap:13px;align-items:flex-start}
+.start-steps .n{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:13px;background:var(--grad);color:#fff;flex:none}
+.start-steps b{font-size:15px}.start-steps p{margin:2px 0 0;font-size:14px;color:var(--mute);line-height:1.45}
+.lead-card{border:1px solid var(--line);background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:28px 26px}
+.lead-card h2{font-size:22px;margin:0}
+.lead-card .lc-sub{margin:6px 0 20px;color:var(--mute);font-size:14.5px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field.full{grid-column:1/-1}
+.field label{font-size:13px;font-weight:600;color:var(--ink)}
+.field label .req{color:var(--signal)}
+.field input,.field select,.field textarea{
+  font:inherit;font-size:14.5px;color:var(--ink);background:var(--paper);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;
+  transition:border-color .15s ease,box-shadow .15s ease}
+.field textarea{resize:vertical;min-height:84px}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--indigo);box-shadow:0 0 0 3px color-mix(in oklab,var(--indigo) 22%,transparent)}
+.field.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.lead-submit{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.lead-note{font-size:12.5px;color:var(--mute)}
+.lead-err{font-size:13.5px;color:var(--signal);min-height:1.2em}
+.lead-ok{display:none;text-align:center;padding:20px 6px}
+.lead-ok .big-mark{filter:drop-shadow(0 16px 28px rgba(39,26,110,.3));margin-bottom:12px}
+.lead-ok h2{font-size:24px;margin:0 0 8px}
+.lead-ok p{color:var(--mute);margin:0 auto;max-width:36ch}
+form.sent .lead-fields{display:none}
+form.sent .lead-ok{display:block}
+@media (max-width:900px){.start-grid{grid-template-columns:1fr;gap:30px}.start-why{position:static}.form-grid{grid-template-columns:1fr}}

@@ -17,7 +17,7 @@ import (
 var marketingFS embed.FS
 
 // marketingV busts the stylesheet cache when the design changes.
-const marketingV = "2"
+const marketingV = "4"
 
 type mktPage struct {
 	file  string
@@ -67,6 +67,9 @@ var marketingSite = map[string]*mktPage{
 	"/internacional": {file: "marketing/internacional.tmpl",
 		Title: "Internacional y multicanal · Shulada",
 		Desc:  "Vende en más países: mercados por país con su moneda e impuestos, la tienda en 6 idiomas con dirección propia para Google, canales de venta con inventario compartido y aduanas al comprar."},
+	"/empezar": {file: "marketing/empezar.tmpl",
+		Title: "Empezar · Shulada",
+		Desc:  "Cuéntanos de tu negocio y una persona de Shulada te contacta para abrir tu tienda, migrar tu catálogo y darte una cotización a tu medida. Sin compromiso."},
 }
 
 var (

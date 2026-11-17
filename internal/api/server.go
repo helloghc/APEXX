@@ -152,6 +152,7 @@ func (s *Server) Routes() http.Handler {
 	handle("GET /metrics", s.metricsGuard(s.serveMetrics))
 
 	// Auth and team (unlimited seats, permissions per module).
+	handle("POST /v1/leads", s.createLead) // public: the "Empezar" lead form
 	handle("POST /v1/auth/login", s.login)
 	handle("POST /v1/auth/logout", s.authed("", "", s.logout))
 	handle("GET /v1/me", s.authed("", "", s.me))

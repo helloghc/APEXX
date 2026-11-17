@@ -1,0 +1,90 @@
+{{define "content"}}
+<section class="hero" style="padding-top:34px">
+  <div class="wrap start-grid">
+    <div class="start-why reveal">
+      <span class="tag-live"><span class="dot"></span>Empieza con Shulada</span>
+      <h1>Abre tu tienda con <span class="mg">alguien que te ayuda</span>.</h1>
+      <p class="sub">Cuéntanos de tu negocio y una persona de Shulada te contacta para abrir tu tienda, migrar tu catálogo y darte una cotización a tu medida. Sin compromiso.</p>
+      <div class="start-steps">
+        <div class="s"><span class="n">1</span><div><b>Cuéntanos de ti</b><p>Tu giro, cuánto vendes y qué usas hoy. Dos minutos.</p></div></div>
+        <div class="s"><span class="n">2</span><div><b>Te contactamos</b><p>Una persona de ventas te llama o te escribe, con una cotización a tu medida.</p></div></div>
+        <div class="s"><span class="n">3</span><div><b>Migramos y publicamos</b><p>Traemos tu catálogo (incluso de VTEX) y tu tienda queda viva en minutos.</p></div></div>
+      </div>
+      <div class="start-steps" style="margin-top:28px">
+        <div class="s"><span class="n" style="background:none;color:var(--signal);border:1px solid color-mix(in oklab,var(--signal) 40%,var(--line))">✓</span><div><b>Equipos ilimitados</b><p>No cobramos por asiento, en ningún plan.</p></div></div>
+        <div class="s"><span class="n" style="background:none;color:var(--signal);border:1px solid color-mix(in oklab,var(--signal) 40%,var(--line))">✓</span><div><b>Todo reversible</b><p>Nada se publica roto; siempre puedes volver atrás.</p></div></div>
+      </div>
+    </div>
+
+    <div class="lead-card reveal">
+      <form id="lead-form" novalidate>
+        <div class="lead-fields">
+          <h2>Platícanos de tu negocio</h2>
+          <p class="lc-sub">Te respondemos el mismo día hábil. Tus datos son privados.</p>
+          <div class="form-grid">
+            <div class="field"><label for="l-name">Nombre <span class="req">*</span></label><input id="l-name" name="name" autocomplete="name" maxlength="120" required></div>
+            <div class="field"><label for="l-company">Empresa o marca</label><input id="l-company" name="company" autocomplete="organization" maxlength="120"></div>
+            <div class="field"><label for="l-email">Correo <span class="req">*</span></label><input id="l-email" name="email" type="email" autocomplete="email" maxlength="160" required></div>
+            <div class="field"><label for="l-phone">Teléfono o WhatsApp</label><input id="l-phone" name="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="+52 55 1234 5678"></div>
+            <div class="field"><label for="l-country">País</label>
+              <select id="l-country" name="country">
+                <option>México</option><option>Colombia</option><option>Perú</option><option>Chile</option>
+                <option>Argentina</option><option>Estados Unidos</option><option>España</option><option>Otro</option>
+              </select></div>
+            <div class="field"><label for="l-industry">¿Qué vendes?</label>
+              <select id="l-industry" name="industry">
+                <option value="">Elige tu giro…</option>
+                <option>Moda y accesorios</option><option>Tecnología y electrónica</option><option>Súper y abarrotes</option>
+                <option>Belleza y bienestar</option><option>Hogar y muebles</option><option>Mayoreo / B2B</option>
+                <option>Marketplace</option><option>Otro</option>
+              </select></div>
+            <div class="field"><label for="l-volume">Ventas al mes (aprox.)</label>
+              <select id="l-volume" name="volume">
+                <option value="">Para tu cotización…</option>
+                <option>Apenas empiezo</option><option>Menos de $100 mil</option><option>$100 mil – $500 mil</option>
+                <option>$500 mil – $2 millones</option><option>$2 – $10 millones</option><option>Más de $10 millones</option>
+              </select></div>
+            <div class="field"><label for="l-platform">¿Qué usas hoy?</label>
+              <select id="l-platform" name="platform">
+                <option value="">Plataforma actual…</option>
+                <option>Nada todavía</option><option>VTEX</option><option>Shopify</option><option>WooCommerce</option>
+                <option>Magento</option><option>Tienda propia</option><option>Otra</option>
+              </select></div>
+            <div class="field full"><label for="l-message">¿Algo que debamos saber?</label><textarea id="l-message" name="message" maxlength="2000" placeholder="Cuéntanos qué necesitas, cuántos productos tienes, fechas…"></textarea></div>
+            <div class="field full hp"><label for="l-website">No llenes esto</label><input id="l-website" name="website" tabindex="-1" autocomplete="off"></div>
+          </div>
+          <div class="lead-submit">
+            <p class="lead-err" id="lead-err" role="alert"></p>
+            <button class="btn btn-primary btn-lg" type="submit" id="lead-btn" style="width:100%;justify-content:center">Quiero que me contacten</button>
+            <p class="lead-note">Al enviar aceptas que te contactemos sobre Shulada. Nada de spam.</p>
+          </div>
+        </div>
+        <div class="lead-ok">
+          <svg class="big-mark" width="60" height="60" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="url(#sg)"/><path d="M14 37V24.5A10 10 0 0 1 34 24.5V37" fill="none" stroke="#fff" stroke-width="6.2" stroke-linecap="round"/><circle cx="24" cy="12.2" r="3.4" fill="#FF5B2E"/></svg>
+          <h2>¡Gracias! Vamos a contactarte.</h2>
+          <p>Una persona de Shulada te escribirá muy pronto con los siguientes pasos y tu cotización. Mientras tanto, puedes ver una tienda en vivo.</p>
+          <div class="cta-row" style="justify-content:center;margin-top:22px"><a class="btn btn-ghost" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  var f=document.getElementById('lead-form'); if(!f) return;
+  var btn=document.getElementById('lead-btn'), err=document.getElementById('lead-err');
+  f.addEventListener('submit', function(e){
+    e.preventDefault(); err.textContent='';
+    var data={}; new FormData(f).forEach(function(v,k){ data[k]=String(v).trim(); });
+    if(!data.name){ err.textContent='Escribe tu nombre.'; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email||'')){ err.textContent='Escribe un correo válido.'; return; }
+    btn.disabled=true; var old=btn.textContent; btn.textContent='Enviando…';
+    fetch('/v1/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+      .then(function(r){ return r.ok ? r.json() : r.json().then(function(p){ throw new Error(p.detail||'No se pudo enviar.'); }); })
+      .then(function(){ f.classList.add('sent'); window.scrollTo({top:f.getBoundingClientRect().top+window.scrollY-120,behavior:'smooth'}); })
+      .catch(function(ex){ err.textContent=ex.message||'No se pudo enviar. Intenta de nuevo.'; btn.disabled=false; btn.textContent=old; });
+  });
+})();
+</script>
+{{end}}
