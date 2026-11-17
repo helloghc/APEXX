@@ -1,4 +1,4 @@
-/** The three themes of the Apexx admin. Values mirror tokens.css (a test keeps them in step). */
+/** The three themes of the Shulada admin. Values mirror tokens.css (a test keeps them in step). */
 export interface AdminTheme {
   id: "rosa" | "lavanda" | "niebla";
   label: string;

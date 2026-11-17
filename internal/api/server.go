@@ -230,11 +230,13 @@ func (s *Server) Routes() http.Handler {
 	handle("GET /s/{tenant}/{site}/checkout", s.shopStatic("checkout", "Pago"))
 	handle("GET /s/{tenant}/{site}/gracias", s.shopStatic("thanks", "Gracias"))
 	handle("GET /s/{tenant}/{site}/pedido-rapido", s.shopStatic("quickorder", "Pedido rápido"))
-	handle("GET /favicon.ico", func(w http.ResponseWriter, _ *http.Request) {
+	shuladaFavicon := func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "image/svg+xml")
 		w.Header().Set("Cache-Control", "public, max-age=86400")
-		_, _ = w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1d3fae"/><path d="M9 23 16 8l7 15h-4l-3-7-3 7z" fill="#fff"/></svg>`))
-	})
+		_, _ = w.Write([]byte(shuladaMarkSVG))
+	}
+	handle("GET /favicon.ico", shuladaFavicon)
+	handle("GET /favicon.svg", shuladaFavicon)
 	handle("GET /s/assets/{file}", shopAssets)
 	handle("GET /s/fonts/{file}", shopFonts)
 	handle("GET /s/{tenant}/api/config", s.shopConfig)
@@ -299,6 +301,15 @@ func (s *Server) Routes() http.Handler {
 		mux.Handle("/admin/", http.StripPrefix("/admin", s.Admin))
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// The platform root is the public home. A custom store domain never
+		// reaches here: siteRouting resolves it to the store before this.
+		if r.URL.Path == "/" {
+			h := w.Header()
+			h.Set("Content-Type", "text/html; charset=utf-8")
+			h.Set("Cache-Control", "public, max-age=300")
+			_, _ = w.Write(landingHTML)
+			return
+		}
 		apierr.NotFound(w, "No existe la ruta "+r.Method+" "+r.URL.Path)
 	})
 	return resilience.Recover(s.Log, securityHeaders(httpx.Middleware(s.siteRouting(s.sandboxGate(s.localized(mux))))))

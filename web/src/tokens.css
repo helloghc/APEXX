@@ -20,6 +20,9 @@
   --font-head: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --brand-cumbre: #2e44e8;
+  /* Shulada brand mark (Arco): indigo → violet gradient, orange live signal. */
+  --brand-indigo: #4733e0;
+  --brand-violet: #7a3bff;
   --brand-senal: #ff5b2e;
   --brand-ink: #0e1220;
   --shadow-1: 0 1px 2px rgb(14 18 32 / 0.06), 0 1px 1px rgb(14 18 32 / 0.04);
