@@ -5,6 +5,7 @@
   --paper:#F6F5FA; --surface:#FFFFFF; --stage:#EFEDF8; --stage-2:#F3F1FA;
   --ink:#161320; --mute:#5D5A73; --line:#E5E2F0; --line-2:#EEECF6;
   --indigo:#4733E0; --violet:#7A3BFF; --signal:#FF5B2E; --ok:#157F4A;
+  --band-bg:#161320;
   --grad:linear-gradient(135deg,#4733E0 0%,#7A3BFF 100%);
   --onbrand:#FFFFFF; --radius:16px;
   --shadow:0 1px 2px rgba(20,16,32,.05),0 20px 46px -20px rgba(39,26,110,.34);
@@ -15,7 +16,7 @@
   :root{
     --paper:#0C0A13; --surface:#151220; --stage:#18141f; --stage-2:#141020;
     --ink:#ECEAF6; --mute:#9D99B5; --line:#272239; --line-2:#201B30;
-    --indigo:#9A88FF; --violet:#B49BFF; --signal:#FF6A3D; --ok:#6FD39A;
+    --indigo:#9A88FF; --violet:#B49BFF; --signal:#FF6A3D; --ok:#6FD39A; --band-bg:#1a1530;
     --grad:linear-gradient(135deg,#5B45F0 0%,#8A5BFF 100%);
     --shadow:0 1px 2px rgba(0,0,0,.5),0 28px 60px -24px rgba(0,0,0,.7);
     --shadow-soft:0 1px 2px rgba(0,0,0,.4),0 12px 28px -16px rgba(0,0,0,.6);
@@ -190,7 +191,7 @@ section{padding:70px 0}
 .sm-card .p{font-size:12.5px;color:var(--mute)}
 .sm-card .p s{opacity:.6}
 
-.band{background:radial-gradient(90% 120% at 88% -10%,color-mix(in oklab,var(--violet) 18%,transparent),transparent 55%),var(--ink);
+.band{background:radial-gradient(90% 120% at 88% -10%,color-mix(in oklab,var(--violet) 18%,transparent),transparent 55%),var(--band-bg);
   color:#fff;border-radius:28px;padding:50px 52px;position:relative;overflow:hidden}
 .band .eyebrow{color:#FFB199}
 .band h2{color:#fff;font-size:clamp(26px,3.6vw,36px);line-height:1.1;margin:14px 0 0}

@@ -17,7 +17,7 @@ import (
 var marketingFS embed.FS
 
 // marketingV busts the stylesheet cache when the design changes.
-const marketingV = "1"
+const marketingV = "2"
 
 type mktPage struct {
 	file  string
@@ -43,6 +43,30 @@ var marketingSite = map[string]*mktPage{
 	"/pagos": {file: "marketing/pagos.tmpl",
 		Title: "Pagos y checkout · Shulada",
 		Desc:  "Cobra como en México: tarjeta, OXXO y SPEI con meses sin intereses. Cada tienda cobra con su propia cuenta de Stripe; Shulada nunca ve los datos de las tarjetas. Cobros reversibles e idempotentes."},
+	"/tienda": {file: "marketing/tienda.tmpl",
+		Title: "Tienda y editor · Shulada",
+		Desc:  "Arma tu tienda por secciones, elige uno de 4 temas originales y publica en milisegundos. Deshacer y versiones, dominio propio con HTTPS, blog, páginas y menús."},
+	"/catalogo": {file: "marketing/catalogo.tmpl",
+		Title: "Catálogo · Shulada",
+		Desc:  "Un catálogo que escala a 50 000 productos: variantes, paquetes, digitales, preventas, campos personalizados, fichas técnicas, medios con edición e importación de VTEX y CSV."},
+	"/precios": {file: "marketing/precios.tmpl",
+		Title: "Precios y promociones · Shulada",
+		Desc:  "Listas de precios por cliente, precios por volumen, cupones, campañas, 3x2, escalones, mínimos, tarjetas de regalo y programa de lealtad. Calculado en vivo, sin errores."},
+	"/envios": {file: "marketing/envios.tmpl",
+		Title: "Envíos · Shulada",
+		Desc:  "Envíos cotizados en vivo con fecha, compra de guías desde el pedido, recolección en tienda, zonas y tarifas, días festivos, seguimiento, entrega digital y aduanas por país."},
+	"/sandbox": {file: "marketing/sandbox.tmpl",
+		Title: "Sandbox · Shulada",
+		Desc:  "Duplica tu tienda en una copia privada, prueba precios, cupones y productos, publica solo lo que apruebes y revierte en un clic. Publicación programada, contraseña opcional y existencias aisladas."},
+	"/marketing": {file: "marketing/marketing.tmpl",
+		Title: "Marketing y analítica · Shulada",
+		Desc:  "Píxeles de Meta, TikTok, Pinterest y Google Ads, Tag Manager, campañas de correo, recuperación de carritos, automatizaciones, reportes a la medida y una bitácora verificable."},
+	"/marketplace": {file: "marketing/marketplace.tmpl",
+		Title: "Marketplace · Shulada",
+		Desc:  "Lanza tu marketplace: vendedores con su portal, sus productos y sus pagos con Stripe Connect. Define tu comisión y la plataforma reparte sola, con seguimiento de cada pago."},
+	"/internacional": {file: "marketing/internacional.tmpl",
+		Title: "Internacional y multicanal · Shulada",
+		Desc:  "Vende en más países: mercados por país con su moneda e impuestos, la tienda en 6 idiomas con dirección propia para Google, canales de venta con inventario compartido y aduanas al comprar."},
 }
 
 var (
