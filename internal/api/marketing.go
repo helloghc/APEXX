@@ -211,10 +211,14 @@ func (s *Server) serveMarketing(w http.ResponseWriter, r *http.Request) bool {
 		internalError(w, s.Log, marketingErr)
 		return true
 	}
+	demoURL := s.DemoURL
+	if demoURL == "" {
+		demoURL = "/demo"
+	}
 	var buf bytes.Buffer
 	data := struct {
-		Title, Desc, V string
-	}{page.Title, page.Desc, marketingV}
+		Title, Desc, V, DemoURL string
+	}{page.Title, page.Desc, marketingV, demoURL}
 	if err := marketingTmpls[r.URL.Path].ExecuteTemplate(&buf, "layout", data); err != nil {
 		internalError(w, s.Log, err)
 		return true

@@ -396,6 +396,7 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		DemoTenant:   os.Getenv("APEXX_DEMO_TENANT"),
 		DemoEmail:    os.Getenv("APEXX_DEMO_EMAIL"),
 		DemoPassword: os.Getenv("APEXX_DEMO_PASSWORD"),
+		DemoURL:      env("APEXX_DEMO_URL", "/demo"),
 	}
 	if srv.DemoTenant != "" {
 		log.Warn("public demo panel ENABLED (self-service login into an isolated tenant)", "tenant", srv.DemoTenant)

@@ -66,6 +66,7 @@ type Server struct {
 	DemoTenant       string        // public self-service demo: tenant to sign visitors into (empty = disabled, e.g. production)
 	DemoEmail        string        // the restricted demo visitor account
 	DemoPassword     string        // server-held password for the demo visitor
+	DemoURL          string        // where the "see demo" buttons point (e.g. the demo instance's URL); defaults to /demo
 	Media            media.Storage // media library files; nil = local disk under the system temp dir
 	Embedder         ai.Embedder   // vectors for semantic search; nil = local (no network, no cost)
 	LLM              ai.LLM        // language model for answers and assistants; nil = deterministic only

@@ -8,3 +8,4 @@
 
 # binario de validación local (no se versiona)
 /apexx-local
+.demo-golden/
