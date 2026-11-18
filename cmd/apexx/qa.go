@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"flag"
 	"fmt"
+	"html"
+	"html/template"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/helloghc/apexx/internal/api"
 	"github.com/helloghc/apexx/internal/auth"
@@ -15,6 +21,7 @@ import (
 	"github.com/helloghc/apexx/internal/catalog"
 	"github.com/helloghc/apexx/internal/customers"
 	"github.com/helloghc/apexx/internal/logistics"
+	"github.com/helloghc/apexx/internal/media"
 	"github.com/helloghc/apexx/internal/money"
 	"github.com/helloghc/apexx/internal/orders"
 	"github.com/helloghc/apexx/internal/pricing"
@@ -56,6 +63,11 @@ func (d qaData) Products(limit int) []builder.Card {
 				if q.CompareAt != nil && q.CompareAt.Amount > q.Unit.Amount {
 					c.CompareAt = price(*q.CompareAt)
 				}
+			}
+		}
+		if len(p.Media) > 0 {
+			if m, ok := d.t.Taxo.Media(p.Media[0]); ok {
+				c.Image = cardImageHTML(d.t.ID, m)
 			}
 		}
 		out = append(out, c)
@@ -118,31 +130,50 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 		must(log, err, "member "+email)
 	}
 
-	// Realistic demo catalog (sports & fashion; no real trademarks). Cycled with a
-	// colour suffix so larger stores stay varied without inventing brands.
-	demoCat := []struct{ title, brand string }{
-		{"Tenis para correr impermeables", "Sierra"},
-		{"Chamarra rompevientos con capucha", "Norte"},
-		{"Sudadera deportiva de secado rápido", "Pacífico"},
-		{"Playera deportiva transpirable", "Sierra"},
-		{"Calcetas deportivas acolchadas (3 pares)", "Norte"},
-		{"Gorra para correr reflejante", "Pacífico"},
-		{"Short deportivo con bolsas", "Sierra"},
-		{"Leggings de compresión", "Pacífico"},
-		{"Tenis urbanos de malla transpirable", "Norte"},
-		{"Rompevientos ultraligero plegable", "Sierra"},
-		{"Pants deportivo de felpa", "Pacífico"},
-		{"Chamarra acolchada ligera", "Norte"},
-		{"Playera manga larga térmica", "Sierra"},
-		{"Sudadera con cierre y capucha", "Pacífico"},
-		{"Tenis de senderismo antiderrapantes", "Norte"},
-		{"Mochila 20L resistente al agua", "Sierra"},
-		{"Gorro tejido para frío", "Pacífico"},
-		{"Guantes deportivos táctiles", "Norte"},
-		{"Tank top de entrenamiento", "Sierra"},
-		{"Chaleco acolchado sin mangas", "Pacífico"},
+	// Realistic demo catalog: apparel & accessories whose stock photos are
+	// brand-neutral (verified — no visible logos). Each carries its own free
+	// Unsplash photo id. Cycled with a colour suffix for larger stores.
+	demoCat := []struct{ title, brand, img string }{
+		{"Chamarra de piel sintética", "Norte", "1551028719-00167b16eac5"},
+		{"Sudadera con capucha gris", "Sierra", "1556821840-3a63f95609a7"},
+		{"Chamarra rompevientos ligera", "Pacífico", "1591047139829-d91aecb6caea"},
+		{"Playera de algodón orgánico", "Sierra", "1620799140408-edc6dcb6d633"},
+		{"Suéter tejido oversize", "Norte", "1434389677669-e08b4cac3105"},
+		{"Gorra clásica negra", "Pacífico", "1521369909029-2afed882baee"},
+		{"Short de mezclilla", "Sierra", "1591195853828-11db59a44f6b"},
+		{"Jeans slim de mezclilla", "Pacífico", "1506629082955-511b1aa562c8"},
+		{"Mochila urbana 20L", "Norte", "1553062407-98eeb64c6a62"},
+		{"Gorra de lona blanca", "Sierra", "1588850561407-ed78c282e89b"},
+		{"Camisa de mezclilla", "Pacífico", "1596755094514-f87e34085b2c"},
+		{"Playera cuello redondo", "Norte", "1618517351616-38fb9c5210c6"},
+		{"Pashmina de lana", "Sierra", "1445205170230-053b83016050"},
+		{"Playera blanca premium", "Pacífico", "1521572163474-6864f9cf17ab"},
+		{"Paquete de básicos", "Norte", "1489987707025-afc232f7ea0f"},
+		{"Playera estampada lisa", "Sierra", "1620799139507-2a76f79a2f4d"},
 	}
 	demoColors := []string{"", "Negro", "Azul marino", "Gris jaspe", "Verde olivo", "Vino"}
+	imgStore, imgErr := media.NewLocal(env("APEXX_MEDIA_DIR", "data/media"))
+	if imgErr != nil {
+		log.Warn("media store; products will have no photos", "err", imgErr)
+	}
+	imgIDs := make([]string, len(demoCat))
+	if imgStore != nil {
+		cache := map[string]string{}
+		for k := range demoCat {
+			u := "https://images.unsplash.com/photo-" + demoCat[k].img + "?w=1000&h=1000&fit=crop&q=72"
+			if id, ok := cache[u]; ok {
+				imgIDs[k] = id
+				continue
+			}
+			id, err := seedImage(ctx, imgStore, db, *tenant, u, demoCat[k].title)
+			if err != nil {
+				log.Warn("foto de producto", "err", err)
+				continue
+			}
+			imgIDs[k] = id
+			cache[u] = id
+		}
+	}
 
 	for i := 1; i <= *n; i++ {
 		var vs []catalog.Variant
@@ -164,11 +195,21 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 		if c := demoColors[((i-1)/len(demoCat))%len(demoColors)]; c != "" {
 			title = dp.title + " · " + c
 		}
+		var pm []string
+		if id := imgIDs[(i-1)%len(demoCat)]; id != "" {
+			pm = []string{id}
+		}
 		_, err := db.UpsertProduct(ctx, *tenant, "qa-setup", catalog.Product{
 			ID: fmt.Sprintf("QA-%05d", i), Handle: fmt.Sprintf("qa-producto-%d", i), Title: title,
-			Brand: dp.brand, Categories: []string{"deportes"}, Description: "Tejido ligero y transpirable, ideal para entrenar. Envío a todo México.", Variants: vs,
+			Brand: dp.brand, Categories: []string{"deportes"}, Description: "Tejido ligero y transpirable, ideal para entrenar. Envío a todo México.", Variants: vs, Media: pm,
 		}, 0)
 		must(log, err, "product")
+		// UpsertProduct does not write the media column (added in a later
+		// migration), so link the cover photo to the product directly.
+		if len(pm) > 0 {
+			_, err := db.System.Exec(ctx, `UPDATE products SET media=$1 WHERE tenant_id=$2 AND id=$3`, pm, *tenant, fmt.Sprintf("QA-%05d", i))
+			must(log, err, "product media")
+		}
 	}
 	for _, p := range []store.PromotionRow{
 		{ID: "qa-10-3000", Kind: "percent_over_threshold", Active: true, Rule: []byte(`{"name":"10% en compras desde $3,000","channels":["mx"],"bps":1000,"min":{"amount":300000,"currency":"MXN"}}`)},
@@ -425,4 +466,70 @@ func cmdDemoUser(ctx context.Context, log *slog.Logger, args []string) {
 		must(log, err, "create demo user")
 	}
 	fmt.Printf("Visitante de demo creado: %s (tenant %s) — rol restringido\n", email2, *tenant)
+}
+
+// seedImage downloads one image, processes it into renditions, stores them in
+// the media library (so the platform serves and caches them — no hotlinking)
+// and returns the media id. Identical bytes are de-duplicated by SHA.
+func seedImage(ctx context.Context, ms media.Storage, db *store.DB, tenant, url, alt string) (string, error) {
+	cl := &http.Client{Timeout: 20 * time.Second}
+	resp, err := cl.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("imagen %s: http %d", url, resp.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20))
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(data)
+	if dup, found, err := db.MediaBySHA(ctx, tenant, sum[:]); err == nil && found {
+		return dup.ID, nil
+	}
+	proc, err := media.Process(data)
+	if err != nil {
+		return "", err
+	}
+	id := store.NewID("m_")
+	if err := ms.Put(ctx, tenant, id+"/original."+proc.Ext, data, proc.ContentType); err != nil {
+		return "", err
+	}
+	m := catalog.Media{ID: id, Filename: "producto." + proc.Ext, ContentType: proc.ContentType,
+		Bytes: int64(len(data)), Width: proc.Width, Height: proc.Height, Alt: alt, CreatedAt: time.Now().UTC().Truncate(time.Microsecond)}
+	for _, rd := range proc.Renditions {
+		key := fmt.Sprintf("%s/%d.%s", id, rd.Width, rd.Ext)
+		if err := ms.Put(ctx, tenant, key, rd.Data, rd.ContentType); err != nil {
+			return "", err
+		}
+		m.Variants = append(m.Variants, catalog.MediaVariant{Width: rd.Width, Height: rd.Height, Format: rd.Format, Key: key, Bytes: int64(len(rd.Data))})
+	}
+	if err := db.InsertMedia(ctx, tenant, "qa-setup", m, sum[:]); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+// cardImageHTML builds the storefront card image markup for a home section,
+// pointing at the files the platform serves at /media/<tenant>/<key>.
+func cardImageHTML(tenant string, m catalog.Media) template.HTML {
+	var src string
+	w, h := m.Width, m.Height
+	var parts []string
+	for _, v := range m.Variants {
+		if v.Format == "webp" {
+			continue
+		}
+		u := "/media/" + tenant + "/" + v.Key
+		parts = append(parts, fmt.Sprintf("%s %dw", u, v.Width))
+		src, w, h = u, v.Width, v.Height
+	}
+	if src == "" {
+		return ""
+	}
+	return template.HTML(fmt.Sprintf(
+		`<img class="pcard-media ph" src="%s" srcset="%s" sizes="(max-width:700px) 50vw, 240px" width="%d" height="%d" alt="%s" loading="lazy" decoding="async">`,
+		html.EscapeString(src), html.EscapeString(strings.Join(parts, ", ")), w, h, html.EscapeString(m.Alt)))
 }
