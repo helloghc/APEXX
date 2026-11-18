@@ -1,19 +1,66 @@
 {{define "content"}}
-<header class="hero"><div class="wrap hero-c">
-  <span class="tag-live rise d1"><span class="dot"></span>Para empresas a escala</span>
-  <h1 class="rise d2">Escala sin cortes, <span class="mg">con todo bajo control</span>.</h1>
-  <p class="sub rise d3">50 000 productos, publicaciones en milisegundos, actualizaciones sin corte y cada tienda aislada. Operación de nivel empresa, sin la complejidad de siempre.</p>
-  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Hablar con ventas</a><a class="btn btn-ghost btn-lg" href="/#velocidad">Ver las métricas →</a></div>
-</div></header>
-<section style="padding-top:10px"><div class="wrap"><div class="features">
-  <div class="feat reveal"><div class="ic">{{template "ic" "box"}}</div><h3>50 000+ productos</h3><p>Catálogos grandes que siguen cargando en menos de un segundo.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "bolt"}}</div><h3>Sin cortes al actualizar</h3><p>Despliegue sin corte: 154 689 peticiones en la prueba, 0 fallidas.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "flask"}}</div><h3>Alta disponibilidad</h3><p>Varios nodos y relevo automático; si una zona cae, otra sigue sirviendo.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "chart"}}</div><h3>Cada tienda aislada</h3><p>Aislamiento por tienda: los datos nunca se mezclan. Seguridad de base.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "building"}}</div><h3>Superadmin y planes</h3><p>Opera varias tiendas, con planes, sandboxes y operadores con doble verificación.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "card"}}</div><h3>API y auditoría</h3><p>API para integrar tus sistemas y una bitácora verificable de todo.</p></div>
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="tag-live rise d1"><span class="dot"></span>Para empresas a escala</span>
+      <h1 class="rise d2">Escala sin cortes, <span class="mg">con todo bajo control</span>.</h1>
+      <p class="sub rise d3">50 000 productos, publicaciones en milisegundos, actualizaciones sin corte y cada tienda aislada. Operación de nivel empresa, sin la complejidad de siempre.</p>
+      <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Hablar con ventas</a><a class="btn btn-ghost btn-lg" href="/#velocidad">Ver las métricas →</a></div>
+      <p class="cta-note rise d4">Despliegue sin corte verificado: 154 689 peticiones en la prueba, 0 fallidas.</p>
+    </div>
+    <div class="hero-art">
+      <div class="glass rise d3">
+        <div class="pub"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span><span><span class="lead">Despliegue sin corte</span><small>La tienda nunca dejó de servir</small></span><span class="ms">0 fallos</span></div>
+        <div class="pub"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M20 7 12 3 4 7l8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg></span><span><span class="lead">Copia de tienda completa</span><small>50 000 productos, lista para probar</small></span><span class="ms">13 s</span></div>
+        <div class="pub"><span class="ic warm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><span><span class="lead">Cada tienda aislada</span><small>Los datos nunca se mezclan</small></span><span class="ms">por diseño</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="proof">
+  <div class="wrap proof-row">
+    <span class="lbl">Probado a escala</span>
+    <div class="items">
+      <div class="stat"><b class="num">50 000+</b><span>Productos por tienda</span></div>
+      <div class="stat"><b class="num">2 ms</b><span>Publicar un cambio</span></div>
+      <div class="stat"><b class="num">0</b><span>Cortes al actualizar</span></div>
+      <div class="stat"><b class="num">&lt; 1 s</b><span>Carga con catálogo grande</span></div>
+    </div>
+  </div>
 </div>
-<div class="close reveal" style="margin-top:46px"><h2>Operación de clase mundial, sin el dolor.</h2>
-  <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Hablar con ventas</a></div></div>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="band reveal">
+      <p class="eyebrow">Números reales, no de folleto</p>
+      <h2>Velocidad y continuidad, medidas.</h2>
+      <p>De nuestras pruebas de escala y de despliegue sin corte, con una tienda de 50 000 productos.</p>
+      <div class="metrics">
+        <div class="metric"><b class="num">13 s</b><span>Copiar una tienda completa</span><small>50 000 productos</small></div>
+        <div class="metric"><b class="num">3.8 s</b><span>Un cambio visible en producción</span><small>desde el sandbox</small></div>
+        <div class="metric"><b class="num">8.8 s</b><span>Revertir a la versión anterior</span><small>idéntico a la foto</small></div>
+        <div class="metric"><b class="num">154 689</b><span>Peticiones durante el despliegue</span><small>0 fallidas</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">Operación de nivel empresa</p>
+      <h2>Todo lo que un equipo grande necesita, de base.</h2></div>
+    <div class="index">
+      <div class="idx reveal"><h4><span class="d"></span>Escala</h4><ul><li>50 000+ productos por tienda</li><li>Carga en menos de 1 s</li><li>Publicación en milisegundos</li><li>Importación masiva</li></ul></div>
+      <div class="idx reveal"><h4><span class="d"></span>Confiabilidad</h4><ul><li>Despliegue sin corte</li><li>Varios nodos con relevo</li><li>Alta disponibilidad</li><li>Deshacer y versiones</li></ul></div>
+      <div class="idx reveal"><h4><span class="d"></span>Control</h4><ul><li>Superadmin de varias tiendas</li><li>Planes y sandboxes</li><li>Operadores con doble verificación</li><li>API para integrar</li></ul></div>
+      <div class="idx reveal"><h4><span class="d"></span>Seguridad</h4><ul><li>Cada tienda aislada</li><li>Roles y permisos por módulo</li><li>Bitácora verificable</li><li>Consentimiento y privacidad</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px"><div class="wrap">
+  <div class="close reveal"><h2>Operación de clase mundial, sin el dolor.</h2>
+    <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Hablar con ventas</a><a class="btn btn-ghost btn-lg" href="/por-que">Por qué Shulada →</a></div></div>
 </div></section>
 {{end}}
