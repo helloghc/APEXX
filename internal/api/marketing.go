@@ -72,18 +72,18 @@ var marketingSite = map[string]*mktPage{
 		Desc:  "Cuéntanos de tu negocio y una persona de Shulada te contacta para abrir tu tienda, migrar tu catálogo y darte una cotización a tu medida. Sin compromiso."},
 
 	// Soluciones por giro (vertical).
-	"/giro/moda":        {file: "marketing/giro/moda.tmpl", Title: "Moda y accesorios · Shulada", Desc: "Una tienda de moda rápida y hermosa: variantes de talla y color, colecciones y lookbook, preventas, tabla de medidas, recomendaciones y devoluciones fáciles. Con el tema Lienzo."},
-	"/giro/tecnologia":  {file: "marketing/giro/tecnologia.tmpl", Title: "Tecnología y electrónica · Shulada", Desc: "Vende tecnología con fichas técnicas claras, comparador, variantes por capacidad y color, pregúntale a la tienda, meses sin intereses y garantías. Con el tema Voltio."},
-	"/giro/super":       {file: "marketing/giro/super.tmpl", Title: "Súper y abarrotes · Shulada", Desc: "El súper en línea: «Agregar» en cada producto, recompra en un toque, entrega el mismo día o recolección, precios por volumen y suscripciones. Con el tema Mercadito."},
-	"/giro/belleza":     {file: "marketing/giro/belleza.tmpl", Title: "Belleza y bienestar · Shulada", Desc: "Belleza con sets y kits, suscripciones, reseñas, muestras de regalo, rutinas con IA y programa de lealtad. Con el tema Bálsamo."},
-	"/giro/hogar":       {file: "marketing/giro/hogar.tmpl", Title: "Hogar y muebles · Shulada", Desc: "Vende muebles y hogar: productos configurables, galerías grandes, envío de voluminosos por zona, pago a meses y fichas con medidas."},
-	"/giro/mayoreo":     {file: "marketing/giro/mayoreo.tmpl", Title: "Mayoreo y distribución · Shulada", Desc: "Distribuye con precios por volumen, crédito a 30 días, pedidos recurrentes, punchout (cXML), catálogo por cliente y representantes de venta."},
+	"/giro/moda":       {file: "marketing/giro/moda.tmpl", Title: "Moda y accesorios · Shulada", Desc: "Una tienda de moda rápida y hermosa: variantes de talla y color, colecciones y lookbook, preventas, tabla de medidas, recomendaciones y devoluciones fáciles. Con el tema Lienzo."},
+	"/giro/tecnologia": {file: "marketing/giro/tecnologia.tmpl", Title: "Tecnología y electrónica · Shulada", Desc: "Vende tecnología con fichas técnicas claras, comparador, variantes por capacidad y color, pregúntale a la tienda, meses sin intereses y garantías. Con el tema Voltio."},
+	"/giro/super":      {file: "marketing/giro/super.tmpl", Title: "Súper y abarrotes · Shulada", Desc: "El súper en línea: «Agregar» en cada producto, recompra en un toque, entrega el mismo día o recolección, precios por volumen y suscripciones. Con el tema Mercadito."},
+	"/giro/belleza":    {file: "marketing/giro/belleza.tmpl", Title: "Belleza y bienestar · Shulada", Desc: "Belleza con sets y kits, suscripciones, reseñas, muestras de regalo, rutinas con IA y programa de lealtad. Con el tema Bálsamo."},
+	"/giro/hogar":      {file: "marketing/giro/hogar.tmpl", Title: "Hogar y muebles · Shulada", Desc: "Vende muebles y hogar: productos configurables, galerías grandes, envío de voluminosos por zona, pago a meses y fichas con medidas."},
+	"/giro/mayoreo":    {file: "marketing/giro/mayoreo.tmpl", Title: "Mayoreo y distribución · Shulada", Desc: "Distribuye con precios por volumen, crédito a 30 días, pedidos recurrentes, punchout (cXML), catálogo por cliente y representantes de venta."},
 
 	// Soluciones por resultado (outcome).
-	"/resultado/vender-mas":      {file: "marketing/resultado/vender-mas.tmpl", Title: "Vender más · Shulada", Desc: "Más ventas sin más esfuerzo: búsqueda que entiende, recomendaciones, más canales y mercados, promociones que jalan, recuperación de carritos y suscripciones."},
-	"/resultado/mas-conversion":  {file: "marketing/resultado/mas-conversion.tmpl", Title: "Más conversión · Shulada", Desc: "Menos fricción, más compras: carga en menos de un segundo, pago en un minuto con OXXO y SPEI, pago como invitado, pregúntale a la tienda, reseñas y envío claro antes de pagar."},
-	"/resultado/mas-margen":      {file: "marketing/resultado/mas-margen.tmpl", Title: "Más margen · Shulada", Desc: "Vende más gastando menos en operar: equipos ilimitados, IA incluida, sin servidores, promociones exactas, comisión de marketplace y reportes claros."},
-	"/resultado/nuevos-canales":  {file: "marketing/resultado/nuevos-canales.tmpl", Title: "Nuevos canales · Shulada", Desc: "Abre canales sin montar otra plataforma: B2B, marketplace, internacional, punto de venta, canales y feeds — todos con un solo inventario."},
+	"/resultado/vender-mas":     {file: "marketing/resultado/vender-mas.tmpl", Title: "Vender más · Shulada", Desc: "Más ventas sin más esfuerzo: búsqueda que entiende, recomendaciones, más canales y mercados, promociones que jalan, recuperación de carritos y suscripciones."},
+	"/resultado/mas-conversion": {file: "marketing/resultado/mas-conversion.tmpl", Title: "Más conversión · Shulada", Desc: "Menos fricción, más compras: carga en menos de un segundo, pago en un minuto con OXXO y SPEI, pago como invitado, pregúntale a la tienda, reseñas y envío claro antes de pagar."},
+	"/resultado/mas-margen":     {file: "marketing/resultado/mas-margen.tmpl", Title: "Más margen · Shulada", Desc: "Vende más gastando menos en operar: equipos ilimitados, IA incluida, sin servidores, promociones exactas, comisión de marketplace y reportes claros."},
+	"/resultado/nuevos-canales": {file: "marketing/resultado/nuevos-canales.tmpl", Title: "Nuevos canales · Shulada", Desc: "Abre canales sin montar otra plataforma: B2B, marketplace, internacional, punto de venta, canales y feeds — todos con un solo inventario."},
 
 	// Soluciones por tamaño (organización).
 	"/tamano/emprendes": {file: "marketing/tamano/emprendes.tmpl", Title: "Para quien empieza · Shulada", Desc: "Tu primera tienda viva en minutos: sin servidores ni desarrolladores, 4 temas listos, equipo sin costo, IA incluida y un sandbox para probar."},
@@ -97,11 +97,11 @@ var marketingSite = map[string]*mktPage{
 	"/comparar":  {file: "marketing/comparar.tmpl", Title: "Comparar · Shulada", Desc: "Comparación honesta frente a la plataforma tradicional: lo que Shulada incluye y otros cobran aparte."},
 
 	// Confianza, legal y soporte.
-	"/seguridad":   {file: "marketing/seguridad.tmpl", Title: "Seguridad y confianza · Shulada", Desc: "Cómo protegemos tu negocio y tus datos: pagos PCI vía Stripe que Shulada nunca ve, cada tienda aislada, todo reversible y una bitácora de auditoría que no se altera."},
-	"/estado":      {file: "marketing/estado.tmpl", Title: "Estado y disponibilidad · Shulada", Desc: "El estado de cada componente de Shulada y nuestros compromisos de disponibilidad: despliegue sin corte, respaldo, reversión, monitoreo y SLA por plan."},
-	"/contacto":    {file: "marketing/contacto.tmpl", Title: "Contacto · Shulada", Desc: "Habla con ventas, soporte, seguridad o prensa. Te respondemos el mismo día hábil."},
-	"/privacidad":  {file: "marketing/privacidad.tmpl", Title: "Aviso de Privacidad · Shulada", Desc: "Cómo tratamos y protegemos tus datos personales conforme a la LFPDPPP: qué datos recabamos, para qué, tus derechos ARCO y cómo ejercerlos."},
-	"/terminos":    {file: "marketing/terminos.tmpl", Title: "Términos y Condiciones · Shulada", Desc: "Las reglas para usar Shulada como plataforma de comercio, escritas para entenderse."},
+	"/seguridad":  {file: "marketing/seguridad.tmpl", Title: "Seguridad y confianza · Shulada", Desc: "Cómo protegemos tu negocio y tus datos: pagos PCI vía Stripe que Shulada nunca ve, cada tienda aislada, todo reversible y una bitácora de auditoría que no se altera."},
+	"/estado":     {file: "marketing/estado.tmpl", Title: "Estado y disponibilidad · Shulada", Desc: "El estado de cada componente de Shulada y nuestros compromisos de disponibilidad: despliegue sin corte, respaldo, reversión, monitoreo y SLA por plan."},
+	"/contacto":   {file: "marketing/contacto.tmpl", Title: "Contacto · Shulada", Desc: "Habla con ventas, soporte, seguridad o prensa. Te respondemos el mismo día hábil."},
+	"/privacidad": {file: "marketing/privacidad.tmpl", Title: "Aviso de Privacidad · Shulada", Desc: "Cómo tratamos y protegemos tus datos personales conforme a la LFPDPPP: qué datos recabamos, para qué, tus derechos ARCO y cómo ejercerlos."},
+	"/terminos":   {file: "marketing/terminos.tmpl", Title: "Términos y Condiciones · Shulada", Desc: "Las reglas para usar Shulada como plataforma de comercio, escritas para entenderse."},
 
 	// Crecimiento: migración, partners, ayuda y developers.
 	"/migrar":     {file: "marketing/migrar.tmpl", Title: "Migrar desde VTEX o Shopify · Shulada", Desc: "Múdate desde VTEX, Shopify, Woo o un CSV sin perder catálogo, categorías, precios ni SEO. Revisas en un sandbox y publicamos sin corte."},
