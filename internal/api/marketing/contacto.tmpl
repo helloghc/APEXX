@@ -1,0 +1,80 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c" style="padding-bottom:14px">
+  <span class="tag-live rise d1"><span class="dot"></span>Contacto</span>
+  <h1 class="rise d2">Hablemos. <span class="mg">Te respondemos el mismo día hábil</span>.</h1>
+  <p class="sub rise d3">Ventas, soporte, seguridad o prensa — escríbenos y te canalizamos con la persona correcta.</p>
+</div></header>
+
+<section style="padding-top:6px"><div class="wrap">
+  <div class="split" style="align-items:start">
+    <div class="reveal">
+      <div class="sfeat" style="grid-template-columns:1fr">
+        <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Correo</b><span><a href="mailto:hola@shulada.com">hola@shulada.com</a> · Ventas y general</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Soporte</b><span><a href="mailto:soporte@shulada.com">soporte@shulada.com</a> · Clientes con cuenta</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Seguridad</b><span><a href="mailto:seguridad@shulada.com">seguridad@shulada.com</a> · Reportes y cuestionarios</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "users"}}</span><div><b>WhatsApp</b><span>[NÚMERO DE WHATSAPP] · Lun a Vie, 9–18 h</span></div></div>
+      </div>
+      <div class="band reveal" style="margin-top:22px">
+        <p class="eyebrow">¿Buscas abrir tu tienda?</p>
+        <h2 style="font-size:22px">Para cotización y migración, usa «Empezar».</h2>
+        <p>Ahí nos cuentas de tu negocio y te damos una cotización a tu medida.</p>
+        <div class="cta-row" style="margin-top:18px"><a class="btn btn-primary" href="/empezar">Ir a Empezar →</a></div>
+      </div>
+    </div>
+
+    <div class="lead-card reveal">
+      <form id="contact-form" novalidate>
+        <div class="lead-fields">
+          <h2>Envíanos un mensaje</h2>
+          <p class="lc-sub">Te respondemos el mismo día hábil. Tus datos son privados: <a href="/privacidad">Aviso de Privacidad</a>.</p>
+          <div class="form-grid">
+            <div class="field"><label for="c-name">Nombre <span class="req">*</span></label><input id="c-name" name="name" autocomplete="name" maxlength="120" required></div>
+            <div class="field"><label for="c-company">Empresa o marca</label><input id="c-company" name="company" autocomplete="organization" maxlength="120"></div>
+            <div class="field"><label for="c-email">Correo <span class="req">*</span></label><input id="c-email" name="email" type="email" autocomplete="email" maxlength="160" required></div>
+            <div class="field"><label for="c-phone">Teléfono o WhatsApp</label><input id="c-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div>
+            <div class="field full"><label for="c-topic">Motivo</label>
+              <select id="c-topic" name="topic">
+                <option>Ventas</option><option>Soporte</option><option>Seguridad</option><option>Alianzas / Partners</option><option>Prensa</option><option>Otro</option>
+              </select></div>
+            <div class="field full"><label for="c-message">Mensaje <span class="req">*</span></label><textarea id="c-message" name="message" maxlength="2000" required placeholder="¿En qué te ayudamos?"></textarea></div>
+            <div class="field full hp"><label for="c-website">No llenes esto</label><input id="c-website" name="website" tabindex="-1" autocomplete="off"></div>
+          </div>
+          <div class="lead-submit">
+            <p class="lead-err" id="contact-err" role="alert"></p>
+            <button class="btn btn-primary btn-lg" type="submit" id="contact-btn" style="width:100%;justify-content:center">Enviar mensaje</button>
+            <p class="lead-note">Al enviar aceptas nuestro <a href="/privacidad">Aviso de Privacidad</a> y que te contactemos sobre tu solicitud.</p>
+          </div>
+        </div>
+        <div class="lead-ok">
+          <svg class="big-mark" width="60" height="60" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="url(#sg)"/><path d="M14 37V24.5A10 10 0 0 1 34 24.5V37" fill="none" stroke="#fff" stroke-width="6.2" stroke-linecap="round"/><circle cx="24" cy="12.2" r="3.4" fill="#FF5B2E"/></svg>
+          <h2>¡Gracias! Mensaje recibido.</h2>
+          <p>Te responderemos el mismo día hábil al correo que nos dejaste.</p>
+        </div>
+      </form>
+    </div>
+  </div>
+</div></section>
+
+<script>
+(function(){
+  var f=document.getElementById('contact-form'); if(!f) return;
+  var btn=document.getElementById('contact-btn'), err=document.getElementById('contact-err');
+  f.addEventListener('submit', function(e){
+    e.preventDefault(); err.textContent='';
+    var data={}; new FormData(f).forEach(function(v,k){ data[k]=String(v).trim(); });
+    if(!data.name){ err.textContent='Escribe tu nombre.'; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email||'')){ err.textContent='Escribe un correo válido.'; return; }
+    if(!data.message){ err.textContent='Escribe tu mensaje.'; return; }
+    // Fold the subject into the message so it is captured by the existing /v1/leads endpoint.
+    var payload={ name:data.name, email:data.email, phone:data.phone||'', company:data.company||'',
+      industry:'Contacto', platform:data.topic||'', website:data.website||'',
+      message:'['+(data.topic||'Contacto')+'] '+(data.message||'') };
+    btn.disabled=true; var old=btn.textContent; btn.textContent='Enviando…';
+    fetch('/v1/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(function(r){ return r.ok ? r.json() : r.json().then(function(p){ throw new Error(p.detail||'No se pudo enviar.'); }); })
+      .then(function(){ f.classList.add('sent'); window.scrollTo({top:f.getBoundingClientRect().top+window.scrollY-120,behavior:'smooth'}); })
+      .catch(function(ex){ err.textContent=ex.message||'No se pudo enviar. Intenta de nuevo.'; btn.disabled=false; btn.textContent=old; });
+  });
+})();
+</script>
+{{end}}

@@ -1,0 +1,46 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c">
+  <span class="tag-live rise d1"><span class="dot"></span>Seguridad y confianza</span>
+  <h1 class="rise d2">Tu negocio y tus datos, <span class="mg">protegidos de base</span>.</h1>
+  <p class="sub rise d3">La seguridad no es un módulo que se cobra aparte: está en el diseño. Pagos que nunca tocan Shulada, cada tienda aislada, todo reversible y una bitácora que no se puede alterar.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/estado">Ver estado y disponibilidad →</a></div>
+</div></header>
+
+<section style="padding-top:8px"><div class="wrap">
+  <div class="why">
+    <div class="diff reveal"><span class="ic">{{template "ic" "card"}}</span><div><b>Shulada nunca ve tarjetas</b><p>Cada tienda cobra con su propia cuenta de Stripe; los datos de tarjeta nunca pasan por Shulada. El cumplimiento PCI lo cubre Stripe.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "box"}}</span><div><b>Cada tienda aislada</b><p>Los datos de una tienda nunca se mezclan con los de otra. El aislamiento por cliente es parte de la arquitectura, no un extra.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "flask"}}</span><div><b>Todo reversible</b><p>Nada se publica roto: guardamos la versión anterior y vuelves a ella en un clic. Pruebas en un sandbox antes de publicar.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "chart"}}</span><div><b>Bitácora que no se altera</b><p>Cada acción importante queda registrada y encadenada: quién hizo qué y cuándo. Útil para auditar y para entender cualquier pedido.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "bolt"}}</span><div><b>Cobros a prueba de errores</b><p>Los cobros son idempotentes (un doble clic no cobra dos veces) y un conciliador cierra cada minuto los pagos que quedaron a medias.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "users"}}</span><div><b>Accesos con permisos</b><p>Roles por módulo y nivel; cada persona ve y hace solo lo suyo. Los operadores de plataforma usan doble verificación.</p></div></div>
+  </div>
+
+  <div class="band reveal" style="margin-top:46px">
+    <p class="eyebrow">Infraestructura que operamos nosotros</p>
+    <h2>Disponible, sin que tú administres servidores.</h2>
+    <p>Nosotros operamos y actualizamos la plataforma, con cifrado en tránsito y despliegues sin corte. Tú te dedicas a vender.</p>
+    <div class="metrics">
+      <div class="metric"><b class="num">0</b><span>Datos de tarjeta en Shulada</span><small>van directo a Stripe</small></div>
+      <div class="metric"><b class="num">100%</b><span>Reversible</span><small>versiones y deshacer</small></div>
+      <div class="metric"><b class="num">0</b><span>Cortes al actualizar</span><small>despliegue sin corte</small></div>
+      <div class="metric"><b class="num">24/7</b><span>Infraestructura operada</span><small>por Shulada</small></div>
+    </div>
+  </div>
+
+  <div class="sec-head reveal" style="margin-top:56px"><p class="eyebrow">Para compras, IT y legal</p>
+    <h2>Lo que necesitas para aprobar a tu proveedor.</h2></div>
+  <div class="sfeat" style="grid-template-columns:repeat(3,1fr)">
+    <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Pagos PCI vía Stripe</b><span>Procesamiento de pagos certificado a cargo de Stripe.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Aislamiento por tienda</b><span>Separación de datos entre clientes a nivel de arquitectura.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Bitácora de auditoría</b><span>Registro encadenado y verificable de acciones clave.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Respaldo y reversión</b><span>Versiones guardadas y reversión a la foto anterior.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "users"}}</span><div><b>Control de accesos</b><span>Roles, permisos por módulo y doble verificación de operadores.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "globe"}}</span><div><b>Privacidad</b><span>Tratamiento de datos conforme a la ley. <a href="/privacidad">Ver aviso</a>.</span></div></div>
+  </div>
+
+  <div class="close reveal" style="margin-top:52px"><h2>¿Tu equipo de seguridad tiene preguntas?</h2>
+    <p>Con gusto respondemos cuestionarios de seguridad y proveemos la documentación que tu proceso de compras requiera.</p>
+    <div class="cta-row" style="justify-content:center;margin-top:24px"><a class="btn btn-primary btn-lg" href="/contacto">Hablar con nosotros</a><a class="btn btn-ghost btn-lg" href="/estado">Ver estado y SLA →</a></div></div>
+</div></section>
+{{end}}

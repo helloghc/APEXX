@@ -95,6 +95,13 @@ var marketingSite = map[string]*mktPage{
 	"/planes":    {file: "marketing/planes.tmpl", Title: "Planes · Shulada", Desc: "Todo incluido en cada plan: equipos ilimitados, IA, sandbox y cientos de funciones, sin cobrar por asiento. El precio se ajusta a tu volumen; pide una cotización a tu medida."},
 	"/preguntas": {file: "marketing/preguntas.tmpl", Title: "Preguntas frecuentes · Shulada", Desc: "Respuestas claras: asientos ilimitados, migración desde VTEX, medios de pago OXXO y SPEI, dominio propio, IA incluida, reversible y sin administrar servidores."},
 	"/comparar":  {file: "marketing/comparar.tmpl", Title: "Comparar · Shulada", Desc: "Comparación honesta frente a la plataforma tradicional: lo que Shulada incluye y otros cobran aparte."},
+
+	// Confianza, legal y soporte.
+	"/seguridad":   {file: "marketing/seguridad.tmpl", Title: "Seguridad y confianza · Shulada", Desc: "Cómo protegemos tu negocio y tus datos: pagos PCI vía Stripe que Shulada nunca ve, cada tienda aislada, todo reversible y una bitácora de auditoría que no se altera."},
+	"/estado":      {file: "marketing/estado.tmpl", Title: "Estado y disponibilidad · Shulada", Desc: "El estado de cada componente de Shulada y nuestros compromisos de disponibilidad: despliegue sin corte, respaldo, reversión, monitoreo y SLA por plan."},
+	"/contacto":    {file: "marketing/contacto.tmpl", Title: "Contacto · Shulada", Desc: "Habla con ventas, soporte, seguridad o prensa. Te respondemos el mismo día hábil."},
+	"/privacidad":  {file: "marketing/privacidad.tmpl", Title: "Aviso de Privacidad · Shulada", Desc: "Cómo tratamos y protegemos tus datos personales conforme a la LFPDPPP: qué datos recabamos, para qué, tus derechos ARCO y cómo ejercerlos."},
+	"/terminos":    {file: "marketing/terminos.tmpl", Title: "Términos y Condiciones · Shulada", Desc: "Las reglas para usar Shulada como plataforma de comercio, escritas para entenderse."},
 }
 
 var (

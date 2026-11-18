@@ -1,0 +1,36 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c" style="padding-bottom:18px">
+  <span class="tag-live rise d1"><span class="dot"></span>Estado y disponibilidad</span>
+  <h1 class="rise d2">El servicio, <span class="mg">a la vista</span>.</h1>
+  <p class="sub rise d3">Operamos la infraestructura y actualizamos sin corte. Aquí verás el estado de cada componente y nuestros compromisos de disponibilidad.</p>
+</div></header>
+
+<section style="padding-top:6px"><div class="wrap" style="max-width:860px">
+  <div class="status-head reveal">
+    <span class="status-dot ok"></span>
+    <div><b>Todos los sistemas operativos</b><span>Sin incidentes reportados.</span></div>
+  </div>
+  <div class="status-list reveal">
+    <div class="st"><span>Tiendas (comprador)</span><span class="s-ok">Operativo</span></div>
+    <div class="st"><span>Panel de administración</span><span class="s-ok">Operativo</span></div>
+    <div class="st"><span>Pagos y checkout (Stripe)</span><span class="s-ok">Operativo</span></div>
+    <div class="st"><span>Búsqueda e IA</span><span class="s-ok">Operativo</span></div>
+    <div class="st"><span>API y webhooks</span><span class="s-ok">Operativo</span></div>
+    <div class="st"><span>Publicación y sandbox</span><span class="s-ok">Operativo</span></div>
+  </div>
+  <p class="mute reveal" style="font-size:13px;margin-top:12px;text-align:center">El estado en tiempo real puede conectarse a nuestro monitoreo de salud. ¿Quieres suscribirte a avisos de incidentes? <a href="/contacto">Escríbenos</a>.</p>
+
+  <div class="sec-head reveal" style="margin-top:56px"><p class="eyebrow">Nuestro compromiso</p>
+    <h2>Disponibilidad y continuidad.</h2></div>
+  <div class="sfeat" style="grid-template-columns:repeat(2,1fr)">
+    <div class="f"><span class="i">{{template "ic" "bolt"}}</span><div><b>Despliegue sin corte</b><span>Actualizamos la plataforma sin tirar tu tienda. Objetivo de disponibilidad alto, con relevo automático entre nodos.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Respaldo y reversión</b><span>Versiones guardadas y reversión a la foto anterior si algo sale mal.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Monitoreo continuo</b><span>Vigilamos salud y rendimiento; actuamos antes de que te afecte.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "users"}}</span><div><b>SLA por plan</b><span>Los compromisos formales de disponibilidad y soporte dependen de tu plan. <a href="/planes">Ver planes</a>.</span></div></div>
+  </div>
+
+  <div class="close reveal" style="margin-top:52px"><h2>¿Necesitas un SLA formal?</h2>
+    <p>Para operaciones a escala ofrecemos compromisos de disponibilidad y soporte por contrato.</p>
+    <div class="cta-row" style="justify-content:center;margin-top:22px"><a class="btn btn-primary btn-lg" href="/contacto">Hablar con ventas</a><a class="btn btn-ghost btn-lg" href="/seguridad">Ver seguridad →</a></div></div>
+</div></section>
+{{end}}
