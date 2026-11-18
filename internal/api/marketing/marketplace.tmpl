@@ -1,27 +1,58 @@
 {{define "content"}}
 <header class="hero">
-  <div class="wrap hero-c">
-    <span class="tag-live rise d1"><span class="dot"></span>Marketplace</span>
-    <h1 class="rise d2">Lanza tu marketplace con <span class="mg">vendedores propios</span>.</h1>
-    <p class="sub rise d3">Suma vendedores con su propio portal, sus productos y sus pagos. Tú defines la comisión y la plataforma reparte sola, con seguimiento de cada pago.</p>
-    <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/admin/">Entrar al panel</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="tag-live rise d1"><span class="dot"></span>Marketplace</span>
+      <h1 class="rise d2">Lanza tu marketplace con <span class="mg">vendedores propios</span>.</h1>
+      <p class="sub rise d3">Suma vendedores con su propio portal, sus productos y sus pagos. Tú defines la comisión y la plataforma reparte sola, con seguimiento de cada pago.</p>
+      <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/admin/">Entrar al panel</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+      <p class="cta-note rise d4">Con Stripe Connect: tú nunca tocas el dinero del vendedor.</p>
+    </div>
+    <div class="hero-art">
+      <div class="glass rise d3">
+        <div class="pub"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></span><span><span class="lead">Venta recibida</span><small>Pedido #4821 · Aromas MX</small></span><span class="ms">$1,000</span></div>
+        <div class="pub"><span class="ic warm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 13 11 4H4v7l9 9z"/><circle cx="7.5" cy="7.5" r="1"/></svg></span><span><span class="lead">Tu comisión (12%)</span><small>Se separa sola</small></span><span class="ms">+$120</span></div>
+        <div class="pub"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></span><span><span class="lead">Pago al vendedor</span><small>A su cuenta de Stripe</small></span><span class="ms">$880</span></div>
+      </div>
+    </div>
   </div>
 </header>
 
-<section style="padding-top:10px">
+<section style="padding-top:8px">
   <div class="wrap">
-    <div class="features">
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 21a7 7 0 0 1 14 0M15 21a6 6 0 0 1 7-4"/></svg></div><h3>Portal de vendedor</h3><p>Cada vendedor administra sus productos y sus pedidos desde su propio acceso.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7 12 3 4 7l8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg></div><h3>Sus productos</h3><p>Publica el catálogo de cada vendedor dentro de tu tienda, con su marca.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div><h3>Sus pagos</h3><p>El dinero de cada venta se dirige a su vendedor, con Stripe Connect.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><h3>Comisión configurable</h3><p>Fija tu comisión en puntos base; se descuenta de cada venta automáticamente.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M12 4v16M8 8l8 8M16 8l-8 8"/></svg></div><h3>Reparto automático</h3><p>La plataforma separa tu comisión y lo del vendedor sin intervención manual.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 13l3 3 7-7"/></svg></div><h3>Pagos con seguimiento</h3><p>Inicia pagos a vendedores y sigue su estado, todo en la bitácora.</p></div>
-    </div>
-    <div class="close reveal" style="margin-top:46px">
-      <h2>Crece tu oferta sin crecer tu inventario.</h2>
-      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div>
+    <div class="sec-head reveal"><p class="eyebrow">Cada vendedor, su propia tienda adentro</p>
+      <h2>Una vitrina común, muchos negocios.</h2></div>
+    <div class="sellers reveal">
+      <div class="sl"><div class="av" style="background:linear-gradient(135deg,#7A3BFF,#4733E0)">AM</div><b>Aromas MX</b><p>Velas y difusores · 42 productos</p><div class="pay">Pagado hoy · $8,420</div></div>
+      <div class="sl"><div class="av" style="background:linear-gradient(135deg,#1C7536,#2DD4EE)">TV</div><b>Tejido Vivo</b><p>Textiles de artesanas · 128 productos</p><div class="pay">Pagado hoy · $14,900</div></div>
+      <div class="sl"><div class="av" style="background:linear-gradient(135deg,#F5A524,#9C3448)">CB</div><b>Casa Bruma</b><p>Decoración y cerámica · 67 productos</p><div class="pay">Pagado hoy · $6,110</div></div>
     </div>
   </div>
 </section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="band reveal">
+      <div class="band-grid">
+        <div>
+          <p class="eyebrow">El dinero, donde debe ir</p>
+          <h2>Tú defines la comisión; el reparto es automático.</h2>
+          <p>Cada venta se separa sola: tu comisión a tu cuenta, el resto a la del vendedor, con Stripe Connect. Nunca retienes su dinero y cada pago queda en la bitácora.</p>
+          <div class="cta-row" style="margin-top:26px"><a class="btn btn-primary btn-lg" href="/pagos">Ver cómo funcionan los pagos →</a></div>
+        </div>
+        <div class="flow">
+          <div class="step reveal"><span class="n">1</span><span><b>El cliente paga</b><small>Un solo cobro en el checkout</small></span><span class="ms">$1,000</span></div>
+          <div class="step reveal"><span class="n">2</span><span><b>Se separa tu comisión</b><small>En puntos base que tú fijas</small></span><span class="ms">12%</span></div>
+          <div class="step reveal"><span class="n">3</span><span><b>El vendedor cobra</b><small>Directo a su cuenta de Stripe</small></span><span class="ms">$880</span></div>
+          <div class="step reveal"><span class="n">4</span><span><b>Queda registrado</b><small>Seguimiento de cada pago</small></span><span class="ms">en bitácora</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px"><div class="wrap">
+  <div class="close reveal"><h2>Crece tu oferta sin crecer tu inventario.</h2>
+    <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/b2b">Ver B2B y mayoreo →</a></div></div>
+</div></section>
 {{end}}
