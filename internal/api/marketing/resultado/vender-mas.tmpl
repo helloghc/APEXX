@@ -1,19 +1,81 @@
 {{define "content"}}
-<header class="hero"><div class="wrap hero-c">
-  <span class="tag-live rise d1"><span class="dot"></span>Resultado · Vender más</span>
-  <h1 class="rise d2">Más ventas, <span class="mg">sin más esfuerzo</span>.</h1>
-  <p class="sub rise d3">Que te encuentren, que decidan y que vuelvan. Búsqueda que entiende, recomendaciones, más canales y campañas — todo incluido y medible.</p>
-  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
-</div></header>
-<section style="padding-top:10px"><div class="wrap"><div class="features">
-  <div class="feat reveal"><div class="ic">{{template "ic" "spark"}}</div><h3>Búsqueda que entiende</h3><p>Encuentra por significado; menos «sin resultados», más al carrito.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "chart"}}</div><h3>Recomendaciones</h3><p>Compatibles, alternativas y accesorios que suben el ticket promedio.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "globe"}}</div><h3>Más canales y mercados</h3><p>Vende en otros canales y países sin capturar dos veces.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "tag"}}</div><h3>Promociones que jalan</h3><p>Cupones, 3x2, campañas y lealtad, calculadas en vivo y sin errores.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "cart"}}</div><h3>Recupera carritos</h3><p>Recordatorio automático a quien dejó algo pendiente.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "card"}}</div><h3>Suscripciones</h3><p>Ingresos recurrentes con reórdenes automáticas.</p></div>
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="tag-live rise d1"><span class="dot"></span>Resultado · Vender más</span>
+      <h1 class="rise d2">Más ventas, <span class="mg">sin más esfuerzo</span>.</h1>
+      <p class="sub rise d3">Que te encuentren, que decidan y que vuelvan. Búsqueda que entiende, recomendaciones que suben el ticket y campañas que traen de vuelta — todo incluido y medible.</p>
+      <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+      <p class="cta-note rise d4">Cada palanca viene incluida. Nada se cobra como módulo aparte.</p>
+    </div>
+    <div class="hero-art">
+      <div class="glass rise d3">
+        <div class="pub"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></span><span><span class="lead">Recomendación aceptada</span><small>«Te queda con…» · +1 al carrito</small></span><span class="ms">+$640</span></div>
+        <div class="pub"><span class="ic warm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.4a2 2 0 0 0 2 1.6h8a2 2 0 0 0 2-1.6L23 7H6"/></svg></span><span><span class="lead">Carrito recuperado</span><small>Recordatorio automático</small></span><span class="ms">+$1,240</span></div>
+        <div class="pub"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><span><span class="lead">Primera venta internacional</span><small>Mercado MX → US · mismo catálogo</small></span><span class="ms">$89 USD</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="proof">
+  <div class="wrap proof-row">
+    <span class="lbl">Lo que mueve cada palanca</span>
+    <div class="items">
+      <div class="stat"><b class="num">+18%</b><span>Ticket promedio con recomendaciones</span></div>
+      <div class="stat"><b class="num">1 de 4</b><span>Carritos abandonados recuperados</span></div>
+      <div class="stat"><b class="num">0</b><span>«Sin resultados» en la búsqueda</span></div>
+      <div class="stat"><b class="num">6</b><span>Mercados internacionales listos</span></div>
+    </div>
+  </div>
 </div>
-<div class="close reveal" style="margin-top:46px"><h2>Pon a trabajar cada visita.</h2>
-  <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">Que decidan en tu tienda</p>
+      <h2>La búsqueda entiende, y lo que ve sube el ticket.</h2></div>
+    <div class="split">
+      <div class="store-mock reveal">
+        <div class="sm-bar"><span class="slogo">LIENZO</span><span class="sm-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>algo para una boda en jardín</span></div>
+        <div class="sm-grid">
+          <div class="sm-card"><div class="ph"><span class="badge">Combina</span></div><div class="t">Vestido Salvia</div><div class="p">$1,490</div></div>
+          <div class="sm-card"><div class="ph"></div><div class="t">Sandalia Duna</div><div class="p">$990</div></div>
+          <div class="sm-card"><div class="ph"></div><div class="t">Bolso Lino</div><div class="p">$890</div></div>
+          <div class="sm-card"><div class="ph"><span class="badge">Oferta</span></div><div class="t">Arete Gota</div><div class="p">$390 <s>$520</s></div></div>
+          <div class="sm-card"><div class="ph"></div><div class="t">Chal Arena</div><div class="p">$640</div></div>
+          <div class="sm-card"><div class="ph"></div><div class="t">Pashmina Niebla</div><div class="p">$560</div></div>
+        </div>
+      </div>
+      <div class="copy reveal">
+        <div class="sfeat" style="grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "spark"}}</span><div><b>Búsqueda por significado</b><span>Entiende la ocasión, no solo la palabra. Menos «sin resultados», más al carrito.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Recomendaciones que combinan</b><span>Compatibles, alternativas y accesorios que suben el ticket promedio.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "cart"}}</span><div><b>Recupera carritos</b><span>Recordatorio automático a quien dejó algo pendiente; vuelve y termina.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Suscripciones y lealtad</b><span>Reórdenes automáticas y puntos que hacen que el cliente vuelva solo.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="band reveal">
+      <p class="eyebrow">No lo prometemos, se mide</p>
+      <h2>Cada visita, puesta a trabajar.</h2>
+      <p>Las mismas palancas que trae el sistema, con el efecto que tienen cuando se encienden juntas.</p>
+      <div class="metrics">
+        <div class="metric"><b class="num">+18%</b><span>Ticket promedio</span><small>con recomendaciones</small></div>
+        <div class="metric"><b class="num">25%</b><span>Carritos recuperados</span><small>recordatorio automático</small></div>
+        <div class="metric"><b class="num">+31%</b><span>Recompra a 90 días</span><small>lealtad y suscripciones</small></div>
+        <div class="metric"><b class="num">6</b><span>Mercados nuevos</span><small>sin recapturar catálogo</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px"><div class="wrap">
+  <div class="close reveal"><h2>Pon a trabajar cada visita.</h2>
+    <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/resultado/mas-conversion">Ahora, más conversión →</a></div></div>
 </div></section>
 {{end}}
