@@ -37,19 +37,30 @@
 
 <section style="padding-top:8px">
   <div class="wrap">
-    <div class="sec-head reveal"><p class="eyebrow">Seguro y a tu favor</p>
-      <h2>Tu dinero, con las reglas claras.</h2></div>
-    <div class="features">
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><h3>Shulada no ve tarjetas</h3><p>El cobro va directo a tu cuenta de Stripe. Los datos de la tarjeta nunca tocan Shulada.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/></svg></div><h3>Reversible e idempotente</h3><p>Un cobro se puede reembolsar y un doble clic nunca cobra dos veces.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg></div><h3>Cobros pendientes resueltos</h3><p>Un conciliador revisa cada minuto con Stripe y cierra los pagos que quedaron a medias.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></div><h3>Riesgo y revisión</h3><p>Los pedidos de alto riesgo se marcan para que los revises antes de surtir.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z"/></svg></div><h3>Facturas y recibos</h3><p>Comprobantes de cada pedido, listos para tu contabilidad.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg></div><h3>Comisión de plataforma</h3><p>Si operas un marketplace, defines la comisión y la plataforma reparte sola.</p></div>
+    <div class="band reveal">
+      <div class="band-grid">
+        <div>
+          <p class="eyebrow">Seguro y a tu favor</p>
+          <h2>Tu dinero, con las reglas claras.</h2>
+          <p>El cobro viaja directo a tu cuenta de Stripe; Shulada nunca ve los datos de la tarjeta. Cada paso es reversible y a prueba de dobles clics, y un conciliador cierra lo que quedó a medias.</p>
+          <div class="cta-row" style="margin-top:26px"><a class="btn btn-primary btn-lg" href="/admin/">Probarlo en el panel</a></div>
+        </div>
+        <div class="flow">
+          <div class="step reveal"><span class="n">1</span><span><b>Cobro directo a tu Stripe</b><small>Shulada no ve la tarjeta</small></span><span class="ms">PCI</span></div>
+          <div class="step reveal"><span class="n">2</span><span><b>Idempotente</b><small>Un doble clic nunca cobra dos veces</small></span><span class="ms">1 cargo</span></div>
+          <div class="step reveal"><span class="n">3</span><span><b>Conciliador cada minuto</b><small>Cierra pagos que quedaron a medias</small></span><span class="ms">60 s</span></div>
+          <div class="step reveal"><span class="n">4</span><span><b>Reembolso en un clic</b><small>Reversible, con su comprobante</small></span><span class="ms">↺</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sfeat reveal" style="margin-top:26px;grid-template-columns:repeat(3,1fr)">
+      <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Riesgo y revisión</b><span>Los pedidos de alto riesgo se marcan para revisarlos antes de surtir.</span></div></div>
+      <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Facturas y recibos</b><span>Comprobantes de cada pedido, listos para tu contabilidad.</span></div></div>
+      <div class="f"><span class="i">{{template "ic" "building"}}</span><div><b>Comisión de plataforma</b><span>Si operas un marketplace, defines la comisión y se reparte sola.</span></div></div>
     </div>
     <div class="close reveal" style="margin-top:46px">
       <h2>Cobra sin fricción y sin sorpresas.</h2>
-      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/envios">Ver envíos →</a></div>
     </div>
   </div>
 </section>

@@ -8,18 +8,43 @@
   </div>
 </header>
 
-<section style="padding-top:10px">
+<section style="padding-top:14px">
   <div class="wrap">
-    <div class="features">
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div><h3>Crédito a 30 días</h3><p>Compras a crédito con su línea, fecha de pago y pago automático opcional.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/><path d="M4 12v6a2 2 0 0 0 2 2h12"/></svg></div><h3>Aprobaciones por nivel</h3><p>Topes por persona, niveles de aprobación y suplentes cuando alguien no está.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3zM3 10h18v11H3z"/><path d="M8 14h8"/></svg></div><h3>Precios por cliente</h3><p>Listas de precios y descuentos por volumen; cada empresa ve su precio.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></div><h3>Cotizaciones</h3><p>Cotiza con plantilla, con su PO, y conviértela en pedido al aceptarse.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H4z"/><path d="M8 20h8M12 16v4"/></svg></div><h3>Punchout (cXML)</h3><p>Conecta el sistema de compras del cliente y vende dentro de su flujo.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12l2 2 4-4"/></svg></div><h3>Listas de requisición</h3><p>Pedidos recurrentes que el comprador reusa y ajusta en segundos.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21v-6h6v6"/></svg></div><h3>Sucursales y roles</h3><p>Empresas con varias sucursales, cada una con su presupuesto y sus compradores.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div><h3>Representantes de venta</h3><p>Tu equipo atiende a cada empresa y compra por ella, con todo en la bitácora.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M9 9h6v6H9z"/></svg></div><h3>Catálogo por empresa</h3><p>Cada empresa ve solo lo que puede comprar, con su precio y condiciones.</p></div>
+    <div class="split">
+      <div class="reveal">
+        <div class="acct">
+          <div class="acct-h"><b>Ferretería del Valle, S.A.</b><span class="acct-tag">Cliente B2B</span></div>
+          <div class="acct-row"><span>Lista de precios</span><b>Mayorista · −15%</b></div>
+          <div class="acct-row"><span>Crédito disponible</span><b>$86,000 de $150,000</b></div>
+          <div class="acct-bar"><span style="width:57%"></span></div>
+          <div class="acct-row"><span>Aprobación</span><b>2 niveles · tope $20,000</b></div>
+          <div class="acct-row"><span>Sucursales</span><b>3 · cada una su presupuesto</b></div>
+          <div class="acct-foot">Lista de requisición «Surtido mensual» · 28 líneas · 1 toque</div>
+        </div>
+        <p class="mute" style="font-size:13px;margin-top:10px;text-align:center">Cada empresa entra con su código y ve su catálogo, su precio y su crédito.</p>
+      </div>
+      <div class="copy reveal">
+        <p class="eyebrow">Una cuenta por empresa</p>
+        <h2>Tus condiciones de siempre, sin una sola llamada.</h2>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "building"}}</span><div><b>Crédito a 30 días</b><span>Línea por cliente, fecha de pago y pago automático opcional.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "tag"}}</span><div><b>Precios por cliente</b><span>Listas y descuentos por volumen; cada empresa ve su precio.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Cotizaciones y requisiciones</b><span>Cotiza con su PO y reusa listas de pedido recurrente.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "users"}}</span><div><b>Sucursales y representantes</b><span>Varias sucursales con su presupuesto; tu equipo compra por ellas.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">Se conecta a su forma de comprar</p>
+      <h2>Punchout y catálogo por empresa, de fábrica.</h2></div>
+    <div class="models">
+      <div class="model reveal"><span class="i">{{template "ic" "chart"}}</span><b>Punchout (cXML)</b><p>Conecta el sistema de compras del cliente y vende dentro de su flujo.</p></div>
+      <div class="model reveal"><span class="i">{{template "ic" "box"}}</span><b>Catálogo por empresa</b><p>Cada empresa ve solo lo que puede comprar, con su precio y condiciones.</p></div>
+      <div class="model reveal"><span class="i">{{template "ic" "card"}}</span><b>Aprobaciones por nivel</b><p>Topes por persona, niveles y suplentes cuando alguien no está.</p></div>
     </div>
   </div>
 </section>
@@ -44,7 +69,7 @@
     </div>
     <div class="close reveal" style="margin-top:46px">
       <h2>Mueve tu mayoreo a un sistema que no te frena.</h2>
-      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/giro/mayoreo">Ver la landing de mayoreo →</a></div>
     </div>
   </div>
 </section>
