@@ -160,10 +160,10 @@ func DefaultSections() []SectionDefinition {
 			Type: "collection-tiles", Version: "1.0.0", Name: "Colecciones", Category: "colecciones",
 			Description: "Mosaico de categorías o colecciones con arte del tema.", Hydration: "none",
 			Blocks: BlockRules{Allowed: []string{"tile"}, Min: 2, Max: 8},
-			Budget: Budget{HTMLBytes: 2000, CSSBytes: 1200},
+			Budget: Budget{HTMLBytes: 5000, CSSBytes: 1200},
 			SettingsSchema: obj(nil, map[string]Schema{"heading": str("Título", 80),
 				"style": {Type: "string", Title: "Estilo", Enum: []any{"tall", "square", "pill"}, Default: "tall"}}),
-			Template: `<div class="sx-tiles tiles-{{.S.style}}">{{with .S.heading}}<div class="sx-head"><h2 class="display">{{.}}</h2></div>{{end}}<ul class="tiles">{{range $i, $b := .Blocks}}<li class="tile"><a href="{{index .Settings "link"}}"><div class="ph ph-{{tone $i}}" aria-hidden="true"><span>{{initial (index .Settings "title")}}</span></div><span class="tile-copy"><strong>{{index .Settings "title"}}</strong>{{with index .Settings "caption"}}<small>{{.}}</small>{{end}}</span></a></li>{{end}}</ul></div>`,
+			Template: `<div class="sx-tiles tiles-{{.S.style}}">{{with .S.heading}}<div class="sx-head"><h2 class="display">{{.}}</h2></div>{{end}}<ul class="tiles">{{range $i, $b := .Blocks}}<li class="tile"><a href="{{index .Settings "link"}}">{{with index .Settings "image"}}<div class="ph" style="position:relative;overflow:hidden"><img src="{{.}}" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div>{{else}}<div class="ph ph-{{tone $i}}" aria-hidden="true"><span>{{initial (index .Settings "title")}}</span></div>{{end}}<span class="tile-copy"><strong>{{index .Settings "title"}}</strong>{{with index .Settings "caption"}}<small>{{.}}</small>{{end}}</span></a></li>{{end}}</ul></div>`,
 		},
 		{
 			Type: "image-text", Version: "1.0.0", Name: "Imagen con texto", Category: "contenido",
