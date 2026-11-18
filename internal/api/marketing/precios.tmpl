@@ -1,24 +1,48 @@
 {{define "content"}}
-<header class="hero">
-  <div class="wrap hero-c">
-    <span class="tag-live rise d1"><span class="dot"></span>Precios y promociones</span>
-    <h1 class="rise d2">Cada cliente, su precio. Cada promo, <span class="mg">al instante</span>.</h1>
-    <p class="sub rise d3">Listas de precios por cliente, descuentos por volumen y promociones que se calculan en vivo: 3x2, mínimos, escalones, cupones y campañas. Con tarjetas de regalo y lealtad incluidas.</p>
-    <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/admin/">Entrar al panel</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
-  </div>
-</header>
+<header class="hero"><div class="wrap hero-c">
+  <span class="tag-live rise d1"><span class="dot"></span>Precios y promociones</span>
+  <h1 class="rise d2">Cada cliente, su precio. Cada promo, <span class="mg">al instante</span>.</h1>
+  <p class="sub rise d3">Listas de precios por cliente, descuentos por volumen y promociones que se calculan en vivo: 3x2, mínimos, escalones, cupones y campañas. Con tarjetas de regalo y lealtad incluidas.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/admin/">Entrar al panel</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+</div></header>
 
-<section style="padding-top:10px">
+<section style="padding-top:14px">
   <div class="wrap">
-    <div class="features">
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3zM3 10h18v11H3z"/><path d="M8 14h8"/></svg></div><h3>Listas por cliente</h3><p>Precios distintos por empresa o grupo; cada quien ve el suyo al entrar.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V9l6-4 6 4 6-4v12"/></svg></div><h3>Precios por volumen</h3><p>Más piezas, mejor precio. Los escalones se aplican solos en el carrito.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13 11 4H4v7l9 9z"/><circle cx="7.5" cy="7.5" r="1"/></svg></div><h3>Cupones y campañas</h3><p>Códigos, campañas con fecha y reglas por producto o categoría.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="4"/><circle cx="16" cy="16" r="4"/><path d="M5 19 19 5"/></svg></div><h3>3x2 y escalones</h3><p>Promociones por cantidad y tramos, calculadas en vivo y a prueba de errores.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 11h18M12 7v12"/></svg></div><h3>Tarjetas de regalo</h3><p>Emite y canjea saldo a favor que se aplica en el pago.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.4 7.2 17.9l.9-5.4L4.2 8.7l5.4-.8z"/></svg></div><h3>Programa de lealtad</h3><p>Puntos por compra que el cliente usa después, incluidos sin pagar aparte.</p></div>
+    <div class="sec-head reveal"><p class="eyebrow">Más piezas, mejor precio</p>
+      <h2>Los escalones de volumen se aplican solos.</h2></div>
+    <div class="tiers reveal">
+      <div class="tb"><div class="bar" style="height:70px"></div><div class="qty">1 – 9 pzas</div><div class="px">$120</div></div>
+      <div class="tb"><div class="bar" style="height:96px"></div><div class="qty">10 – 49 pzas</div><div class="px">$108</div></div>
+      <div class="tb"><div class="bar" style="height:122px"></div><div class="qty">50 – 199 pzas</div><div class="px">$96</div></div>
+      <div class="tb"><div class="bar" style="height:150px"></div><div class="qty">200+ pzas</div><div class="px">$84</div></div>
     </div>
-    <div class="band reveal" style="margin-top:46px">
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">Cada quien ve el suyo</p>
+      <h2>Listas de precio por cliente, sin que nadie se entere del otro.</h2></div>
+    <div class="cmp-wrap reveal"><table class="cmp">
+      <thead><tr><th>Producto</th><th>Público</th><th>Mayorista A</th><th class="sh">Mayorista B</th></tr></thead>
+      <tbody>
+        <tr><td>Playera Sierra 1</td><td>$209</td><td>$175</td><td class="col-sh"><span class="yes">$152</span></td></tr>
+        <tr><td>Sudadera Pacífico</td><td>$219</td><td>$184</td><td class="col-sh"><span class="yes">$159</span></td></tr>
+        <tr><td>Gorra Norte 4</td><td>$289</td><td>$242</td><td class="col-sh"><span class="yes">$210</span></td></tr>
+        <tr><td>Chamarra Bruma</td><td>$1,490</td><td>$1,251</td><td class="col-sh"><span class="yes">$1,088</span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="sfeat reveal" style="margin-top:26px;grid-template-columns:repeat(3,1fr)">
+      <div class="f"><span class="i">{{template "ic" "tag"}}</span><div><b>Cupones y campañas</b><span>Códigos y campañas con fecha, por producto o categoría.</span></div></div>
+      <div class="f"><span class="i">{{template "ic" "spark"}}</span><div><b>3x2 y escalones</b><span>Promos por cantidad y tramos, calculadas en vivo.</span></div></div>
+      <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Regalo y lealtad</b><span>Tarjetas de regalo y puntos que el cliente usa después.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="band reveal">
       <p class="eyebrow">Sin errores de cálculo</p>
       <h2>La promoción correcta, hasta el último centavo.</h2>
       <p>Todas las reglas se evalúan en el servidor, en vivo, para que el comprador vea el precio exacto y tú no pierdas margen por un descuento mal aplicado. Pruébalas en el sandbox antes de publicarlas.</p>

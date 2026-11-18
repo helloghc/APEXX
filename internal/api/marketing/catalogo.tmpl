@@ -1,29 +1,60 @@
 {{define "content"}}
 <header class="hero">
-  <div class="wrap hero-c">
-    <span class="tag-live rise d1"><span class="dot"></span>Catálogo</span>
-    <h1 class="rise d2">Un catálogo que escala a <span class="mg">50 000 productos</span> sin frenarse.</h1>
-    <p class="sub rise d3">Variantes, paquetes, digitales y preventas, con campos a tu medida y medios editables. Importa lo que ya tienes en VTEX o en un CSV y empieza a vender hoy.</p>
-    <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/admin/">Entrar al panel</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="tag-live rise d1"><span class="dot"></span>Catálogo</span>
+      <h1 class="rise d2">Un catálogo que escala a <span class="mg">50 000 productos</span> sin frenarse.</h1>
+      <p class="sub rise d3">Variantes, paquetes, digitales y preventas, con campos a tu medida y medios editables. Importa lo que ya tienes en VTEX o en un CSV y empieza a vender hoy.</p>
+      <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/admin/">Entrar al panel</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+      <p class="cta-note rise d4">Importa de VTEX con categorías y precios; las categorías se crean solas.</p>
+    </div>
+    <div class="hero-art">
+      <div class="glass rise d3">
+        <div class="pub"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M20 7 12 3 4 7l8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg></span><span><span class="lead">Importación de VTEX</span><small>12 480 productos con variantes</small></span><span class="ms">listo</span></div>
+        <div class="pub"><span class="ic warm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg></span><span><span class="lead">Categorías creadas solas</span><small>A partir de tus rutas</small></span><span class="ms">342</span></div>
+        <div class="pub"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></span><span><span class="lead">Tienda cargando</span><small>Catálogo completo</small></span><span class="ms">0.6 s</span></div>
+      </div>
+    </div>
   </div>
 </header>
 
-<section style="padding-top:10px">
+<section style="padding-top:8px">
   <div class="wrap">
-    <div class="features">
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg></div><h3>Variantes</h3><p>Tallas, colores y combinaciones con su precio, su existencia y su foto.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7 12 3 4 7l8 4 8-4z"/><path d="M4 7v10l8 4 8-4V7"/></svg></div><h3>Paquetes y kits</h3><p>Arma combos que se venden juntos y descuentan existencias de cada parte.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 11l4 4 4-4M4 21h16"/></svg></div><h3>Productos digitales</h3><p>Descargables con enlaces firmados y límite de descargas por compra.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Preventas</h3><p>Vende antes de tener existencias, con su fecha de envío clara para el comprador.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v6H4zM4 14h16v6H4z"/></svg></div><h3>Campos a tu medida</h3><p>Agrega los datos que tu giro necesita y muéstralos en la ficha.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></div><h3>Medios con edición</h3><p>Sube fotos, recórtalas y optimízalas; se sirven en el tamaño justo.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M8 11l4 4 4-4M4 21h16"/></svg></div><h3>Importa de VTEX y CSV</h3><p>Trae tu catálogo con sus categorías y precios. Las categorías se crean solas.</p></div>
-      <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div><h3>Fichas técnicas</h3><p>Tablas de especificaciones claras para que el comprador compare con confianza.</p></div>
+    <div class="sec-head reveal"><p class="eyebrow">Un solo catálogo, muchos tipos de producto</p>
+      <h2>Vende lo que vendes, como se vende.</h2></div>
+    <div class="index">
+      <div class="idx reveal"><h4><span class="d"></span>Tipos de producto</h4><ul><li>Productos simples</li><li>Con variantes</li><li>Paquetes y kits</li><li>Digitales descargables</li><li>Preventas con fecha</li></ul></div>
+      <div class="idx reveal"><h4><span class="d"></span>Variantes y precios</h4><ul><li>Tallas y colores</li><li>Precio por variante</li><li>Existencia por variante</li><li>Foto por variante</li><li>SKU y código de barras</li></ul></div>
+      <div class="idx reveal"><h4><span class="d"></span>Medios y fichas</h4><ul><li>Fotos con edición</li><li>Servidas en el tamaño justo</li><li>Fichas técnicas</li><li>Campos a tu medida</li><li>Descripciones con formato</li></ul></div>
+      <div class="idx reveal"><h4><span class="d"></span>Catálogo que escala</h4><ul><li>50 000+ productos</li><li>Carga en menos de 1 s</li><li>Importar de VTEX y CSV</li><li>Categorías automáticas</li><li>Edición masiva</li></ul></div>
     </div>
-    <div class="close reveal" style="margin-top:46px">
-      <h2>Un catálogo exacto, al día y rápido.</h2>
-      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="split">
+      <div class="reveal">
+        <div class="cfg">
+          <div class="cfg-top"><b>Tenis Sierra 5</b><span class="cfg-price">$1,399</span></div>
+          <div class="cfg-row"><span class="lbl">Talla</span><div class="chips"><span>25</span><span>26</span><span class="on">27</span><span>28</span><span>29</span></div></div>
+          <div class="cfg-row"><span class="lbl">Color</span><div class="chips"><span class="on">Negro</span><span>Arena</span><span>Olivo</span></div></div>
+          <div class="cfg-foot"><span>Existencia de esta variante</span><b>14 pares · SKU TS5-27-NGR</b></div>
+        </div>
+        <p class="mute" style="font-size:13px;margin-top:10px;text-align:center">Cada combinación con su precio, su existencia y su foto. Nada de «consultar».</p>
+      </div>
+      <div class="copy reveal">
+        <p class="eyebrow">Una ficha por cada combinación</p>
+        <h2>Variantes reales, no una lista de tallas sin stock.</h2>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Precio y existencia por variante</b><span>Si no hay de esa talla, no se vende. Cero sorpresas en el pedido.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "tag"}}</span><div><b>Paquetes y preventas</b><span>Combos que descuentan de cada parte, y preventas con fecha clara.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Fichas técnicas</b><span>Tablas de especificaciones para que el comprador compare con confianza.</span></div></div>
+        </div>
+      </div>
     </div>
+    <div class="close reveal" style="margin-top:52px"><h2>Un catálogo exacto, al día y rápido.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/precios">Ver precios y promociones →</a></div></div>
   </div>
 </section>
 {{end}}
