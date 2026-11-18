@@ -1,0 +1,45 @@
+{{define "content"}}
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="tag-live rise d1"><span class="dot"></span>Developers</span>
+      <h1 class="rise d2">Conecta Shulada con <span class="mg">tus sistemas</span>.</h1>
+      <p class="sub rise d3">API para integrar tu ERP, facturación o tus propias herramientas; webhooks para reaccionar a lo que pasa; y punchout (cXML) para vender dentro del sistema de compras de tus clientes.</p>
+      <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/contacto">Solicitar acceso de API</a><a class="btn btn-ghost btn-lg" href="/b2b">Ver B2B y punchout →</a></div>
+      <p class="cta-note rise d4">Disponible en planes con API. Cada acción queda en la bitácora.</p>
+    </div>
+    <div class="hero-art">
+      <div class="spec" style="max-width:100%">
+        <div class="sr"><b>API</b><span>REST sobre HTTPS</span></div>
+        <div class="sr"><b>Auth</b><span>Llave por tienda, por ambiente</span></div>
+        <div class="sr"><b>Webhooks</b><span>Eventos de pedidos, pagos, catálogo</span></div>
+        <div class="sr"><b>Punchout</b><span>cXML para compras B2B</span></div>
+        <div class="sr"><b>Idempotencia</b><span>Reintentos seguros</span></div>
+        <div class="sr"><b>Auditoría</b><span>Bitácora verificable</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section style="padding-top:8px"><div class="wrap">
+  <div class="sec-head reveal"><p class="eyebrow">Tres formas de integrar</p>
+    <h2>Lee, reacciona y conéctate al flujo del cliente.</h2></div>
+  <div class="models">
+    <div class="model reveal"><span class="i">{{template "ic" "chart"}}</span><b>API REST</b><p>Lee y escribe catálogo, inventario, pedidos y clientes desde tus sistemas, con llaves por ambiente.</p></div>
+    <div class="model reveal"><span class="i">{{template "ic" "bolt"}}</span><b>Webhooks</b><p>Recibe eventos cuando algo cambia —un pedido, un pago, un producto— y automatiza tu operación.</p></div>
+    <div class="model reveal"><span class="i">{{template "ic" "building"}}</span><b>Punchout (cXML)</b><p>Conecta el sistema de compras de tus clientes B2B y vende dentro de su flujo de aprobación.</p></div>
+  </div>
+
+  <div class="sec-head reveal" style="margin-top:56px"><p class="eyebrow">Pensado para integrar en serio</p>
+    <h2>Seguro, idempotente y auditable.</h2></div>
+  <div class="sfeat" style="grid-template-columns:repeat(3,1fr)">
+    <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Llaves por tienda y ambiente</b><span>Separa pruebas de producción; revoca cuando quieras.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Reintentos seguros</b><span>Operaciones idempotentes: un reintento no duplica.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Bitácora de auditoría</b><span>Cada acción de la API queda registrada y es verificable.</span></div></div>
+  </div>
+
+  <div class="close reveal" style="margin-top:52px"><h2>¿Necesitas integrar Shulada?</h2>
+    <p>Cuéntanos tu caso y te damos acceso, credenciales de prueba y la documentación que ocupes.</p>
+    <div class="cta-row" style="justify-content:center;margin-top:24px"><a class="btn btn-primary btn-lg" href="/contacto">Solicitar acceso</a><a class="btn btn-ghost btn-lg" href="/ayuda">Ir al centro de ayuda →</a></div></div>
+</div></section>
+{{end}}

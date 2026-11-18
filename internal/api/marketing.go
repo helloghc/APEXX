@@ -102,6 +102,12 @@ var marketingSite = map[string]*mktPage{
 	"/contacto":    {file: "marketing/contacto.tmpl", Title: "Contacto · Shulada", Desc: "Habla con ventas, soporte, seguridad o prensa. Te respondemos el mismo día hábil."},
 	"/privacidad":  {file: "marketing/privacidad.tmpl", Title: "Aviso de Privacidad · Shulada", Desc: "Cómo tratamos y protegemos tus datos personales conforme a la LFPDPPP: qué datos recabamos, para qué, tus derechos ARCO y cómo ejercerlos."},
 	"/terminos":    {file: "marketing/terminos.tmpl", Title: "Términos y Condiciones · Shulada", Desc: "Las reglas para usar Shulada como plataforma de comercio, escritas para entenderse."},
+
+	// Crecimiento: migración, partners, ayuda y developers.
+	"/migrar":     {file: "marketing/migrar.tmpl", Title: "Migrar desde VTEX o Shopify · Shulada", Desc: "Múdate desde VTEX, Shopify, Woo o un CSV sin perder catálogo, categorías, precios ni SEO. Revisas en un sandbox y publicamos sin corte."},
+	"/partners":   {file: "marketing/partners.tmpl", Title: "Partners y agencias · Shulada", Desc: "Para agencias y estudios que montan y operan tiendas: entrega más rápido, mantén menos y crece tu portafolio sobre una base estable."},
+	"/ayuda":      {file: "marketing/ayuda.tmpl", Title: "Centro de ayuda · Shulada", Desc: "Guías por tema para sacarle todo el jugo a tu tienda: editor, catálogo, precios, pagos, envíos, B2B, IA y API. Y soporte humano a un clic."},
+	"/developers": {file: "marketing/developers.tmpl", Title: "Developers y API · Shulada", Desc: "Integra Shulada con tus sistemas: API REST, webhooks de eventos y punchout (cXML) para compras B2B. Seguro, idempotente y auditable."},
 }
 
 var (

@@ -1,0 +1,37 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c" style="padding-bottom:16px">
+  <span class="tag-live rise d1"><span class="dot"></span>Centro de ayuda</span>
+  <h1 class="rise d2">¿En qué te <span class="mg">ayudamos</span>?</h1>
+  <p class="sub rise d3">Guías por tema para sacarle todo el jugo a tu tienda. Y si prefieres hablar con una persona, estamos a un clic.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/contacto">Hablar con soporte</a><a class="btn btn-ghost btn-lg" href="/admin/">Entrar al panel →</a></div>
+</div></header>
+
+<section style="padding-top:8px"><div class="wrap">
+  <div class="suite">
+    <a class="card reveal" href="/tienda"><span class="ic">{{template "ic" "store"}}</span><h3>Tienda y editor</h3><p>Arma portada y páginas por secciones, elige tu tema, conecta tu dominio y publica.</p><div class="tags"><span>Editor</span><span>Temas</span><span>Dominio</span></div></a>
+    <a class="card reveal" href="/catalogo"><span class="ic">{{template "ic" "box"}}</span><h3>Catálogo</h3><p>Productos, variantes, paquetes, digitales y preventas. Importa de VTEX o CSV.</p><div class="tags"><span>Variantes</span><span>Importar</span><span>Medios</span></div></a>
+    <a class="card reveal" href="/precios"><span class="ic">{{template "ic" "tag"}}</span><h3>Precios y promociones</h3><p>Listas por cliente, volumen, cupones, 3x2, tarjetas de regalo y lealtad.</p><div class="tags"><span>Promos</span><span>Lealtad</span></div></a>
+    <a class="card reveal" href="/pagos"><span class="ic">{{template "ic" "card"}}</span><h3>Pagos y checkout</h3><p>Conecta tu Stripe; cobra con tarjeta, OXXO y SPEI, con meses sin intereses.</p><div class="tags"><span>Stripe</span><span>OXXO/SPEI</span></div></a>
+    <a class="card reveal" href="/envios"><span class="ic">{{template "ic" "truck"}}</span><h3>Envíos</h3><p>Cotización en vivo, compra de guías, zonas, recolección y seguimiento.</p><div class="tags"><span>Guías</span><span>Zonas</span></div></a>
+    <a class="card reveal" href="/b2b"><span class="ic">{{template "ic" "building"}}</span><h3>B2B y mayoreo</h3><p>Crédito, aprobaciones, precios por cliente, cotizaciones y punchout.</p><div class="tags"><span>Crédito</span><span>Punchout</span></div></a>
+    <a class="card reveal" href="/ia"><span class="ic">{{template "ic" "spark"}}</span><h3>Inteligencia artificial</h3><p>Búsqueda por significado, pregúntale a la tienda y recomendaciones.</p><div class="tags"><span>Búsqueda</span><span>Copiloto</span></div></a>
+    <a class="card reveal" href="/developers"><span class="ic">{{template "ic" "chart"}}</span><h3>API y developers</h3><p>Integra tus sistemas con la API, webhooks y punchout (cXML).</p><div class="tags"><span>API</span><span>Webhooks</span></div></a>
+  </div>
+
+  <div class="band reveal" style="margin-top:46px">
+    <div class="band-grid">
+      <div>
+        <p class="eyebrow">¿No encuentras algo?</p>
+        <h2>Habla con una persona de soporte.</h2>
+        <p>Los clientes con cuenta tienen soporte directo. Cuéntanos qué necesitas y te respondemos el mismo día hábil.</p>
+        <div class="cta-row" style="margin-top:26px"><a class="btn btn-primary btn-lg" href="/contacto">Contactar soporte →</a></div>
+      </div>
+      <div class="flow">
+        <div class="step reveal"><span class="n">1</span><span><b>Busca por tema</b><small>Las guías de arriba</small></span></div>
+        <div class="step reveal"><span class="n">2</span><span><b>Pregúntale al copiloto</b><small>Dentro del panel</small></span></div>
+        <div class="step reveal"><span class="n">3</span><span><b>Escríbenos</b><small>Soporte el mismo día hábil</small></span></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+{{end}}
