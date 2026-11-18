@@ -115,6 +115,8 @@ var marketingSite = map[string]*mktPage{
 	"/lealtad":       {file: "marketing/lealtad.tmpl", Title: "Lealtad y recompensas · Shulada", Desc: "Puntos por compra, tarjetas de regalo y cupones de recompra incluidos, sin apps externas. Haz que la segunda compra sea inevitable."},
 	"/pos":           {file: "marketing/pos.tmpl", Title: "Punto de venta y omnicanal · Shulada", Desc: "Vende en mostrador, en línea y en otros canales con un solo inventario, el mismo cliente y los mismos pedidos. Lo que vendes en caja descuenta del mismo stock."},
 	"/devoluciones":  {file: "marketing/devoluciones.tmpl", Title: "Devoluciones y posventa · Shulada", Desc: "Cambios y devoluciones de autoservicio con tus reglas: el cliente solicita, tú apruebas, reembolsas (reversible) y reingresas a inventario. Todo en la bitácora."},
+
+	"/nosotros": {file: "marketing/nosotros.tmpl", Title: "Nosotros · Shulada", Desc: "Quiénes somos y en qué creemos: comercio rápido, reversible y todo incluido para México y LATAM. Transparencia por delante: te mostramos todo antes de decidir."},
 }
 
 var (
