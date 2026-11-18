@@ -108,6 +108,13 @@ var marketingSite = map[string]*mktPage{
 	"/partners":   {file: "marketing/partners.tmpl", Title: "Partners y agencias · Shulada", Desc: "Para agencias y estudios que montan y operan tiendas: entrega más rápido, mantén menos y crece tu portafolio sobre una base estable."},
 	"/ayuda":      {file: "marketing/ayuda.tmpl", Title: "Centro de ayuda · Shulada", Desc: "Guías por tema para sacarle todo el jugo a tu tienda: editor, catálogo, precios, pagos, envíos, B2B, IA y API. Y soporte humano a un clic."},
 	"/developers": {file: "marketing/developers.tmpl", Title: "Developers y API · Shulada", Desc: "Integra Shulada con tus sistemas: API REST, webhooks de eventos y punchout (cXML) para compras B2B. Seguro, idempotente y auditable."},
+
+	// Capacidades del motor con página propia.
+	"/suscripciones": {file: "marketing/suscripciones.tmpl", Title: "Suscripciones · Shulada", Desc: "Ingresos recurrentes: reposición automática, cobros recurrentes y membresías. El cliente se da de alta una vez y vuelve solo, con control desde su cuenta."},
+	"/impuestos":     {file: "marketing/impuestos.tmpl", Title: "Impuestos · Shulada", Desc: "El impuesto correcto calculado en vivo: IVA en México y el impuesto de cada país al vender fuera, con aduanas al comprar y desglose para tu contabilidad."},
+	"/lealtad":       {file: "marketing/lealtad.tmpl", Title: "Lealtad y recompensas · Shulada", Desc: "Puntos por compra, tarjetas de regalo y cupones de recompra incluidos, sin apps externas. Haz que la segunda compra sea inevitable."},
+	"/pos":           {file: "marketing/pos.tmpl", Title: "Punto de venta y omnicanal · Shulada", Desc: "Vende en mostrador, en línea y en otros canales con un solo inventario, el mismo cliente y los mismos pedidos. Lo que vendes en caja descuenta del mismo stock."},
+	"/devoluciones":  {file: "marketing/devoluciones.tmpl", Title: "Devoluciones y posventa · Shulada", Desc: "Cambios y devoluciones de autoservicio con tus reglas: el cliente solicita, tú apruebas, reembolsas (reversible) y reingresas a inventario. Todo en la bitácora."},
 }
 
 var (

@@ -1,0 +1,31 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c">
+  <span class="tag-live rise d1"><span class="dot"></span>Devoluciones y posventa</span>
+  <h1 class="rise d2">Cambios y devoluciones <span class="mg">sin drama</span>.</h1>
+  <p class="sub rise d3">El cliente inicia su devolución desde su cuenta, con tus reglas; tú apruebas, reembolsas y reingresas al inventario. Reembolsos reversibles y todo en la bitácora.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/pagos">Ver pagos y reembolsos →</a></div>
+</div></header>
+
+<section style="padding-top:14px"><div class="wrap">
+  <div class="split">
+    <div class="copy reveal">
+      <p class="eyebrow">Menos correos, más confianza</p>
+      <h2>La posventa que no te quita el día.</h2>
+      <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+        <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Autoservicio con tus reglas</b><span>El cliente solicita desde su cuenta; tú defines plazos y condiciones.</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Reembolso reversible</b><span>Total o parcial a su método de pago, con su comprobante.</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Reingreso a inventario</b><span>Lo devuelto vuelve al stock si aplica, sin recapturar nada.</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Todo en la bitácora</b><span>Quién pidió qué y cuándo; útil para auditar y mejorar.</span></div></div>
+      </div>
+    </div>
+    <div class="tl reveal">
+      <div class="ev"><span class="when">Solicita</span><b>Desde su cuenta</b><p>Elige el producto y el motivo; dentro de tus plazos.</p></div>
+      <div class="ev"><span class="when">Apruebas</span><b>Con tus reglas</b><p>Aceptas, pides evidencia o rechazas, según tu política.</p></div>
+      <div class="ev"><span class="when">Reembolsas</span><b>A su método de pago</b><p>Total o parcial; reversible y con comprobante.</p></div>
+      <div class="ev"><span class="when">Reingresas</span><b>Vuelve al inventario</b><p>El stock se corrige solo si el producto es revendible.</p></div>
+    </div>
+  </div>
+  <div class="close reveal" style="margin-top:52px"><h2>Una buena devolución también vende.</h2>
+    <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/para-quien-compra">Ver la experiencia de compra →</a></div></div>
+</div></section>
+{{end}}

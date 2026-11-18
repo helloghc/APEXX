@@ -1,0 +1,33 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c">
+  <span class="tag-live rise d1"><span class="dot"></span>Punto de venta y omnicanal</span>
+  <h1 class="rise d2">Tu tienda física y en línea, <span class="mg">un solo inventario</span>.</h1>
+  <p class="sub rise d3">Vende en mostrador, en línea y en otros canales compartiendo existencias, clientes y pedidos. Lo que se vende en caja descuenta del mismo stock que tu tienda web.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/resultado/nuevos-canales">Ver todos los canales →</a></div>
+</div></header>
+
+<section style="padding-top:14px"><div class="wrap">
+  <div class="sec-head reveal"><p class="eyebrow">Una sola verdad</p>
+    <h2>Donde sea que vendas, el mismo stock.</h2></div>
+  <div class="hub reveal">
+    <div class="side">
+      <div class="ch">{{template "ic" "store"}}Mostrador (POS)</div>
+      <div class="ch">{{template "ic" "cart"}}Tienda en línea</div>
+      <div class="ch">{{template "ic" "building"}}Mayoreo B2B</div>
+    </div>
+    <div class="core"><b>Un inventario</b><span>Existencias, clientes y pedidos — una sola verdad</span></div>
+    <div class="side">
+      <div class="ch">{{template "ic" "users"}}Marketplace</div>
+      <div class="ch">{{template "ic" "globe"}}Internacional</div>
+      <div class="ch">{{template "ic" "chart"}}Canales y feeds</div>
+    </div>
+  </div>
+  <div class="sfeat reveal" style="margin-top:36px;grid-template-columns:repeat(3,1fr)">
+    <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Inventario compartido</b><span>Vender en caja descuenta del mismo stock que la tienda web.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "users"}}</span><div><b>Mismo cliente</b><span>Su historial, puntos y datos, compre donde compre.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Pedidos manuales y POS</b><span>Levanta ventas en mostrador o por teléfono, con el mismo catálogo.</span></div></div>
+  </div>
+  <div class="close reveal" style="margin-top:52px"><h2>Una operación, todos tus mostradores.</h2>
+    <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/internacional">Ver internacional →</a></div></div>
+</div></section>
+{{end}}

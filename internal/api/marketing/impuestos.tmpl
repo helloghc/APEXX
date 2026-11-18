@@ -1,0 +1,28 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c">
+  <span class="tag-live rise d1"><span class="dot"></span>Impuestos</span>
+  <h1 class="rise d2">El impuesto correcto, <span class="mg">calculado solo</span>.</h1>
+  <p class="sub rise d3">IVA incluido en México y el impuesto de cada país al vender fuera. Se calcula en vivo en el carrito, para que el comprador vea su precio final y tú no hagas hojas de cálculo.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/internacional">Ver internacional →</a></div>
+</div></header>
+
+<section style="padding-top:14px"><div class="wrap">
+  <div class="sec-head reveal"><p class="eyebrow">Cada país, su regla</p>
+    <h2>Del IVA de México al VAT de Europa, sin pensarlo.</h2></div>
+  <div class="mkts reveal">
+    <div class="mk"><b>México</b><span>IVA 16%</span><small>incluido en el precio</small></div>
+    <div class="mk"><b>Estados Unidos</b><span>Sales tax</span><small>por estado</small></div>
+    <div class="mk"><b>Canadá</b><span>GST/HST</span><small>por provincia</small></div>
+    <div class="mk"><b>Colombia</b><span>IVA 19%</span><small>local</small></div>
+    <div class="mk"><b>Reino Unido</b><span>VAT 20%</span><small>incluido</small></div>
+    <div class="mk"><b>Unión Europea</b><span>VAT</span><small>por país</small></div>
+  </div>
+  <div class="sfeat reveal" style="margin-top:30px;grid-template-columns:repeat(3,1fr)">
+    <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>IVA incluido a la vista</b><span>El comprador ve el precio final; tú cobras con el impuesto correcto.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "globe"}}</span><div><b>Aduanas al comprar</b><span>El impuesto de importación se cobra al pagar, no al recibir. Sin sorpresas.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Listo para tu contabilidad</b><span>Cada pedido guarda su desglose de impuestos, exportable.</span></div></div>
+  </div>
+  <div class="close reveal" style="margin-top:52px"><h2>Vende donde quieras, sin líos fiscales.</h2>
+    <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/pagos">Ver pagos y checkout →</a></div></div>
+</div></section>
+{{end}}
