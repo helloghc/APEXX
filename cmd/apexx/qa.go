@@ -118,6 +118,32 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 		must(log, err, "member "+email)
 	}
 
+	// Realistic demo catalog (sports & fashion; no real trademarks). Cycled with a
+	// colour suffix so larger stores stay varied without inventing brands.
+	demoCat := []struct{ title, brand string }{
+		{"Tenis para correr impermeables", "Sierra"},
+		{"Chamarra rompevientos con capucha", "Norte"},
+		{"Sudadera deportiva de secado rápido", "Pacífico"},
+		{"Playera deportiva transpirable", "Sierra"},
+		{"Calcetas deportivas acolchadas (3 pares)", "Norte"},
+		{"Gorra para correr reflejante", "Pacífico"},
+		{"Short deportivo con bolsas", "Sierra"},
+		{"Leggings de compresión", "Pacífico"},
+		{"Tenis urbanos de malla transpirable", "Norte"},
+		{"Rompevientos ultraligero plegable", "Sierra"},
+		{"Pants deportivo de felpa", "Pacífico"},
+		{"Chamarra acolchada ligera", "Norte"},
+		{"Playera manga larga térmica", "Sierra"},
+		{"Sudadera con cierre y capucha", "Pacífico"},
+		{"Tenis de senderismo antiderrapantes", "Norte"},
+		{"Mochila 20L resistente al agua", "Sierra"},
+		{"Gorro tejido para frío", "Pacífico"},
+		{"Guantes deportivos táctiles", "Norte"},
+		{"Tank top de entrenamiento", "Sierra"},
+		{"Chaleco acolchado sin mangas", "Pacífico"},
+	}
+	demoColors := []string{"", "Negro", "Azul marino", "Gris jaspe", "Verde olivo", "Vino"}
+
 	for i := 1; i <= *n; i++ {
 		var vs []catalog.Variant
 		for j := 1; j <= 2; j++ {
@@ -133,11 +159,14 @@ func cmdQASetup(ctx context.Context, log *slog.Logger, args []string) {
 			must(log, db.SetPrices(ctx, *tenant, "qa-setup", "mx", sku, []pricing.Tier{
 				{MinQty: 1, Unit: money.New(base, "MXN"), CompareAt: &cmp}, {MinQty: 10, Unit: money.New(base*95/100, "MXN")}}), "prices")
 		}
-		brand := []string{"Norte", "Sierra", "Pacífico", "Converse"}[i%4]
-		kind := []string{"Tenis", "Playera", "Sudadera", "Calcetas", "Gorra"}[i%5]
+		dp := demoCat[(i-1)%len(demoCat)]
+		title := dp.title
+		if c := demoColors[((i-1)/len(demoCat))%len(demoColors)]; c != "" {
+			title = dp.title + " · " + c
+		}
 		_, err := db.UpsertProduct(ctx, *tenant, "qa-setup", catalog.Product{
-			ID: fmt.Sprintf("QA-%05d", i), Handle: fmt.Sprintf("qa-producto-%d", i), Title: fmt.Sprintf("%s %s %d", kind, brand, i),
-			Brand: brand, Categories: []string{"deportes"}, Description: "Producto de prueba para QA.", Variants: vs,
+			ID: fmt.Sprintf("QA-%05d", i), Handle: fmt.Sprintf("qa-producto-%d", i), Title: title,
+			Brand: dp.brand, Categories: []string{"deportes"}, Description: "Tejido ligero y transpirable, ideal para entrenar. Envío a todo México.", Variants: vs,
 		}, 0)
 		must(log, err, "product")
 	}
