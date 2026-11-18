@@ -1,19 +1,43 @@
 {{define "content"}}
-<header class="hero"><div class="wrap hero-c">
-  <span class="tag-live rise d1"><span class="dot"></span>Tecnología y electrónica</span>
-  <h1 class="rise d2">Vende tecnología con <span class="mg">fichas que convencen</span>.</h1>
-  <p class="sub rise d3">Con el tema Voltio, oscuro y preciso. Especificaciones claras, comparador, variantes por capacidad y color, garantías y meses sin intereses. Tu comprador decide informado.</p>
-  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/s/qa/voltio/index">Ver el tema Voltio →</a></div>
-</div></header>
-<section style="padding-top:10px"><div class="wrap"><div class="features">
-  <div class="feat reveal"><div class="ic">{{template "ic" "chart"}}</div><h3>Fichas técnicas</h3><p>Tablas de especificaciones claras, con datos y monoespaciada para precios y claves.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "box"}}</div><h3>Variantes por capacidad</h3><p>GB, color, modelo: cada combinación con su precio y existencia.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "flask"}}</div><h3>Comparador</h3><p>El comprador compara modelos lado a lado antes de decidir.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "spark"}}</div><h3>Pregúntale a la tienda</h3><p>Responde dudas técnicas con tus textos, citando la fuente. Nunca inventa.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "card"}}</div><h3>Meses sin intereses</h3><p>Para tickets altos, con tarjeta, OXXO y SPEI.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "truck"}}</div><h3>Garantías y RMA</h3><p>Devoluciones y garantías con reglas claras, desde la cuenta del cliente.</p></div>
-</div>
-<div class="close reveal" style="margin-top:46px"><h2>Precisión en cada ficha, velocidad en cada clic.</h2>
-  <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
-</div></section>
+<header class="skin sk-voltio mono">
+  <div class="wrap">
+    <p class="kicker rise d1">TECNOLOGÍA · TEMA VOLTIO</p>
+    <h1 class="rise d2">Specs claras.<br>Compras seguras.</h1>
+    <p class="lead rise d3">Una tienda oscura y precisa donde el dato manda: fichas técnicas legibles, comparador lado a lado y meses sin intereses para tickets altos.</p>
+    <div class="cta-row rise d4"><a class="btn btn-sk btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-sko btn-lg" href="/s/qa/voltio/index">Ver Voltio en vivo →</a></div>
+    <div class="cards rise d5">
+      <div class="pc"><div class="ph"><span class="bg">-15%</span></div><div class="t">Audífonos NB-40</div><div class="p">$2,549 MXN</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">Teclado K87 RGB</div><div class="p">$1,899 MXN</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">SSD 2TB NVMe</div><div class="p">$2,190 MXN</div></div>
+      <div class="pc"><div class="ph"><span class="bg">12 MSI</span></div><div class="t">Monitor 27" 165Hz</div><div class="p">$6,490 MXN</div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="split">
+      <div class="spec reveal">
+        <div class="sr"><b>Pantalla</b><span>27" IPS · 2560×1440 · 165 Hz</span></div>
+        <div class="sr"><b>Respuesta</b><span>1 ms (GtG)</span></div>
+        <div class="sr"><b>Puertos</b><span>2× HDMI 2.1 · DP 1.4 · USB-C 65W</span></div>
+        <div class="sr"><b>Garantía</b><span>3 años en centro de servicio</span></div>
+        <div class="sr"><b>En caja</b><span>Cable DP · fuente · base</span></div>
+        <div class="sr"><b>Pago</b><span>Hasta 12 meses sin intereses</span></div>
+      </div>
+      <div class="copy reveal">
+        <p class="eyebrow">El dato vende</p>
+        <h2>El comprador técnico decide con la ficha, no con el adjetivo.</h2>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Fichas técnicas de verdad</b><span>Tablas limpias, cifras en monoespaciada, nada de PDF escondido.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Comparador lado a lado</b><span>Dos o tres modelos frente a frente antes de decidir.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "spark"}}</span><div><b>Pregúntale a la tienda</b><span>«¿Sirve para PS5 a 120 Hz?» — responde con tu ficha y cita la fuente.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Meses sin intereses</b><span>El empujón que cierra tickets de $5,000 en adelante.</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="close reveal" style="margin-top:52px"><h2>Vende fierros con precisión de fierro.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
+  </div>
+</section>
 {{end}}

@@ -1,19 +1,57 @@
 {{define "content"}}
-<header class="hero"><div class="wrap hero-c">
-  <span class="tag-live rise d1"><span class="dot"></span>Mayoreo y distribución</span>
-  <h1 class="rise d2">Distribuye con <span class="mg">crédito, precios y reglas</span> por cliente.</h1>
-  <p class="sub rise d3">El mayoreo vive dentro de la misma tienda: precios por volumen, crédito a 30 días, pedidos recurrentes, punchout y catálogo por cliente. Menos llamadas, más pedidos.</p>
-  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/b2b">Ver todo el B2B →</a></div>
-</div></header>
-<section style="padding-top:10px"><div class="wrap"><div class="features">
-  <div class="feat reveal"><div class="ic">{{template "ic" "tag"}}</div><h3>Precios por volumen</h3><p>Escalones por cantidad y listas por cliente; cada quien ve su precio.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "building"}}</div><h3>Crédito a 30 días</h3><p>Línea de crédito, fecha de pago y pago automático opcional.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "box"}}</div><h3>Pedidos recurrentes</h3><p>Listas de requisición que el comprador reusa y ajusta en segundos.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "chart"}}</div><h3>Punchout (cXML)</h3><p>Conéctate al sistema de compras del cliente y vende en su flujo.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "users"}}</div><h3>Catálogo por cliente</h3><p>Cada empresa ve solo lo que puede comprar, con sus condiciones.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "card"}}</div><h3>Representantes</h3><p>Tu equipo atiende y compra por cada empresa, con todo en la bitácora.</p></div>
-</div>
-<div class="close reveal" style="margin-top:46px"><h2>Mueve tu distribución a un sistema que no te frena.</h2>
-  <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
-</div></section>
+<header class="skin sk-acero mono">
+  <div class="wrap">
+    <p class="kicker rise d1">MAYOREO Y DISTRIBUCIÓN · TEMA ACERO</p>
+    <h1 class="rise d2">Crédito, precios y reglas<br>por cada cliente.</h1>
+    <p class="lead rise d3">El mayoreo vive dentro de la misma tienda: escalones por volumen, crédito a 30 días, pedidos recurrentes, punchout y catálogo por empresa. Menos llamadas, más pedidos.</p>
+    <div class="cta-row rise d4"><a class="btn btn-sk btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-sko btn-lg" href="/b2b">Ver todo el B2B →</a></div>
+    <div class="cards rise d5">
+      <div class="pc"><div class="ph"></div><div class="t">Caja 24 pzas · Detergente</div><div class="p">desde $38.00 / pza</div></div>
+      <div class="pc"><div class="ph"><span class="bg">Tarima</span></div><div class="t">Pallet 48 cajas</div><div class="p">desde $31.50 / pza</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">Display 12 pzas · Snack</div><div class="p">desde $14.20 / pza</div></div>
+      <div class="pc"><div class="ph"><span class="bg">Crédito</span></div><div class="t">Surtido mensual</div><div class="p">a 30 días</div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">El precio baja con el volumen</p>
+      <h2>Escalones por cantidad, visibles en el producto.</h2></div>
+    <div class="tiers reveal">
+      <div class="tb"><div class="bar" style="height:70px"></div><div class="qty">1 – 11 cajas</div><div class="px">$38.00</div></div>
+      <div class="tb"><div class="bar" style="height:98px"></div><div class="qty">12 – 47 cajas</div><div class="px">$34.50</div></div>
+      <div class="tb"><div class="bar" style="height:126px"></div><div class="qty">48 – 99 cajas</div><div class="px">$31.50</div></div>
+      <div class="tb"><div class="bar" style="height:154px"></div><div class="qty">100+ cajas</div><div class="px">$28.90</div></div>
+    </div>
+    <p class="mute reveal" style="font-size:13px;margin-top:16px;text-align:center">Y si el cliente tiene lista negociada, ve su precio: cada empresa compra con las suyas.</p>
+
+    <div class="split" style="margin-top:56px">
+      <div class="copy reveal">
+        <p class="eyebrow">Una cuenta por empresa</p>
+        <h2>Tus condiciones de siempre, sin una sola llamada.</h2>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "building"}}</span><div><b>Crédito a 30 días</b><span>Línea por cliente, fecha de pago y domiciliación opcional.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Pedidos recurrentes</b><span>Listas de requisición que el comprador reusa y ajusta en segundos.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "users"}}</span><div><b>Catálogo por cliente</b><span>Cada empresa ve solo lo que puede comprar, con sus precios y mínimos.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Punchout (cXML)</b><span>Conéctate al sistema de compras del cliente y vende dentro de su flujo.</span></div></div>
+        </div>
+      </div>
+      <div class="reveal">
+        <div class="acct">
+          <div class="acct-h"><b>Abarrotes del Norte, S.A.</b><span class="acct-tag">Cliente mayorista</span></div>
+          <div class="acct-row"><span>Lista de precios</span><b>Mayorista B · −18%</b></div>
+          <div class="acct-row"><span>Crédito disponible</span><b>$124,500 de $200,000</b></div>
+          <div class="acct-bar"><span style="width:62%"></span></div>
+          <div class="acct-row"><span>Condición de pago</span><b>Neto 30 días</b></div>
+          <div class="acct-row"><span>Representante</span><b>Laura M. · pedidos a su nombre</b></div>
+          <div class="acct-foot">Pedido recurrente «Surtido quincenal» · 34 líneas · 1 toque</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="close reveal" style="margin-top:56px"><h2>Mueve tu distribución a un sistema que no te frena.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
+  </div>
+</section>
 {{end}}

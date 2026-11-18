@@ -1,19 +1,54 @@
 {{define "content"}}
-<header class="hero"><div class="wrap hero-c">
-  <span class="tag-live rise d1"><span class="dot"></span>Hogar y muebles</span>
-  <h1 class="rise d2">Vende muebles y hogar <span class="mg">sin dolores de cabeza</span>.</h1>
-  <p class="sub rise d3">Productos configurables, medidas y acabados, envío de voluminosos por zona y pago a meses. Galerías grandes para que el comprador se enamore del detalle.</p>
-  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
-</div></header>
-<section style="padding-top:10px"><div class="wrap"><div class="features">
-  <div class="feat reveal"><div class="ic">{{template "ic" "box"}}</div><h3>Configurables</h3><p>Medidas, materiales y acabados como variantes, cada uno con su precio.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "store"}}</div><h3>Galerías grandes</h3><p>Fotos amplias y detalle; el mueble se vende por lo que se ve.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "truck"}}</div><h3>Envío de voluminosos</h3><p>Tarifas por zona y peso, con fecha realista de entrega.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "card"}}</div><h3>Pago a meses</h3><p>Para tickets altos, con tarjeta, OXXO y SPEI.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "chart"}}</div><h3>Fichas con medidas</h3><p>Tablas claras de dimensiones y cuidados para evitar devoluciones.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "spark"}}</div><h3>Inspiración</h3><p>Colecciones por ambiente y recomendaciones para completar el espacio.</p></div>
-</div>
-<div class="close reveal" style="margin-top:46px"><h2>Del catálogo a la sala, sin fricción.</h2>
-  <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
-</div></section>
+<header class="skin sk-arcilla round">
+  <div class="wrap">
+    <p class="kicker rise d1">Hogar y muebles · Tema Arcilla</p>
+    <h1 class="rise d2">Muebles que se arman<br>a la medida del cliente.</h1>
+    <p class="lead rise d3">Tonos tierra, fotografía amplia y fichas con medidas claras. Productos configurables, envío de voluminosos por zona y pago a meses para que el ticket alto no frene la venta.</p>
+    <div class="cta-row rise d4"><a class="btn btn-sk btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-sko btn-lg" href="/s/qa/main/index">Ver una tienda en vivo →</a></div>
+    <div class="cards rise d5">
+      <div class="pc"><div class="ph"></div><div class="t">Sofá Módulo 3 plazas</div><div class="p">$18,900 · 12 MSI</div></div>
+      <div class="pc"><div class="ph"><span class="bg">Nuevo</span></div><div class="t">Mesa de comedor Roble</div><div class="p">$9,450</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">Librero Abeto</div><div class="p">$4,290</div></div>
+      <div class="pc"><div class="ph"><span class="bg">Hecho a pedido</span></div><div class="t">Cabecera Lino</div><div class="p">$3,990 · 15 días</div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="split">
+      <div class="reveal">
+        <div class="cfg">
+          <div class="cfg-top"><b>Sofá Módulo</b><span class="cfg-price">$18,900</span></div>
+          <div class="cfg-row"><span class="lbl">Medida</span><div class="chips"><span>2 plazas</span><span class="on">3 plazas</span><span>Esquinero</span></div></div>
+          <div class="cfg-row"><span class="lbl">Tela</span><div class="chips"><span class="on">Lino Arena</span><span>Bouclé Hueso</span><span>Pana Ocre</span></div></div>
+          <div class="cfg-row"><span class="lbl">Patas</span><div class="chips"><span>Nogal</span><span class="on">Negro mate</span></div></div>
+          <div class="cfg-foot"><span>Entrega estimada</span><b>8–12 días · CDMX y Edomex</b></div>
+        </div>
+        <p class="mute" style="font-size:13px;margin-top:10px;text-align:center">Cada combinación tiene su precio, su foto y su existencia. Nada de «cotizar aparte».</p>
+      </div>
+      <div class="copy reveal">
+        <p class="eyebrow">Una ficha por cada combinación</p>
+        <h2>El mueble se vende configurado, no «consultando disponibilidad».</h2>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Productos configurables</b><span>Medidas, materiales y acabados como variantes, cada una con su precio y stock.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "store"}}</span><div><b>Galerías grandes</b><span>Fotos amplias y de detalle; el mueble se vende por lo que se ve.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Fichas con medidas</b><span>Tablas de dimensiones y cuidados que evitan devoluciones por sorpresa.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Pago a meses</b><span>Para tickets altos, con tarjeta, OXXO y SPEI. Sin complicar el checkout.</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-head reveal" style="margin-top:60px"><p class="eyebrow">Voluminosos, resueltos</p>
+      <h2>Envío por zona, con fecha realista.</h2></div>
+    <div class="zones reveal">
+      <div class="zn"><span class="i">{{template "ic" "truck"}}</span><b>Zona metro</b><span>CDMX y Edomex</span><div class="zp">Entrega en 8–12 días</div></div>
+      <div class="zn"><span class="i">{{template "ic" "truck"}}</span><b>Bajío y occidente</b><span>Gdl, Qro, León</span><div class="zp">12–18 días · tarifa por volumen</div></div>
+      <div class="zn"><span class="i">{{template "ic" "truck"}}</span><b>Resto del país</b><span>Paquetería especializada</span><div class="zp">15–25 días · cotización por peso</div></div>
+    </div>
+
+    <div class="close reveal" style="margin-top:56px"><h2>Del catálogo a la sala, sin fricción.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
+  </div>
+</section>
 {{end}}

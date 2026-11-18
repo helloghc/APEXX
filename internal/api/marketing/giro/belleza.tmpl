@@ -1,19 +1,55 @@
 {{define "content"}}
-<header class="hero"><div class="wrap hero-c">
-  <span class="tag-live rise d1"><span class="dot"></span>Belleza y bienestar</span>
-  <h1 class="rise d2">Belleza que se siente <span class="mg">suave y refinada</span>.</h1>
-  <p class="sub rise d3">Con el tema Bálsamo, serifa fina y tonos empolvados. Sets y kits, suscripciones, reseñas, muestras de regalo y un programa de lealtad que enamora.</p>
-  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/s/qa/balsamo/index">Ver el tema Bálsamo →</a></div>
-</div></header>
-<section style="padding-top:10px"><div class="wrap"><div class="features">
-  <div class="feat reveal"><div class="ic">{{template "ic" "box"}}</div><h3>Sets y kits</h3><p>Arma rutinas y combos que se venden juntos y descuentan existencias de cada parte.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "flask"}}</div><h3>Suscripciones</h3><p>Reposición automática de lo que se usa cada mes.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "chart"}}</div><h3>Reseñas</h3><p>Opiniones verificadas que construyen confianza y venden.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "tag"}}</div><h3>Muestras de regalo</h3><p>Regala muestras al llegar a cierto monto, con reglas de promoción.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "spark"}}</div><h3>Rutinas con IA</h3><p>Recomienda el siguiente paso de la rutina según lo que compra.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "card"}}</div><h3>Lealtad</h3><p>Puntos por compra que el cliente usa después, incluidos.</p></div>
-</div>
-<div class="close reveal" style="margin-top:46px"><h2>Una experiencia tan cuidada como tus productos.</h2>
-  <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
-</div></section>
+<header class="skin sk-balsamo serif round">
+  <div class="wrap">
+    <p class="kicker rise d1">Belleza y bienestar · Tema Bálsamo</p>
+    <h1 class="rise d2">Belleza que se siente<br>suave y refinada.</h1>
+    <p class="lead rise d3">Serifa fina, tonos empolvados y formas que invitan a tocar. Sets y kits, suscripción de reposición, reseñas verificadas y un programa de lealtad que enamora.</p>
+    <div class="cta-row rise d4"><a class="btn btn-sk btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-sko btn-lg" href="/s/qa/balsamo/index">Ver Bálsamo en vivo →</a></div>
+    <div class="cards rise d5">
+      <div class="pc"><div class="ph"><span class="bg">Nuevo</span></div><div class="t">Sérum de Niacinamida</div><div class="p">$420</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">Crema de Rosa Mosqueta</div><div class="p">$560</div></div>
+      <div class="pc"><div class="ph"><span class="bg">Set</span></div><div class="t">Ritual de Noche</div><div class="p">$1,190 · ahorras $210</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">Bruma de Agua Floral</div><div class="p">$340</div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">El ritual, no el producto suelto</p>
+      <h2>Vende la rutina completa, paso por paso.</h2></div>
+    <div class="ritual reveal">
+      <div class="rs"><span class="n">01</span><b>Limpia</b><p>Gel o bálsamo según tipo de piel, con muestra de regalo.</p></div>
+      <div class="rs"><span class="n">02</span><b>Trata</b><p>El sérum que recomienda la tienda según lo que ya compró.</p></div>
+      <div class="rs"><span class="n">03</span><b>Hidrata</b><p>Crema de día o noche, en suscripción de reposición.</p></div>
+      <div class="rs"><span class="n">04</span><b>Protege</b><p>SPF que se suma al carrito en un toque antes de pagar.</p></div>
+    </div>
+    <div class="split" style="margin-top:52px">
+      <div class="copy reveal">
+        <p class="eyebrow">Compras que vuelven</p>
+        <h2>Lo que enamora una vez, se repite solo.</h2>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Sets y kits</b><span>Arma combos que se venden juntos y descuentan existencias de cada parte.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Suscripción de reposición</b><span>Lo que se acaba cada mes llega solo, con su descuento de recompra.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Reseñas verificadas</b><span>Opiniones de compradores reales que construyen confianza y venden.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Lealtad por puntos</b><span>Acumula en cada compra y canjea en la siguiente, sin apps externas.</span></div></div>
+        </div>
+      </div>
+      <div class="reveal">
+        <div class="kit">
+          <div class="kit-h"><b>Ritual de Noche</b><span class="kit-save">Ahorras $210</span></div>
+          <div class="kit-items">
+            <div class="ki"><span class="ph"></span><div><b>Agua micelar</b><span>Desmaquilla sin frotar</span></div><span class="px">$290</span></div>
+            <div class="ki"><span class="ph"></span><div><b>Sérum retinol 0.3%</b><span>Noche, 3 veces por semana</span></div><span class="px">$620</span></div>
+            <div class="ki"><span class="ph"></span><div><b>Crema de noche</b><span>Reparación mientras duermes</span></div><span class="px">$490</span></div>
+          </div>
+          <div class="kit-f"><span>Set completo</span><b>$1,190</b></div>
+        </div>
+        <p class="mute" style="font-size:13px;margin-top:10px;text-align:center">El set cuesta menos que la suma, y el cliente lo entiende de un vistazo.</p>
+      </div>
+    </div>
+    <div class="close reveal" style="margin-top:52px"><h2>Una experiencia tan cuidada como tus fórmulas.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
+  </div>
+</section>
 {{end}}

@@ -1,19 +1,53 @@
 {{define "content"}}
-<header class="hero"><div class="wrap hero-c">
-  <span class="tag-live rise d1"><span class="dot"></span>Moda y accesorios</span>
-  <h1 class="rise d2">Una tienda de moda que se ve <span class="mg">tan bien como tu marca</span>.</h1>
-  <p class="sub rise d3">Con el tema Lienzo, editorial y silencioso. Tallas y colores que sí se eligen, lanzamientos en preventa, tabla de medidas y devoluciones sin fricción. Rápida y hermosa en cada pantalla.</p>
-  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/s/qa/lienzo/index">Ver el tema Lienzo →</a></div>
-</div></header>
-<section style="padding-top:10px"><div class="wrap"><div class="features">
-  <div class="feat reveal"><div class="ic">{{template "ic" "box"}}</div><h3>Tallas y colores</h3><p>Variantes con su foto, existencia y precio; el comprador elige sin confusión.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "store"}}</div><h3>Colecciones y lookbook</h3><p>Arma colecciones por temporada con el editor; portada editorial con arte propio.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "tag"}}</div><h3>Lanzamientos en preventa</h3><p>Vende antes de tener stock, con su fecha de envío clara.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "chart"}}</div><h3>Tabla de medidas</h3><p>Fichas con medidas y materiales para que compren con confianza.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "spark"}}</div><h3>Recomendaciones</h3><p>Combina prendas y accesorios: «te queda con…», con IA incluida.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "flask"}}</div><h3>Devoluciones fáciles</h3><p>Cambios de talla sin drama, con reglas que tú defines.</p></div>
-</div>
-<div class="close reveal" style="margin-top:46px"><h2>Vende moda sin que la plataforma te frene.</h2>
-  <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
-</div></section>
+<header class="skin sk-lienzo serif">
+  <div class="wrap">
+    <p class="kicker rise d1">Moda y accesorios · Tema Lienzo</p>
+    <h1 class="rise d2">Prendas que se venden<br>como se ven.</h1>
+    <p class="lead rise d3">Una tienda editorial y silenciosa, donde el aire, la serifa y la fotografía hacen el trabajo. Tallas que sí se eligen, lanzamientos en preventa y cambios sin drama.</p>
+    <div class="cta-row rise d4"><a class="btn btn-sk btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-sko btn-lg" href="/s/qa/lienzo/index">Ver Lienzo en vivo →</a></div>
+    <div class="cards rise d5">
+      <div class="pc"><div class="ph"><span class="bg">Nuevo</span></div><div class="t">Gabardina Niebla</div><div class="p">$2,490</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">Vestido Arena</div><div class="p">$1,290</div></div>
+      <div class="pc"><div class="ph"><span class="bg">Preventa</span></div><div class="t">Abrigo Ocre</div><div class="p">$3,190 · envía 12 dic</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">Bolso Lino</div><div class="p">$890</div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap pull reveal">
+    <blockquote>«La ropa se compra con los ojos. Tu tienda tiene que estar a la altura de tus prendas.»</blockquote>
+    <cite>El principio detrás del tema Lienzo</cite>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="split">
+      <div class="copy reveal">
+        <p class="eyebrow">Hecho para vender moda</p>
+        <h2>Del lookbook al carrito, sin perder el estilo.</h2>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Tallas y colores reales</b><span>Cada variante con su foto, existencia y precio. Nada de «consultar disponibilidad».</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "tag"}}</span><div><b>Lanzamientos en preventa</b><span>Cobra hoy la colección que llega en diciembre, con su fecha clara.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Cambios de talla sin drama</b><span>Devoluciones desde la cuenta del cliente, con tus reglas.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "spark"}}</span><div><b>«Te queda con…»</b><span>Recomendaciones de prendas y accesorios que combinan, con IA incluida.</span></div></div>
+        </div>
+      </div>
+      <div class="reveal">
+        <div class="store-mock">
+          <div class="sm-bar"><span class="slogo">LIENZO</span><span class="sm-search">{{template "ic" "cart"}}vestido para boda en jardín</span></div>
+          <div class="sm-grid">
+            <div class="sm-card"><div class="ph"></div><div class="t">Vestido Arena</div><div class="p">$1,290</div></div>
+            <div class="sm-card"><div class="ph"><span class="badge">Lino</span></div><div class="t">Vestido Salvia</div><div class="p">$1,490</div></div>
+            <div class="sm-card"><div class="ph"></div><div class="t">Sandalia Duna</div><div class="p">$990</div></div>
+          </div>
+        </div>
+        <p class="mute" style="font-size:13px;margin-top:10px;text-align:center">La búsqueda entiende la ocasión, no solo la palabra.</p>
+      </div>
+    </div>
+    <div class="close reveal" style="margin-top:52px"><h2>Tu marca merece una tienda así.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
+  </div>
+</section>
 {{end}}

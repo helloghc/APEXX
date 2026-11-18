@@ -1,19 +1,46 @@
 {{define "content"}}
-<header class="hero"><div class="wrap hero-c">
-  <span class="tag-live rise d1"><span class="dot"></span>Súper y abarrotes</span>
-  <h1 class="rise d2">El súper en línea, <span class="mg">rápido y cercano</span>.</h1>
-  <p class="sub rise d3">Con el tema Mercadito. Pasillos en píldoras, «Agregar» en cada producto, recompra en un toque, recolección o entrega el mismo día y precios por volumen.</p>
-  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-ghost btn-lg" href="/s/qa/mercadito/index">Ver el tema Mercadito →</a></div>
-</div></header>
-<section style="padding-top:10px"><div class="wrap"><div class="features">
-  <div class="feat reveal"><div class="ic">{{template "ic" "cart"}}</div><h3>Agregar en cada producto</h3><p>Rejillas densas con botón «Agregar»; comprar es cuestión de toques.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "bolt"}}</div><h3>Recompra en un toque</h3><p>Vuelve a pedir lo de siempre desde «mis pedidos», en segundos.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "truck"}}</div><h3>Mismo día o recolección</h3><p>Entrega local o recoge en tienda, con horarios y zonas.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "tag"}}</div><h3>Precios por volumen</h3><p>Descuentos por cantidad, ideales para despensa y mayoreo.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "flask"}}</div><h3>Suscripciones</h3><p>Reórdenes automáticas de lo que se acaba, cuando toca.</p></div>
-  <div class="feat reveal"><div class="ic">{{template "ic" "chart"}}</div><h3>Inventario exacto</h3><p>Existencias al día; nada de vender lo que ya no hay.</p></div>
-</div>
-<div class="close reveal" style="margin-top:46px"><h2>Tu súper en línea, listo para el día a día.</h2>
-  <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
-</div></section>
+<header class="skin sk-mercadito round">
+  <div class="wrap">
+    <p class="kicker rise d1">Súper y abarrotes · Tema Mercadito</p>
+    <h1 class="rise d2">La despensa resuelta<br>en cinco minutos.</h1>
+    <p class="lead rise d3">Pasillos claros, «Agregar» en cada producto y la recompra de siempre en un toque. Entrega el mismo día o recoge en tienda.</p>
+    <div class="cta-row rise d4"><a class="btn btn-sk btn-lg" href="/empezar">Crear mi tienda</a><a class="btn btn-sko btn-lg" href="/s/qa/mercadito/index">Ver Mercadito en vivo →</a></div>
+    <div class="cards rise d5">
+      <div class="pc"><div class="ph"></div><div class="t">Leche entera 1L</div><div class="p">$26 · Agregar</div></div>
+      <div class="pc"><div class="ph"><span class="bg">3x2</span></div><div class="t">Atún en agua</div><div class="p">$22 · Agregar</div></div>
+      <div class="pc"><div class="ph"></div><div class="t">Huevo 18 pzas</div><div class="p">$62 · Agregar</div></div>
+      <div class="pc"><div class="ph"><span class="bg">Fresco</span></div><div class="t">Aguacate kg</div><div class="p">$89 · Agregar</div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">Pasillos, no categorías</p>
+      <h2>Se compra como se piensa: por pasillo.</h2></div>
+    <div class="aisles reveal">
+      <span class="on">Frutas y verduras</span><span>Lácteos y huevo</span><span>Abarrotes</span><span>Carnes</span><span>Limpieza</span><span>Bebés</span><span>Mascotas</span><span>Bebidas</span>
+    </div>
+    <div class="split" style="margin-top:44px">
+      <div class="copy reveal">
+        <p class="eyebrow">El día a día, sin fricción</p>
+        <h2>Lo de siempre, en un toque.</h2>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i">{{template "ic" "bolt"}}</span><div><b>Recompra en un toque</b><span>«Volver a pedir» arma el carrito de la semana pasada en segundos.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "truck"}}</span><div><b>Mismo día o recoges</b><span>Zonas y horarios de entrega local; o pasa por tu pedido ya armado.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Despensa por suscripción</b><span>Lo que se acaba cada quincena llega solo, cuando toca.</span></div></div>
+          <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Existencias exactas</b><span>Si no hay, no se vende. Nada de llamadas para sustituir.</span></div></div>
+        </div>
+      </div>
+      <div class="tl reveal">
+        <div class="ev"><span class="when">9:12 am</span><b>Abre «Volver a pedir»</b><p>El carrito de la semana pasada, listo.</p></div>
+        <div class="ev"><span class="when">9:14 am</span><b>Ajusta 2 productos</b><p>Quita el café, duplica la fruta.</p></div>
+        <div class="ev"><span class="when">9:15 am</span><b>Paga con tarjeta guardada</b><p>Total claro, IVA incluido.</p></div>
+        <div class="ev"><span class="when">1:40 pm</span><b>Llega a su puerta</b><p>Mismo día, en su zona.</p></div>
+      </div>
+    </div>
+    <div class="close reveal" style="margin-top:52px"><h2>Tu súper, a la velocidad del barrio.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/empezar">Crear mi tienda</a></div></div>
+  </div>
+</section>
 {{end}}
