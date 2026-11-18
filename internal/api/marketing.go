@@ -6,6 +6,7 @@ import (
 	"errors"
 	"html/template"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -13,17 +14,18 @@ import (
 // one layout (with the mega-menu) and one stylesheet, so every page inherits
 // the product's identity. Pages are static HTML built from templates.
 //
-//go:embed marketing/*.tmpl marketing/giro/*.tmpl marketing/resultado/*.tmpl marketing/tamano/*.tmpl marketing/style.css
+//go:embed marketing/*.tmpl marketing/giro/*.tmpl marketing/resultado/*.tmpl marketing/tamano/*.tmpl marketing/en/*.tmpl marketing/style.css
 var marketingFS embed.FS
 
 // marketingV busts the stylesheet cache when the design changes.
-const marketingV = "8"
+const marketingV = "9"
 
 type mktPage struct {
-	file  string
-	Title string
-	Desc  string
-	V     string
+	file   string
+	layout string // template file for the chrome; empty = Spanish default
+	Title  string
+	Desc   string
+	V      string
 }
 
 // marketingSite lists every public page by its URL path.
@@ -117,6 +119,16 @@ var marketingSite = map[string]*mktPage{
 	"/devoluciones":  {file: "marketing/devoluciones.tmpl", Title: "Devoluciones y posventa · Shulada", Desc: "Cambios y devoluciones de autoservicio con tus reglas: el cliente solicita, tú apruebas, reembolsas (reversible) y reingresas a inventario. Todo en la bitácora."},
 
 	"/nosotros": {file: "marketing/nosotros.tmpl", Title: "Nosotros · Shulada", Desc: "Quiénes somos y en qué creemos: comercio rápido, reversible y todo incluido para México y LATAM. Transparencia por delante: te mostramos todo antes de decidir."},
+
+	// English site (/en). Untranslated /en/* paths 302 to their Spanish version.
+	"/en":           {file: "marketing/en/home.tmpl", layout: "marketing/en/layout.tmpl", Title: "Shulada · The commerce platform that doesn't slow you down", Desc: "The complete commerce system for brands and wholesalers: storefront, catalog, pricing, orders, payments, shipping, B2B, marketplace, international and AI. Publish in milliseconds, test in a sandbox and roll back without breaking anything."},
+	"/en/planes":    {file: "marketing/en/planes.tmpl", layout: "marketing/en/layout.tmpl", Title: "Pricing · Shulada", Desc: "Everything included in every plan: unlimited seats, AI, sandbox and hundreds of features, with no per-seat fees. Pricing scales with your volume — get a quote tailored to you."},
+	"/en/comparar":  {file: "marketing/en/comparar.tmpl", layout: "marketing/en/layout.tmpl", Title: "Compare · Shulada", Desc: "An honest comparison with VTEX, Shopify and Tiendanube: what Shulada includes out of the box versus what others charge extra for."},
+	"/en/empezar":   {file: "marketing/en/empezar.tmpl", layout: "marketing/en/layout.tmpl", Title: "Get started · Shulada", Desc: "Tell us about your business and someone from Shulada will reach out to open your store, migrate your catalog and give you a tailored quote. No commitment."},
+	"/en/contacto":  {file: "marketing/en/contacto.tmpl", layout: "marketing/en/layout.tmpl", Title: "Contact · Shulada", Desc: "Talk to sales, support, security or press. We reply the same business day."},
+	"/en/seguridad": {file: "marketing/en/seguridad.tmpl", layout: "marketing/en/layout.tmpl", Title: "Security & trust · Shulada", Desc: "How we protect your business and your data: PCI payments via Stripe that Shulada never sees, every store isolated, everything reversible and an audit log that can't be altered."},
+	"/en/b2b":       {file: "marketing/en/b2b.tmpl", layout: "marketing/en/layout.tmpl", Title: "B2B & wholesale · Shulada", Desc: "Sell to businesses with the same tools: net-30 credit, tiered approvals, per-customer pricing, quotes, punchout (cXML), requisition lists, branches and reps."},
+	"/en/pagos":     {file: "marketing/en/pagos.tmpl", layout: "marketing/en/layout.tmpl", Title: "Payments & checkout · Shulada", Desc: "Each store charges with its own Stripe account; Shulada never sees card data. Cards and local methods, reversible and idempotent charges."},
 }
 
 var (
@@ -146,10 +158,19 @@ func buildMarketing() {
 	funcs := template.FuncMap{"dict": tmplDict}
 	marketingTmpls = make(map[string]*template.Template, len(marketingSite))
 	for path, p := range marketingSite {
+		// Always parse the Spanish layout: it defines the shared "ic" (icons) and
+		// "mitem" helpers. A page with its own layout (e.g. English) parses it on
+		// top, overriding the "layout" definition while reusing those helpers.
 		base, err := template.New("layout").Funcs(funcs).ParseFS(marketingFS, "marketing/layout.tmpl")
 		if err != nil {
 			marketingErr = err
 			return
+		}
+		if p.layout != "" {
+			if _, err := base.ParseFS(marketingFS, p.layout); err != nil {
+				marketingErr = err
+				return
+			}
 		}
 		if _, err := base.ParseFS(marketingFS, p.file); err != nil {
 			marketingErr = err
@@ -172,6 +193,17 @@ func (s *Server) serveMarketing(w http.ResponseWriter, r *http.Request) bool {
 	}
 	page, ok := marketingSite[r.URL.Path]
 	if !ok {
+		// Untranslated English path falls back to its Spanish equivalent, so the
+		// English site never 404s while pages are being translated.
+		if es := strings.TrimPrefix(r.URL.Path, "/en"); es != r.URL.Path {
+			if es == "" {
+				es = "/"
+			}
+			if _, exists := marketingSite[es]; exists {
+				http.Redirect(w, r, es, http.StatusFound)
+				return true
+			}
+		}
 		return false
 	}
 	marketingOnce.Do(buildMarketing)

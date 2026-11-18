@@ -1,0 +1,215 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="{{.Desc}}">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/marketing.css?v={{.V}}">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4733E0"/><stop offset="1" stop-color="#7A3BFF"/></linearGradient>
+</defs></svg>
+
+<nav id="nav">
+  <div class="wrap nav-row">
+    <a class="brand" href="/en" aria-label="Shulada, home">
+      <svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true">
+        <rect width="48" height="48" rx="12" fill="url(#sg)"/>
+        <path d="M14 37V24.5A10 10 0 0 1 34 24.5V37" fill="none" stroke="#fff" stroke-width="6.2" stroke-linecap="round"/>
+        <circle cx="24" cy="12.2" r="3.4" fill="#FF5B2E"/>
+      </svg>
+      <span class="wordmark">shulada</span>
+    </a>
+
+    <ul class="mega-nav">
+      <li>
+        <button type="button" aria-expanded="false" aria-haspopup="true">Platform
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="mega wide" role="menu">
+          <div class="mega-grid">
+            <div>
+              <p class="mega-col-head">Sell</p>
+              {{template "mitem" dict "href" "/en/tienda" "t" "Storefront & editor" "d" "Sections, 4 themes, publish instantly" "ic" "store"}}
+              {{template "mitem" dict "href" "/en/catalogo" "t" "Catalog" "d" "Variants, bundles, digital, pre-orders" "ic" "box"}}
+              {{template "mitem" dict "href" "/en/precios" "t" "Pricing & promotions" "d" "Price lists, volume, coupons" "ic" "tag"}}
+              {{template "mitem" dict "href" "/en/lealtad" "t" "Loyalty & rewards" "d" "Points, gift cards, repeat purchase" "ic" "spark"}}
+              {{template "mitem" dict "href" "/en/suscripciones" "t" "Subscriptions" "d" "Recurring revenue, memberships" "ic" "flask"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Operate</p>
+              {{template "mitem" dict "href" "/en/pagos" "t" "Orders & payments" "d" "Cards and local methods; reversible" "ic" "card"}}
+              {{template "mitem" dict "href" "/en/envios" "t" "Shipping" "d" "Live rates, labels, pickup" "ic" "truck"}}
+              {{template "mitem" dict "href" "/en/impuestos" "t" "Taxes" "d" "VAT and sales tax, calculated live" "ic" "chart"}}
+              {{template "mitem" dict "href" "/en/devoluciones" "t" "Returns" "d" "Self-service, refund, restock" "ic" "box"}}
+              {{template "mitem" dict "href" "/en/sandbox" "t" "Sandbox" "d" "Test, publish and roll back safely" "ic" "flask"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Grow</p>
+              {{template "mitem" dict "href" "/en/ia" "t" "Artificial intelligence" "d" "Search, answers, recommendations" "ic" "spark"}}
+              {{template "mitem" dict "href" "/en/pos" "t" "Point of sale & omnichannel" "d" "One inventory across channels" "ic" "store"}}
+              {{template "mitem" dict "href" "/en/marketing" "t" "Marketing & analytics" "d" "Pixels, campaigns, reports" "ic" "chart"}}
+              {{template "mitem" dict "href" "/en/developers" "t" "Developers & API" "d" "API, webhooks and punchout" "ic" "bolt"}}
+            </div>
+          </div>
+          <div class="mega-foot"><a href="/en#incluye">See everything included →</a><a href="/s/qa/main/index">See a live store →</a></div>
+        </div>
+      </li>
+
+      <li>
+        <button type="button" aria-expanded="false" aria-haspopup="true">Solutions
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="mega xwide" role="menu">
+          <div class="mega-grid">
+            <div>
+              <p class="mega-col-head">By industry</p>
+              {{template "mitem" dict "href" "/en/giro/moda" "t" "Fashion & accessories" "d" "Lienzo theme" "ic" "store"}}
+              {{template "mitem" dict "href" "/en/giro/tecnologia" "t" "Technology" "d" "Voltio theme" "ic" "bolt"}}
+              {{template "mitem" dict "href" "/en/giro/super" "t" "Grocery & essentials" "d" "Mercadito theme" "ic" "cart"}}
+              {{template "mitem" dict "href" "/en/giro/belleza" "t" "Beauty & wellness" "d" "Bálsamo theme" "ic" "spark"}}
+              {{template "mitem" dict "href" "/en/giro/hogar" "t" "Home & furniture" "d" "Configurable & bulky" "ic" "box"}}
+              {{template "mitem" dict "href" "/en/giro/mayoreo" "t" "Wholesale & distribution" "d" "Credit & per-customer pricing" "ic" "building"}}
+            </div>
+            <div>
+              <p class="mega-col-head">By need</p>
+              {{template "mitem" dict "href" "/en/para-quien-compra" "t" "Direct to consumer" "d" "B2C with a beautiful experience" "ic" "cart"}}
+              {{template "mitem" dict "href" "/en/b2b" "t" "Wholesale & B2B" "d" "Credit, approvals, punchout" "ic" "building"}}
+              {{template "mitem" dict "href" "/en/marketplace" "t" "Marketplace" "d" "Sellers with their own portal" "ic" "users"}}
+              {{template "mitem" dict "href" "/en/internacional" "t" "International" "d" "Markets, currencies, 6 languages" "ic" "globe"}}
+            </div>
+            <div>
+              <p class="mega-col-head">By outcome</p>
+              {{template "mitem" dict "href" "/en/resultado/vender-mas" "t" "Sell more" "d" "More sales, no more effort" "ic" "chart"}}
+              {{template "mitem" dict "href" "/en/resultado/mas-conversion" "t" "More conversion" "d" "Less friction at checkout" "ic" "bolt"}}
+              {{template "mitem" dict "href" "/en/resultado/mas-margen" "t" "More margin" "d" "Sell more, spend less" "ic" "tag"}}
+              {{template "mitem" dict "href" "/en/resultado/nuevos-canales" "t" "New channels" "d" "Grow wide, not chaotic" "ic" "globe"}}
+            </div>
+            <div>
+              <p class="mega-col-head">By size</p>
+              {{template "mitem" dict "href" "/en/tamano/emprendes" "t" "Starting out" "d" "Your first store in minutes" "ic" "spark"}}
+              {{template "mitem" dict "href" "/en/tamano/pyme" "t" "Growing SMB" "d" "Level up without migrating" "ic" "chart"}}
+              {{template "mitem" dict "href" "/en/tamano/empresa" "t" "Enterprise scale" "d" "No downtime, in control" "ic" "building"}}
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li><a href="/en/para-quien-compra">For buyers</a></li>
+      <li><a href="/en/planes">Pricing</a></li>
+
+      <li>
+        <button type="button" aria-expanded="false" aria-haspopup="true">Resources
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="mega" role="menu" data-align="right">
+          <div class="mega-grid">
+            <div>
+              <p class="mega-col-head">Learn</p>
+              {{template "mitem" dict "href" "/en/por-que" "t" "Why Shulada" "d" "What makes us different" "ic" "spark"}}
+              {{template "mitem" dict "href" "/en/nosotros" "t" "About us" "d" "Who we are and what we believe" "ic" "users"}}
+              {{template "mitem" dict "href" "/en/comparar" "t" "Compare" "d" "vs VTEX, Shopify, Tiendanube" "ic" "chart"}}
+              {{template "mitem" dict "href" "/en/preguntas" "t" "FAQ" "d" "Common questions" "ic" "flask"}}
+            </div>
+            <div>
+              <p class="mega-col-head">Get started</p>
+              {{template "mitem" dict "href" "/s/qa/main/index" "t" "See a live store" "d" "Browse it as a shopper" "ic" "store"}}
+              {{template "mitem" dict "href" "/en/migrar" "t" "Migrate from VTEX" "d" "Move over without losing anything" "ic" "box"}}
+              {{template "mitem" dict "href" "/en/ayuda" "t" "Help center" "d" "Guides by topic and support" "ic" "flask"}}
+              {{template "mitem" dict "href" "/en/developers" "t" "Developers & API" "d" "API, webhooks and punchout" "ic" "bolt"}}
+              {{template "mitem" dict "href" "/admin/" "t" "Sign in to the panel" "d" "Manage your store" "ic" "card"}}
+            </div>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="/" aria-label="Ver en español" style="font-weight:700">ES</a>
+      <a class="btn btn-ghost" href="/admin/">Sign in</a>
+      <a class="btn btn-primary" href="/en/empezar">Create my store</a>
+    </div>
+    <button class="navtoggle" type="button" id="navtoggle" aria-label="Menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+  </div>
+</nav>
+
+{{template "content" .}}
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="brand" href="/en" aria-label="Shulada" style="margin-bottom:12px">
+          <svg width="28" height="28" viewBox="0 0 48 48" aria-hidden="true">
+            <rect width="48" height="48" rx="12" fill="url(#sg)"/>
+            <path d="M14 37V24.5A10 10 0 0 1 34 24.5V37" fill="none" stroke="#fff" stroke-width="6.2" stroke-linecap="round"/>
+            <circle cx="24" cy="12.2" r="3.4" fill="#FF5B2E"/>
+          </svg><span class="wordmark" style="font-size:19px">shulada</span>
+        </a>
+        <p class="mute" style="font-size:14px;max-width:34ch;margin:4px 0 0">The commerce system for brands and wholesalers that want to sell for real.</p>
+      </div>
+      <div><h4>Platform</h4><a href="/en/tienda">Storefront</a><a href="/en/para-quien-compra">For buyers</a><a href="/en/ia">AI</a><a href="/en/sandbox">Sandbox</a><a href="/en/pagos">Payments</a></div>
+      <div><h4>Sell more</h4><a href="/en/b2b">B2B & wholesale</a><a href="/en/internacional">International</a><a href="/en/marketplace">Marketplace</a><a href="/en/migrar">Migrate from VTEX</a><a href="/en/partners">Partners & agencies</a></div>
+      <div><h4>Get started</h4><a href="/en/planes">Pricing</a><a href="/admin/">Sign in</a><a href="/en/empezar">Create my store</a><a href="/en/ayuda">Help center</a><a href="/en/developers">Developers & API</a></div>
+      <div><h4>Trust & support</h4><a href="/en/seguridad">Security</a><a href="/en/estado">Status & SLA</a><a href="/en/contacto">Contact</a><a href="/en/privacidad">Privacy Notice</a><a href="/en/terminos">Terms & Conditions</a></div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Shulada · Frictionless commerce.</span>
+      <span><a href="/">Español</a> · <a href="/en/privacidad">Privacy</a> · <a href="/en/terminos">Terms</a> · Secure payments with Stripe · Made in Mexico</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var nav = document.getElementById('nav');
+  var lis = [].slice.call(nav.querySelectorAll('.mega-nav > li'));
+  var hoverable = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+  function panelOf(li){ return li.querySelector(':scope > .mega'); }
+  function btnOf(li){ return li.querySelector(':scope > button'); }
+  function closeAll(){
+    lis.forEach(function(li){
+      var b=btnOf(li), m=panelOf(li);
+      if(b) b.setAttribute('aria-expanded','false');
+      if(m) m.classList.remove('open');
+    });
+  }
+  function open(li){
+    var m=panelOf(li); if(!m) return;
+    closeAll();
+    btnOf(li).setAttribute('aria-expanded','true');
+    m.classList.add('open');
+  }
+  lis.forEach(function(li){
+    var b=btnOf(li); if(!b) return;
+    b.addEventListener('click', function(e){
+      e.stopPropagation(); e.preventDefault();
+      if(btnOf(li).getAttribute('aria-expanded')==='true') closeAll(); else open(li);
+    });
+    if(hoverable){
+      li.addEventListener('mouseenter', function(){ open(li); });
+      li.addEventListener('mouseleave', function(){ closeAll(); });
+    }
+  });
+  nav.addEventListener('focusout', function(e){ if(!nav.contains(e.relatedTarget)) closeAll(); });
+  document.addEventListener('click', function(e){ if(!nav.contains(e.target)) closeAll(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeAll(); });
+  var tg = document.getElementById('navtoggle');
+  tg.addEventListener('click', function(){
+    var open = nav.classList.toggle('open');
+    tg.setAttribute('aria-expanded', open?'true':'false');
+  });
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var els = document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in')});return;}
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target);} });
+  }, {rootMargin:'0px 0px -8% 0px', threshold:.08});
+  els.forEach(function(e){io.observe(e)});
+})();
+</script>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,46 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c">
+  <span class="tag-live rise d1"><span class="dot"></span>Security & trust</span>
+  <h1 class="rise d2">Your business and your data, <span class="mg">protected by design</span>.</h1>
+  <p class="sub rise d3">Security isn't a paid add-on: it's in the design. Payments that never touch Shulada, every store isolated, everything reversible and an audit log that can't be altered.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/en/empezar">Create my store</a><a class="btn btn-ghost btn-lg" href="/en/estado">See status & availability →</a></div>
+</div></header>
+
+<section style="padding-top:8px"><div class="wrap">
+  <div class="why">
+    <div class="diff reveal"><span class="ic">{{template "ic" "card"}}</span><div><b>Shulada never sees cards</b><p>Each store charges with its own Stripe account; card data never passes through Shulada. PCI compliance is handled by Stripe.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "box"}}</span><div><b>Every store isolated</b><p>One store's data is never mixed with another's. Per-tenant isolation is part of the architecture, not an add-on.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "flask"}}</span><div><b>Everything reversible</b><p>Nothing publishes broken: we keep the previous version and you roll back in one click. You test in a sandbox first.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "chart"}}</span><div><b>An audit log that can't be altered</b><p>Every important action is recorded and chained: who did what and when. Useful for audits and for understanding any order.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "bolt"}}</span><div><b>Error-proof charges</b><p>Charges are idempotent (a double click won't charge twice) and a reconciler closes stuck payments every minute.</p></div></div>
+    <div class="diff reveal"><span class="ic">{{template "ic" "users"}}</span><div><b>Role-based access</b><p>Roles per module and level; each person sees and does only their part. Platform operators use two-factor verification.</p></div></div>
+  </div>
+
+  <div class="band reveal" style="margin-top:46px">
+    <p class="eyebrow">Infrastructure we operate</p>
+    <h2>Available, without you managing servers.</h2>
+    <p>We operate and update the platform, with encryption in transit and zero-downtime deploys. You focus on selling.</p>
+    <div class="metrics">
+      <div class="metric"><b class="num">0</b><span>Card data at Shulada</span><small>goes straight to Stripe</small></div>
+      <div class="metric"><b class="num">100%</b><span>Reversible</span><small>versions and undo</small></div>
+      <div class="metric"><b class="num">0</b><span>Downtime on updates</span><small>zero-downtime deploy</small></div>
+      <div class="metric"><b class="num">24/7</b><span>Infrastructure operated</span><small>by Shulada</small></div>
+    </div>
+  </div>
+
+  <div class="sec-head reveal" style="margin-top:56px"><p class="eyebrow">For procurement, IT and legal</p>
+    <h2>What you need to approve your vendor.</h2></div>
+  <div class="sfeat" style="grid-template-columns:repeat(3,1fr)">
+    <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>PCI payments via Stripe</b><span>Certified payment processing handled by Stripe.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Per-store isolation</b><span>Data separation between customers at the architecture level.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Audit log</b><span>Chained, verifiable record of key actions.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Backup & rollback</b><span>Saved versions and rollback to the previous snapshot.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "users"}}</span><div><b>Access control</b><span>Roles, per-module permissions and operator two-factor.</span></div></div>
+    <div class="f"><span class="i">{{template "ic" "globe"}}</span><div><b>Privacy</b><span>Data handling compliant with the law. <a href="/en/privacidad">See notice</a>.</span></div></div>
+  </div>
+
+  <div class="close reveal" style="margin-top:52px"><h2>Does your security team have questions?</h2>
+    <p>We're happy to answer security questionnaires and provide the documentation your procurement process requires.</p>
+    <div class="cta-row" style="justify-content:center;margin-top:24px"><a class="btn btn-primary btn-lg" href="/en/contacto">Talk to us</a><a class="btn btn-ghost btn-lg" href="/en/estado">See status & SLA →</a></div></div>
+</div></section>
+{{end}}

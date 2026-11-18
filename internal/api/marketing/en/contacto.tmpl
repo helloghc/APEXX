@@ -1,0 +1,79 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c" style="padding-bottom:14px">
+  <span class="tag-live rise d1"><span class="dot"></span>Contact</span>
+  <h1 class="rise d2">Let's talk. <span class="mg">We reply the same business day</span>.</h1>
+  <p class="sub rise d3">Sales, support, security or press — write to us and we'll route you to the right person.</p>
+</div></header>
+
+<section style="padding-top:6px"><div class="wrap">
+  <div class="split" style="align-items:start">
+    <div class="reveal">
+      <div class="sfeat" style="grid-template-columns:1fr">
+        <div class="f"><span class="i">{{template "ic" "card"}}</span><div><b>Email</b><span><a href="mailto:hola@shulada.com">hola@shulada.com</a> · Sales & general</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "flask"}}</span><div><b>Support</b><span><a href="mailto:soporte@shulada.com">soporte@shulada.com</a> · Customers with an account</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Security</b><span><a href="mailto:seguridad@shulada.com">seguridad@shulada.com</a> · Reports & questionnaires</span></div></div>
+        <div class="f"><span class="i">{{template "ic" "users"}}</span><div><b>WhatsApp</b><span>[WHATSAPP NUMBER] · Mon–Fri, 9am–6pm</span></div></div>
+      </div>
+      <div class="band reveal" style="margin-top:22px">
+        <p class="eyebrow">Looking to open your store?</p>
+        <h2 style="font-size:22px">For a quote and migration, use “Get started”.</h2>
+        <p>There you tell us about your business and we give you a tailored quote.</p>
+        <div class="cta-row" style="margin-top:18px"><a class="btn btn-primary" href="/en/empezar">Go to Get started →</a></div>
+      </div>
+    </div>
+
+    <div class="lead-card reveal">
+      <form id="contact-form" novalidate>
+        <div class="lead-fields">
+          <h2>Send us a message</h2>
+          <p class="lc-sub">We reply the same business day. Your data is private: <a href="/en/privacidad">Privacy Notice</a>.</p>
+          <div class="form-grid">
+            <div class="field"><label for="c-name">Name <span class="req">*</span></label><input id="c-name" name="name" autocomplete="name" maxlength="120" required></div>
+            <div class="field"><label for="c-company">Company or brand</label><input id="c-company" name="company" autocomplete="organization" maxlength="120"></div>
+            <div class="field"><label for="c-email">Email <span class="req">*</span></label><input id="c-email" name="email" type="email" autocomplete="email" maxlength="160" required></div>
+            <div class="field"><label for="c-phone">Phone or WhatsApp</label><input id="c-phone" name="phone" type="tel" autocomplete="tel" maxlength="40"></div>
+            <div class="field full"><label for="c-topic">Reason</label>
+              <select id="c-topic" name="topic">
+                <option>Sales</option><option>Support</option><option>Security</option><option>Partnerships</option><option>Press</option><option>Other</option>
+              </select></div>
+            <div class="field full"><label for="c-message">Message <span class="req">*</span></label><textarea id="c-message" name="message" maxlength="2000" required placeholder="How can we help?"></textarea></div>
+            <div class="field full hp"><label for="c-website">Leave this empty</label><input id="c-website" name="website" tabindex="-1" autocomplete="off"></div>
+          </div>
+          <div class="lead-submit">
+            <p class="lead-err" id="contact-err" role="alert"></p>
+            <button class="btn btn-primary btn-lg" type="submit" id="contact-btn" style="width:100%;justify-content:center">Send message</button>
+            <p class="lead-note">By submitting you accept our <a href="/en/privacidad">Privacy Notice</a> and that we may contact you about your request.</p>
+          </div>
+        </div>
+        <div class="lead-ok">
+          <svg class="big-mark" width="60" height="60" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="url(#sg)"/><path d="M14 37V24.5A10 10 0 0 1 34 24.5V37" fill="none" stroke="#fff" stroke-width="6.2" stroke-linecap="round"/><circle cx="24" cy="12.2" r="3.4" fill="#FF5B2E"/></svg>
+          <h2>Thanks! Message received.</h2>
+          <p>We'll reply the same business day to the email you left us.</p>
+        </div>
+      </form>
+    </div>
+  </div>
+</div></section>
+
+<script>
+(function(){
+  var f=document.getElementById('contact-form'); if(!f) return;
+  var btn=document.getElementById('contact-btn'), err=document.getElementById('contact-err');
+  f.addEventListener('submit', function(e){
+    e.preventDefault(); err.textContent='';
+    var data={}; new FormData(f).forEach(function(v,k){ data[k]=String(v).trim(); });
+    if(!data.name){ err.textContent='Enter your name.'; return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email||'')){ err.textContent='Enter a valid email.'; return; }
+    if(!data.message){ err.textContent='Enter your message.'; return; }
+    var payload={ name:data.name, email:data.email, phone:data.phone||'', company:data.company||'',
+      industry:'Contact', platform:data.topic||'', website:data.website||'',
+      message:'['+(data.topic||'Contact')+'] '+(data.message||'') };
+    btn.disabled=true; var old=btn.textContent; btn.textContent='Sending…';
+    fetch('/v1/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+      .then(function(r){ return r.ok ? r.json() : r.json().then(function(p){ throw new Error(p.detail||'Could not send.'); }); })
+      .then(function(){ f.classList.add('sent'); window.scrollTo({top:f.getBoundingClientRect().top+window.scrollY-120,behavior:'smooth'}); })
+      .catch(function(ex){ err.textContent=ex.message||'Could not send. Try again.'; btn.disabled=false; btn.textContent=old; });
+  });
+})();
+</script>
+{{end}}

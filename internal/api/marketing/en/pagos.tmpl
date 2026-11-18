@@ -1,0 +1,67 @@
+{{define "content"}}
+<header class="hero">
+  <div class="wrap hero-c">
+    <span class="tag-live rise d1"><span class="dot"></span>Payments & checkout</span>
+    <h1 class="rise d2">Charge locally, without <span class="mg">ever seeing a card</span>.</h1>
+    <p class="sub rise d3">Each store charges with its own Stripe account; Shulada never sees card data. Cards and local methods, with installments, tax included and shipping quoted live.</p>
+    <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/admin/">Sign in to the panel</a><a class="btn btn-ghost btn-lg" href="/s/qa/main/index">See a live store →</a></div>
+  </div>
+</header>
+
+<section style="padding-top:10px">
+  <div class="wrap">
+    <div class="split">
+      <div class="panel reveal">
+        <div class="panel-top"><span class="dotc"></span><span class="dotc"></span><span class="dotc"></span><span class="ttl">Checkout · Summary</span></div>
+        <div class="panel-body">
+          <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0;border-bottom:1px solid var(--line-2)"><span>2 × Pacific Hoodie</span><span style="font-family:ui-monospace,Menlo,monospace">$43.80</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0;border-bottom:1px solid var(--line-2)"><span>Shipping · Standard</span><span style="font-family:ui-monospace,Menlo,monospace">$9.90</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0;border-bottom:1px solid var(--line-2)"><span class="mute">Tax included</span><span class="mute" style="font-family:ui-monospace,Menlo,monospace">$7.41</span></div>
+          <div style="display:flex;justify-content:space-between;font-weight:750;font-size:16px;padding-top:12px"><span>Total</span><span style="font-family:ui-monospace,Menlo,monospace">$53.70</span></div>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap"><span style="font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;background:var(--stage-2)">Card</span><span style="font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;background:var(--stage-2)">Local methods</span><span style="font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;background:var(--stage-2)">Wallets</span><span style="font-size:12.5px;border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;background:var(--stage-2)">Installments</span></div>
+        </div>
+      </div>
+      <div class="copy reveal">
+        <p class="eyebrow">Built for your market</p>
+        <h2>The payment methods your customers actually use.</h2>
+        <p>Don't lose sales to a missing payment method. Shulada includes the ones your market uses, with tax shown included and shipping quoted live before checkout.</p>
+        <div class="sfeat" style="margin-top:22px;grid-template-columns:1fr">
+          <div class="f"><span class="i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Cards & local methods</b><span>With installments and saved cards.</span></div></div>
+          <div class="f"><span class="i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Taxes & customs</b><span>Calculated at checkout, not on delivery.</span></div></div>
+          <div class="f"><span class="i"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span><div><b>Guest checkout</b><span>No forced account; or one-click if they have one.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="band reveal">
+      <div class="band-grid">
+        <div>
+          <p class="eyebrow">Safe and on your side</p>
+          <h2>Your money, with clear rules.</h2>
+          <p>The charge goes straight to your Stripe account; Shulada never sees the card. Every step is reversible and double-click-proof, and a reconciler closes anything left pending.</p>
+          <div class="cta-row" style="margin-top:26px"><a class="btn btn-primary btn-lg" href="/admin/">Try it in the panel</a></div>
+        </div>
+        <div class="flow">
+          <div class="step reveal"><span class="n">1</span><span><b>Charge straight to your Stripe</b><small>Shulada never sees the card</small></span><span class="ms">PCI</span></div>
+          <div class="step reveal"><span class="n">2</span><span><b>Idempotent</b><small>A double click never charges twice</small></span><span class="ms">1 charge</span></div>
+          <div class="step reveal"><span class="n">3</span><span><b>Reconciler every minute</b><small>Closes stuck payments</small></span><span class="ms">60 s</span></div>
+          <div class="step reveal"><span class="n">4</span><span><b>Refund in one click</b><small>Reversible, with a receipt</small></span><span class="ms">↺</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sfeat reveal" style="margin-top:26px;grid-template-columns:repeat(3,1fr)">
+      <div class="f"><span class="i">{{template "ic" "chart"}}</span><div><b>Risk & review</b><span>High-risk orders are flagged for review before fulfillment.</span></div></div>
+      <div class="f"><span class="i">{{template "ic" "box"}}</span><div><b>Invoices & receipts</b><span>Documents for every order, ready for your accounting.</span></div></div>
+      <div class="f"><span class="i">{{template "ic" "building"}}</span><div><b>Platform fee</b><span>If you run a marketplace, you set the fee and it splits automatically.</span></div></div>
+    </div>
+    <div class="close reveal" style="margin-top:46px">
+      <h2>Charge without friction and without surprises.</h2>
+      <div class="cta-row" style="justify-content:center;margin-top:26px"><a class="btn btn-primary btn-lg" href="/en/empezar">Create my store</a><a class="btn btn-ghost btn-lg" href="/en/envios">See shipping →</a></div>
+    </div>
+  </div>
+</section>
+{{end}}

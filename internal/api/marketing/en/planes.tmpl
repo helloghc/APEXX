@@ -1,0 +1,71 @@
+{{define "content"}}
+<header class="hero"><div class="wrap hero-c">
+  <span class="tag-live rise d1"><span class="dot"></span>Pricing</span>
+  <h1 class="rise d2">Fair pricing, <span class="mg">no fine print</span>.</h1>
+  <p class="sub rise d3">Everything included in every plan: unlimited seats, AI, sandbox and the hundreds of features. No per-seat fees. Pricing scales with your volume; we give you a quote tailored to you.</p>
+  <div class="cta-row rise d4"><a class="btn btn-primary btn-lg" href="/en/empezar">Get a quote</a><a class="btn btn-ghost btn-lg" href="/en#incluye">Everything included →</a></div>
+</div></header>
+<section style="padding-top:18px"><div class="wrap"><div class="plans">
+  <div class="plan reveal">
+    <h3>Start</h3><p class="who">For your first store</p>
+    <div class="price">Tailored<small>to your volume</small></div>
+    <ul>
+      <li>{{template "ic" "spark"}}Store with 4 themes & editor</li>
+      <li>{{template "ic" "spark"}}Unlimited team</li>
+      <li>{{template "ic" "spark"}}Payments: cards & local methods</li>
+      <li>{{template "ic" "spark"}}AI and sandbox included</li>
+    </ul>
+    <a class="btn btn-ghost btn-lg" href="/en/empezar">Request a quote</a>
+  </div>
+  <div class="plan feat reveal">
+    <span class="badge">Most chosen</span>
+    <h3>Grow</h3><p class="who">For the SMB selling for real</p>
+    <div class="price">Tailored<small>to your volume</small></div>
+    <ul>
+      <li>{{template "ic" "spark"}}Everything in “Start”</li>
+      <li>{{template "ic" "spark"}}B2B & wholesale</li>
+      <li>{{template "ic" "spark"}}More channels & markets</li>
+      <li>{{template "ic" "spark"}}Loyalty, reports and roles</li>
+    </ul>
+    <a class="btn btn-primary btn-lg" href="/en/empezar">Request a quote</a>
+  </div>
+  <div class="plan reveal">
+    <h3>Enterprise</h3><p class="who">To operate at scale</p>
+    <div class="price">Tailored<small>with onboarding</small></div>
+    <ul>
+      <li>{{template "ic" "spark"}}Everything in “Grow”</li>
+      <li>{{template "ic" "spark"}}High availability, no downtime</li>
+      <li>{{template "ic" "spark"}}Multiple stores & superadmin</li>
+      <li>{{template "ic" "spark"}}API, audit log and support</li>
+    </ul>
+    <a class="btn btn-ghost btn-lg" href="/en/empezar">Talk to sales</a>
+  </div>
+</div>
+<p class="mute reveal" style="text-align:center;margin-top:28px;font-size:14px">No per-seat fees, on every plan. Each store charges with its own Stripe account.</p>
+</div></section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="sec-head reveal"><p class="eyebrow">Why “tailored”</p>
+      <h2>Pricing that scales with your volume, not a rigid list.</h2>
+      <p>We don't charge for modules or users, so there's no list price that inflates your bill as you grow. We quote based on what you actually move — and everything else is already included.</p></div>
+    <div class="why">
+      <div class="diff reveal"><span class="ic">{{template "ic" "box"}}</span><div><b>Everything included</b><p>Hundreds of features —AI, sandbox, B2B, marketplace, international— with no paid modules.</p></div></div>
+      <div class="diff reveal"><span class="ic">{{template "ic" "users"}}</span><div><b>Unlimited seats</b><p>Add anyone without paying per seat. Your bill doesn't grow with your team.</p></div></div>
+      <div class="diff reveal"><span class="ic">{{template "ic" "chart"}}</span><div><b>Based on your volume</b><p>You pay in proportion to what you sell. If you're starting out, you start small.</p></div></div>
+      <div class="diff reveal"><span class="ic">{{template "ic" "spark"}}</span><div><b>No surprises</b><p>A clear quote before you sign. What you see is what you pay.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="band reveal">
+      <p class="eyebrow">Transparent, no fine print</p>
+      <h2>We give you your number in a call.</h2>
+      <p>Tell us your industry and your volume and we give you a tailored quote the same business day. No commitment and no per-seat fees.</p>
+      <div class="cta-row" style="margin-top:24px"><a class="btn btn-primary btn-lg" href="/en/empezar">Request my quote</a><a class="btn btn-ghost btn-lg" href="/en/comparar">Compare with other platforms →</a></div>
+    </div>
+  </div>
+</section>
+{{end}}
