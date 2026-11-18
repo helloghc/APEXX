@@ -57,7 +57,13 @@ Buscar en el código `[` para encontrarlos. No publicar el aviso legal sin esto:
 - Correos (`hola@`, `soporte@`, `seguridad@`, `privacidad@` `shulada.com`) — confirmar que existen y se monitorean.
 - **Revisión legal** del Aviso de Privacidad y Términos por un abogado antes de publicar.
 
+## Sitio en inglés (/en) — núcleo funcional
+Opción A (rutas `/en/...` con layout en inglés). **Traducidas:** `/en` (home), `/en/planes`, `/en/comparar`, `/en/seguridad`, `/en/b2b`, `/en/pagos`, `/en/empezar`, `/en/contacto`. Las `/en/*` **no traducidas hacen 302 a su versión en español** (sin 404). Selector de idioma EN⇄ES en el nav de ambos.
+- [ ] Probar `/en` y las 8 traducidas: textos en inglés, nav/footer en inglés, selector ES funciona.
+- [ ] Probar una `/en/*` no traducida (p. ej. `/en/ia`) → debe **redirigir (302)** a `/ia`, no dar 404.
+- [ ] Forms de `/en/empezar` y `/en/contacto` postean a `/v1/leads` igual que en español.
+- [ ] Pendiente: traducir el resto de landings (hoy caen a ES; no es bug, es fallback).
+
 ## No incluido (decidido, pendiente de construir)
-- **Sitio en inglés** (`/en/...`, opción A elegida) — no construido aún; es la siguiente oleada grande.
-- **Demo en vivo del panel** (sin login, blindada) — es feature de backend con implicaciones de seguridad; requiere diseño dedicado (tenant demo aislado, rol restringido, auto-reset, rate limits). No construido.
+- **Demo en vivo del panel** (sin login, blindada) — es feature de backend con implicaciones de seguridad; requiere diseño e implementación dedicados y revisión de seguridad (tenant demo aislado + rol restringido/solo-lectura usando el login existente, auto-reset, rate limits; SIN bypass de auth). **No se construyó**: no es responsable lanzar código de auth sin pruebas en un entorno real. La demo del *storefront* ya existe en `/s/qa/main/index`.
 - **Modelo de cobro (D14)** — por definir por el negocio; el mensaje de `/planes` ya es neutral.
