@@ -416,12 +416,11 @@ func cmdDemoUser(ctx context.Context, log *slog.Logger, args []string) {
 			return
 		}
 	}
-	// Playground role: edit what makes a good demo, nothing account-critical.
-	perms := auth.Permissions{
-		"catalog": "edit", "pricing": "edit", "inventory": "edit", "promotions": "edit",
-		"builder": "edit", "orders": "read", "customers": "read", "reports": "read",
-		"team": "none", "settings": "none", "payments": "none", "marketplace": "read",
-	}
+	// Full access so prospects can try every function in the panel. This is safe
+	// because the demo lives in its own isolated database, resets on a schedule
+	// and runs payments in sandbox: the worst case is a disposable mess. We stop
+	// short of "owner" so the store itself can't be deleted or transferred.
+	perms := auth.All(auth.Admin)
 	if _, err := a.CreateMember(ctx, *tenant, "demo-setup", email2, "Visitante (demo)", *pass, perms, false); err != nil {
 		must(log, err, "create demo user")
 	}
