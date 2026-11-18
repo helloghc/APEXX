@@ -63,6 +63,9 @@ type Server struct {
 	SecureCookies    bool
 	TrustProxy       bool          // honour X-Forwarded-For (only behind our own proxy)
 	MetricsToken     string        // bearer token for /metrics; empty = loopback/private callers only
+	DemoTenant       string        // public self-service demo: tenant to sign visitors into (empty = disabled, e.g. production)
+	DemoEmail        string        // the restricted demo visitor account
+	DemoPassword     string        // server-held password for the demo visitor
 	Media            media.Storage // media library files; nil = local disk under the system temp dir
 	Embedder         ai.Embedder   // vectors for semantic search; nil = local (no network, no cost)
 	LLM              ai.LLM        // language model for answers and assistants; nil = deterministic only
@@ -153,6 +156,7 @@ func (s *Server) Routes() http.Handler {
 
 	// Auth and team (unlimited seats, permissions per module).
 	handle("POST /v1/leads", s.createLead) // public: the "Empezar" lead form
+	handle("GET /demo", s.demoLogin)       // public: self-service demo panel entry (no-op unless configured)
 	handle("POST /v1/auth/login", s.login)
 	handle("POST /v1/auth/logout", s.authed("", "", s.logout))
 	handle("GET /v1/me", s.authed("", "", s.me))

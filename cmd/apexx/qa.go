@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/helloghc/apexx/internal/api"
 	"github.com/helloghc/apexx/internal/auth"
@@ -357,4 +358,43 @@ func cmdQAShopper(ctx context.Context, log *slog.Logger, args []string) {
 	must(log, err, "verify")
 	must(log, cust.SetPassword(ctx, *tenant, id, *pass, ""), "password")
 	log.Info("qa shopper ready", "tenant", *tenant, "customer", id)
+}
+
+// cmdDemoUser creates the restricted "visitor" account used by the public demo
+// panel. The visitor can play with catalog, pricing, promotions and the store
+// designer, but cannot touch team, settings or payments — and is confined to
+// the demo tenant by isolation. Idempotent: if it exists, it is left as is.
+func cmdDemoUser(ctx context.Context, log *slog.Logger, args []string) {
+	fs := flag.NewFlagSet("demo-user", flag.ExitOnError)
+	tenant := fs.String("tenant", "demo", "demo tenant id")
+	email := fs.String("email", "visitante@demo.shulada.test", "demo visitor email")
+	pass := fs.String("password", "", "password for the demo visitor (12+ chars)")
+	_ = fs.Parse(args)
+	if len(*pass) < 12 {
+		fmt.Fprintln(os.Stderr, "usa -password con al menos 12 caracteres")
+		os.Exit(2)
+	}
+	db, keys := open(ctx, log)
+	defer db.Close()
+	must(log, loadKeys(ctx, db, keys, *tenant), "tenant key")
+
+	a := &auth.Service{DB: db}
+	email2 := strings.ToLower(strings.TrimSpace(*email))
+	members, _ := a.Members(ctx, *tenant)
+	for _, m := range members {
+		if strings.ToLower(m.Email) == email2 {
+			fmt.Printf("Visitante de demo ya existe: %s (tenant %s)\n", email2, *tenant)
+			return
+		}
+	}
+	// Playground role: edit what makes a good demo, nothing account-critical.
+	perms := auth.Permissions{
+		"catalog": "edit", "pricing": "edit", "inventory": "edit", "promotions": "edit",
+		"builder": "edit", "orders": "read", "customers": "read", "reports": "read",
+		"team": "none", "settings": "none", "payments": "none", "marketplace": "read",
+	}
+	if _, err := a.CreateMember(ctx, *tenant, "demo-setup", email2, "Visitante (demo)", *pass, perms, false); err != nil {
+		must(log, err, "create demo user")
+	}
+	fmt.Printf("Visitante de demo creado: %s (tenant %s) — rol restringido\n", email2, *tenant)
 }

@@ -97,6 +97,8 @@ func main() {
 		cmdImport(ctx, log, os.Args[2:])
 	case "qa-setup":
 		cmdQASetup(ctx, log, os.Args[2:])
+	case "demo-user":
+		cmdDemoUser(ctx, log, os.Args[2:])
 	case "qa-shopper":
 		cmdQAShopper(ctx, log, os.Args[2:])
 	case "analytics":
@@ -390,6 +392,13 @@ func cmdServe(ctx context.Context, log *slog.Logger) {
 		TrustProxy:    env("APEXX_TRUST_PROXY", "false") == "true",
 		MetricsToken:  os.Getenv("APEXX_METRICS_TOKEN"),
 		Media:         mediaStore,
+		// Public self-service demo: only enabled when these are set (never in production).
+		DemoTenant:   os.Getenv("APEXX_DEMO_TENANT"),
+		DemoEmail:    os.Getenv("APEXX_DEMO_EMAIL"),
+		DemoPassword: os.Getenv("APEXX_DEMO_PASSWORD"),
+	}
+	if srv.DemoTenant != "" {
+		log.Warn("public demo panel ENABLED (self-service login into an isolated tenant)", "tenant", srv.DemoTenant)
 	}
 	mail.Phrases = srv.NotifyPhrases
 	// Third-party warehouses get their paid orders, with retries.
